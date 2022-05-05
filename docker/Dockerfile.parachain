@@ -1,0 +1,28 @@
+FROM docker.io/library/rust:1.59-bullseye as builder
+
+COPY . /ajuna
+WORKDIR /ajuna
+
+RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev
+# Compile with `bajun` feature for parachain
+RUN cargo build --locked --release --features bajun --bin ajuna-para
+
+# Runner
+FROM docker.io/library/ubuntu:20.04
+COPY --from=builder /ajuna/target/release/ajuna-para /usr/local/bin
+COPY --from=builder /ajuna/resources/ /ajuna
+
+RUN useradd -m -u 1000 -U -s /bin/sh -d /ajuna ajuna && \
+  mkdir -p /data /ajuna/.local/share && \
+  chown -R ajuna:ajuna /data  && \
+  ln -s /data /ajuna/.local/share/ajuna && \
+  # unclutter and minimize the attack surface
+  rm -rf /usr/sbin && \
+  # check if executable works in this container
+  ajuna-para --version
+
+USER ajuna
+
+EXPOSE 30333 9933 9944 9615
+VOLUME ["/data"]
+ENTRYPOINT ["/usr/local/bin/ajuna-para"]

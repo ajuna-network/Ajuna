@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '**.rs'
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'rustfmt.toml'
+  push:
+    branches:
+      - master
+
+# Ensures only one build is run per branch, unless pushing to master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/master' && github.run_number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SKIP_WASM_BUILD: ${{ github.ref == 'refs/heads/master' && 0 || 1 }}
+  CARGO_ARGS: ${{ github.ref == 'refs/heads/master' && '--release --all-targets' || '' }}
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  check:
+    name: Clippy and Check
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features ${{ env.CARGO_ARGS }} -- -D warnings
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all-features ${{ env.CARGO_ARGS }}
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features ${{ env.CARGO_ARGS }}

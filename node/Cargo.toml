@@ -1,0 +1,28 @@
+[package]
+authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
+edition    = "2021"
+homepage   = "https://ajuna.io"
+license    = "Unlicense" # TODO: update license
+name       = "ajuna-node"
+repository = "https://github.com/ajuna-network/ajuna-node/"
+version    = "0.1.0"
+
+[[bin]]
+name              = "ajuna-solo"
+path              = "src/solo.rs"
+required-features = [ "solo" ]
+
+[[bin]]
+name              = "ajuna-para"
+path              = "src/para.rs"
+required-features = [ "bajun" ]
+
+[dependencies]
+ajuna-cli     = { path = "cli" }
+ajuna-service = { path = "service" }
+
+[features]
+default = [ "solo" ]
+
+bajun = [ "ajuna-cli/bajun", "ajuna-service/bajun" ]
+solo  = [ "ajuna-cli/solo", "ajuna-service/solo" ]

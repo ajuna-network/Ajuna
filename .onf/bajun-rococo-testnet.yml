@@ -1,0 +1,33 @@
+networkSpec:
+  name: bajun-rococo-testnet
+  displayName: Bajun Rococo Testnet
+  protocol: polkadot-parachain
+  imageRepository: ajuna/parachain
+  imageVersion: 0.2.2
+  config:
+    nodeTypes:
+      collator:
+        args:
+          - key: --chain
+            value: /ajuna/rococo/rococo-raw.json
+          - key: --bootnodes
+            value: /ip4/164.92.131.183/tcp/30333/ws/p2p/12D3KooWPyjEqcAkhKCEE8V77xpA47K57ch34HEqznU73ygcLY9q
+          - key: --  # Relay chain config below
+          - key: --execution
+            value: wasm
+          - key: --chain
+            value: /ajuna/rococo/rococo.json
+
+validator:
+  count: 2
+  node:
+    nodeName: bajun-rococo-collator
+    nodeType: collator
+    clusterKey: sz
+    nodeSpec:
+      key: unit
+      multiplier: 2
+    initFromBackup: false
+    publicPort: true
+    useApiKey: true
+    storage: 100Gi

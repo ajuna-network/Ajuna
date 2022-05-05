@@ -1,0 +1,19 @@
+[package]
+authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
+edition    = "2021"
+homepage   = "https://ajuna.io"
+license    = "Unlicense" # TODO: update license
+name       = "ajuna-primitives"
+repository = "https://github.com/ajuna-network/ajuna-node/"
+version    = "0.1.0"
+
+[dependencies]
+sp-core    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+
+[features]
+default = [ "std" ]
+std = [
+    "sp-core/std",
+    "sp-runtime/std",
+]

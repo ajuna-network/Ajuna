@@ -1,0 +1,164 @@
+version: '3'
+services:
+  bootnode:
+    image: parity/polkadot:v0.9.19
+    volumes:
+      - ./data/relay/bootnode:/data
+      - ./../node/service/res/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+    command: |
+      --name=bootnode
+      --base-path=/data
+      --chain=rococo-custom-2-raw.json
+      --rpc-cors=all
+      --ws-external
+      --node-key=9996ea9571cc5f586fadbbbace60319d2cc35f96338a6fe6444c4e871b23799d
+    ports:
+      - 30333:30333 # p2p
+      - 9933:9933   # http RPC
+      - 9944:9944   # websocket RPC
+      - 9615:9615   # Prometheus
+    networks:
+      local_relay_net:
+        ipv4_address: 172.40.1.0
+
+  relay-alice:
+    image: parity/polkadot:v0.9.19
+    volumes:
+      - ./data/relay/alice:/data
+      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+    command: |
+      --alice
+      --validator
+      --base-path=/data
+      --chain=rococo-custom-2-raw.json
+      --port=30334
+      --ws-port=9945
+      --bootnodes=/ip4/172.40.1.0/tcp/30334/p2p/12D3KooWL5PE1d1b9ihGtrZ2AzLWJgBc8UPBZKqDF2rV9JuZLhaB
+    ports:
+      - 30334:30334
+      - 9945:9945
+    networks:
+      local_relay_net:
+        ipv4_address: 172.40.1.1
+
+  relay-bob:
+    image: parity/polkadot:v0.9.19
+    volumes:
+      - ./data/relay/bob:/data
+      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+    command: |
+      --bob
+      --validator
+      --base-path=/data
+      --chain=rococo-custom-2-raw.json
+      --port=30335
+      --ws-port=9946
+      --node-key=6a3066fe6403ce6be964420672979b345d57f02b6d121dc1eccffae52ec80043
+      --bootnodes=/ip4/172.40.1.0/tcp/30334/p2p/12D3KooWL5PE1d1b9ihGtrZ2AzLWJgBc8UPBZKqDF2rV9JuZLhaB
+    ports:
+      - 30335:30335
+      - 9946:9946
+    networks:
+      local_relay_net:
+        ipv4_address: 172.40.1.2
+
+  collator-charlie:
+    image: ajuna/parachain:latest
+    volumes:
+      - ./data/parachain/charlie:/data
+      - ./../node/service/res/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+    command: |
+      --charlie
+      --collator
+      --base-path=/data
+      --chain=/ajuna/rococo-local/rococo-local-raw.json
+      --port=40333
+      --ws-port=8844
+      --unsafe-ws-external
+      --rpc-cors=all
+      --node-key=b47824f21aa24cbd1ad3648be5f793037f4fb7a8ccc482022885c06efca89d2f
+      --
+      --execution=wasm
+      --chain=rococo-custom-2-raw.json
+      --port=30343
+      --ws-port=9977
+    ports:
+      - 40333:40333
+      - 8844:8844
+      - 30343:30343
+      - 9977:9977
+    networks:
+      local_relay_net:
+        ipv4_address: 172.40.1.3
+
+  collator-bob:
+    image: ajuna/parachain:latest
+    volumes:
+      - ./data/parachain/bob:/data
+      - ./../node/service/res/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+    command: |
+      --bob
+      --collator
+      --base-path=/data
+      --chain=/ajuna/rococo-local/rococo-local-raw.json
+      --bootnodes=/ip4/172.40.1.3/tcp/30333/p2p/12D3KooWQCCUSRvqQkgndyDJ4UCH8Rk72x2GypFfA3C57iHDEZau
+      --port=40334
+      --ws-port=8845
+      --
+      --execution=wasm
+      --chain=rococo-custom-2-raw.json
+      --port=30344
+      --ws-port=9978
+      --bootnodes=/ip4/172.40.1.0/tcp/30334/p2p/12D3KooWL5PE1d1b9ihGtrZ2AzLWJgBc8UPBZKqDF2rV9JuZLhaB
+    ports:
+      - 40334:40334
+      - 8845:8845
+      - 30344:30344
+      - 9978:9978
+    networks:
+      local_relay_net:
+        ipv4_address: 172.40.1.4
+
+  non-collator:
+      image: ajuna/parachain:latest
+      volumes:
+        - ./data/parachain/non-collator:/data
+        - ./../node/service/res/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      command: |
+        --base-path=/data
+        --chain=/ajuna/rococo-local/rococo-local-raw.json
+        --port=40335
+        --ws-port=8846
+        --unsafe-ws-external
+        --rpc-cors=all
+        --
+        --execution=wasm
+        --chain=rococo-custom-2-raw.json
+        --port=30345
+        --ws-port=9979
+        --bootnodes=/ip4/172.40.1.0/tcp/30334/p2p/12D3KooWL5PE1d1b9ihGtrZ2AzLWJgBc8UPBZKqDF2rV9JuZLhaB
+      ports:
+        - 40335:40335
+        - 8846:8846
+        - 30345:30345
+        - 9979:9979
+      networks:
+        local_relay_net:
+          ipv4_address: 172.40.1.5
+
+  polkadot-ui:
+    image: jacogr/polkadot-js-apps:latest
+    links:
+      - bootnode
+      - collator-charlie
+    environment:
+      - WS_URL=ws://localhost:9944
+    ports:
+      - 80:80
+
+networks:
+  local_relay_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.40.0.0/16

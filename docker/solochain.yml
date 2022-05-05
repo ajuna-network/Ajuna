@@ -1,0 +1,67 @@
+version: '3'
+services:
+  bootnode:
+    image: ajuna/solochain:latest
+    volumes:
+      - ./data/bootnode:/data
+    command: |
+      --name=bootnode
+      --chain=dev
+      --base-path=/data
+      --rpc-cors=all
+      --ws-external
+      --node-key=0x096a58beff03ab5457fe9709eb9c04591d1a863eefaa93439fc37f16cd15d925
+    ports:
+      - 30333:30333 # p2p
+      - 9933:9933   # http RPC
+      - 9944:9944   # websocket RPC
+      - 9615:9615   # Prometheus
+    networks:
+      local_net:
+        ipv4_address: 172.38.1.0
+
+  validator-insert-aura-key:
+    image: ajuna/solochain:latest
+    volumes:
+      - ./data/validator:/data
+    command: key insert --chain=dev --base-path=/data --key-type=aura --scheme=sr25519 --suri=//Alice
+
+  validator-insert-gran-key:
+    image: ajuna/solochain:local
+    volumes:
+      - ./data/validator:/data
+    command: key insert --chain=dev --base-path=/data --key-type=gran --scheme=ed25519 --suri=//Alice
+
+  validator:
+    image: ajuna/solochain:latest
+    volumes:
+      - ./data/validator:/data
+    depends_on:
+      - bootnode
+      - validator-insert-aura-key
+      - validator-insert-gran-key
+    command: |
+      --name=validator-1
+      --validator
+      --chain=dev
+      --base-path=/data
+      --bootnodes=/ip4/172.38.1.0/tcp/30333/p2p/12D3KooWGjykEPyn8aHSnVoT1xGXX7DLwKPqNQA1YGAVfaH7kMd4
+    networks:
+      local_net:
+        ipv4_address: 172.38.1.1
+
+  polkadot-ui:
+    image: jacogr/polkadot-js-apps:latest
+    links:
+      - bootnode
+    environment:
+      - WS_URL=ws://localhost:9944
+    ports:
+      - 80:80
+
+networks:
+  local_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.38.0.0/16

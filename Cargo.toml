@@ -1,0 +1,18 @@
+[profile.release]
+panic = "unwind"
+
+[workspace]
+members = [
+    "node",
+    "node/cli",
+    "node/service",
+    "rpc",
+    "runtime/solo",
+    "runtime/bajun",
+    "pallets/ajuna-matchmaker",
+    "pallets/ajuna-gameregistry",
+    "pallets/ajuna-connectfour",
+    "pallets/ajuna-runner",
+    "primitives",
+    "ajuna-common",
+]
