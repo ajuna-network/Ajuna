@@ -60,11 +60,19 @@ mod consts;
 mod impls;
 mod types;
 
-use ajuna_primitives::{AccountId, AssetId, Balance, BlockNumber, Hash, Index, Moment, Signature};
+pub use ajuna_primitives::{
+	AccountId, AssetId, Balance, BlockNumber, Hash, Index, Moment, Signature,
+};
 pub use consts::{ajuna, currency, time};
 use consts::{currency::*, time::*};
 use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
 use types::governance::*;
+
+// Some public reexports..
+pub use pallet_ajuna_gameregistry;
+pub use pallet_ajuna_matchmaker;
+pub use pallet_balances::Call as BalancesCall;
+pub use pallet_timestamp::Call as TimestampCall;
 
 impl_opaque_keys! {
 	pub struct SessionKeys {
