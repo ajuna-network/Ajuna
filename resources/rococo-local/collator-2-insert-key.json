@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "author_insertKey",
+  "params": [
+    "aura",
+    "sunny orient remind distance search room arm vapor cute lift aisle busy",
+    "0x9a8958e779484700acd27ce8a4de8436fc81983fd6b89888ea42496bcb6e0f6f"
+  ]
+}

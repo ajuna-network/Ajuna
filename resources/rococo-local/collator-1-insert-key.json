@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "author_insertKey",
+  "params": [
+    "aura",
+    "february cat jeans damage inch deliver title used boil near evil harsh",
+    "0x14bd07614646f4eee41e996658476798c7bd73343b0e4640fd3d691e77570123"
+  ]
+}

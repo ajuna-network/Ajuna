@@ -1,7 +1,7 @@
 # folders
 .*
 !.git
-data
+docker
 docs
 target
 
