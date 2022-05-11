@@ -4,7 +4,7 @@
   </a>
 </p>
 
-[![Build](https://github.com/ajuna-network/ajuna-node/actions/workflows/check-pull-request.yml/badge.svg)](https://github.com/ajuna-network/ajuna-node/actions/workflows/check-pull-request.yml)
+[![Build](https://github.com/ajuna-network/Ajuna/actions/workflows/check-pull-request.yml/badge.svg)](https://github.com/ajuna-network/Ajuna/actions/workflows/check-pull-request.yml)
 
 A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready for hacking :rocket:
 

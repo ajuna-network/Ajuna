@@ -6,7 +6,7 @@ homepage    = "https://ajuna.io"
 license     = "Unlicense" # TODO: update license
 name        = "ajuna-solo-runtime"
 publish     = false
-repository  = "https://github.com/ajuna-network/ajuna-node/"
+repository  = "https://github.com/ajuna-network/Ajuna"
 version     = "0.1.0"
 
 [package.metadata.docs.rs]

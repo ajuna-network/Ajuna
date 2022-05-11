@@ -5,7 +5,7 @@ It is intended to be used with other game engine pallets to support matchmaking,
 
 ## Purpose
 
-This pallet acts by matching an arbitrary number of players to play each other.  Players are matched by their bracket only.
+This pallet acts by matching an arbitrary number of players to play each other. Players are matched by their bracket only.
 
 ## Dependencies
 
@@ -25,7 +25,7 @@ To add this pallet to your runtime, simply include the following to your runtime
 
 ```TOML
 # external pallets
-pallet-ajuna-matchmaker = { default-features = false, version = "4.0.0-dev", git = "https://github.com/ajuna-network/ajuna-node.git" }
+pallet-ajuna-matchmaker = { default-features = false, git = "https://github.com/ajuna-network/Ajuna" }
 ```
 
 and update your runtime's `std` feature to include this pallet:

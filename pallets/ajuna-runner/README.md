@@ -1,9 +1,9 @@
 # Ajuna Network Pallet Runner
 
-The runtime module, `pallet-ajuna-runner`, stores a arbitrary number of `Runners`.  A `Runner` is any off-chain process that
+The runtime module, `pallet-ajuna-runner`, stores a arbitrary number of `Runners`. A `Runner` is any off-chain process that
 may be running in which the state of this off-chain process is stored on chain.
 
-It is intended to be used by using the `Runner` trait by other pallets internally. 
+It is intended to be used by using the `Runner` trait by other pallets internally.
 
 ## Purpose
 
@@ -27,7 +27,7 @@ To add this pallet to your runtime, simply include the following to your runtime
 
 ```TOML
 # external pallets
-pallet-ajuna-runner = { default-features = false, version = "4.0.0-dev", git = "https://github.com/ajuna-network/ajuna-node.git" }
+pallet-ajuna-runner = { default-features = false, git = "https://github.com/ajuna-network/Ajuna" }
 ```
 
 and update your runtime's `std` feature to include this pallet:

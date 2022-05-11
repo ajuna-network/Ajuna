@@ -5,7 +5,7 @@ edition     = "2021"
 homepage    = "https://ajuna.io"
 license     = "Apache-2.0"
 name        = "pallet-ajuna-connectfour"
-repository  = "https://github.com/ajuna-network/ajuna-node/"
+repository  = "https://github.com/ajuna-network/Ajuna"
 version     = "0.1.0"
 
 [package.metadata.docs.rs]

@@ -4,7 +4,7 @@ edition    = "2021"
 homepage   = "https://ajuna.io"
 license    = "Unlicense" # TODO: update license
 name       = "ajuna-primitives"
-repository = "https://github.com/ajuna-network/ajuna-node/"
+repository = "https://github.com/ajuna-network/Ajuna"
 version    = "0.1.0"
 
 [dependencies]

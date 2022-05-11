@@ -105,7 +105,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn support_url() -> String {
-		"https://github.com/ajuna-network/ajuna-node/issues".into()
+		"https://github.com/ajuna-network/Ajuna/issues".into()
 	}
 
 	fn copyright_start_year() -> i32 {
