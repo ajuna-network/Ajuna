@@ -3,9 +3,8 @@ authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 build      = "build.rs"
 edition    = "2021"
 homepage   = "https://ajuna.io"
-license    = "Unlicense" # TODO: update license
 name       = "ajuna-cli"
-repository = "https://github.com/ajuna-network/ajuna-node/"
+repository = "https://github.com/ajuna-network/Ajuna"
 version    = "0.1.0"
 
 [build-dependencies]

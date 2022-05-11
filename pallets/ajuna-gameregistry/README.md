@@ -26,8 +26,8 @@ To add this pallet to your runtime, include the following to your runtime's `Car
 
 ```TOML
 # external pallets
-pallet-ajuna-matchmaker = { default-features = false, version = "4.0.0-dev", git = "https://github.com/ajuna-network/ajuna-node.git" }
-pallet-ajuna-gameregistry = { default-features = false, version = "4.0.0-dev", git = "https://github.com/ajuna-network/ajuna-node.git" }
+pallet-ajuna-matchmaker = { default-features = false, git = "https://github.com/ajuna-network/Ajuna" }
+pallet-ajuna-gameregistry = { default-features = false, git = "https://github.com/ajuna-network/Ajuna" }
 ```
 
 and update your runtime's `std` feature to include this pallet:
