@@ -50,7 +50,7 @@ const CONNECTFOUR_ID: LockIdentifier = *b"connect4";
 //type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
 //const MILLICENTS: u32 = 1_000_000_000;
 
-#[derive(Encode, Decode, Clone, PartialEq, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, MaxEncodedLen, TypeInfo, Debug)]
 pub enum BoardState<AccountId> {
 	None,
 	Running,
@@ -271,7 +271,7 @@ pub mod pallet {
 			player_two: T::AccountId,
 		) -> DispatchResult {
 			// Ensure the enclave is the sender, we could check for root here.
-			ensure_root(origin)?;
+			ensure_signed(origin)?;
 
 			// Don't allow playing against yourself.
 			ensure!(player_one != player_two, Error::<T>::NoFakePlay);
