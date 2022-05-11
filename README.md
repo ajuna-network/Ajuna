@@ -19,15 +19,21 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
 - Using `cargo`:
 
   ```bash
-  cargo build --release --features solo   # solochain
-  cargo build --release --features bajun  # parachain with Bajun runtime
+  # solochain
+  cargo build --release --features solo
+
+  # parachain with Bajun runtime
+  cargo build --release --features bajun
   ```
 
 - Using `Docker`:
 
   ```bash
-  docker build -f docker/Dockerfile.solochain -t ajuna/solochain:latest .  # solochain
-  docker build -f docker/Dockerfile.parachain -t ajuna/parachain:latest .  # parachain
+  # solochain
+  docker build -f docker/Dockerfile -t ajuna/solochain:latest . --build-arg features=solo  --build-arg bin=ajuna-solo
+
+  # parachain with Bajun runtime
+  docker build -f docker/Dockerfile -t ajuna/parachain:latest . --build-arg features=bajun --build-arg bin=ajuna-para
   ```
 
 ## Run
@@ -35,14 +41,18 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
 - Using compiled binaries:
 
   ```bash
-  ./target/release/ajuna-solo --dev --tmp  # solochain
+  # solochain
+  ./target/release/ajuna-solo --dev --tmp
   ```
 
 - Using `Docker`:
 
   ```bash
-  docker-compose -f docker/solochain.yml up  # solochain
-  docker-compose -f docker/parachain.yml up  # parachain
+   # solochain
+  docker-compose -f docker/solochain.yml up
+
+  # parachain with rococo-local relay chain
+  docker-compose -f docker/parachain.yml up
   ```
 
 ## Deploy
