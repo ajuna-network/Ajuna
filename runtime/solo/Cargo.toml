@@ -3,7 +3,6 @@ authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 description = "The Ajuna Network Node Runtime"
 edition     = "2021"
 homepage    = "https://ajuna.io"
-license     = "Unlicense" # TODO: update license
 name        = "ajuna-solo-runtime"
 publish     = false
 repository  = "https://github.com/ajuna-network/Ajuna"
