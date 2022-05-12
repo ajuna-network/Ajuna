@@ -16,20 +16,20 @@ ajuna-common = { default-features = false, path = "../../ajuna-common" }
 codec        = { default-features = false, features = [ "derive" ], package = "parity-scale-codec", version = "3.0.0" }
 scale-info   = { default-features = false, features = [ "derive" ], version = "2.1" }
 
-frame-benchmarking      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", optional = true }
-frame-support           = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
-frame-system            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+frame-benchmarking      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", optional = true }
+frame-support           = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-system            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 log                     = { default-features = false, version = "0.4.16" }
 pallet-ajuna-matchmaker = { default-features = false, path = "../ajuna-matchmaker" }
-sp-runtime              = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
-sp-std                  = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+sp-runtime              = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-std                  = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 [dev-dependencies]
-frame-support-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
-pallet-membership  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
-pallet-scheduler   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
-sp-core            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
-sp-io              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+frame-support-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+pallet-membership  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+pallet-scheduler   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-core            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-io              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 [features]
 default = [ "std" ]
