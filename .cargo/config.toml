@@ -1,0 +1,9 @@
+[alias]
+build-ajuna-solo   = "build --release --no-default-features --bin ajuna-solo --features solo"
+build-bajun-kusama = "build --release --no-default-features --bin ajuna-para --features bajun,kusama-native"
+build-bajun-rococo = "build --release --no-default-features --bin ajuna-para --features bajun,rococo-native"
+
+[target.'cfg(feature = "cargo-clippy")']
+rustflags = [
+    "-Aclippy::type_complexity",
+]

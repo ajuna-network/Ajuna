@@ -98,6 +98,9 @@ bajun = [
 ]
 solo = [ "ajuna-solo-runtime" ]
 
+kusama-native = [ "polkadot-service/kusama-native" ]
+rococo-native = [ "polkadot-service/rococo-native" ]
+
 runtime-benchmarks = [
     "ajuna-solo-runtime/runtime-benchmarks",
     "bajun-runtime/runtime-benchmarks",
