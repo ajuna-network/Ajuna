@@ -38,7 +38,7 @@ jobs:
         id: meta
         with:
           images: ${{ env.IMAGE_NAME }}
-      - uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v3
         with:
           context: docker
           file: Dockerfile
