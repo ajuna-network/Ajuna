@@ -7,7 +7,8 @@
 .DS_Store
 
 # The cache for docker container dependency
-.cargo
+.cargo/*
+!.cargo/config.toml
 
 # The cache for chain data in container
 .local
@@ -23,5 +24,3 @@ data
 # chain specs
 node/service/res/*
 !node/service/res/testnet.json
-!node/service/res/rococo-custom-2-raw.json
-

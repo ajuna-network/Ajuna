@@ -25,3 +25,6 @@ default = [ "solo" ]
 
 bajun = [ "ajuna-cli/bajun", "ajuna-service/bajun" ]
 solo  = [ "ajuna-cli/solo", "ajuna-service/solo" ]
+
+kusama-native = [ "ajuna-cli/kusama-native", "ajuna-service/kusama-native" ]
+rococo-native = [ "ajuna-cli/rococo-native", "ajuna-service/rococo-native" ]

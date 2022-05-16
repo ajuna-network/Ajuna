@@ -20,10 +20,11 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
 
   ```bash
   # solochain
-  cargo build --release --features solo
+  cargo build-ajuna-solo
 
   # parachain with Bajun runtime
-  cargo build --release --features bajun
+  cargo build-bajun-rococo
+  cargo build-bajun-kusama
   ```
 
 - Using `Docker`:
