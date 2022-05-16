@@ -3,7 +3,7 @@ name: Build
 on:
   pull_request:
     branches:
-      - master
+      - main
     paths:
       - '**.rs'
       - '**/Cargo.toml'
@@ -12,16 +12,16 @@ on:
       - 'rustfmt.toml'
   push:
     branches:
-      - master
+      - main
 
-# Ensures only one build is run per branch, unless pushing to master
+# Ensures only one build is run per branch, unless pushing to main
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/master' && github.run_number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_number || github.ref }}
   cancel-in-progress: true
 
 env:
-  SKIP_WASM_BUILD: ${{ github.ref == 'refs/heads/master' && 0 || 1 }}
-  CARGO_ARGS: ${{ github.ref == 'refs/heads/master' && '--release --all-targets' || '' }}
+  SKIP_WASM_BUILD: ${{ github.ref == 'refs/heads/main' && 0 || 1 }}
+  CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release --all-targets' || '' }}
 
 jobs:
   fmt:
