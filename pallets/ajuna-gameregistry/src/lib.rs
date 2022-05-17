@@ -107,7 +107,13 @@ pub mod pallet {
 		InvalidPayload,
 		/// Invalid game state
 		InvalidGameState,
+		/// Failed to queue
+		FailedToQueue,
 	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn queued)]
+	pub type Queued<T: Config> = StorageValue<_, Vec<T::GameId>, OptionQuery>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -124,9 +130,15 @@ pub mod pallet {
 				// Create the game to be run, we have players and will wait on the game being
 				// accepted and with that create runner with configuration, basically the players at
 				// the moment
-				T::Runner::create::<T::GetIdentifier>(Game::new(players).encode().into());
-			}
+				let identifier =
+					T::Runner::create::<T::GetIdentifier>(Game::new(players).encode().into())
+						.ok_or(Error::<T>::FailedToQueue)?;
 
+				// Locally store the queued runner.
+				// This is used by L2 to prepare for `ack_game`. We will probably want to review
+				// this when we have multiple shards but until then this will suffice
+				Queued::<T>::append(identifier);
+			}
 			Ok(())
 		}
 
@@ -155,6 +167,11 @@ pub mod pallet {
 				game_ids.len() <= T::MaxAcknowledgeBatch::get() as usize,
 				Error::<T>::AcknowledgeBatchTooLarge
 			);
+
+			// At the moment we will clear the locally stored queue or `Queued`
+			// They should be the same `game_ids` but we won't check that right now until we
+			// finalise on a multishard design
+			Queued::<T>::kill();
 
 			// Run through batch and accept those that are in valid state `Queued`
 			// Those that fail, fail silently
