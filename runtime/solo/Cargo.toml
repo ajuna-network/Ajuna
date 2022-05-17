@@ -59,6 +59,9 @@ sp-version                                 = { default-features = false, git = "
 # open-runtime-module-library
 orml-vesting = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "master" }
 
+# Integritee pallet
+pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "master" }
+
 # Ajuna pallets
 ajuna-common              = { default-features = false, path = "../../ajuna-common" }
 ajuna-primitives          = { default-features = false, path = "../../primitives" }
@@ -76,9 +79,12 @@ runtime-benchmarks = [
     "hex-literal",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
+    "pallet-teerex/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
+# allow workers to register without remote attestation for dev purposes
+skip-ias-check = [ "pallet-teerex/skip-ias-check" ]
 std = [
     "log/std",
     "codec/std",
@@ -101,6 +107,7 @@ std = [
     "pallet-grandpa/std",
     "pallet-membership/std",
     "pallet-sudo/std",
+    "pallet-teerex/std",
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",

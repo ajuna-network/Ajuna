@@ -72,6 +72,7 @@ use types::governance::*;
 pub use pallet_ajuna_gameregistry;
 pub use pallet_ajuna_matchmaker;
 pub use pallet_balances::Call as BalancesCall;
+pub use pallet_teerex;
 pub use pallet_timestamp::Call as TimestampCall;
 
 impl_opaque_keys! {
@@ -503,6 +504,19 @@ impl pallet_membership::Config<ObserverInstance> for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MomentsPerDay: u64 = 86_400_000; // [ms/d]
+	pub const MaxSilenceTime: u64 = 172_800_000; // 48h
+}
+
+impl pallet_teerex::Config for Runtime {
+	type Event = Event;
+	type Currency = pallet_balances::Pallet<Runtime>;
+	type MomentsPerDay = MomentsPerDay;
+	type MaxSilenceTime = MaxSilenceTime;
+	type WeightInfo = ();
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -529,6 +543,7 @@ construct_runtime!(
 		Runner: pallet_ajuna_runner = 16,
 		GameRegistry: pallet_ajuna_gameregistry = 17,
 		Observers: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
+		Teerex: pallet_teerex = 19,
 	}
 );
 
