@@ -32,8 +32,8 @@ pub fn development_config(chain_type: ChainType) -> Result<ChainSpec, String> {
 		ChainType::Development => "Ajuna Dev Testnet",
 		_ => return Err("Call dedicated functions for other chain types.".into()),
 	};
-	let id = name.to_lowercase().replace(" ", "_");
-	let protocol_id = name.to_lowercase().replace(" ", "-");
+	let id = name.to_lowercase().replace(' ', "_");
+	let protocol_id = name.to_lowercase().replace(' ', "-");
 
 	Ok(ChainSpec::from_genesis(
 		name,
