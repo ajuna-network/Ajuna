@@ -20,31 +20,13 @@ use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
-fn it_works_for_default_value() {
-	new_test_ext().execute_with(|| {
-		// Dispatch a signed extrinsic.
-		assert_ok!(ConnectFour::do_something(Origin::signed(1), 42));
-		// Read pallet storage and assert an expected result.
-		assert_eq!(ConnectFour::something(), Some(42));
-	});
-}
-
-#[test]
-fn correct_error_for_none_value() {
-	new_test_ext().execute_with(|| {
-		// Ensure the expected error is thrown when no value is present.
-		assert_noop!(ConnectFour::cause_error(Origin::signed(1)), Error::<Test>::NoneValue);
-	});
-}
-
-#[test]
 fn test_game_creation() {
 	new_test_ext().execute_with(|| {
 		// Test player can not play against himself
-		assert_noop!(ConnectFour::new_game(Origin::signed(1), 1), Error::<Test>::NoFakePlay);
+		assert_noop!(ConnectFour::new_game(Origin::signed(1), 1, 1), Error::<Test>::NoFakePlay);
 
 		// Test game creation between to different players
-		assert_ok!(ConnectFour::new_game(Origin::signed(1), 2));
+		assert_ok!(ConnectFour::new_game(Origin::signed(1), 1, 2));
 		run_to_block(1);
 
 		let board_id_1 = ConnectFour::player_board(1);
@@ -52,9 +34,15 @@ fn test_game_creation() {
 
 		assert_eq!(board_id_1, board_id_2);
 
-		assert_noop!(ConnectFour::new_game(Origin::signed(1), 3), Error::<Test>::PlayerBoardExists);
+		assert_noop!(
+			ConnectFour::new_game(Origin::signed(1), 1, 3),
+			Error::<Test>::PlayerBoardExists
+		);
 
-		assert_noop!(ConnectFour::new_game(Origin::signed(3), 2), Error::<Test>::PlayerBoardExists);
+		assert_noop!(
+			ConnectFour::new_game(Origin::signed(3), 3, 2),
+			Error::<Test>::PlayerBoardExists
+		);
 
 		let board = ConnectFour::boards(board_id_1).expect("board should exist");
 
@@ -71,7 +59,11 @@ fn test_game_play() {
 		run_to_block(current_block);
 
 		// Test game creation between to different players
-		assert_ok!(ConnectFour::new_game(Origin::signed(PLAYER_1 as u64), PLAYER_2 as u64));
+		assert_ok!(ConnectFour::new_game(
+			Origin::signed(PLAYER_1 as u64),
+			PLAYER_1 as u64,
+			PLAYER_2 as u64
+		));
 		let board_id = ConnectFour::player_board(PLAYER_1 as u64);
 		let board = ConnectFour::boards(board_id).expect("board should exist");
 		assert_eq!(board.last_turn, current_block);
@@ -155,7 +147,11 @@ fn test_game_events() {
 		assert_eq!(None, ConnectFour::something());
 
 		// Test game creation between to different players
-		assert_ok!(ConnectFour::test_schedule(Origin::signed(PLAYER_1 as u64), blocks_to_pass));
+		assert_ok!(ConnectFour::new_game(
+			Origin::signed(PLAYER_1 as u64),
+			PLAYER_1 as u64,
+			PLAYER_2 as u64
+		));
 
 		run_next_block();
 		current_block += 1;
@@ -177,7 +173,11 @@ fn test_force_turn() {
 		run_to_block(current_block);
 
 		// Test game creation between to different players
-		assert_ok!(ConnectFour::new_game(Origin::signed(PLAYER_1 as u64), PLAYER_2 as u64));
+		assert_ok!(ConnectFour::new_game(
+			Origin::signed(PLAYER_1 as u64),
+			PLAYER_1 as u64,
+			PLAYER_2 as u64
+		));
 		let board_id = ConnectFour::player_board(PLAYER_1 as u64);
 		let board = ConnectFour::boards(board_id).expect("board should exist");
 		assert_eq!(board.last_turn, current_block);

@@ -102,14 +102,12 @@ impl pallet_scheduler::Config for Test {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
-ajuna_common::impl_mock_matchmaker!(u64);
 impl pallet_connectfour::Config for Test {
 	type Proposal = Call;
 	type Event = Event;
 	type Randomness = TestRandomness<Self>;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
-	type MatchMaker = MockMatchMaker;
 }
 
 // Build genesis storage according to the mock runtime.

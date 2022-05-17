@@ -21,7 +21,6 @@
 /// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	log,
 	sp_runtime::traits::{Dispatchable, Hash, TrailingZeroInput},
 	traits::{
 		schedule::{DispatchTime, Named},
@@ -32,8 +31,6 @@ use scale_info::TypeInfo;
 
 use sp_std::prelude::*;
 
-use log::info;
-
 // Re-export pallet items so that they can be accessed from the crate namespace.
 pub use pallet::*;
 
@@ -42,12 +39,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
-// importing the `weights.rs` here
-//pub mod weights;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod connectfour;
@@ -75,24 +66,22 @@ impl<AccountId> Default for BoardState<AccountId> {
 /// Connect four board structure containing two players and the board
 #[derive(Encode, Decode, Clone, PartialEq, MaxEncodedLen, Debug, TypeInfo)]
 pub struct BoardStruct<Hash, AccountId, BlockNumber, BoardState> {
-	id: Hash,
-	red: AccountId,
-	blue: AccountId,
-	board: [[u8; 6]; 7],
-	last_turn: BlockNumber,
-	next_player: u8,
-	board_state: BoardState,
+	pub id: Hash,
+	pub red: AccountId,
+	pub blue: AccountId,
+	pub board: [[u8; 6]; 7],
+	pub last_turn: BlockNumber,
+	pub next_player: u8,
+	pub board_state: BoardState,
 }
 
 const PLAYER_1: u8 = 1;
 const PLAYER_2: u8 = 2;
-const MAX_GAMES_PER_BLOCK: u8 = 10;
 const MAX_BLOCKS_PER_TURN: u8 = 10;
 const CLEANUP_BOARDS_AFTER: u8 = 20;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ajuna_common::MatchMaker;
 	use frame_support::{
 		dispatch::DispatchResult, pallet_prelude::*, sp_runtime::traits::TrailingZeroInput,
 	};
@@ -115,8 +104,6 @@ pub mod pallet {
 		type Scheduler: Named<Self::BlockNumber, Self::Proposal, Self::PalletsOrigin>;
 
 		type PalletsOrigin: From<frame_system::RawOrigin<Self::AccountId>>;
-
-		type MatchMaker: MatchMaker<Player = Self::AccountId>;
 
 		// /// Weight information for extrinsics in this pallet.
 		//type WeightInfo: WeightInfo;
@@ -251,25 +238,7 @@ pub mod pallet {
 		//
 		// This function must return the weight consumed by `on_initialize` and `on_finalize`.
 		fn on_initialize(_: T::BlockNumber) -> Weight {
-			// Anything that needs to be done at the start of the block.
-			// We don't do anything here.
-
-			// initial weights
-			let mut tot_weights = 10_000;
-			for _i in 0..MAX_GAMES_PER_BLOCK {
-				// try to create a match till we reached max games or no more matches available
-				if let Some(result) = T::MatchMaker::try_match(0, 2) {
-					// Create new game
-					let _game_id = Self::create_game(result[0].clone(), result[1].clone());
-					// weights need to be adjusted
-					tot_weights += T::DbWeight::get().reads_writes(1, 1);
-					continue
-				}
-				break
-			}
-
-			// return standard weight for trying to find a match
-			tot_weights
+			0
 		}
 
 		// `on_finalize` is executed at the end of block after all extrinsic are dispatched.
@@ -294,94 +263,25 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a singles value as a parameter, writes the value to
-		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
-			let who = ensure_signed(origin)?;
-
-			// Print out log or debug message in the console via log::{error, warn, info, debug,
-			// trace}, accepting format strings similar to `println!`.
-			// https://substrate.dev/rustdocs/v3.0.0/log/index.html
-			info!("New value is now: {:?}", something);
-
-			// Update storage.
-			<Something<T>>::put(something);
-
-			// Emit an event.
-			Self::deposit_event(Event::SomethingStored(something, who));
-			// Return a successful DispatchResultWithPostInfo
-			Ok(())
-		}
-
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
-
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => Err(Error::<T>::NoneValue.into()),
-				Some(old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(new);
-					Ok(())
-				},
-			}
-		}
-
-		/// Queue sender up for a game, ranking brackets
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			// Make sure player has no board open.
-			ensure!(!PlayerBoard::<T>::contains_key(&sender), Error::<T>::PlayerBoardExists);
-
-			let bracket = 0;
-			ensure!(T::MatchMaker::enqueue(sender, bracket), Error::<T>::AlreadyQueued);
-
-			Ok(())
-		}
-
-		/// Empty all brackets, this is a founder only extrinsic.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn empty_queue(origin: OriginFor<T>) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-
-			// Make sure sender is founder.
-			ensure!(sender == Self::founder_key().unwrap(), Error::<T>::OnlyFounderAllowed);
-
-			let bracket: u32 = 0;
-			// Empty queues
-			T::MatchMaker::clear_queue(bracket);
-
-			Ok(())
-		}
-
 		/// Create game for two players
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn new_game(origin: OriginFor<T>, opponent: T::AccountId) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+		pub fn new_game(
+			origin: OriginFor<T>,
+			player_one: T::AccountId,
+			player_two: T::AccountId,
+		) -> DispatchResult {
+			// Ensure the enclave is the sender, we could check for root here.
+			ensure_root(origin)?;
 
 			// Don't allow playing against yourself.
-			ensure!(sender != opponent, Error::<T>::NoFakePlay);
-
-			// Don't allow queued player to create a game.
-			ensure!(!T::MatchMaker::is_queued(&sender), Error::<T>::AlreadyQueued);
-			ensure!(!T::MatchMaker::is_queued(&opponent), Error::<T>::AlreadyQueued);
+			ensure!(player_one != player_two, Error::<T>::NoFakePlay);
 
 			// Make sure players have no board open.
-			ensure!(!PlayerBoard::<T>::contains_key(&sender), Error::<T>::PlayerBoardExists);
-			ensure!(!PlayerBoard::<T>::contains_key(&opponent), Error::<T>::PlayerBoardExists);
+			ensure!(!PlayerBoard::<T>::contains_key(&player_one), Error::<T>::PlayerBoardExists);
+			ensure!(!PlayerBoard::<T>::contains_key(&player_two), Error::<T>::PlayerBoardExists);
 
 			// Create new game
-			let _board_id = Self::create_game(sender, opponent);
+			let _board_id = Self::create_game(player_one, player_two);
 
 			Ok(())
 		}
@@ -466,31 +366,6 @@ pub mod pallet {
 			//	schedule_id.unwrap().clone().try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
 			<BoardSchedules<T>>::insert(board_id, schedule_id);
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn test_schedule(origin: OriginFor<T>, delay: T::BlockNumber) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-
-			let now = <frame_system::Pallet<T>>::block_number();
-
-			let index: u32 = 77;
-			let when = now + delay;
-			if T::Scheduler::schedule_named(
-				(CONNECTFOUR_ID, index).encode(),
-				DispatchTime::At(when),
-				None,
-				63,
-				frame_system::RawOrigin::Signed(sender).into(),
-				Call::do_something { something: index }.into(),
-			)
-			.is_err()
-			{
-				frame_support::print("LOGIC ERROR: test_schedule/schedule_named failed");
-				return Err(Error::<T>::ScheduleError.into())
-			}
 
 			Ok(())
 		}

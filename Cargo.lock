@@ -5452,7 +5452,6 @@ dependencies = [
 name = "pallet-ajuna-connectfour"
 version = "0.1.0"
 dependencies = [
- "ajuna-common",
  "frame-benchmarking",
  "frame-support",
  "frame-support-test",
