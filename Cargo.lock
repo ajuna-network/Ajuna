@@ -5476,6 +5476,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ajuna-board"
+version = "0.1.0"
+dependencies = [
+ "ajuna-common",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-ajuna-connectfour"
 version = "0.1.0"
 dependencies = [
