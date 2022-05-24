@@ -3,7 +3,7 @@
 !.git
 docker
 docs
-target
+**/target
 
 # files
 *.md

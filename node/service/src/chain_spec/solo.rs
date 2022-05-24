@@ -151,12 +151,6 @@ fn testnet_config_genesis() -> GenesisConfig {
 				// 5GRaE4bbSBxXtMmfGsWvycRSmLE1KA1ZUmAdyKQTyhFTFEy8
 				hex!["c0db660b24bcf1b717a3a3e992cdd6d76710230848e664ddb4a06c1721df7c55"]
 					.unchecked_into(),
-				// 5FQmvTt4Q99U68NEqtWwCtTMFuHqgVR1WKvBMGWTRkAcsjDD
-				hex!["94034b3f75dcd1f6f333ce61f646ae2159bc51ea0c77234c03a5f5fb785b884d"]
-					.unchecked_into(),
-				// 5D7mx3kgRBjkmGe2tDS9crVPU9TqK8DbsHVsq1woAM7N8pwU
-				hex!["2e93bf41754ce75913392aeb3973d631ffcfbeab56b0324f9887b262a1b29141"]
-					.unchecked_into(),
 			],
 		},
 		grandpa: GrandpaConfig {
@@ -164,18 +158,6 @@ fn testnet_config_genesis() -> GenesisConfig {
 				// 5EpCKebe3iTSTUBMM4mFzwEKkbJBA3CdtGiVabsPjwMAyPsd
 				(
 					hex!["79a3d774934ac9660dd62e32b35679456d8836d61dc8537068d0559c0f4b566f"]
-						.unchecked_into(),
-					1,
-				),
-				// 5FmapjgxHrm4bKzRjgP4PRFF4yMLPTQwhvfJsdhRbYDiRbnW
-				(
-					hex!["a3e215f10a8b878953b611f623af2324e084d7d1c6445bb23b888b9b588de15c"]
-						.unchecked_into(),
-					1,
-				),
-				// 5H1RT7AekPLF6v4RGc34PsnTvkTPG7yzm9sp5L64htMGaDK1
-				(
-					hex!["daac33e6ed088f9cf788d12b113d0b3712c101975eaea911c21619fdcff19cc7"]
 						.unchecked_into(),
 					1,
 				),
