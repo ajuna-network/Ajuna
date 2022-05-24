@@ -34,7 +34,9 @@ fn should_queue_player() {
 fn should_create_game() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Registry::queue(Origin::signed(ALICE)));
+		assert_eq!(Registry::queued(), None);
 		assert_ok!(Registry::queue(Origin::signed(BOB)));
+		assert_eq!(Registry::queued(), Some(vec![GLOBAL_IDENTIFIER]));
 		assert!(MockRunner::get_state(GLOBAL_IDENTIFIER).is_some());
 	});
 }
@@ -44,7 +46,9 @@ fn should_allow_game_to_be_acknowledged() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Registry::queue(Origin::signed(ALICE)));
 		assert_ok!(Registry::queue(Origin::signed(BOB)));
+		assert_eq!(Registry::queued(), Some(vec![GLOBAL_IDENTIFIER]));
 		assert_ok!(Registry::ack_game(Origin::signed(TEE_ID), vec![GLOBAL_IDENTIFIER]));
+		assert_eq!(Registry::queued(), None);
 		let game = Game { players: vec![ALICE, BOB], tee_id: Some(TEE_ID), winner: None };
 		assert_eq!(
 			Some(RunnerState::Accepted(game.encode().into())),

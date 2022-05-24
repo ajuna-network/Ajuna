@@ -18,7 +18,8 @@ use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
 	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GenesisConfig,
-	GrandpaConfig, ObserversConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
+	GrandpaConfig, ObserversConfig, SudoConfig, SystemConfig, TeerexConfig, VestingConfig,
+	WASM_BINARY,
 };
 use sc_service::ChainType;
 
@@ -32,8 +33,8 @@ pub fn development_config(chain_type: ChainType) -> Result<ChainSpec, String> {
 		ChainType::Development => "Ajuna Dev Testnet",
 		_ => return Err("Call dedicated functions for other chain types.".into()),
 	};
-	let id = name.to_lowercase().replace(" ", "_");
-	let protocol_id = name.to_lowercase().replace(" ", "-");
+	let id = name.to_lowercase().replace(' ', "_");
+	let protocol_id = name.to_lowercase().replace(' ', "-");
 
 	Ok(ChainSpec::from_genesis(
 		name,
@@ -209,5 +210,6 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		council_membership: Default::default(),
 		treasury: Default::default(),
 		democracy: Default::default(),
+		teerex: TeerexConfig { allow_sgx_debug_mode: true },
 	}
 }
