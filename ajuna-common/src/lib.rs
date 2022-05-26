@@ -18,7 +18,7 @@
 
 pub mod mocks;
 
-use codec::{Decode, Encode, Input, MaxEncodedLen};
+use codec::{Codec, Decode, Encode, Input, MaxEncodedLen};
 use frame_support::{dispatch::DispatchResult, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_std::vec::Vec;
@@ -110,3 +110,25 @@ pub trait Runner {
 
 pub const DEFAULT_BRACKET: Bracket = 0;
 pub const DEFAULT_PLAYERS: u8 = 2;
+
+pub enum Finished<Player> {
+	No,
+	Winner(Player),
+	Draw,
+}
+
+pub trait TurnBasedGame {
+	/// Represents a turn in the game
+	type Turn;
+	/// Represents a player in the game
+	type Player;
+	/// The state of the game
+	type State: Codec;
+	/// Initialise turn based game with players returning the initial state
+	fn init(players: &[Self::Player]) -> Option<Self::State>;
+	/// Play a turn with player on the current state returning the new state
+	fn play_turn(player: Self::Player, state: Self::State, turn: Self::Turn)
+		-> Option<Self::State>;
+	/// Check if the game has finished with winner
+	fn is_finished(state: &Self::State) -> Finished<Self::Player>;
+}
