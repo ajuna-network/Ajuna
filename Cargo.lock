@@ -3561,7 +3561,7 @@ dependencies = [
 [[package]]
 name = "ias-verify"
 version = "0.1.4"
-source = "git+https://github.com/integritee-network/pallets?branch=master#4d1b0e9d412b4e3b94f3e5afd853213b6ecc97b7"
+source = "git+https://github.com/integritee-network/pallets?branch=polkadot-v0.9.20#b97001102f9bd10a34b82878e9946074616b65c5"
 dependencies = [
  "base64",
  "chrono",
@@ -5439,7 +5439,7 @@ dependencies = [
 [[package]]
 name = "orml-vesting"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#8f0a4ee1763c22969abbcefbd1585ef187eb34bd"
+source = "git+https://github.com/ajuna-network/open-runtime-module-library?rev=polkadot-v0.9.20#920c5a6e11f76378d8aeb5b3551a834bc4ecb9c8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6343,7 +6343,7 @@ dependencies = [
 [[package]]
 name = "pallet-teerex"
 version = "0.9.0"
-source = "git+https://github.com/integritee-network/pallets?branch=master#4d1b0e9d412b4e3b94f3e5afd853213b6ecc97b7"
+source = "git+https://github.com/integritee-network/pallets?branch=polkadot-v0.9.20#b97001102f9bd10a34b82878e9946074616b65c5"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -11258,14 +11258,12 @@ checksum = "d7fa7e55043acb85fca6b3c01485a2eeb6b69c5d21002e273c79e465f43b7ac1"
 [[package]]
 name = "teerex-primitives"
 version = "0.1.0"
-source = "git+https://github.com/integritee-network/pallets?branch=master#4d1b0e9d412b4e3b94f3e5afd853213b6ecc97b7"
+source = "git+https://github.com/integritee-network/pallets?branch=polkadot-v0.9.20#b97001102f9bd10a34b82878e9946074616b65c5"
 dependencies = [
  "ias-verify",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-core",
- "sp-io",
  "sp-std",
 ]
 
@@ -11306,7 +11304,7 @@ dependencies = [
 [[package]]
 name = "test-utils"
 version = "0.1.0"
-source = "git+https://github.com/integritee-network/pallets?branch=master#4d1b0e9d412b4e3b94f3e5afd853213b6ecc97b7"
+source = "git+https://github.com/integritee-network/pallets?branch=polkadot-v0.9.20#b97001102f9bd10a34b82878e9946074616b65c5"
 dependencies = [
  "hex-literal",
  "log",
