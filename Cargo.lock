@@ -5439,7 +5439,7 @@ dependencies = [
 [[package]]
 name = "orml-vesting"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#8f0a4ee1763c22969abbcefbd1585ef187eb34bd"
+source = "git+https://github.com/ajuna-network/open-runtime-module-library?rev=polkadot-v0.9.20#920c5a6e11f76378d8aeb5b3551a834bc4ecb9c8"
 dependencies = [
  "frame-support",
  "frame-system",
