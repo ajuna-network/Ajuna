@@ -15,10 +15,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+
+use ajuna_common::{Finished, TurnBasedGame};
 use codec::Codec;
 use frame_support::pallet_prelude::*;
 pub use pallet::*;
-use ajuna_common::{TurnBasedGame, Finished};
+use sp_std::collections::btree_set::BTreeSet;
 
 #[cfg(test)]
 mod mock;
@@ -26,13 +28,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+/// The state of the board game
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub struct BoardGame<State, Players> {
+	/// Players in the game
 	players: Players,
+	/// The current state of the game
 	pub state: State,
 }
 
 impl<State, Players> BoardGame<State, Players> {
+	/// Create a BoardGame
 	fn new(players: Players, state: State) -> Self {
 		Self { players, state }
 	}
@@ -49,21 +55,27 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Board id
 		type BoardId: Copy + Default + AtLeast32BitUnsigned + Parameter + MaxEncodedLen;
-		type Turn: Member + Parameter;
-		type State: Codec + TypeInfo + MaxEncodedLen + Clone;
+		/// A Turn for the game
+		type PlayersTurn: Member + Parameter;
+		/// The state of the board
+		type GameState: Codec + TypeInfo + MaxEncodedLen + Clone;
 		/// A turn based game
-		type Game: TurnBasedGame<Player = Self::AccountId, Turn = Self::Turn, State = Self::State>;
+		type Game: TurnBasedGame<
+			Player = Self::AccountId,
+			Turn = Self::PlayersTurn,
+			State = Self::GameState,
+		>;
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::generate_store(pub (super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Game has been created
 		GameCreated { board_id: T::BoardId, players: Vec<T::AccountId> },
@@ -94,7 +106,9 @@ pub mod pallet {
 	type BoundedPlayersOf<T> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
 
-	type BoardGameOf<T> = BoardGame<<T as Config>::State, BoundedPlayersOf<T>>;
+	type BoardGameOf<T> = BoardGame<<T as Config>::GameState, BoundedPlayersOf<T>>;
+
+	type PlayersOf<T> = BTreeSet<<T as frame_system::Config>::AccountId>;
 
 	#[pallet::storage]
 	pub type BoardStates<T: Config> = StorageMap<_, Identity, T::BoardId, BoardGameOf<T>>;
@@ -108,30 +122,29 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create a new game with a set of players.
+		/// Players are unique and would not yet be in an existing game
 		#[pallet::weight(10_000)]
-		pub fn new_game(origin: OriginFor<T>, players: Vec<T::AccountId>) -> DispatchResult {
+		pub fn new_game(origin: OriginFor<T>, players: PlayersOf<T>) -> DispatchResult {
 			// TODO - This could be a whitelist based on a custom origin
 			// There is potentially more than one attack vector here as anyone could assign any
 			// account to a board and hence block them from playing in a legitimate game
+			// As this would be ran in L2 we may want to check that we are in L2??
 			let _ = ensure_signed(origin)?;
 			// Ensure we have players
 			ensure!(!players.is_empty(), Error::<T>::NotEnoughPlayers);
-			// Just remove duplicates and continue
-			let mut players = players;
-			players.dedup();
-			// Ensure we don't have too many players
-			let player_len = players.len();
-			ensure!(
-				player_len <= T::MaxNumberOfPlayers::get() as usize,
-				Error::<T>::TooManyPlayers
-			);
-			// Ensure that this player isn't already in a game
-			let players = players
-				.iter()
-				.filter(|player| !PlayerBoards::<T>::contains_key(player))
-				.cloned()
-				.collect::<Vec<T::AccountId>>();
 
+			let player_len = players.len();
+			let players = BoundedPlayersOf::<T>::try_from(
+				players
+					.iter()
+					// Ensure that this player isn't already in a game
+					.filter(|player| !PlayerBoards::<T>::contains_key(player))
+					.cloned()
+					.collect::<Vec<T::AccountId>>(),
+			)
+			.map_err(|_| Error::<T>::TooManyPlayers)?;
+
+			// If we have new players this will be the same based on the filter
 			ensure!(player_len == players.len(), Error::<T>::PlayerAlreadyInGame);
 
 			let state = T::Game::init(&players).ok_or(Error::<T>::InvalidStateFromGame)?;
@@ -140,28 +153,31 @@ pub mod pallet {
 				*counter
 			});
 
-			let bounded_players = BoundedPlayersOf::<T>::try_from(players.clone())
-				.expect("should be a list of valid players");
-
-			bounded_players.iter().for_each(|player| {
+			players.iter().for_each(|player| {
 				PlayerBoards::<T>::insert(player, next_board_id);
 			});
 
-			let board_game = BoardGameOf::<T>::new(bounded_players, state);
+			let board_game = BoardGameOf::<T>::new(players.clone(), state);
 
 			BoardStates::<T>::insert(next_board_id, board_game);
 
-			Self::deposit_event(Event::GameCreated { board_id: next_board_id, players });
+			Self::deposit_event(Event::GameCreated {
+				board_id: next_board_id,
+				players: players.into_inner(),
+			});
 
 			Ok(())
 		}
 
+		/// Play a turn in the game for signing player
+		/// If the turn produces a winner the state of the game will be removed and
+		/// `Event::GameFinished` would be deposited.
 		#[pallet::weight(10_000)]
-		pub fn play_turn(origin: OriginFor<T>, turn: T::Turn) -> DispatchResult {
+		pub fn play_turn(origin: OriginFor<T>, turn: T::PlayersTurn) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let board_id = PlayerBoards::<T>::get(sender.clone()).ok_or(Error::<T>::NotPlaying)?;
 
-			return BoardStates::<T>::mutate(board_id, |maybe_board_game| match maybe_board_game {
+			BoardStates::<T>::mutate(board_id, |maybe_board_game| match maybe_board_game {
 				Some(board_game) => {
 					board_game.state = T::Game::play_turn(sender, board_game.state.clone(), turn)
 						.ok_or(Error::<T>::InvalidTurn)?;
@@ -182,7 +198,5 @@ pub mod pallet {
 				None => Err(Error::<T>::InvalidBoard.into()),
 			})
 		}
-
-		
 	}
 }

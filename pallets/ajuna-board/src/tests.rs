@@ -27,27 +27,27 @@ fn should_create_new_game() {
 	new_test_ext().execute_with(|| {
 		// We can't start a board game without any players
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), vec![]),
+			AjunaBoard::new_game(Origin::signed(ALICE), BTreeSet::new()),
 			Error::<Test>::NotEnoughPlayers
 		);
 
-		// We are limited to the numner of players we can have
+		// We are limited to the number of players we can have
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), vec![BOB, CHARLIE, ERIN]),
+			AjunaBoard::new_game(Origin::signed(ALICE), BTreeSet::from([BOB, CHARLIE, ERIN])),
 			Error::<Test>::TooManyPlayers
 		);
 
-		// An trying to create a new game will fail
+		// And trying to create a new game will fail
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), vec![BOB]),
+			AjunaBoard::new_game(Origin::signed(ALICE), BTreeSet::from([BOB])),
 			Error::<Test>::InvalidStateFromGame
 		);
 
 		// Create a new game with players; Alice, Bob and Charlie
-		assert_ok!(AjunaBoard::new_game(Origin::signed(ALICE), vec![BOB, CHARLIE]));
+		assert_ok!(AjunaBoard::new_game(Origin::signed(ALICE), BTreeSet::from([BOB, CHARLIE])));
 
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), vec![BOB, CHARLIE]),
+			AjunaBoard::new_game(Origin::signed(ALICE), BTreeSet::from([BOB, CHARLIE])),
 			Error::<Test>::PlayerAlreadyInGame
 		);
 
@@ -58,8 +58,6 @@ fn should_create_new_game() {
 		// Confirm the board game we have created is what we intended
 		let board_game = BoardStates::<Test>::get(board_id).expect("board_id should exist");
 
-		// assert_eq!(board_game.state, initial_state, "we should have the initial state");
-
 		assert_eq!(
 			board_game.players.into_inner(),
 			[BOB, CHARLIE],
@@ -67,12 +65,15 @@ fn should_create_new_game() {
 		);
 
 		assert!(PlayerBoards::<Test>::contains_key(BOB), "Bob should be on the board");
-		assert!(PlayerBoards::<Test>::contains_key(CHARLIE), "Bob should be on the board");
+		assert!(PlayerBoards::<Test>::contains_key(CHARLIE), "Charlie should be on the board");
 		assert!(!PlayerBoards::<Test>::contains_key(ALICE), "Alice should not be on the board");
 
 		assert_eq!(
 			last_event(),
-			mock::Event::AjunaBoard(crate::Event::GameCreated { board_id: board_id, players: vec![BOB, CHARLIE] }),
+			mock::Event::AjunaBoard(crate::Event::GameCreated {
+				board_id,
+				players: vec![BOB, CHARLIE],
+			}),
 		);
 	});
 }
@@ -80,20 +81,27 @@ fn should_create_new_game() {
 #[test]
 fn should_play_a_turn_for_a_player() {
 	new_test_ext().execute_with(|| {
+		// Create a game with Bob and Charlie as players
+		// Play the game until someone wins
 		let board_id = 1;
-		assert_ok!(AjunaBoard::new_game(Origin::signed(ALICE), vec![BOB, CHARLIE]));
+		assert_ok!(AjunaBoard::new_game(Origin::signed(ALICE), BTreeSet::from([BOB, CHARLIE])));
 		assert_noop!(AjunaBoard::play_turn(Origin::signed(ALICE), 0u32), Error::<Test>::NotPlaying);
 		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32));
 		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
 		assert_ok!(AjunaBoard::play_turn(Origin::signed(CHARLIE), 1u32));
 		assert_eq!(
 			last_event(),
-			mock::Event::AjunaBoard(crate::Event::GameCreated { board_id: board_id, players: vec![BOB, CHARLIE] }),
+			mock::Event::AjunaBoard(crate::Event::GameCreated {
+				board_id,
+				players: vec![BOB, CHARLIE],
+			}),
 		);
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 42u32));
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), THE_NUMBER));
 		assert_eq!(
 			last_event(),
 			mock::Event::AjunaBoard(crate::Event::GameFinished { winner: BOB }),
 		);
+		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::NotPlaying);
+		assert_eq!(PlayerBoards::<Test>::iter_keys().count(), 0);
 	});
 }

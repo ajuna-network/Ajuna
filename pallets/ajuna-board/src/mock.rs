@@ -17,7 +17,7 @@
 use crate::{self as pallet_ajuna_board, TurnBasedGame};
 use frame_support::parameter_types;
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use sp_core::{H256, Encode, Decode};
+use sp_core::{Decode, Encode, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -76,9 +76,8 @@ parameter_types! {
 
 pub type Guess = u32;
 
-use frame_support::RuntimeDebugNoBound;
+use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
-use frame_support::pallet_prelude::MaxEncodedLen;
 
 const MAX_PLAYERS: usize = 2;
 
@@ -95,7 +94,10 @@ pub struct GameState {
 // It's a guessing game where a player has to guess the right number
 // Initial state will have this number
 
+pub const THE_NUMBER: Guess = 42;
+
 pub struct MockGame;
+
 impl TurnBasedGame for MockGame {
 	type State = GameState;
 	type Player = MockAccountId;
@@ -108,12 +110,7 @@ impl TurnBasedGame for MockGame {
 
 		let mut p: [Self::Player; MAX_PLAYERS] = Default::default();
 		p.copy_from_slice(&players[0..MAX_PLAYERS]);
-		Some(GameState {
-			players: p,
-			next_player: 0,
-			solution: 42,
-			winner: None,
-		})
+		Some(GameState { players: p, next_player: 0, solution: THE_NUMBER, winner: None })
 	}
 
 	fn play_turn(
@@ -132,7 +129,7 @@ impl TurnBasedGame for MockGame {
 		if state.players[state.next_player as usize] != player {
 			return None
 		}
-		
+
 		let mut state = state;
 		state.next_player = (state.next_player + 1) % state.players.len() as u8;
 
@@ -149,15 +146,14 @@ impl TurnBasedGame for MockGame {
 			Some(winner) => pallet_ajuna_board::Finished::Winner(winner),
 		}
 	}
-
 }
 
 impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 	type BoardId = u32;
-	type Turn = u32;
-	type State = GameState;
+	type PlayersTurn = u32;
+	type GameState = GameState;
 	type Game = MockGame;
 }
 
