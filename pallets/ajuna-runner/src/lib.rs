@@ -54,7 +54,15 @@ pub mod pallet {
 	pub type Nonce<T: Config> = StorageValue<_, T::RunnerId, ValueQuery>;
 
 	#[pallet::event]
-	pub enum Event<T: Config> {}
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// Runner Queued
+		StateQueued { runner_id: T::RunnerId },
+		/// Runner Accepted
+		StateAccepted { runner_id: T::RunnerId },
+		/// Runner Finished
+		StateFinished { runner_id: T::RunnerId },
+	}
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -104,14 +112,19 @@ impl<T: Config> Runner for Running<T> {
 		}
 
 		Runners::<T>::insert(identifier, RunnerState::Queued(initial_state));
+		Pallet::<T>::deposit_event(Event::StateQueued { runner_id: identifier });
 		Some(identifier)
 	}
 
 	fn accept(identifier: Self::Identifier, new_state: Option<State>) -> DispatchResult {
 		if let Some(RunnerState::Queued(original_state)) = Self::get_state(identifier) {
 			match new_state {
-				Some(new_state) => Self::update_state(identifier, RunnerState::Accepted(new_state))
-					.map_err(|_| Error::<T>::InternalError)?,
+				Some(new_state) => {
+					Self::update_state(identifier, RunnerState::Accepted(new_state))
+						.map_err(|_| Error::<T>::InternalError)?;
+
+					Pallet::<T>::deposit_event(Event::StateAccepted { runner_id: identifier });
+				},
 				None => Self::update_state(identifier, RunnerState::Accepted(original_state))
 					.map_err(|_| Error::<T>::InternalError)?,
 			}
@@ -124,9 +137,12 @@ impl<T: Config> Runner for Running<T> {
 	fn finished(identifier: Self::Identifier, final_state: Option<State>) -> DispatchResult {
 		if let Some(RunnerState::Accepted(original_state)) = Self::get_state(identifier) {
 			match final_state {
-				Some(final_state) =>
+				Some(final_state) => {
 					Self::update_state(identifier, RunnerState::Finished(final_state))
-						.map_err(|_| Error::<T>::InternalError)?,
+						.map_err(|_| Error::<T>::InternalError)?;
+
+					Pallet::<T>::deposit_event(Event::StateFinished { runner_id: identifier });
+				},
 				None => Self::update_state(identifier, RunnerState::Finished(original_state))
 					.map_err(|_| Error::<T>::InternalError)?,
 			}
