@@ -14,6 +14,7 @@ members = [
     "pallets/ajuna-connectfour",
     "pallets/ajuna-runner",
     "pallets/ajuna-board",
+    "ajuna-test",
     "primitives",
     "ajuna-common",
 ]
