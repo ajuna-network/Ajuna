@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{impl_block_numbers, AccountId};
+use crate::impl_block_numbers;
 use ajuna_common::{Finished, TurnBasedGame};
+use ajuna_solo_runtime::AccountId;
 use frame_support::parameter_types;
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use pallet_ajuna_board;
 use sp_core::{Decode, Encode, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
 };
 use sp_std::prelude::*;
 use std::marker::PhantomData;
@@ -182,9 +181,11 @@ impl<K: SigningKey> BlockProcessing<BlockNumber, RuntimeBlocks> for SideChain<K>
 	}
 }
 
+#[cfg(test)]
 impl<K: SigningKey> SideChain<K> {
 	// Build genesis storage according to the mock runtime.
 	pub fn build() -> sp_io::TestExternalities {
+		use sp_runtime::BuildStorage;
 		let config = GenesisConfig { system: Default::default() };
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();

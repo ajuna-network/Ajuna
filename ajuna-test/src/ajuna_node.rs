@@ -3,13 +3,11 @@ use crate::{
 	traits::{BlockProcessing, RuntimeBuilding},
 };
 use ajuna_solo_runtime::{AccountId, BlockNumber, Runtime, System};
-use frame_support::traits::GenesisBuild;
 use sp_runtime::Storage;
 
 pub struct AjunaNode {
 	/// The account owning the node(sudo)
 	account_id: AccountId,
-	players: Vec<AccountId>,
 	sidechain: AccountId,
 }
 
@@ -34,18 +32,14 @@ impl RuntimeBuilding<Runtime, BlockNumber, RuntimeBlocks> for AjunaNode {
 
 impl Default for AjunaNode {
 	fn default() -> Self {
-		Self { account_id: [0x0; 32].into(), players: vec![], sidechain: [0x0; 32].into() }
+		Self { account_id: [0x0; 32].into(), sidechain: [0x0; 32].into() }
 	}
 }
 
+#[cfg(test)]
 impl AjunaNode {
 	pub fn account(mut self, account_id: AccountId) -> Self {
 		self.account_id = account_id;
-		self
-	}
-
-	pub fn players(mut self, players: Vec<AccountId>) -> Self {
-		self.players = players;
 		self
 	}
 
