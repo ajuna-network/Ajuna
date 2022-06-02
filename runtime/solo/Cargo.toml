@@ -60,7 +60,8 @@ sp-version                                 = { default-features = false, git = "
 orml-vesting = { default-features = false, git = "https://github.com/ajuna-network/open-runtime-module-library", rev = "polkadot-v0.9.20" }
 
 # Integritee pallet
-pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
+pallet-sidechain = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
+pallet-teerex    = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
 
 # Ajuna pallets
 ajuna-common              = { default-features = false, path = "../../ajuna-common" }
@@ -79,6 +80,7 @@ runtime-benchmarks = [
     "hex-literal",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
+    "pallet-sidechain/runtime-benchmarks",
     "pallet-teerex/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
@@ -106,6 +108,7 @@ std = [
     "pallet-democracy/std",
     "pallet-grandpa/std",
     "pallet-membership/std",
+    "pallet-sidechain/std",
     "pallet-sudo/std",
     "pallet-teerex/std",
     "pallet-timestamp/std",

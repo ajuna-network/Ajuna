@@ -72,6 +72,7 @@ use types::governance::*;
 pub use pallet_ajuna_gameregistry;
 pub use pallet_ajuna_matchmaker;
 pub use pallet_balances::Call as BalancesCall;
+pub use pallet_sidechain;
 pub use pallet_teerex;
 pub use pallet_timestamp::Call as TimestampCall;
 
@@ -517,6 +518,16 @@ impl pallet_teerex::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const EarlyBlockProposalLenience: u64 = 100;
+}
+
+impl pallet_sidechain::Config for Runtime {
+	type Event = Event;
+	type EarlyBlockProposalLenience = EarlyBlockProposalLenience;
+	type WeightInfo = ();
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -544,6 +555,7 @@ construct_runtime!(
 		GameRegistry: pallet_ajuna_gameregistry = 17,
 		Observers: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
 		Teerex: pallet_teerex = 19,
+		Sidechain: pallet_sidechain = 20,
 	}
 );
 
