@@ -1,8 +1,8 @@
 use crate::{
-	constants::{BlockProcessing, RuntimeBuilding},
+	traits::{BlockProcessing, RuntimeBuilding},
 	impl_block_numbers,
 };
-use ajuna_solo_runtime::{currency::MILLI_AJUNS, AccountId, BlockNumber, Runtime, System, ObserverInstance};
+use ajuna_solo_runtime::{AccountId, BlockNumber, Runtime, System};
 use frame_support::traits::GenesisBuild;
 use sp_runtime::Storage;
 
@@ -13,21 +13,19 @@ pub struct AjunaNode {
 	sidechain: AccountId,
 }
 
+use ajuna_solo_runtime::{ObserversConfig, SudoConfig};
+use sp_runtime::BuildStorage;
+
 impl_block_numbers!(System, BlockNumber);
 impl RuntimeBuilding<Runtime, BlockNumber, RuntimeBlocks> for AjunaNode {
 	fn configure_storages(&self, storage: &mut Storage) {
-		pallet_membership::GenesisConfig::<Runtime, ObserverInstance> {
-			members: vec![self.sidechain.clone()],
-			phantom: Default::default(),
-		}
-			.assimilate_storage(storage)
-			.unwrap();
-
-		// Give all accounts the same balance
-		let mut accounts = self.players.clone();
-		accounts.push(self.account_id.clone());
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: accounts.iter().map(|player| (player.clone(), MILLI_AJUNS)).collect(),
+		ajuna_solo_runtime::GenesisConfig {
+			sudo: SudoConfig { key: Some(self.account_id.clone()) },
+			observers: ObserversConfig {
+				members: vec![self.sidechain.clone()],
+				..Default::default()
+			},
+			..Default::default()
 		}
 			.assimilate_storage(storage)
 			.unwrap();
