@@ -60,7 +60,7 @@ sp-version                                 = { default-features = false, git = "
 orml-vesting = { default-features = false, git = "https://github.com/ajuna-network/open-runtime-module-library", rev = "polkadot-v0.9.20" }
 
 # Integritee pallet
-pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "polkadot-v0.9.20" }
+pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
 
 # Ajuna pallets
 ajuna-common              = { default-features = false, path = "../../ajuna-common" }
