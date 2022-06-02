@@ -1,6 +1,6 @@
 use crate::{
-	traits::{BlockProcessing, RuntimeBuilding},
 	impl_block_numbers,
+	traits::{BlockProcessing, RuntimeBuilding},
 };
 use ajuna_solo_runtime::{AccountId, BlockNumber, Runtime, System};
 use frame_support::traits::GenesisBuild;
@@ -27,8 +27,8 @@ impl RuntimeBuilding<Runtime, BlockNumber, RuntimeBlocks> for AjunaNode {
 			},
 			..Default::default()
 		}
-			.assimilate_storage(storage)
-			.unwrap();
+		.assimilate_storage(storage)
+		.unwrap();
 	}
 }
 

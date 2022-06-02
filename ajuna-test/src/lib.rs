@@ -2,8 +2,8 @@ use ajuna_solo_runtime::AccountId;
 use frame_support::assert_ok;
 
 mod ajuna_node;
-mod traits;
 mod sidechain;
+mod traits;
 
 // Some useful accounts
 pub const SIDECHAIN_SIGNING_KEY: [u8; 32] = [0x1; 32];
@@ -13,8 +13,8 @@ pub const PLAYER_2: [u8; 32] = [0x4; 32];
 
 use crate::{
 	ajuna_node::AjunaNode,
-	traits::{BlockProcessing, RuntimeBuilding},
 	sidechain::{AjunaBoard, Guess, SideChain, SigningKey},
+	traits::{BlockProcessing, RuntimeBuilding},
 };
 use ajuna_solo_runtime::{GameRegistry, Origin};
 
