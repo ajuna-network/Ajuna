@@ -15,8 +15,7 @@ scale-info = { default-features = false, features = ["derive"], version = "2.1" 
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 pallet-membership = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-
-[dev-dependencies]
+pallet-sudo = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
