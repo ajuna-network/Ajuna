@@ -79,7 +79,7 @@ parameter_types! {
 
 pub type Guess = u32;
 
-use crate::constants::BlockProcessing;
+use crate::traits::BlockProcessing;
 use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 

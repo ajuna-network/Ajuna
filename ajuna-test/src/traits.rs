@@ -5,12 +5,6 @@ use sp_runtime::{
 	Storage,
 };
 
-// Some useful accounts
-pub const SIDECHAIN_SIGNING_KEY: [u8; 32] = [0x1; 32];
-pub const SUDO: [u8; 32] = [0x2; 32];
-pub const PLAYER_1: [u8; 32] = [0x3; 32];
-pub const PLAYER_2: [u8; 32] = [0x4; 32];
-
 pub trait BlockNumbers<B> {
 	fn block_number() -> B;
 	fn set_block_number(n: B);
@@ -52,8 +46,8 @@ pub trait BlockProcessing<B: Copy + AtLeast32BitUnsigned + One, T: BlockNumbers<
 #[macro_export]
 macro_rules! impl_block_numbers {
 	($system:ty, $block_number:ty) => {
-		use crate::constants::{BlockNumbers};
-		use sp_runtime::{traits::BlockNumberProvider};
+		use crate::traits::BlockNumbers;
+		use sp_runtime::traits::BlockNumberProvider;
 
 		pub struct RuntimeBlocks;
 		impl BlockNumbers<$block_number> for RuntimeBlocks {
