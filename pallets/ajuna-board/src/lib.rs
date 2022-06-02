@@ -106,7 +106,7 @@ pub mod pallet {
 	}
 
 	type BoundedPlayersOf<T> =
-	BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
+		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
 
 	type BoardGameOf<T> = BoardGame<<T as Config>::GameState, BoundedPlayersOf<T>>;
 
