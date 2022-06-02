@@ -105,3 +105,5 @@ runtime-benchmarks = [
     "ajuna-solo-runtime/runtime-benchmarks",
     "bajun-runtime/runtime-benchmarks",
 ]
+
+skip-ias-check = [ "ajuna-solo-runtime/skip-ias-check" ]
