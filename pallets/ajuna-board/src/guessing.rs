@@ -19,7 +19,7 @@ const MAX_PLAYERS: usize = 2;
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 pub struct GameState<Account>
 where
-	Account: Copy + Default + Encode + Decode + sp_std::fmt::Debug,
+	Account: Clone + Encode + Decode + sp_std::fmt::Debug,
 {
 	pub players: [Account; MAX_PLAYERS],
 	pub next_player: u8,
@@ -29,20 +29,18 @@ where
 
 impl<Account> TurnBasedGame for MockGame<Account>
 where
-	Account: Copy + Default + Encode + Decode + sp_std::fmt::Debug + PartialEq,
+	Account: Clone + Encode + Decode + sp_std::fmt::Debug + PartialEq,
 {
 	type Turn = Guess;
 	type Player = Account;
 	type State = GameState<Self::Player>;
 
 	fn init(players: &[Self::Player]) -> Option<Self::State> {
-		if players.len() != MAX_PLAYERS {
-			return None
-		};
-
-		let mut p: [Self::Player; MAX_PLAYERS] = Default::default();
-		p.copy_from_slice(&players[0..MAX_PLAYERS]);
-		Some(GameState { players: p, next_player: 0, solution: THE_NUMBER, winner: None })
+		match players.to_vec().try_into() {
+			Ok(players) =>
+				Some(GameState { players, next_player: 0, solution: THE_NUMBER, winner: None }),
+			_ => None,
+		}
 	}
 
 	fn play_turn(
@@ -73,7 +71,8 @@ where
 	}
 
 	fn is_finished(state: &Self::State) -> pallet_ajuna_board::Finished<Self::Player> {
-		match state.winner {
+		let winner = &state.winner;
+		match winner.clone() {
 			None => pallet_ajuna_board::Finished::No,
 			Some(winner) => pallet_ajuna_board::Finished::Winner(winner),
 		}
