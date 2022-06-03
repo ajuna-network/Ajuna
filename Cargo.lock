@@ -95,7 +95,7 @@ dependencies = [
  "frame-benchmarking-cli",
  "frame-system",
  "log",
- "pallet-asset-tx-payment",
+ "pallet-transaction-payment",
  "parity-scale-codec",
  "polkadot-cli",
  "polkadot-parachain",
