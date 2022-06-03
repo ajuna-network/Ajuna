@@ -48,7 +48,7 @@ impl<State, Players> BoardGame<State, Players> {
 pub mod pallet {
 	use super::*;
 	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
+	use sp_runtime::traits::AtLeast32BitUnsigned;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -80,7 +80,7 @@ pub mod pallet {
 		/// Game has been created
 		GameCreated { board_id: T::BoardId, players: Vec<T::AccountId> },
 		/// Game has finished with the winner
-		GameFinished { winner: T::AccountId },
+		GameFinished { board_id: T::BoardId, winner: T::AccountId },
 	}
 
 	#[pallet::error]
@@ -101,6 +101,8 @@ pub mod pallet {
 		InvalidBoard,
 		/// Player already in game
 		PlayerAlreadyInGame,
+		/// Board already exists
+		BoardExists,
 	}
 
 	type BoundedPlayersOf<T> =
@@ -110,28 +112,37 @@ pub mod pallet {
 
 	type PlayersOf<T> = BTreeSet<<T as frame_system::Config>::AccountId>;
 
+	/// Board states by board id
 	#[pallet::storage]
 	pub type BoardStates<T: Config> = StorageMap<_, Identity, T::BoardId, BoardGameOf<T>>;
 
+	/// The board winners by board id
+	#[pallet::storage]
+	pub type BoardWinners<T: Config> = StorageMap<_, Identity, T::BoardId, T::AccountId>;
+
+	/// Players in boards
 	#[pallet::storage]
 	pub type PlayerBoards<T: Config> = StorageMap<_, Identity, T::AccountId, T::BoardId>;
-
-	#[pallet::storage]
-	pub type BoardIdCounter<T: Config> = StorageValue<_, T::BoardId, ValueQuery>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create a new game with a set of players.
 		/// Players are unique and would not yet be in an existing game
 		#[pallet::weight(10_000)]
-		pub fn new_game(origin: OriginFor<T>, players: PlayersOf<T>) -> DispatchResult {
+		pub fn new_game(
+			origin: OriginFor<T>,
+			board_id: T::BoardId,
+			players: PlayersOf<T>,
+		) -> DispatchResult {
 			// TODO - This could be a whitelist based on a custom origin
 			// There is potentially more than one attack vector here as anyone could assign any
 			// account to a board and hence block them from playing in a legitimate game
 			// As this would be ran in L2 we may want to check that we are in L2??
 			let _ = ensure_signed(origin)?;
+
 			// Ensure we have players
 			ensure!(!players.is_empty(), Error::<T>::NotEnoughPlayers);
+			ensure!(!BoardStates::<T>::contains_key(board_id), Error::<T>::BoardExists);
 
 			let player_len = players.len();
 			let players = BoundedPlayersOf::<T>::try_from(
@@ -148,23 +159,16 @@ pub mod pallet {
 			ensure!(player_len == players.len(), Error::<T>::PlayerAlreadyInGame);
 
 			let state = T::Game::init(&players).ok_or(Error::<T>::InvalidStateFromGame)?;
-			let next_board_id = BoardIdCounter::<T>::mutate(|counter| {
-				*counter += One::one();
-				*counter
-			});
 
 			players.iter().for_each(|player| {
-				PlayerBoards::<T>::insert(player, next_board_id);
+				PlayerBoards::<T>::insert(player, board_id);
 			});
 
 			let board_game = BoardGameOf::<T>::new(players.clone(), state);
 
-			BoardStates::<T>::insert(next_board_id, board_game);
+			BoardStates::<T>::insert(board_id, board_game);
 
-			Self::deposit_event(Event::GameCreated {
-				board_id: next_board_id,
-				players: players.into_inner(),
-			});
+			Self::deposit_event(Event::GameCreated { board_id, players: players.into_inner() });
 
 			Ok(())
 		}
@@ -185,18 +189,34 @@ pub mod pallet {
 					if let Finished::Winner::<T::AccountId>(winner) =
 						T::Game::is_finished(&board_game.state)
 					{
+						// Allow the players to play in a new board game
 						board_game.players.iter().for_each(|player| {
 							PlayerBoards::<T>::remove(player);
 						});
 
-						BoardStates::<T>::remove(board_id);
+						// Cache result in storage, this would be cleared on `flush_winner`
+						BoardWinners::<T>::insert(board_id, winner.clone());
 
-						Self::deposit_event(Event::GameFinished { winner });
+						Self::deposit_event(Event::GameFinished { board_id, winner });
 					}
 					Ok(())
 				},
 				None => Err(Error::<T>::InvalidBoard.into()),
 			})
+		}
+
+		/// Flush a winner board game from the pallet
+		/// A board remains after finishing in BoardWinners and those players in that board are now
+		/// free to play another game
+		#[pallet::weight(10_000)]
+		pub fn flush_winner(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
+			// TODO if this is L2 do we really need to check the origin?
+			let _ = ensure_signed(origin)?;
+			// Unlock board
+			BoardStates::<T>::remove(board_id);
+			// Clear winner
+			BoardWinners::<T>::remove(board_id);
+			Ok(())
 		}
 	}
 }
