@@ -8,7 +8,7 @@ use ajuna_common::TurnBasedGame;
 use codec::{Decode, Encode};
 use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
-use std::marker::PhantomData;
+use sp_std::marker::PhantomData;
 
 pub const THE_NUMBER: Guess = 42;
 pub type Guess = u32;
