@@ -80,8 +80,8 @@ impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
 	type BoardId = u32;
 	type PlayersTurn = u32;
-	type GameState = crate::guessing::GameState;
-	type Game = MockGame;
+	type GameState = crate::guessing::GameState<MockAccountId>;
+	type Game = MockGame<MockAccountId>;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 }
 

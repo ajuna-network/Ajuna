@@ -8,26 +8,32 @@ use ajuna_common::TurnBasedGame;
 use codec::{Decode, Encode};
 use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
+use std::marker::PhantomData;
 
 pub const THE_NUMBER: Guess = 42;
 pub type Guess = u32;
-pub struct MockGame;
+pub struct MockGame<Account>(PhantomData<Account>);
 
 const MAX_PLAYERS: usize = 2;
-type AccountId = u32;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
-pub struct GameState {
-	pub players: [AccountId; MAX_PLAYERS],
+pub struct GameState<Account>
+where
+	Account: Copy + Default + Encode + Decode + sp_std::fmt::Debug,
+{
+	pub players: [Account; MAX_PLAYERS],
 	pub next_player: u8,
 	pub solution: Guess,
-	pub winner: Option<AccountId>,
+	pub winner: Option<Account>,
 }
 
-impl TurnBasedGame for MockGame {
-	type State = GameState;
-	type Player = AccountId;
+impl<Account> TurnBasedGame for MockGame<Account>
+where
+	Account: Copy + Default + Encode + Decode + sp_std::fmt::Debug + PartialEq,
+{
 	type Turn = Guess;
+	type Player = Account;
+	type State = GameState<Self::Player>;
 
 	fn init(players: &[Self::Player]) -> Option<Self::State> {
 		if players.len() != MAX_PLAYERS {
