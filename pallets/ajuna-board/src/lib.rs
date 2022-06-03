@@ -28,8 +28,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod guessing;
+
 /// The state of the board game
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub struct BoardGame<State, Players> {
 	/// Players in the game
 	players: Players,
@@ -49,6 +51,7 @@ pub mod pallet {
 	use super::*;
 	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::traits::AtLeast32BitUnsigned;
+	use sp_std::vec::Vec;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

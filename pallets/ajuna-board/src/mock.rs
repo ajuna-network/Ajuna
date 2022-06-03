@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{self as pallet_ajuna_board, TurnBasedGame};
+use crate::{self as pallet_ajuna_board};
 use frame_support::parameter_types;
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use sp_core::{Decode, Encode, H256};
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -74,87 +74,15 @@ parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
 }
 
-pub type Guess = u32;
-
-use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
-use scale_info::TypeInfo;
-
-const MAX_PLAYERS: usize = 2;
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
-pub struct GameState {
-	pub players: [MockAccountId; MAX_PLAYERS],
-	pub next_player: u8,
-	pub solution: Guess,
-	pub winner: Option<MockAccountId>,
-}
-
-// Rules
-// One player can only have one go at a time
-// It's a guessing game where a player has to guess the right number
-// Initial state will have this number
-
-pub const THE_NUMBER: Guess = 42;
-
-pub struct MockGame;
-
-impl TurnBasedGame for MockGame {
-	type State = GameState;
-	type Player = MockAccountId;
-	type Turn = Guess;
-
-	fn init(players: &[Self::Player]) -> Option<Self::State> {
-		if players.len() != MAX_PLAYERS {
-			return None
-		};
-
-		let mut p: [Self::Player; MAX_PLAYERS] = Default::default();
-		p.copy_from_slice(&players[0..MAX_PLAYERS]);
-		Some(GameState { players: p, next_player: 0, solution: THE_NUMBER, winner: None })
-	}
-
-	fn play_turn(
-		player: Self::Player,
-		state: Self::State,
-		turn: Self::Turn,
-	) -> Option<Self::State> {
-		if state.winner.is_some() {
-			return None
-		}
-
-		if !state.players.contains(&player) {
-			return None
-		}
-
-		if state.players[state.next_player as usize] != player {
-			return None
-		}
-
-		let mut state = state;
-		state.next_player = (state.next_player + 1) % state.players.len() as u8;
-
-		if state.solution == turn {
-			state.winner = Some(player);
-		}
-
-		Some(state)
-	}
-
-	fn is_finished(state: &Self::State) -> pallet_ajuna_board::Finished<Self::Player> {
-		match state.winner {
-			None => pallet_ajuna_board::Finished::No,
-			Some(winner) => pallet_ajuna_board::Finished::Winner(winner),
-		}
-	}
-}
+use crate::guessing::MockGame;
 
 impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
-	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 	type BoardId = u32;
 	type PlayersTurn = u32;
-	type GameState = GameState;
+	type GameState = crate::guessing::GameState;
 	type Game = MockGame;
+	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 }
 
 // Build genesis storage according to the mock runtime.
