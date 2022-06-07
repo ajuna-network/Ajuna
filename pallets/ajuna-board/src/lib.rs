@@ -32,17 +32,18 @@ pub mod guessing;
 
 /// The state of the board game
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct BoardGame<State, Players> {
+pub struct BoardGame<BoardId, State, Players> {
+	board_id: BoardId,
 	/// Players in the game
 	players: Players,
 	/// The current state of the game
 	pub state: State,
 }
 
-impl<State, Players> BoardGame<State, Players> {
+impl<BoardId, State, Players> BoardGame<BoardId, State, Players> {
 	/// Create a BoardGame
-	fn new(players: Players, state: State) -> Self {
-		Self { players, state }
+	fn new(board_id: BoardId, players: Players, state: State) -> Self {
+		Self { board_id, players, state }
 	}
 }
 
@@ -111,7 +112,8 @@ pub mod pallet {
 	type BoundedPlayersOf<T> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
 
-	type BoardGameOf<T> = BoardGame<<T as Config>::GameState, BoundedPlayersOf<T>>;
+	type BoardGameOf<T> =
+		BoardGame<<T as Config>::BoardId, <T as Config>::GameState, BoundedPlayersOf<T>>;
 
 	type PlayersOf<T> = BTreeSet<<T as frame_system::Config>::AccountId>;
 
@@ -167,7 +169,7 @@ pub mod pallet {
 				PlayerBoards::<T>::insert(player, board_id);
 			});
 
-			let board_game = BoardGameOf::<T>::new(players.clone(), state);
+			let board_game = BoardGameOf::<T>::new(board_id, players.clone(), state);
 
 			BoardStates::<T>::insert(board_id, board_game);
 
