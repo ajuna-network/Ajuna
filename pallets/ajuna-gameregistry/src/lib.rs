@@ -78,6 +78,9 @@ pub mod pallet {
 		/// Authenticated TEE's
 		type Observers: Contains<Self::AccountId>;
 
+		/// Identifier for a Shard
+		type ShardIdentifier: Member + Parameter;
+
 		#[pallet::constant]
 		/// The maximum number of games that can be acknowledged in one batch
 		type MaxAcknowledgeBatch: Get<u32>;
@@ -158,7 +161,11 @@ pub mod pallet {
 
 		/// Acknowledge a set of games
 		#[pallet::weight(10_000)]
-		pub fn ack_game(origin: OriginFor<T>, game_ids: Vec<T::GameId>) -> DispatchResult {
+		pub fn ack_game(
+			origin: OriginFor<T>,
+			game_ids: Vec<T::GameId>,
+			_shard_id: T::ShardIdentifier,
+		) -> DispatchResult {
 			let who: T::AccountId = frame_system::ensure_signed(origin)?;
 			// Ensure this is signed by an observer
 			// TODO: reinstate this after we have a way of adding observers via Teerex
@@ -200,6 +207,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			game_id: T::GameId,
 			winner: T::AccountId,
+			_shard_id: T::ShardIdentifier,
 		) -> DispatchResult {
 			let _who: T::AccountId = frame_system::ensure_signed(origin)?;
 			// Ensure this is signed by an observer

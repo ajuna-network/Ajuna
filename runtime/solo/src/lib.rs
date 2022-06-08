@@ -41,7 +41,7 @@ use pallet_grandpa::{
 use pallet_transaction_payment::CurrencyAdapter;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -489,6 +489,7 @@ impl pallet_ajuna_gameregistry::Config for Runtime {
 	type MatchMaker = pallet_ajuna_matchmaker::MatchMaking<Runtime>;
 	type Observers = Observers;
 	type MaxAcknowledgeBatch = MaxAcknowledgeBatch;
+	type ShardIdentifier = H256;
 }
 
 pub type ObserverInstance = pallet_membership::Instance1;
