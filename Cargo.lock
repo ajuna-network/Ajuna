@@ -5499,7 +5499,6 @@ dependencies = [
  "frame-support",
  "frame-support-test",
  "frame-system",
- "pallet-ajuna-matchmaker",
  "pallet-scheduler",
  "parity-scale-codec",
  "scale-info",
