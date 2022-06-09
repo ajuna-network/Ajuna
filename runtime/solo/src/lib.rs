@@ -41,7 +41,7 @@ use pallet_grandpa::{
 use pallet_transaction_payment::CurrencyAdapter;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -72,6 +72,7 @@ use types::governance::*;
 pub use pallet_ajuna_gameregistry;
 pub use pallet_ajuna_matchmaker;
 pub use pallet_balances::Call as BalancesCall;
+pub use pallet_sidechain;
 pub use pallet_teerex;
 pub use pallet_timestamp::Call as TimestampCall;
 
@@ -398,14 +399,16 @@ where
 			.saturating_sub(1);
 		let era = sp_runtime::generic::Era::mortal(period, current_block);
 		let extra: SignedExtra = (
-			frame_system::CheckNonZeroSender::<Runtime>::new(),
+			// TODO: Integrate upstream-changes after scs/substrate-api-client#211 has been solved.
+			// frame_system::CheckNonZeroSender::<Runtime>::new(),
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
 			frame_system::CheckEra::<Runtime>::from(era),
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			pallet_asset_tx_payment::ChargeAssetTxPayment::<Runtime>::from(tip, None),
+			// TODO PLAT-276: reinstate ChargeTransactionPayment once worker supports it
+			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -486,6 +489,7 @@ impl pallet_ajuna_gameregistry::Config for Runtime {
 	type MatchMaker = pallet_ajuna_matchmaker::MatchMaking<Runtime>;
 	type Observers = Observers;
 	type MaxAcknowledgeBatch = MaxAcknowledgeBatch;
+	type ShardIdentifier = H256;
 }
 
 pub type ObserverInstance = pallet_membership::Instance1;
@@ -517,6 +521,16 @@ impl pallet_teerex::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const EarlyBlockProposalLenience: u64 = 100;
+}
+
+impl pallet_sidechain::Config for Runtime {
+	type Event = Event;
+	type EarlyBlockProposalLenience = EarlyBlockProposalLenience;
+	type WeightInfo = ();
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -530,7 +544,6 @@ construct_runtime!(
 		Grandpa: pallet_grandpa = 3,
 		Balances: pallet_balances = 4,
 		TransactionPayment: pallet_transaction_payment = 5,
-		AssetTxPayment: pallet_asset_tx_payment = 6,
 		Assets: pallet_assets = 7,
 		Vesting: orml_vesting = 8,
 		Council: pallet_collective::<Instance2> = 9,
@@ -544,6 +557,7 @@ construct_runtime!(
 		GameRegistry: pallet_ajuna_gameregistry = 17,
 		Observers: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
 		Teerex: pallet_teerex = 19,
+		Sidechain: pallet_sidechain = 20,
 	}
 );
 
@@ -555,14 +569,15 @@ pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-	frame_system::CheckNonZeroSender<Runtime>,
+	// TODO: Integrate upstream-changes after scs/substrate-api-client#211 has been solved.
+	// frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_asset_tx_payment::ChargeAssetTxPayment<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.

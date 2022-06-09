@@ -119,6 +119,7 @@ impl pallet_ajuna_gameregistry::Config for Test {
 	type Runner = MockRunner;
 	type GetIdentifier = MockGetIdentifier;
 	type MaxAcknowledgeBatch = MaxAcknowledgeBatch;
+	type ShardIdentifier = H256;
 }
 
 type EnsureSignedByAccount = EnsureSigned<<Test as frame_system::Config>::AccountId>;
