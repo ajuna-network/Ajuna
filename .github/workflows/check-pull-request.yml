@@ -20,7 +20,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SKIP_WASM_BUILD: ${{ github.ref == 'refs/heads/main' && 0 || 1 }}
   CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release --all-targets' || '' }}
 
 jobs:
@@ -28,6 +27,8 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     continue-on-error: false
+    env:
+      SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/cargo@v1
@@ -39,6 +40,8 @@ jobs:
     name: Clippy and Check
     runs-on: ubuntu-latest
     continue-on-error: false
+    env:
+      SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -63,6 +66,8 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     continue-on-error: false
+    env:
+      SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
