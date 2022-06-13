@@ -105,6 +105,7 @@ fn should_play_a_turn_for_a_player() {
 			board_id,
 			BTreeSet::from([BOB, CHARLIE])
 		));
+		assert_eq!(board_id, BoardStates::<Test>::get(board_id).expect("the board").board_id);
 		assert_noop!(AjunaBoard::play_turn(Origin::signed(ALICE), 0u32), Error::<Test>::NotPlaying);
 		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32));
 		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);

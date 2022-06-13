@@ -121,7 +121,7 @@ pub trait TurnBasedGame {
 	/// Represents a turn in the game
 	type Turn;
 	/// Represents a player in the game
-	type Player;
+	type Player: Clone;
 	/// The state of the game
 	type State: Codec;
 	/// Initialise turn based game with players returning the initial state
