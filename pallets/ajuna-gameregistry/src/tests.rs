@@ -38,7 +38,10 @@ fn should_create_game() {
 		assert_eq!(Registry::queued(), None);
 		assert_ok!(Registry::queue(Origin::signed(BOB)));
 		assert_eq!(Registry::queued(), Some(vec![GLOBAL_IDENTIFIER]));
+		assert_noop!(Registry::queue(Origin::signed(ALICE)), Error::<Test>::AlreadyPlaying);
 		assert!(MockRunner::get_state(GLOBAL_IDENTIFIER).is_some());
+		assert_eq!(Registry::players(ALICE), Some(GLOBAL_IDENTIFIER));
+		assert_eq!(Registry::players(BOB), Some(GLOBAL_IDENTIFIER));
 	});
 }
 
@@ -97,5 +100,7 @@ fn should_finish_game() {
 			Some(RunnerState::Finished(game.encode().into())),
 			MockRunner::get_state(GLOBAL_IDENTIFIER)
 		);
+		assert_eq!(Registry::players(ALICE), None);
+		assert_eq!(Registry::players(BOB), None);
 	});
 }

@@ -112,11 +112,17 @@ pub mod pallet {
 		InvalidGameState,
 		/// Failed to queue
 		FailedToQueue,
+		/// Already playing
+		AlreadyPlaying,
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn queued)]
 	pub type Queued<T: Config> = StorageValue<_, Vec<T::GameId>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn players)]
+	pub type Players<T: Config> = StorageMap<_, Blake2_128, T::AccountId, T::GameId, OptionQuery>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -125,6 +131,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			ensure!(Players::<T>::contains_key(who.clone()) == false, Error::<T>::AlreadyPlaying);
 			// Queue sender as player
 			ensure!(T::MatchMaker::enqueue(who, DEFAULT_BRACKET), Error::<T>::AlreadyQueued);
 			// Let's process a match, *may* not include this player based on the queue but we
@@ -133,9 +140,15 @@ pub mod pallet {
 				// Create the game to be run, we have players and will wait on the game being
 				// accepted and with that create runner with configuration, basically the players at
 				// the moment
-				let identifier =
-					T::Runner::create::<T::GetIdentifier>(Game::new(players).encode().into())
-						.ok_or(Error::<T>::FailedToQueue)?;
+				let identifier = T::Runner::create::<T::GetIdentifier>(
+					Game::new(players.clone()).encode().into(),
+				)
+					.ok_or(Error::<T>::FailedToQueue)?;
+
+				// Players need to know which game they are in
+				players.iter().for_each(|player| {
+					Players::<T>::insert(player, identifier.clone());
+				});
 
 				// Locally store the queued runner.
 				// This is used by L2 to prepare for `ack_game`. We will probably want to review
@@ -224,6 +237,11 @@ pub mod pallet {
 				ensure!(game.players.contains(&winner), Error::<T>::InvalidWinner);
 
 				game.winner = Some(winner);
+
+				// Players need to know which game they are in
+				game.players.iter().for_each(|player| {
+					Players::<T>::remove(player);
+				});
 
 				T::Runner::finished(game_id, Some(game.encode().into()))?;
 
