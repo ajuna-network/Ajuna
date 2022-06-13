@@ -131,7 +131,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			ensure!(Players::<T>::contains_key(who.clone()) == false, Error::<T>::AlreadyPlaying);
+			ensure!(!Players::<T>::contains_key(who.clone()), Error::<T>::AlreadyPlaying);
 			// Queue sender as player
 			ensure!(T::MatchMaker::enqueue(who, DEFAULT_BRACKET), Error::<T>::AlreadyQueued);
 			// Let's process a match, *may* not include this player based on the queue but we
