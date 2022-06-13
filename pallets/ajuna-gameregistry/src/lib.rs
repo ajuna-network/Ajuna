@@ -143,7 +143,7 @@ pub mod pallet {
 				let identifier = T::Runner::create::<T::GetIdentifier>(
 					Game::new(players.clone()).encode().into(),
 				)
-					.ok_or(Error::<T>::FailedToQueue)?;
+				.ok_or(Error::<T>::FailedToQueue)?;
 
 				// Players need to know which game they are in
 				players.iter().for_each(|player| {
