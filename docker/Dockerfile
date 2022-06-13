@@ -14,7 +14,7 @@ COPY Cargo.* rust-toolchain.toml /ajuna/
 WORKDIR /ajuna
 
 RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev
-RUN cargo build --locked --release --features ${features} --bin ${bin}
+RUN cargo build --locked --release --no-default-features --features ${features} --bin ${bin}
 
 COPY resources /ajuna/resources
 
