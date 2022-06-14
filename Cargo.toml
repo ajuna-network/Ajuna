@@ -11,7 +11,6 @@ members = [
     "runtime/bajun",
     "pallets/ajuna-matchmaker",
     "pallets/ajuna-gameregistry",
-    "pallets/ajuna-connectfour",
     "pallets/ajuna-runner",
     "pallets/ajuna-board",
     "primitives",

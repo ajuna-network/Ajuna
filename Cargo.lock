@@ -5492,23 +5492,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ajuna-connectfour"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-support-test",
- "frame-system",
- "pallet-scheduler",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-ajuna-gameregistry"
 version = "0.1.0"
 dependencies = [
