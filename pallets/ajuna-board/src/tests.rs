@@ -122,7 +122,7 @@ fn should_play_a_turn_for_a_player() {
 }
 
 #[test]
-fn should_finish_game_and_allow_new_game() {
+fn should_finish_game_and_not_allow_new_game() {
 	new_test_ext().execute_with(|| {
 		let board_id = 1;
 		assert_ok!(AjunaBoard::new_game(
@@ -131,6 +131,8 @@ fn should_finish_game_and_allow_new_game() {
 			BTreeSet::from([BOB, CHARLIE])
 		));
 		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), THE_NUMBER));
+		// Game is now finished, but until we `finish_game` the players won't be able to play a new
+		// game
 		assert_eq!(
 			last_event(),
 			mock::Event::AjunaBoard(crate::Event::GameFinished { board_id, winner: BOB }),
@@ -141,9 +143,24 @@ fn should_finish_game_and_allow_new_game() {
 			BOB,
 			"Board stored to state with winner as Bob"
 		);
-		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::NotPlaying);
-		assert_eq!(PlayerBoards::<Test>::iter_keys().count(), 0, "Playing boards cleared");
+		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
+		assert_eq!(
+			PlayerBoards::<Test>::iter_keys().count(),
+			2,
+			"Bob and Charlie waiting on finishing the game"
+		);
+		// A new board with the same players
 		let new_board_id = board_id + 1;
+		assert_noop!(
+			AjunaBoard::new_game(
+				Origin::signed(ALICE),
+				new_board_id,
+				BTreeSet::from([BOB, CHARLIE])
+			),
+			Error::<Test>::PlayerAlreadyInGame
+		);
+		// Finish the game
+		assert_ok!(AjunaBoard::finish_game(Origin::signed(ALICE), board_id));
 		assert_ok!(AjunaBoard::new_game(
 			Origin::signed(ALICE),
 			new_board_id,

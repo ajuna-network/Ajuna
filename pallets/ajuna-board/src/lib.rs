@@ -194,11 +194,6 @@ pub mod pallet {
 					if let Finished::Winner::<T::AccountId>(winner) =
 						T::Game::is_finished(&board_game.state)
 					{
-						// Allow the players to play in a new board game
-						board_game.players.iter().for_each(|player| {
-							PlayerBoards::<T>::remove(player);
-						});
-
 						// Cache result in storage, this would be cleared on `flush_winner`
 						BoardWinners::<T>::insert(board_id, winner.clone());
 
@@ -210,13 +205,21 @@ pub mod pallet {
 			})
 		}
 
-		/// Flush a winner board game from the pallet
-		/// A board remains after finishing in BoardWinners and those players in that board are now
-		/// free to play another game
+		/// Finish a board game from the pallet
+		/// A board remains after finishing in BoardWinners.  Those players in that board are locked
+		/// until the game is finished
 		#[pallet::weight(10_000)]
-		pub fn flush_winner(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
+		pub fn finish_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
 			// TODO if this is L2 do we really need to check the origin?
 			let _ = ensure_signed(origin)?;
+			// Free players to play another game
+			BoardStates::<T>::get(board_id)
+				.ok_or(Error::<T>::InvalidBoard)?
+				.players
+				.iter()
+				.for_each(|player| {
+					PlayerBoards::<T>::remove(player);
+				});
 			// Unlock board
 			BoardStates::<T>::remove(board_id);
 			// Clear winner
