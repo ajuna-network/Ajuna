@@ -40,5 +40,3 @@ jobs:
           build-args: |
             features=solo
             bin=ajuna-solo
-          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
