@@ -2367,6 +2367,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dot4gravity"
+version = "0.1.0"
+source = "git+https://github.com/ajuna-network/ajuna-games?rev=polkadot-v0.9.20#159ae6d601374af2295fb17b0be89b344a1afaf0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5481,6 +5490,7 @@ name = "pallet-ajuna-board"
 version = "0.1.0"
 dependencies = [
  "ajuna-common",
+ "dot4gravity",
  "frame-support",
  "frame-system",
  "parity-scale-codec",

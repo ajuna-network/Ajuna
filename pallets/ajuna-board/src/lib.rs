@@ -28,6 +28,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod dot4gravity;
 pub mod guessing;
 
 /// The state of the board game
@@ -69,6 +70,7 @@ pub mod pallet {
 			Turn = Self::PlayersTurn,
 			State = Self::GameState,
 		>;
+		// TODO: consider adding MinNumberOfPlayers to return before Game::init fails
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
