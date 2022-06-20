@@ -35,7 +35,7 @@ where
 	type Player = Account;
 	type State = GameState<Self::Player>;
 
-	fn init(players: &[Self::Player]) -> Option<Self::State> {
+	fn init(players: &[Self::Player], _seed: Option<u32>) -> Option<Self::State> {
 		match players.to_vec().try_into() {
 			Ok(players) =>
 				Some(GameState { players, next_player: 0, solution: THE_NUMBER, winner: None }),
@@ -76,5 +76,9 @@ where
 			None => pallet_ajuna_board::Finished::No,
 			Some(winner) => pallet_ajuna_board::Finished::Winner(winner),
 		}
+	}
+
+	fn seed(_state: &Self::State) -> Option<u32> {
+		None
 	}
 }

@@ -36,9 +36,9 @@ where
 	type Player = Account;
 	type State = GameState<Account>;
 
-	fn init(players: &[Self::Player]) -> Option<Self::State> {
+	fn init(players: &[Self::Player], seed: Option<u32>) -> Option<Self::State> {
 		if let [player_1, player_2] = players {
-			Some(Dot4Gravity::new_game(player_1.to_owned(), player_2.to_owned()))
+			Some(Dot4Gravity::new_game(player_1.to_owned(), player_2.to_owned(), seed))
 		} else {
 			None
 		}
@@ -63,6 +63,10 @@ where
 			None => Finished::No,
 		}
 	}
+
+	fn seed(state: &Self::State) -> Option<u32> {
+		Some(state.seed)
+	}
 }
 
 // allow to reduce unnecessary vertical space
@@ -71,7 +75,7 @@ where
 mod tests {
 	use crate::{
 		self as pallet_ajuna_board, dot4gravity::*, mock::new_test_ext, BTreeSet, BoardStates,
-		BoardWinners, Error,
+		BoardWinners, Error, Seed,
 	};
 	use frame_support::{assert_noop, assert_ok};
 	use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -148,6 +152,7 @@ mod tests {
 				players: vec![BOB, CHARLIE],
 			}));
 			assert!(BoardStates::<Test>::contains_key(BOARD_ID));
+			assert!(Seed::<Test>::get().is_none());
 
 			let tests_for_errors = vec![
 				(BTreeSet::from([BOB, CHARLIE]), BOARD_ID, Error::<Test>::BoardExists),
@@ -197,6 +202,7 @@ mod tests {
 				),
 				Error::<Test>::NotPlaying
 			);
+			assert!(Seed::<Test>::get().is_none());
 
 			// drop from left to right to trigger the winning condition due to randomized board
 			for i in 0..10 {
@@ -215,6 +221,7 @@ mod tests {
 					assert_ne!(winner, ALICE);
 					assert!(winner == BOB || winner == CHARLIE);
 					assert_eq!(BoardWinners::<Test>::get(BOARD_ID), Some(winner));
+					assert!(Seed::<Test>::get().is_some());
 					break
 				}
 			}
