@@ -28,6 +28,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod dot4gravity;
 pub mod guessing;
 
 /// The state of the board game
@@ -69,6 +70,7 @@ pub mod pallet {
 			Turn = Self::PlayersTurn,
 			State = Self::GameState,
 		>;
+		// TODO: consider adding MinNumberOfPlayers to return before Game::init fails
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
@@ -129,6 +131,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type PlayerBoards<T: Config> = StorageMap<_, Identity, T::AccountId, T::BoardId>;
 
+	/// Random seed
+	#[pallet::storage]
+	pub type Seed<T> = StorageValue<_, u32>;
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create a new game with a set of players.
@@ -163,7 +169,8 @@ pub mod pallet {
 			// If we have new players this will be the same based on the filter
 			ensure!(player_len == players.len(), Error::<T>::PlayerAlreadyInGame);
 
-			let state = T::Game::init(&players).ok_or(Error::<T>::InvalidStateFromGame)?;
+			let seed = Seed::<T>::get();
+			let state = T::Game::init(&players, seed).ok_or(Error::<T>::InvalidStateFromGame)?;
 
 			players.iter().for_each(|player| {
 				PlayerBoards::<T>::insert(player, board_id);
@@ -196,7 +203,7 @@ pub mod pallet {
 					{
 						// Cache result in storage, this would be cleared on `flush_winner`
 						BoardWinners::<T>::insert(board_id, winner.clone());
-
+						Self::seed_for_next(&board_game.state);
 						Self::deposit_event(Event::GameFinished { board_id, winner });
 					}
 					Ok(())
@@ -225,6 +232,15 @@ pub mod pallet {
 			// Clear winner
 			BoardWinners::<T>::remove(board_id);
 			Ok(())
+		}
+	}
+}
+
+impl<T: Config> Pallet<T> {
+	fn seed_for_next(game_state: &T::GameState) {
+		match T::Game::seed(game_state) {
+			Some(seed) => Seed::<T>::put(seed),
+			None => Seed::<T>::kill(),
 		}
 	}
 }

@@ -125,10 +125,12 @@ pub trait TurnBasedGame {
 	/// The state of the game
 	type State: Codec;
 	/// Initialise turn based game with players returning the initial state
-	fn init(players: &[Self::Player]) -> Option<Self::State>;
+	fn init(players: &[Self::Player], seed: Option<u32>) -> Option<Self::State>;
 	/// Play a turn with player on the current state returning the new state
 	fn play_turn(player: Self::Player, state: Self::State, turn: Self::Turn)
 		-> Option<Self::State>;
 	/// Check if the game has finished with winner
 	fn is_finished(state: &Self::State) -> Finished<Self::Player>;
+	/// Get seed if any
+	fn seed(state: &Self::State) -> Option<u32>;
 }
