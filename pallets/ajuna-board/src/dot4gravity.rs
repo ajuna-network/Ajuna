@@ -15,11 +15,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use ajuna_common::{Finished, TurnBasedGame};
-use dot4gravity::{Coordinates, Game as Dot4Gravity, Side};
+use dot4gravity::Game as Dot4Gravity;
+pub use dot4gravity::{Coordinates, GameState, Side};
 use frame_support::pallet_prelude::*;
 use sp_std::borrow::ToOwned;
-
-pub use dot4gravity::GameState;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 pub enum Turn {
