@@ -399,16 +399,14 @@ where
 			.saturating_sub(1);
 		let era = sp_runtime::generic::Era::mortal(period, current_block);
 		let extra: SignedExtra = (
-			// TODO: Integrate upstream-changes after scs/substrate-api-client#211 has been solved.
-			// frame_system::CheckNonZeroSender::<Runtime>::new(),
+			frame_system::CheckNonZeroSender::<Runtime>::new(),
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
 			frame_system::CheckEra::<Runtime>::from(era),
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			// TODO PLAT-276: reinstate ChargeTransactionPayment once worker supports it
-			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			pallet_asset_tx_payment::ChargeAssetTxPayment::<Runtime>::from(tip, None),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -544,6 +542,7 @@ construct_runtime!(
 		Grandpa: pallet_grandpa = 3,
 		Balances: pallet_balances = 4,
 		TransactionPayment: pallet_transaction_payment = 5,
+		AssetTxPayment: pallet_asset_tx_payment = 6,
 		Assets: pallet_assets = 7,
 		Vesting: orml_vesting = 8,
 		Council: pallet_collective::<Instance2> = 9,
@@ -569,15 +568,14 @@ pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-	// TODO: Integrate upstream-changes after scs/substrate-api-client#211 has been solved.
-	// frame_system::CheckNonZeroSender<Runtime>,
+	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_asset_tx_payment::ChargeAssetTxPayment<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
