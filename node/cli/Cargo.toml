@@ -20,18 +20,18 @@ ajuna-primitives = { path = "../../primitives" }
 ajuna-service    = { path = "../service", optional = true }
 
 # Substrate
-frame-benchmarking-cli  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-frame-system            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-pallet-asset-tx-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sc-cli                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", features = [ "wasmtime" ] }
-sc-client-api           = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sc-finality-grandpa     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sc-service              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", features = [ "wasmtime" ] }
-sp-core                 = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sp-inherents            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sp-keyring              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sp-runtime              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sp-timestamp            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-benchmarking-cli     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-system               = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sc-cli                     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", features = [ "wasmtime" ] }
+sc-client-api              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sc-finality-grandpa        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sc-service                 = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", features = [ "wasmtime" ] }
+sp-core                    = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-inherents               = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-keyring                 = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-runtime                 = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-timestamp               = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", optional = true }
 sc-tracing   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", optional = true }
