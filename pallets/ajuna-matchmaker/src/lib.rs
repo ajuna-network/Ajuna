@@ -68,7 +68,7 @@ pub mod pallet {
 	/// A map tracking which accounts are queued
 	#[pallet::storage]
 	pub type PlayerQueue<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, (), OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, u8, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -93,7 +93,7 @@ impl<T: Config> MatchMaker for MatchMaking<T> {
 		Brackets::<T>::mutate(bracket, |range| {
 			Players::<T>::insert(bracket, range.end, account_id.clone());
 			range.end += 1;
-			PlayerQueue::<T>::insert(account_id.clone(), ());
+			PlayerQueue::<T>::insert(account_id.clone(), 1);
 
 			Pallet::<T>::deposit_event(Event::Queued(account_id));
 			true
