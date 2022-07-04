@@ -225,7 +225,7 @@ pub mod pallet {
 		}
 
 		/// Finish game
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::finish_game())]
 		pub fn finish_game(
 			origin: OriginFor<T>,
 			game_id: T::GameId,

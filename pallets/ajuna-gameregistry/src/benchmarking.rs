@@ -39,6 +39,14 @@ fn runner_create<T: Config>(players: Vec<T::AccountId>) -> T::GameId {
 	T::Runner::create::<T::GetIdentifier>(game.encode().into()).unwrap()
 }
 
+fn runner_accept<T: Config>(game_id: &T::GameId) {
+	let game_state = T::Runner::get_state(game_id).and_then(|runner_state| match runner_state {
+		RunnerState::Queued(state) => Some(state),
+		_ => None,
+	});
+	let _ = T::Runner::accept(game_id, game_state);
+}
+
 fn shard_id<ShardIdentifier: Decode>() -> ShardIdentifier {
 	// NOTE: H256::random() isn't available for the wasm32-unknown-unknown target
 	// See https://docs.rs/getrandom/#webassembly-support
@@ -93,6 +101,20 @@ benchmarks! {
 			let state = T::Runner::get_state(&game_id);
 			assert!(matches!(state, Some(RunnerState::Accepted(_))));
 		}
+	}
+
+	finish_game {
+		let players = vec![player::<T>(0), player::<T>(1)];
+		let game_id = runner_create::<T>(players.clone());
+		runner_accept::<T>(&game_id);
+
+		let caller = whitelisted_caller::<T::AccountId>();
+		let winner = players[1].clone();
+		let shard_id = shard_id::<T::ShardIdentifier>();
+	}: finish_game(RawOrigin::Signed(caller), game_id, winner, shard_id)
+	verify {
+		let state = T::Runner::get_state(&game_id);
+		assert!(matches!(state, Some(RunnerState::Finished(_))));
 	}
 
 	impl_benchmark_test_suite!(
