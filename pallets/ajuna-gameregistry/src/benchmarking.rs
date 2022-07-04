@@ -16,9 +16,10 @@
 
 use super::*;
 use crate::Pallet as GameRegistry;
-use ajuna_common::MatchMaker;
+use ajuna_common::{MatchMaker, Runner};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
+use sp_std::vec;
 
 const SEED: u32 = 0;
 
@@ -28,6 +29,11 @@ fn player<T: Config>(index: u32) -> T::AccountId {
 
 fn enqueue<T: Config>(player: T::AccountId) {
 	T::MatchMaker::enqueue(player, DEFAULT_BRACKET);
+}
+
+fn runner_create<T: Config>(players: Vec<T::AccountId>) -> T::GameId {
+	let game = Game::new(players);
+	T::Runner::create::<T::GetIdentifier>(game.encode().into()).unwrap()
 }
 
 benchmarks! {
@@ -45,6 +51,15 @@ benchmarks! {
 		let queued = GameRegistry::<T>::queued().expect("the game to be queued");
 		assert!(queued.contains(&player_game_id));
 		assert!(queued.contains(&caller_game_id));
+	}
+
+	drop_game {
+		let players = vec![player::<T>(0), player::<T>(1)];
+		let game_id = runner_create::<T>(players);
+		let caller = whitelisted_caller::<T::AccountId>();
+	}: drop_game(RawOrigin::Signed(caller.clone()), game_id)
+	verify {
+		assert!(T::Runner::get_state(&game_id).is_none());
 	}
 
 	impl_benchmark_test_suite!(

@@ -170,7 +170,7 @@ pub mod pallet {
 		}
 
 		/// Drop game will remove the game from the registry
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::drop_game())]
 		pub fn drop_game(origin: OriginFor<T>, game_id: T::GameId) -> DispatchResult {
 			let _who: T::AccountId = frame_system::ensure_signed(origin)?;
 			// Ensure this is signed by an observer
