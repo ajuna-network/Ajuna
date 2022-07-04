@@ -184,7 +184,7 @@ pub mod pallet {
 		}
 
 		/// Acknowledge a set of games
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::ack_game())]
 		pub fn ack_game(
 			origin: OriginFor<T>,
 			game_ids: Vec<T::GameId>,
