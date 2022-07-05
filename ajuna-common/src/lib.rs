@@ -19,7 +19,10 @@
 pub mod mocks;
 
 use codec::{Codec, Decode, Encode, Input, MaxEncodedLen};
-use frame_support::{dispatch::DispatchResult, RuntimeDebugNoBound};
+use frame_support::{
+	dispatch::DispatchResult, pallet_prelude::Member, sp_runtime::traits::AtLeast32BitUnsigned,
+	Parameter, RuntimeDebugNoBound,
+};
 use scale_info::TypeInfo;
 use sp_std::vec::Vec;
 /// Type to identify a bracket
@@ -44,8 +47,17 @@ pub trait MatchMaker {
 	fn try_match(bracket: Bracket, number_required: u8) -> Option<Vec<Self::Player>>;
 }
 
+/// Marker trait used to define a common basis for all potential identifiers used in the pallets
+pub trait Identifier:
+	Member + Parameter + MaxEncodedLen + AtLeast32BitUnsigned + Default + Copy
+{
+}
+
+impl Identifier for u32 {}
+impl Identifier for u64 {}
+
 /// Provide a unique identifier
-pub trait GetIdentifier<T> {
+pub trait GetIdentifier<T: Identifier> {
 	fn get_identifier() -> T;
 }
 
@@ -94,18 +106,17 @@ pub enum RunnerState {
 /// The Runner passes through the states `RunnerState` in which an optional
 /// internal state is stored
 pub trait Runner {
-	type Identifier;
+	type RunnerId: Identifier;
 	/// Create a runner with identifier and initial state
-	fn create<G: GetIdentifier<Self::Identifier>>(initial_state: State)
-		-> Option<Self::Identifier>;
+	fn create<G: GetIdentifier<Self::RunnerId>>(initial_state: State) -> Option<Self::RunnerId>;
 	/// Accept a runner has been scheduled to run, with an optional new state
-	fn accept(identifier: Self::Identifier, new_state: Option<State>) -> DispatchResult;
+	fn accept(identifier: Self::RunnerId, new_state: Option<State>) -> DispatchResult;
 	/// Runner has finished executing, with an optional final state
-	fn finished(identifier: Self::Identifier, final_state: Option<State>) -> DispatchResult;
+	fn finished(identifier: Self::RunnerId, final_state: Option<State>) -> DispatchResult;
 	/// Remove a runner
-	fn remove(identifier: Self::Identifier) -> DispatchResult;
+	fn remove(identifier: Self::RunnerId) -> DispatchResult;
 	/// Get state for runner identified by identifier
-	fn get_state(identifier: Self::Identifier) -> Option<RunnerState>;
+	fn get_state(identifier: Self::RunnerId) -> Option<RunnerState>;
 }
 
 pub const DEFAULT_BRACKET: Bracket = 0;

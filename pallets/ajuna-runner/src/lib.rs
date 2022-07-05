@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use ajuna_common::{GetIdentifier, Runner, RunnerState, State};
+use ajuna_common::{GetIdentifier, Identifier, Runner, RunnerState, State};
 use frame_support::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::traits::One;
@@ -29,15 +29,12 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-
-	use sp_runtime::traits::AtLeast32BitUnsigned;
-
 	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-		type RunnerId: Member + Parameter + MaxEncodedLen + AtLeast32BitUnsigned + Default + Copy;
+		type RunnerId: Identifier;
 	}
 
 	#[pallet::pallet]
@@ -104,8 +101,8 @@ impl<T: Config> Running<T> {
 }
 
 impl<T: Config> Runner for Running<T> {
-	type Identifier = T::RunnerId;
-	fn create<G: GetIdentifier<T::RunnerId>>(initial_state: State) -> Option<Self::Identifier> {
+	type RunnerId = T::RunnerId;
+	fn create<G: GetIdentifier<T::RunnerId>>(initial_state: State) -> Option<Self::RunnerId> {
 		let identifier = G::get_identifier();
 		if Runners::<T>::contains_key(identifier) {
 			return None
@@ -116,7 +113,7 @@ impl<T: Config> Runner for Running<T> {
 		Some(identifier)
 	}
 
-	fn accept(identifier: Self::Identifier, new_state: Option<State>) -> DispatchResult {
+	fn accept(identifier: Self::RunnerId, new_state: Option<State>) -> DispatchResult {
 		if let Some(RunnerState::Queued(original_state)) = Self::get_state(identifier) {
 			match new_state {
 				Some(new_state) => {
@@ -134,7 +131,7 @@ impl<T: Config> Runner for Running<T> {
 		}
 	}
 
-	fn finished(identifier: Self::Identifier, final_state: Option<State>) -> DispatchResult {
+	fn finished(identifier: Self::RunnerId, final_state: Option<State>) -> DispatchResult {
 		if let Some(RunnerState::Accepted(original_state)) = Self::get_state(identifier) {
 			match final_state {
 				Some(final_state) => {
@@ -152,7 +149,7 @@ impl<T: Config> Runner for Running<T> {
 		}
 	}
 
-	fn remove(identifier: Self::Identifier) -> DispatchResult {
+	fn remove(identifier: Self::RunnerId) -> DispatchResult {
 		if !Runners::<T>::contains_key(identifier) {
 			return Err(Error::<T>::UnknownRunner.into())
 		}
@@ -161,7 +158,7 @@ impl<T: Config> Runner for Running<T> {
 		Ok(())
 	}
 
-	fn get_state(identifier: Self::Identifier) -> Option<RunnerState> {
+	fn get_state(identifier: Self::RunnerId) -> Option<RunnerState> {
 		Runners::<T>::get(identifier)
 	}
 }

@@ -31,7 +31,9 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use ajuna_common::{GetIdentifier, MatchMaker, Runner, RunnerState, DEFAULT_PLAYERS};
+	use ajuna_common::{
+		GetIdentifier, Identifier, MatchMaker, Runner, RunnerState, DEFAULT_PLAYERS,
+	};
 	use frame_support::{
 		dispatch::DispatchResult,
 		pallet_prelude::{Member, *},
@@ -67,13 +69,13 @@ pub mod pallet {
 		type MatchMaker: MatchMaker<Player = Self::AccountId>;
 
 		/// An identifier for a game, we use the runner identifier
-		type GameId: Member + Parameter;
+		type GameId: Identifier;
 
 		/// Generate identifiers for games
 		type GetIdentifier: GetIdentifier<Self::GameId>;
 
 		/// The Runners
-		type Runner: Runner<Identifier = Self::GameId>;
+		type Runner: Runner<RunnerId = Self::GameId>;
 
 		/// Authenticated TEE's
 		type Observers: Contains<Self::AccountId>;
