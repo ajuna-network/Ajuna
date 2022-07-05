@@ -6,4 +6,5 @@ build-bajun-rococo = "build --release --no-default-features --bin ajuna-para --f
 [target.'cfg(feature = "cargo-clippy")']
 rustflags = [
     "-Aclippy::type_complexity",
+    "-Aclippy::unnecessary_cast",
 ]
