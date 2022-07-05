@@ -110,13 +110,13 @@ pub trait Runner {
 	/// Create a runner with identifier and initial state
 	fn create<G: GetIdentifier<Self::RunnerId>>(initial_state: State) -> Option<Self::RunnerId>;
 	/// Accept a runner has been scheduled to run, with an optional new state
-	fn accept(identifier: Self::RunnerId, new_state: Option<State>) -> DispatchResult;
+	fn accept(identifier: &Self::RunnerId, new_state: Option<State>) -> DispatchResult;
 	/// Runner has finished executing, with an optional final state
-	fn finished(identifier: Self::RunnerId, final_state: Option<State>) -> DispatchResult;
+	fn finished(identifier: &Self::RunnerId, final_state: Option<State>) -> DispatchResult;
 	/// Remove a runner
-	fn remove(identifier: Self::RunnerId) -> DispatchResult;
+	fn remove(identifier: &Self::RunnerId) -> DispatchResult;
 	/// Get state for runner identified by identifier
-	fn get_state(identifier: Self::RunnerId) -> Option<RunnerState>;
+	fn get_state(identifier: &Self::RunnerId) -> Option<RunnerState>;
 }
 
 pub const DEFAULT_BRACKET: Bracket = 0;

@@ -85,7 +85,7 @@ impl<T: Config> GetIdentifier<T::RunnerId> for AjunaIdentifier<T> {
 pub struct Running<T: Config>(PhantomData<T>);
 impl<T: Config> Running<T> {
 	pub fn update_state(
-		identifier: T::RunnerId,
+		identifier: &T::RunnerId,
 		new_state: RunnerState,
 	) -> Result<(), &'static str> {
 		// Locate the runner and update state
@@ -104,23 +104,23 @@ impl<T: Config> Runner for Running<T> {
 	type RunnerId = T::RunnerId;
 	fn create<G: GetIdentifier<T::RunnerId>>(initial_state: State) -> Option<Self::RunnerId> {
 		let identifier = G::get_identifier();
-		if Runners::<T>::contains_key(identifier) {
+		if Runners::<T>::contains_key(&identifier) {
 			return None
 		}
 
-		Runners::<T>::insert(identifier, RunnerState::Queued(initial_state));
+		Runners::<T>::insert(&identifier, RunnerState::Queued(initial_state));
 		Pallet::<T>::deposit_event(Event::StateQueued { runner_id: identifier });
 		Some(identifier)
 	}
 
-	fn accept(identifier: Self::RunnerId, new_state: Option<State>) -> DispatchResult {
+	fn accept(identifier: &Self::RunnerId, new_state: Option<State>) -> DispatchResult {
 		if let Some(RunnerState::Queued(original_state)) = Self::get_state(identifier) {
 			match new_state {
 				Some(new_state) => {
 					Self::update_state(identifier, RunnerState::Accepted(new_state))
 						.map_err(|_| Error::<T>::InternalError)?;
 
-					Pallet::<T>::deposit_event(Event::StateAccepted { runner_id: identifier });
+					Pallet::<T>::deposit_event(Event::StateAccepted { runner_id: *identifier });
 				},
 				None => Self::update_state(identifier, RunnerState::Accepted(original_state))
 					.map_err(|_| Error::<T>::InternalError)?,
@@ -131,14 +131,14 @@ impl<T: Config> Runner for Running<T> {
 		}
 	}
 
-	fn finished(identifier: Self::RunnerId, final_state: Option<State>) -> DispatchResult {
+	fn finished(identifier: &Self::RunnerId, final_state: Option<State>) -> DispatchResult {
 		if let Some(RunnerState::Accepted(original_state)) = Self::get_state(identifier) {
 			match final_state {
 				Some(final_state) => {
 					Self::update_state(identifier, RunnerState::Finished(final_state))
 						.map_err(|_| Error::<T>::InternalError)?;
 
-					Pallet::<T>::deposit_event(Event::StateFinished { runner_id: identifier });
+					Pallet::<T>::deposit_event(Event::StateFinished { runner_id: *identifier });
 				},
 				None => Self::update_state(identifier, RunnerState::Finished(original_state))
 					.map_err(|_| Error::<T>::InternalError)?,
@@ -149,7 +149,7 @@ impl<T: Config> Runner for Running<T> {
 		}
 	}
 
-	fn remove(identifier: Self::RunnerId) -> DispatchResult {
+	fn remove(identifier: &Self::RunnerId) -> DispatchResult {
 		if !Runners::<T>::contains_key(identifier) {
 			return Err(Error::<T>::UnknownRunner.into())
 		}
@@ -158,7 +158,7 @@ impl<T: Config> Runner for Running<T> {
 		Ok(())
 	}
 
-	fn get_state(identifier: Self::RunnerId) -> Option<RunnerState> {
+	fn get_state(identifier: &Self::RunnerId) -> Option<RunnerState> {
 		Runners::<T>::get(identifier)
 	}
 }

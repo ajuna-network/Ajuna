@@ -27,7 +27,7 @@ fn should_queue_player() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Registry::queue(Origin::signed(ALICE)));
 		assert_noop!(Registry::queue(Origin::signed(ALICE)), Error::<Test>::AlreadyQueued);
-		assert!(MockRunner::get_state(GLOBAL_IDENTIFIER).is_none());
+		assert!(MockRunner::get_state(&GLOBAL_IDENTIFIER).is_none());
 	});
 }
 
@@ -39,7 +39,7 @@ fn should_create_game() {
 		assert_ok!(Registry::queue(Origin::signed(BOB)));
 		assert_eq!(Registry::queued(), Some(vec![GLOBAL_IDENTIFIER]));
 		assert_noop!(Registry::queue(Origin::signed(ALICE)), Error::<Test>::AlreadyPlaying);
-		assert!(MockRunner::get_state(GLOBAL_IDENTIFIER).is_some());
+		assert!(MockRunner::get_state(&GLOBAL_IDENTIFIER).is_some());
 		assert_eq!(Registry::players(ALICE), Some(GLOBAL_IDENTIFIER));
 		assert_eq!(Registry::players(BOB), Some(GLOBAL_IDENTIFIER));
 	});
@@ -60,7 +60,7 @@ fn should_allow_game_to_be_acknowledged() {
 		let game = Game { players: vec![ALICE, BOB], tee_id: Some(TEE_ID), winner: None };
 		assert_eq!(
 			Some(RunnerState::Accepted(game.encode().into())),
-			MockRunner::get_state(GLOBAL_IDENTIFIER)
+			MockRunner::get_state(&GLOBAL_IDENTIFIER)
 		);
 	});
 }
@@ -98,7 +98,7 @@ fn should_finish_game() {
 		let game = Game { players: vec![ALICE, BOB], tee_id: Some(TEE_ID), winner: Some(ALICE) };
 		assert_eq!(
 			Some(RunnerState::Finished(game.encode().into())),
-			MockRunner::get_state(GLOBAL_IDENTIFIER)
+			MockRunner::get_state(&GLOBAL_IDENTIFIER)
 		);
 		assert_eq!(Registry::players(ALICE), None);
 		assert_eq!(Registry::players(BOB), None);

@@ -43,7 +43,7 @@ fn should_accept_runner_and_apply_state() {
 		let new_state: State = b"accepted".to_vec().into();
 		let identifier =
 			Running::<Test>::create::<MockGetIdentifier>(state).expect("create a new runner");
-		assert_ok!(Running::<Test>::accept(identifier, Some(new_state.clone())));
+		assert_ok!(Running::<Test>::accept(&identifier, Some(new_state.clone())));
 		assert_eq!(
 			AjunaRunner::runners(identifier),
 			Some(RunnerState::Accepted(new_state)),
@@ -58,7 +58,7 @@ fn should_accept_runner_with_no_state_update() {
 		let state: State = vec![].into();
 		let identifier = Running::<Test>::create::<MockGetIdentifier>(state.clone())
 			.expect("create a new runner");
-		assert_ok!(Running::<Test>::accept(identifier, None));
+		assert_ok!(Running::<Test>::accept(&identifier, None));
 		assert_eq!(
 			AjunaRunner::runners(identifier),
 			Some(RunnerState::Accepted(state)),
@@ -73,9 +73,9 @@ fn should_finish_runner_and_apply_state() {
 		let state: State = vec![].into();
 		let identifier =
 			Running::<Test>::create::<MockGetIdentifier>(state).expect("create a new runner");
-		assert_ok!(Running::<Test>::accept(identifier, None));
+		assert_ok!(Running::<Test>::accept(&identifier, None));
 		let new_state: State = b"finished".to_vec().into();
-		assert_ok!(Running::<Test>::finished(identifier, Some(new_state.clone())));
+		assert_ok!(Running::<Test>::finished(&identifier, Some(new_state.clone())));
 		assert_eq!(
 			AjunaRunner::runners(identifier),
 			Some(RunnerState::Finished(new_state)),
@@ -90,8 +90,8 @@ fn should_finish_runner_no_state_update() {
 		let state: State = vec![].into();
 		let identifier = Running::<Test>::create::<MockGetIdentifier>(state.clone())
 			.expect("create a new runner");
-		assert_ok!(Running::<Test>::accept(identifier, None));
-		assert_ok!(Running::<Test>::finished(identifier, None));
+		assert_ok!(Running::<Test>::accept(&identifier, None));
+		assert_ok!(Running::<Test>::finished(&identifier, None));
 		assert_eq!(
 			AjunaRunner::runners(identifier),
 			Some(RunnerState::Finished(state)),
@@ -106,8 +106,8 @@ fn should_remove_runner() {
 		let state: State = vec![].into();
 		let identifier =
 			Running::<Test>::create::<MockGetIdentifier>(state).expect("create a new runner");
-		assert_ok!(Running::<Test>::remove(identifier));
-		assert_noop!(Running::<Test>::remove(identifier), Error::<Test>::UnknownRunner);
+		assert_ok!(Running::<Test>::remove(&identifier));
+		assert_noop!(Running::<Test>::remove(&identifier), Error::<Test>::UnknownRunner);
 
 		assert_eq!(AjunaRunner::runners(identifier), None, "storage doesn't contain runner");
 	});

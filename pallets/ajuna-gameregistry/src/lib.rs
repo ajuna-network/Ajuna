@@ -149,7 +149,7 @@ pub mod pallet {
 
 				// Players need to know which game they are in
 				players.iter().for_each(|player| {
-					Players::<T>::insert(player, identifier.clone());
+					Players::<T>::insert(player, identifier);
 				});
 
 				// Locally store the queued runner.
@@ -169,7 +169,7 @@ pub mod pallet {
 			// ensure!(T::Observers::contains(&who), Error::<T>::NotSignedByObserver);
 
 			// We silently remove the game id whether it exists or not
-			T::Runner::remove(game_id)?;
+			T::Runner::remove(&game_id)?;
 
 			Ok(())
 		}
@@ -200,13 +200,12 @@ pub mod pallet {
 			// Run through batch and accept those that are in valid state `Queued`
 			// Those that fail, fail silently
 			game_ids.iter().for_each(|game_id| {
-				if let Some(RunnerState::Queued(mut state)) = T::Runner::get_state(game_id.clone())
-				{
+				if let Some(RunnerState::Queued(mut state)) = T::Runner::get_state(game_id) {
 					if let Ok(mut game) = Game::decode(&mut state) {
 						game.tee_id = Some(who.clone());
 						// Accept this game, log if we failed to accept this game
-						let _ = T::Runner::accept(game_id.clone(), Some(game.encode().into()))
-							.map_err(|e| {
+						let _ =
+							T::Runner::accept(game_id, Some(game.encode().into())).map_err(|e| {
 								log::debug!("Accepting {:?} failed with error:{:?}", game_id, e);
 							});
 					}
@@ -232,7 +231,7 @@ pub mod pallet {
 			// If the game is in the accepted state we can ascertain if their is a valid winner
 			// and mark the game state as finished
 			if let RunnerState::Accepted(mut state) =
-				T::Runner::get_state(game_id.clone()).ok_or(Error::<T>::NoGameEntry)?
+				T::Runner::get_state(&game_id).ok_or(Error::<T>::NoGameEntry)?
 			{
 				let mut game = Game::decode(&mut state).map_err(|_| Error::<T>::InvalidPayload)?;
 
@@ -245,7 +244,7 @@ pub mod pallet {
 					Players::<T>::remove(player);
 				});
 
-				T::Runner::finished(game_id, Some(game.encode().into()))?;
+				T::Runner::finished(&game_id, Some(game.encode().into()))?;
 
 				Ok(())
 			} else {
