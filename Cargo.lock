@@ -290,6 +290,7 @@ dependencies = [
  "hex-literal",
  "log",
  "orml-vesting",
+ "pallet-ajuna-board",
  "pallet-ajuna-gameregistry",
  "pallet-ajuna-matchmaker",
  "pallet-ajuna-runner",

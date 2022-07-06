@@ -66,6 +66,7 @@ pallet-teerex    = { default-features = false, git = "https://github.com/integri
 # Ajuna pallets
 ajuna-common              = { default-features = false, path = "../../ajuna-common" }
 ajuna-primitives          = { default-features = false, path = "../../primitives" }
+pallet-ajuna-board        = { default-features = false, path = "../../pallets/ajuna-board" }
 pallet-ajuna-gameregistry = { default-features = false, path = "../../pallets/ajuna-gameregistry" }
 pallet-ajuna-matchmaker   = { default-features = false, path = "../../pallets/ajuna-matchmaker" }
 pallet-ajuna-runner       = { default-features = false, path = "../../pallets/ajuna-runner" }
@@ -78,6 +79,7 @@ runtime-benchmarks = [
     "frame-system-benchmarking",
     "frame-system/runtime-benchmarks",
     "hex-literal",
+    "pallet-ajuna-board/runtime-benchmarks",
     "pallet-ajuna-gameregistry/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
