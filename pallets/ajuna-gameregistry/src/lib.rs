@@ -21,12 +21,18 @@ use codec::{Decode, Encode};
 use frame_support::{sp_runtime::traits::Dispatchable, traits::schedule::Named, RuntimeDebug};
 pub use pallet::*;
 use sp_std::vec::Vec;
+use weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -86,6 +92,9 @@ pub mod pallet {
 		#[pallet::constant]
 		/// The maximum number of games that can be acknowledged in one batch
 		type MaxAcknowledgeBatch: Get<u32>;
+
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -130,7 +139,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Queue sender for a game
 		/// We also use this as an opportunity to match a player and set off a runner for the game
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::queue())]
 		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!Players::<T>::contains_key(who.clone()), Error::<T>::AlreadyPlaying);
