@@ -69,7 +69,7 @@ pub mod pallet {
 		/// Board id
 		type BoardId: Copy + Default + AtLeast32BitUnsigned + Parameter + MaxEncodedLen;
 		/// A Turn for the game
-		type PlayersTurn: Member + Parameter;
+		type PlayersTurn: Member + Parameter + From<dot4gravity::Turn>;
 		/// The state of the board
 		type GameState: Codec + TypeInfo + MaxEncodedLen + Clone;
 		/// A turn based game
@@ -133,7 +133,7 @@ pub mod pallet {
 	type BoundedPlayersOf<T> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
 
-	type BoardGameOf<T> =
+	pub(crate) type BoardGameOf<T> =
 		BoardGame<<T as Config>::BoardId, <T as Config>::GameState, BoundedPlayersOf<T>>;
 
 	type PlayersOf<T> = BTreeSet<<T as frame_system::Config>::AccountId>;
@@ -240,7 +240,7 @@ pub mod pallet {
 		/// Play a turn in the game for signing player
 		/// If the turn produces a winner the state of the game will be removed and
 		/// `Event::GameFinished` would be deposited.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::play_turn().max(T::WeightInfo::play_turn_until_finished()))]
 		pub fn play_turn(origin: OriginFor<T>, turn: T::PlayersTurn) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let board_id = PlayerBoards::<T>::get(sender.clone()).ok_or(Error::<T>::NotPlaying)?;

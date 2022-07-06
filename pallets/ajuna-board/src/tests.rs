@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{guessing::THE_NUMBER, mock::*, *};
+use crate::{dot4gravity::*, mock::*, *};
 use frame_support::{assert_noop, assert_ok};
 
 const ALICE: u32 = 1;
@@ -24,6 +24,21 @@ const DELTHEA: u32 = 4;
 const ERIN: u32 = 5;
 const FLORINA: u32 = 6;
 const HILDA: u32 = 7;
+
+const BOARD_ID: u32 = 1;
+const TEST_COORD: Coordinates = Coordinates::new(0, 0);
+// The seed below generates the following board, where o is empty and x is block:
+// [o, o, o, o, o, o, o, o, o, o],
+// [o, o, o, x, o, o, o, o, o, o],
+// [o, o, x, o, o, o, o, o, o, o],
+// [o, x, o, o, o, o, o, o, x, o],
+// [o, o, o, o, x, o, x, o, o, o],
+// [o, o, o, o, o, o, o, o, x, o],
+// [o, o, o, x, o, o, x, o, o, o],
+// [o, o, o, o, o, o, o, o, o, o],
+// [x, o, o, o, o, o, o, o, o, o],
+// [o, o, o, o, o, o, o, o, o, o],
+const TEST_SEED: u32 = 7357;
 
 #[test]
 fn should_create_new_game() {
@@ -95,89 +110,108 @@ fn should_create_new_game() {
 			}),
 		);
 	});
-}
 
-#[test]
-fn should_play_a_turn_for_a_player() {
 	new_test_ext().execute_with(|| {
-		// Create a game with Bob and Charlie as players
-		// Play the game until someone wins
-		let board_id = 1;
 		assert_ok!(AjunaBoard::new_game(
 			Origin::signed(ALICE),
-			board_id,
+			BOARD_ID,
 			BTreeSet::from([BOB, CHARLIE])
 		));
-		assert_eq!(board_id, BoardStates::<Test>::get(board_id).expect("the board").board_id);
-		assert_noop!(AjunaBoard::play_turn(Origin::signed(ALICE), 0u32), Error::<Test>::NotPlaying);
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32));
-		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(CHARLIE), 1u32));
-		assert_eq!(
-			last_event(),
-			mock::Event::AjunaBoard(crate::Event::GameCreated {
-				board_id,
-				players: vec![BOB, CHARLIE],
-			}),
-			"Board with Bob and Charlie created"
-		);
+		System::assert_last_event(mock::Event::AjunaBoard(crate::Event::GameCreated {
+			board_id: BOARD_ID,
+			players: vec![BOB, CHARLIE],
+		}));
+		assert!(BoardStates::<Test>::contains_key(BOARD_ID));
+		assert!(Seed::<Test>::get().is_none());
+
+		let tests_for_errors = vec![
+			(BTreeSet::from([BOB, CHARLIE]), BOARD_ID, Error::<Test>::BoardExists),
+			(BTreeSet::from([ALICE, BOB]), 11, Error::<Test>::PlayerAlreadyInGame),
+			(BTreeSet::from([ALICE, CHARLIE]), 22, Error::<Test>::PlayerAlreadyInGame),
+			// TODO: should we early reject with NotEnoughPlayer?
+			(BTreeSet::from([ALICE]), 33, Error::<Test>::InvalidStateFromGame),
+			// TODO: should we early reject with NotEnoughPlayer?
+			(BTreeSet::from([BOB]), 44, Error::<Test>::PlayerAlreadyInGame),
+			(BTreeSet::from([CHARLIE]), 44, Error::<Test>::PlayerAlreadyInGame),
+			// TODO: should we early reject with TooManyPlayers?
+			(BTreeSet::from([ALICE, BOB, CHARLIE]), 55, Error::<Test>::PlayerAlreadyInGame),
+		];
+		for (players, board_id, expected_error) in tests_for_errors {
+			assert_noop!(
+				AjunaBoard::new_game(Origin::signed(ALICE), board_id, players),
+				expected_error
+			);
+		}
 	});
 }
 
 #[test]
-fn should_finish_game_and_not_allow_new_game() {
+fn should_play_and_mutate_game_state() {
 	new_test_ext().execute_with(|| {
-		let board_id = 1;
 		assert_ok!(AjunaBoard::new_game(
 			Origin::signed(ALICE),
-			board_id,
+			BOARD_ID,
 			BTreeSet::from([BOB, CHARLIE])
 		));
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), THE_NUMBER));
-		// Game is now finished, but until we `finish_game` the players won't be able to play a new
-		// game
-		assert_eq!(
-			last_event(),
-			mock::Event::AjunaBoard(crate::Event::GameFinished { board_id, winner: BOB }),
-			"Bob won"
-		);
-		assert_eq!(
-			BoardWinners::<Test>::get(board_id).unwrap(),
-			BOB,
-			"Board stored to state with winner as Bob"
-		);
-		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
-		assert_eq!(
-			PlayerBoards::<Test>::iter_keys().count(),
-			2,
-			"Bob and Charlie waiting on finishing the game"
-		);
-		// A new board with the same players
-		let new_board_id = board_id + 1;
+		let board_state_before = BoardStates::<Test>::get(BOARD_ID).unwrap();
+
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(CHARLIE), Turn::DropBomb(TEST_COORD)));
+		let board_state_after = BoardStates::<Test>::get(BOARD_ID).unwrap();
+
+		assert_ne!(board_state_before.state.board, board_state_after.state.board);
+		assert_eq!(board_state_before.state.bombs, [(BOB, 3), (CHARLIE, 3)]);
+		assert_eq!(board_state_after.state.bombs, [(BOB, 3), (CHARLIE, 3 - 1)]);
+	});
+}
+
+#[test]
+fn should_play_turn_and_finish_game() {
+	new_test_ext().execute_with(|| {
+		Seed::<Test>::put(TEST_SEED);
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			BOARD_ID,
+			BTreeSet::from([BOB, ERIN])
+		));
 		assert_noop!(
-			AjunaBoard::new_game(
-				Origin::signed(ALICE),
-				new_board_id,
-				BTreeSet::from([BOB, CHARLIE])
-			),
-			Error::<Test>::PlayerAlreadyInGame
+			AjunaBoard::play_turn(Origin::signed(ALICE), Turn::DropBomb(TEST_COORD)),
+			Error::<Test>::NotPlaying
 		);
-		// Finish the game
-		assert_ok!(AjunaBoard::finish_game(Origin::signed(ALICE), board_id));
-		assert_ok!(AjunaBoard::new_game(
-			Origin::signed(ALICE),
-			new_board_id,
-			BTreeSet::from([BOB, CHARLIE])
-		));
-		assert_eq!(
-			last_event(),
-			mock::Event::AjunaBoard(crate::Event::GameCreated {
-				board_id: new_board_id,
-				players: vec![BOB, CHARLIE],
-			}),
-			"Board with Bob and Charlie created"
-		);
-	});
+
+		// Bomb phase
+		let play_drop_bomb = |coord: Coordinates| {
+			assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(coord)));
+			assert_ok!(AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropBomb(coord)));
+		};
+		play_drop_bomb(Coordinates::new(9, 9));
+		play_drop_bomb(Coordinates::new(8, 8));
+		play_drop_bomb(Coordinates::new(7, 7));
+
+		// Play phase
+		let play_drop_stone = || {
+			let win_position = (Side::North, 0);
+			let lose_position = (Side::North, 9);
+			assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropStone(win_position)));
+			assert_ok!(AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropStone(lose_position)));
+		};
+		play_drop_stone();
+		play_drop_stone();
+		play_drop_stone();
+		play_drop_stone();
+
+		// check if game has finished
+		System::assert_last_event(mock::Event::AjunaBoard(crate::Event::GameFinished {
+			board_id: BOARD_ID,
+			winner: BOB,
+		}));
+		assert_eq!(BoardWinners::<Test>::get(BOARD_ID), Some(BOB));
+		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
+
+		// finish game and check
+		assert_ok!(AjunaBoard::finish_game(Origin::signed(ALICE), BOARD_ID));
+		assert!(BoardStates::<Test>::get(BOARD_ID).is_none());
+		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
+	})
 }
 
 fn run_to_block(n: u64) {
@@ -219,7 +253,8 @@ fn game_should_properly_expire() {
 			BOB,
 			"Board stored to state with winner as Bob"
 		);
-		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
+		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)));
 	});
 }
 
@@ -248,7 +283,7 @@ fn game_expiry_should_properly_extend_after_play() {
 		run_to_block(game_expiry);
 
 		// We play a turn extending it's expiry
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 1_u32));
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)));
 
 		// We run on_idle with the remaining weight
 		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
@@ -323,10 +358,8 @@ fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
 			DELTHEA,
 			"Board stored to state with winner as Delthea"
 		);
-		assert_noop!(
-			AjunaBoard::play_turn(Origin::signed(DELTHEA), 1_u32),
-			Error::<Test>::InvalidTurn
-		);
+		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(DELTHEA), Turn::DropBomb(TEST_COORD)));
 
 		// Here we check how Bob has automatically won because of inactivity
 		assert_eq!(
@@ -342,7 +375,8 @@ fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
 			BOB,
 			"Board stored to state with winner as Bob"
 		);
-		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1_u32), Error::<Test>::InvalidTurn);
+		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)));
 
 		// The third game can still be played even though it should be expired by this block
 		assert!(!BoardWinners::<Test>::contains_key(board_id_3), "Should contain {}", board_id_3);
@@ -367,9 +401,7 @@ fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
 			FLORINA,
 			"Board stored to state with winner as Florina"
 		);
-		assert_noop!(
-			AjunaBoard::play_turn(Origin::signed(FLORINA), 1_u32),
-			Error::<Test>::InvalidTurn
-		);
+		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(FLORINA), Turn::DropBomb(TEST_COORD)));
 	});
 }
