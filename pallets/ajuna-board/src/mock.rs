@@ -89,6 +89,7 @@ impl pallet_ajuna_board::Config for Test {
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 	type MaxNumberOfIdleBlocks = MaxNumberOfIdleBlocks;
 	type MaxNumberOfGamesToExpire = MaxNumberOfGamesToExpire;
+	type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.

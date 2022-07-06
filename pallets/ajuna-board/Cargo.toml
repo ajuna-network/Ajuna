@@ -16,10 +16,11 @@ ajuna-common = { default-features = false, path = "../../ajuna-common" }
 codec        = { default-features = false, features = [ "derive", "max-encoded-len" ], package = "parity-scale-codec", version = "3.0.0" }
 scale-info   = { default-features = false, features = [ "derive" ], version = "2.1" }
 
-frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-frame-system  = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sp-runtime    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-sp-std        = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", optional = true }
+frame-support      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-system       = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-runtime         = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-std             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 dot4gravity = { default-features = false, git = "https://github.com/ajuna-network/ajuna-games", rev = "polkadot-v0.9.20-dev" }
 
@@ -29,5 +30,6 @@ sp-io   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 
 [features]
 default     = [ "std" ]
-std         = [ "ajuna-common/std", "codec/std", "sp-runtime/std", "scale-info/std", "frame-support/std", "frame-system/std", "sp-std/std", "dot4gravity/std" ]
+std         = [ "ajuna-common/std", "codec/std", "sp-runtime/std", "scale-info/std", "frame-benchmarking/std", "frame-support/std", "frame-system/std", "sp-std/std", "dot4gravity/std" ]
 try-runtime = [ "frame-support/try-runtime" ]
+runtime-benchmarks = [ "frame-benchmarking" ]

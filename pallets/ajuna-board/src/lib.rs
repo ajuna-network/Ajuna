@@ -21,6 +21,10 @@ use codec::Codec;
 use frame_support::pallet_prelude::*;
 pub use pallet::*;
 use sp_std::collections::btree_set::BTreeSet;
+use weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -30,6 +34,7 @@ mod tests;
 
 pub mod dot4gravity;
 pub mod guessing;
+pub mod weights;
 
 /// The state of the board game
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
@@ -85,6 +90,9 @@ pub mod pallet {
 		/// Maximum number of games to be expired in a single run
 		#[pallet::constant]
 		type MaxNumberOfGamesToExpire: Get<u32>;
+
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -181,7 +189,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Create a new game with a set of players.
 		/// Players are unique and would not yet be in an existing game
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::new_game())]
 		pub fn new_game(
 			origin: OriginFor<T>,
 			board_id: T::BoardId,

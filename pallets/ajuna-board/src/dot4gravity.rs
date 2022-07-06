@@ -147,6 +147,7 @@ mod tests {
 		type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
 		type MaxNumberOfIdleBlocks = frame_support::traits::ConstU32<10>;
 		type MaxNumberOfGamesToExpire = frame_support::traits::ConstU32<5>;
+		type WeightInfo = ();
 	}
 
 	#[test]
