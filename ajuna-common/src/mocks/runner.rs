@@ -46,17 +46,17 @@ macro_rules! impl_mock_runner {
 		}
 
 		impl Runner for MockRunner {
-			type Identifier = u32;
+			type RunnerId = u32;
 
-			fn create<G: GetIdentifier<Self::Identifier>>(
+			fn create<G: GetIdentifier<Self::RunnerId>>(
 				initial_state: State,
-			) -> Option<Self::Identifier> {
+			) -> Option<Self::RunnerId> {
 				STATE.with(|cell| *cell.borrow_mut() = Some(RunnerState::Queued(initial_state)));
 				G::get_identifier().into()
 			}
 
-			fn accept(identifier: Self::Identifier, new_state: Option<State>) -> DispatchResult {
-				if identifier == GLOBAL_IDENTIFIER {
+			fn accept(identifier: &Self::RunnerId, new_state: Option<State>) -> DispatchResult {
+				if identifier == &GLOBAL_IDENTIFIER {
 					STATE.with(|cell| {
 						*cell.borrow_mut() =
 							Some(RunnerState::Accepted(new_state.expect("some state")))
@@ -67,11 +67,8 @@ macro_rules! impl_mock_runner {
 				}
 			}
 
-			fn finished(
-				identifier: Self::Identifier,
-				final_state: Option<State>,
-			) -> DispatchResult {
-				if identifier == GLOBAL_IDENTIFIER {
+			fn finished(identifier: &Self::RunnerId, final_state: Option<State>) -> DispatchResult {
+				if identifier == &GLOBAL_IDENTIFIER {
 					STATE.with(|cell| {
 						*cell.borrow_mut() =
 							Some(RunnerState::Finished(final_state.expect("some state")))
@@ -82,8 +79,8 @@ macro_rules! impl_mock_runner {
 				}
 			}
 
-			fn remove(identifier: Self::Identifier) -> DispatchResult {
-				if identifier == GLOBAL_IDENTIFIER {
+			fn remove(identifier: &Self::RunnerId) -> DispatchResult {
+				if identifier == &GLOBAL_IDENTIFIER {
 					STATE.with(|cell| *cell.borrow_mut() = None);
 					Ok(())
 				} else {
@@ -91,8 +88,8 @@ macro_rules! impl_mock_runner {
 				}
 			}
 
-			fn get_state(identifier: Self::Identifier) -> Option<RunnerState> {
-				if identifier == GLOBAL_IDENTIFIER {
+			fn get_state(identifier: &Self::RunnerId) -> Option<RunnerState> {
+				if identifier == &GLOBAL_IDENTIFIER {
 					STATE.with(|cell| (*cell.borrow()).clone())
 				} else {
 					None
