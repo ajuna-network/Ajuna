@@ -2369,7 +2369,7 @@ dependencies = [
 [[package]]
 name = "dot4gravity"
 version = "0.1.0"
-source = "git+https://github.com/ajuna-network/ajuna-games?rev=polkadot-v0.9.20#159ae6d601374af2295fb17b0be89b344a1afaf0"
+source = "git+https://github.com/ajuna-network/ajuna-games?rev=polkadot-v0.9.20-dev#2151b20f59524cb025abbdcd303f0fe9cdbf60c8"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
