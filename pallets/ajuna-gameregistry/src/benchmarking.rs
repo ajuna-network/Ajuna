@@ -82,8 +82,8 @@ benchmarks! {
 	}
 
 	ack_game {
-		let max_ack_batch = T::MaxAcknowledgeBatch::get();
-		let game_ids = (0..max_ack_batch)
+		let n in 1 .. T::MaxAcknowledgeBatch::get();
+		let game_ids = (0..n)
 			.into_iter()
 			.map(
 				|i| {
