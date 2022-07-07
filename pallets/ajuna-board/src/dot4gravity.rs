@@ -56,9 +56,8 @@ where
 	}
 
 	fn is_finished(state: &Self::State) -> Finished<Self::Player> {
-		let players = &state.players;
-		match state.winner {
-			Some(winner_index) => Finished::Winner(players[winner_index as usize].clone()),
+		match state.winner.clone() {
+			Some(winner) => Finished::Winner(winner),
 			None => Finished::No,
 		}
 	}

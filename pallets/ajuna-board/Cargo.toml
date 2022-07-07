@@ -21,7 +21,7 @@ frame-system  = { default-features = false, git = "https://github.com/paritytech
 sp-runtime    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-std        = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
-dot4gravity = { default-features = false, git = "https://github.com/ajuna-network/ajuna-games", rev = "polkadot-v0.9.20" }
+dot4gravity = { default-features = false, git = "https://github.com/ajuna-network/ajuna-games", rev = "polkadot-v0.9.20-dev" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
