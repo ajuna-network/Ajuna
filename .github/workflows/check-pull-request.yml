@@ -84,6 +84,20 @@ jobs:
           command: test
           args: --workspace --all-features ${{ env.CARGO_ARGS }}
 
+  notify:
+    name: Notify on Slack
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: 8398a7/action-slack@v3
+        with:
+          job_name: Build
+          status: ${{ job.status }}
+          fields: repo,pullRequest,commit,author,workflow,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
+
   dev-binaries:
     name: Build and upload development build
     if: github.ref == 'refs/heads/main'
