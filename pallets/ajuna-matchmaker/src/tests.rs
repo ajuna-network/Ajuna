@@ -225,3 +225,22 @@ fn test_brackets() {
 		assert_eq!(queue_players_sorted(BRACKET_2), [PLAYER_6]);
 	});
 }
+
+#[test]
+fn matchmaking_should_be_fifo() {
+	new_test_ext().execute_with(|| {
+		let players_per_game = 3; // 3 player game
+		let total_games = 10;
+		let total_players = players_per_game * total_games;
+
+		for player in 0..total_players {
+			MatchMaking::<Test>::enqueue(player, BRACKET_0);
+		}
+
+		for i in (0..total_players).step_by(players_per_game as usize) {
+			let matched = MatchMaking::<Test>::try_match(BRACKET_0, players_per_game as u8);
+			let expected_match = (i..(i + players_per_game)).collect();
+			assert_eq!(matched, Some(expected_match));
+		}
+	});
+}
