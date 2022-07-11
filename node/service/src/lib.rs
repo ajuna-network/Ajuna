@@ -23,6 +23,8 @@ pub mod para_bajun;
 #[cfg(feature = "solo")]
 pub mod solo;
 
+#[cfg(feature = "ajuna")]
+pub use ajuna_runtime;
 #[cfg(feature = "solo")]
 pub use ajuna_solo_runtime;
 #[cfg(feature = "bajun")]

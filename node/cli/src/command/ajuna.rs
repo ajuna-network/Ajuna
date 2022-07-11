@@ -27,12 +27,10 @@ use std::io::Write;
 
 use crate::cli::{Cli, Subcommand};
 use ajuna_service::{
+	ajuna_runtime::{Block as ParaBlock, RuntimeApi},
 	ajuna_solo_runtime::Block as SoloBlock,
 	chain_spec, para_ajuna as para,
-	para_ajuna::{
-		ajuna_runtime::{Block as ParaBlock, RuntimeApi},
-		AjunaRuntimeExecutor,
-	},
+	para_ajuna::AjunaRuntimeExecutor,
 	solo::ExecutorDispatch,
 };
 
