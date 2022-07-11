@@ -14,22 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 use {
-	crate::cli::RelayChainCli,
-	ajuna_service::{
-		bajun_runtime::{Block as ParaBlock, RuntimeApi},
-		para::{self, BajunRuntimeExecutor},
-	},
-	codec::Encode,
-	cumulus_client_service::genesis::generate_genesis_block,
-	cumulus_primitives_core::ParaId,
-	log::info,
-	polkadot_parachain::primitives::AccountIdConversion,
-	sc_cli::Result,
-	sp_core::hexdisplay::HexDisplay,
-	sp_runtime::traits::Block as BlockT,
-	std::io::Write,
+	crate::cli::RelayChainCli, codec::Encode,
+	cumulus_client_service::genesis::generate_genesis_block, cumulus_primitives_core::ParaId,
+	log::info, polkadot_parachain::primitives::AccountIdConversion, sc_cli::Result,
+	sp_core::hexdisplay::HexDisplay, sp_runtime::traits::Block as BlockT, std::io::Write,
+};
+
+#[cfg(feature = "bajun")]
+use ajuna_service::{
+	bajun_runtime::{Block as ParaBlock, RuntimeApi},
+	para_bajun as para,
+	para_bajun::BajunRuntimeExecutor,
+};
+
+#[cfg(feature = "ajuna")]
+use ajuna_service::{
+	para_ajuna as para,
+	para_ajuna::ajuna_runtime::{Block as ParaBlock, RuntimeApi},
+	para_ajuna::AjunaRuntimeExecutor,
 };
 
 #[cfg(feature = "solo")]
@@ -51,7 +55,19 @@ use sc_service::PartialComponents;
 use std::{path::PathBuf, sync::Arc};
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-	if cfg!(feature = "bajun") {
+	if cfg!(feature = "ajuna") {
+		#[cfg(feature = "ajuna")]
+		{
+			Ok(match id {
+				"dev" => Box::new(chain_spec::ajuna::development_config()),
+				"" | "local" => Box::new(chain_spec::ajuna::local_testnet_config()),
+				path =>
+					Box::new(chain_spec::ajuna::ChainSpec::from_json_file(PathBuf::from(path))?),
+			})
+		}
+		#[cfg(not(feature = "ajuna"))]
+		return Err("Chain spec for Ajuna doesn't exist".into())
+	} else if cfg!(feature = "bajun") {
 		#[cfg(feature = "bajun")]
 		{
 			Ok(match id {
@@ -121,11 +137,15 @@ impl SubstrateCli for Cli {
 		if cfg!(feature = "bajun") {
 			return &ajuna_service::bajun_runtime::VERSION
 		}
+		#[cfg(feature = "ajuna")]
+		if cfg!(feature = "ajuna") {
+			return &para::ajuna_runtime::VERSION
+		}
 		&ajuna_service::ajuna_solo_runtime::VERSION
 	}
 }
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 impl SubstrateCli for RelayChainCli {
 	fn impl_name() -> String {
 		"Parachain Collator Template".into()
@@ -164,7 +184,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 }
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 #[allow(clippy::borrowed_box)]
 fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<Vec<u8>> {
 	let mut storage = chain_spec.build_storage()?;
@@ -187,6 +207,12 @@ macro_rules! construct_async_run {
                 &$config,
                 para::parachain_build_import_queue,
             )?;
+
+			#[cfg(feature = "ajuna")]
+            let $components = para::new_partial::<RuntimeApi, AjunaRuntimeExecutor, _>(
+                &$config,
+                para::parachain_build_import_queue,
+            )?;
             let task_manager = $components.task_manager;
             { $( $code )* }.map(|v| (v, task_manager))
 		})
@@ -205,6 +231,12 @@ macro_rules! construct_sync_run {
                 &$config,
                 para::parachain_build_import_queue,
             )?;
+
+			#[cfg(feature = "ajuna")]
+            let $components = para::new_partial::<RuntimeApi, AjunaRuntimeExecutor, _>(
+                &$config,
+                para::parachain_build_import_queue,
+            )?;
             { $( $code )* }
 		})
 	}}
@@ -217,7 +249,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 	match &cli.subcommand {
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
-		#[cfg(feature = "bajun")]
+		#[cfg(any(feature = "bajun", feature = "ajuna"))]
 		Some(Subcommand::ExportGenesisState(params)) => {
 			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
@@ -241,7 +273,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 			Ok(())
 		},
-		#[cfg(feature = "bajun")]
+		#[cfg(any(feature = "bajun", feature = "ajuna"))]
 		Some(Subcommand::ExportGenesisWasm(params)) => {
 			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
@@ -292,7 +324,7 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.database))
 		},
-		#[cfg(feature = "bajun")]
+		#[cfg(any(feature = "bajun", feature = "ajuna"))]
 		Some(Subcommand::PurgeChainPara(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 
@@ -313,8 +345,8 @@ pub fn run() -> sc_cli::Result<()> {
 			})
 		},
 		Some(Subcommand::Revert(cmd)) => {
-			#[cfg(feature = "bajun")]
-			if cfg!(feature = "bajun") {
+			#[cfg(any(feature = "bajun", feature = "ajuna"))]
+			if cfg!(feature = "bajun") || cfg!(feature = "ajuna") {
 				return construct_async_run!(|components, cli, cmd, config| {
 					Ok(cmd.run(components.client, components.backend, None))
 				})
@@ -355,7 +387,7 @@ pub fn run() -> sc_cli::Result<()> {
 					})
 				},
 				BenchmarkCmd::Overhead(cmd) => {
-					if cfg!(feature = "bajun") {
+					if cfg!(feature = "bajun") || cfg!(feature = "ajuna") {
 						return Err("Unsupported benchmarking command".into())
 					}
 					runner.sync_run(|config| {
@@ -370,8 +402,8 @@ pub fn run() -> sc_cli::Result<()> {
 			}
 		},
 		None => {
-			#[cfg(feature = "bajun")]
-			if cfg!(feature = "bajun") {
+			#[cfg(any(feature = "bajun", feature = "ajuna"))]
+			if cfg!(feature = "bajun") || cfg!(feature = "ajuna") {
 				let runner = cli.create_runner(&cli.run_para.normalize())?;
 				let collator_options = cli.run_para.collator_options();
 
@@ -408,7 +440,7 @@ pub fn run() -> sc_cli::Result<()> {
 						&polkadot_cli,
 						tokio_handle,
 					)
-					.map_err(|err| format!("Relay chain argument error: {}", err))?;
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 					info!("Parachain id: {:?}", id);
 					info!("Parachain Account: {}", parachain_account);
@@ -418,15 +450,10 @@ pub fn run() -> sc_cli::Result<()> {
 						if config.role.is_authority() { "yes" } else { "no" }
 					);
 
-					ajuna_service::para::start_parachain_node(
-						config,
-						polkadot_config,
-						collator_options,
-						id,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into)
+					para::start_parachain_node(config, polkadot_config, collator_options, id)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
 				})
 			}
 			let runner = cli.create_runner(&cli.run_solo)?;

@@ -14,16 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod chain_spec;
+use substrate_wasm_builder::WasmBuilder;
 
-#[cfg(feature = "ajuna")]
-pub mod para_ajuna;
-#[cfg(feature = "bajun")]
-pub mod para_bajun;
-#[cfg(feature = "solo")]
-pub mod solo;
-
-#[cfg(feature = "solo")]
-pub use ajuna_solo_runtime;
-#[cfg(feature = "bajun")]
-pub use bajun_runtime;
+fn main() {
+    WasmBuilder::new()
+        .with_current_project()
+        .export_heap_base()
+        .import_memory()
+        .build()
+}

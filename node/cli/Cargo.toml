@@ -61,10 +61,25 @@ bajun = [
     "cumulus-client-service",
     "cumulus-primitives-core",
 ]
-solo = [ "ajuna-service/solo" ]
 
-kusama-native = [ "polkadot-cli/kusama-native" ]
-rococo-native = [ "polkadot-cli/rococo-native" ]
+ajuna = [
+    "log",
+    "ajuna-service/ajuna",
+    "sc-telemetry",
+    "sc-tracing",
+    "polkadot-cli",
+    "polkadot-parachain",
+    "polkadot-primitives",
+    "cumulus-client-cli",
+    "cumulus-client-service",
+    "cumulus-primitives-core",
+]
+
+solo = ["ajuna-service/solo"]
+
+polkadot-native = ["polkadot-cli/polkadot-native"]
+kusama-native = ["polkadot-cli/kusama-native"]
+rococo-native = ["polkadot-cli/rococo-native"]
 
 runtime-benchmarks = [
     "ajuna-service/runtime-benchmarks",
