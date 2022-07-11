@@ -146,14 +146,14 @@ type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 impl OnUnbalanced<NegativeImbalance> for NegativeImbalanceToTreasury {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item=NegativeImbalance>) {
-		if let Some(fees) = fees_then_tips.next() {
-			let mut amount = fees;
-			if let Some(tips) = fees_then_tips.next() {
-				amount.subsume(tips);
-			}
-			Treasury::on_unbalanced(amount);
-		}
-	}
+        if let Some(fees) = fees_then_tips.next() {
+            let mut amount = fees;
+            if let Some(tips) = fees_then_tips.next() {
+                amount.subsume(tips);
+            }
+            Treasury::on_unbalanced(amount);
+        }
+    }
 }
 
 impl_opaque_keys! {
@@ -324,8 +324,8 @@ parameter_types! {
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
-	type EventHandler = (CollatorSelection, );
+    type FilterUncle = ();
+    type EventHandler = (CollatorSelection, );
 }
 
 parameter_types! {
@@ -386,8 +386,8 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 type EnsureRootOrMoreThanHalfCouncil = EnsureOneOf<
-	EnsureRoot<AccountId>,
-	EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
+    EnsureRoot<AccountId>,
+    EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
 type EnsureRootOrAtLeastTwoThirdsCouncil =
 EnsureOneOf<EnsureRoot<AccountId>, EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>>;
@@ -768,13 +768,13 @@ impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
 			.read_slot()
 			.expect("Could not read the relay chain slot from the proof");
 
-		let inherent_data =
-			cumulus_primitives_timestamp::InherentDataProvider::from_relay_chain_slot_and_duration(
-				relay_chain_slot,
-				sp_std::time::Duration::from_secs(6),
-			)
-				.create_inherent_data()
-				.expect("Could not create the timestamp inherent data");
+        let inherent_data =
+            cumulus_primitives_timestamp::InherentDataProvider::from_relay_chain_slot_and_duration(
+                relay_chain_slot,
+                sp_std::time::Duration::from_secs(6),
+            )
+                .create_inherent_data()
+                .expect("Could not create the timestamp inherent data");
 
 		inherent_data.check_extrinsics(block)
 	}

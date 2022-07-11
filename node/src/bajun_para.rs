@@ -15,5 +15,5 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 fn main() -> ajuna_cli::Result<()> {
-	ajuna_cli::run()
+	ajuna_cli::bajun::run()
 }
