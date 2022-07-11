@@ -173,7 +173,7 @@ pub fn run() -> sc_cli::Result<()> {
 					&polkadot_cli,
 					config.tokio_handle.clone(),
 				)
-					.map_err(|err| format!("Relay chain argument error: {}", err))?;
+				.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				cmd.run(config, polkadot_config)
 			})

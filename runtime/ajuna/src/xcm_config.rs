@@ -108,14 +108,14 @@ match_types! {
 /// Deny executing the xcm message if it matches any of the Deny filter regardless of anything else.
 /// If it passes the Deny, and matches one of the Allow cases then it is let through.
 pub struct DenyThenTry<Deny, Allow>(PhantomData<Deny>, PhantomData<Allow>)
-	where
-		Deny: ShouldExecute,
-		Allow: ShouldExecute;
+where
+	Deny: ShouldExecute,
+	Allow: ShouldExecute;
 
 impl<Deny, Allow> ShouldExecute for DenyThenTry<Deny, Allow>
-	where
-		Deny: ShouldExecute,
-		Allow: ShouldExecute,
+where
+	Deny: ShouldExecute,
+	Allow: ShouldExecute,
 {
 	fn should_execute<Call>(
 		origin: &MultiLocation,
@@ -193,7 +193,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader =
-	UsingComponents<WeightToFee, RelayLocation, AccountId, Balances, ToAuthor<Runtime>>;
+		UsingComponents<WeightToFee, RelayLocation, AccountId, Balances, ToAuthor<Runtime>>;
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = PolkadotXcm;
 	type AssetClaims = PolkadotXcm;
