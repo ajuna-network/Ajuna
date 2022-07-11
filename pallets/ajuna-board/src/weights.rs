@@ -50,6 +50,7 @@ pub trait WeightInfo {
 	fn new_game() -> Weight;
 	fn play_turn() -> Weight;
 	fn play_turn_until_finished() -> Weight;
+	fn finish_game() -> Weight;
 }
 
 /// Weights for pallet_ajuna_board using the Substrate node and recommended hardware.
@@ -79,6 +80,14 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+	// Storage: Board BoardStates (r:1 w:1)
+	// Storage: Board BoardWinners (r:0 w:1)
+	// Storage: Board PlayerBoards (r:0 w:2)
+	fn finish_game() -> Weight {
+		(4_047_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -106,5 +115,13 @@ impl WeightInfo for () {
 		(12_263_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+	}
+	// Storage: Board BoardStates (r:1 w:1)
+	// Storage: Board BoardWinners (r:0 w:1)
+	// Storage: Board PlayerBoards (r:0 w:2)
+	fn finish_game() -> Weight {
+		(4_047_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 }

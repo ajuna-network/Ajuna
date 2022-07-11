@@ -267,7 +267,7 @@ pub mod pallet {
 		/// Finish a board game from the pallet
 		/// A board remains after finishing in BoardWinners.  Those players in that board are locked
 		/// until the game is finished
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::finish_game())]
 		pub fn finish_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
 			// TODO if this is L2 do we really need to check the origin?
 			let _ = ensure_signed(origin)?;

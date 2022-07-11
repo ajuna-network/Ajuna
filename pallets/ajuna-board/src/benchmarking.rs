@@ -130,6 +130,22 @@ benchmarks! {
 		assert_last_event::<T>(Event::GameFinished { board_id, winner }.into());
 	}
 
+	finish_game {
+		let board_id = T::BoardId::saturated_from(u128::MAX);
+		let players = players::<T::AccountId>(T::MaxNumberOfPlayers::get());
+		create_new_game::<T>(board_id, players.clone());
+
+		let player_1 = players.clone().into_iter().next().unwrap();
+		BoardWinners::<T>::insert(board_id, player_1.clone());
+	}: finish_game(RawOrigin::Signed(player_1), board_id)
+	verify {
+		for player in players {
+			assert!(PlayerBoards::<T>::get(player).is_none());
+		}
+		assert!(BoardStates::<T>::get(board_id).is_none());
+		assert!(BoardWinners::<T>::get(board_id).is_none());
+	}
+
 	impl_benchmark_test_suite!(
 		AjunaBoard,
 		crate::mock::new_test_ext(),
