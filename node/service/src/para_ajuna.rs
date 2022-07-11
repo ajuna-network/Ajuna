@@ -19,6 +19,7 @@ use std::{sync::Arc, time::Duration};
 use cumulus_client_cli::CollatorOptions;
 // Local Runtime Types
 use ajuna_primitives::{AccountId, Balance, Block, Hash, Index as Nonce};
+pub use ajuna_runtime;
 use ajuna_runtime::RuntimeApi;
 
 // Cumulus Imports
