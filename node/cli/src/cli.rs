@@ -34,12 +34,12 @@ pub struct Cli {
 	#[clap(flatten)]
 	pub run_solo: sc_cli::RunCmd,
 
-	#[cfg(feature = "bajun")]
+	#[cfg(any(feature = "bajun", feature = "ajuna"))]
 	#[clap(flatten)]
 	pub run_para: cumulus_client_cli::RunCmd,
 
 	/// Relay chain arguments
-	#[cfg(feature = "bajun")]
+	#[cfg(any(feature = "bajun", feature = "ajuna"))]
 	#[clap(raw = true)]
 	pub relay_chain_args: Vec<String>,
 }
@@ -51,12 +51,12 @@ pub enum Subcommand {
 	Key(sc_cli::KeySubcommand),
 
 	/// Export the genesis state of the parachain.
-	#[cfg(feature = "bajun")]
+	#[cfg(any(feature = "bajun", feature = "ajuna"))]
 	#[clap(name = "export-genesis-state")]
 	ExportGenesisState(ExportGenesisStateCommand),
 
 	/// Export the genesis wasm of the parachain.
-	#[cfg(feature = "bajun")]
+	#[cfg(any(feature = "bajun", feature = "ajuna"))]
 	#[clap(name = "export-genesis-wasm")]
 	ExportGenesisWasm(ExportGenesisWasmCommand),
 
@@ -80,7 +80,7 @@ pub enum Subcommand {
 	PurgeChainSolo(sc_cli::PurgeChainCmd),
 
 	/// Remove the whole parachain chain data.
-	#[cfg(feature = "bajun")]
+	#[cfg(any(feature = "bajun", feature = "ajuna"))]
 	PurgeChainPara(cumulus_client_cli::PurgeChainCmd),
 
 	/// Revert the chain to a previous state.
@@ -92,7 +92,7 @@ pub enum Subcommand {
 }
 
 // Command for exporting the genesis state of the parachain
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 #[derive(Debug, Parser)]
 pub struct ExportGenesisStateCommand {
 	/// Output file name or stdout if unspecified.
@@ -109,7 +109,7 @@ pub struct ExportGenesisStateCommand {
 }
 
 /// Command for exporting the genesis wasm file.
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 #[derive(Debug, Parser)]
 pub struct ExportGenesisWasmCommand {
 	/// Output file name or stdout if unspecified.
@@ -125,7 +125,7 @@ pub struct ExportGenesisWasmCommand {
 	pub chain: Option<String>,
 }
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 #[derive(Debug)]
 pub struct RelayChainCli {
 	/// The actual relay chain cli object.
@@ -138,7 +138,7 @@ pub struct RelayChainCli {
 	pub base_path: Option<PathBuf>,
 }
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 impl RelayChainCli {
 	/// Parse the relay chain CLI parameters using the para chain `Configuration`.
 	pub fn new<'a>(
@@ -152,7 +152,7 @@ impl RelayChainCli {
 	}
 }
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 impl DefaultConfigurationValues for RelayChainCli {
 	fn p2p_listen_port() -> u16 {
 		30334
@@ -171,7 +171,7 @@ impl DefaultConfigurationValues for RelayChainCli {
 	}
 }
 
-#[cfg(feature = "bajun")]
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
 impl CliConfiguration<Self> for RelayChainCli {
 	fn shared_params(&self) -> &SharedParams {
 		self.base.base.shared_params()

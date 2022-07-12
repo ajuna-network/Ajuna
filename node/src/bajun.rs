@@ -14,18 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod chain_spec;
-
-#[cfg(feature = "ajuna")]
-pub mod ajuna;
-#[cfg(feature = "bajun")]
-pub mod bajun;
-#[cfg(feature = "solo")]
-pub mod solo;
-
-#[cfg(feature = "ajuna")]
-pub use ajuna_runtime;
-#[cfg(feature = "solo")]
-pub use ajuna_solo_runtime;
-#[cfg(feature = "bajun")]
-pub use bajun_runtime;
+fn main() -> ajuna_cli::Result<()> {
+	ajuna_cli::run()
+}

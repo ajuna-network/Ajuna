@@ -126,9 +126,9 @@ pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLI_AJUNA:
-		// in our template, we map to 1/10 of that, or 1/10 MILLI_AJUNA
-		let p = MILLI_AJUNA / 10;
+		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLI_AJUN:
+		// in our template, we map to 1/10 of that, or 1/10 MILLI_AJUN
+		let p = MILLI_AJUN / 10;
 		let q = 100 * Balance::from(ExtrinsicBaseWeight::get());
 		smallvec![WeightToFeeCoefficient {
 			degree: 1,
@@ -161,8 +161,8 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("bajun"),
-	impl_name: create_runtime_str!("bajun"),
+	spec_name: create_runtime_str!("ajuna"),
+	impl_name: create_runtime_str!("ajuna"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 0,
@@ -189,14 +189,14 @@ pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 
 // Unit = the base number of indivisible units for balances
-pub const AJUNA: Balance = 1_000_000_000_000;
-pub const MILLI_AJUNA: Balance = 1_000_000_000;
-pub const MICRO_AJUNA: Balance = 1_000_000;
-pub const NANO_AJUNA: Balance = 1_000;
-pub const PICO_AJUNA: Balance = 1;
+pub const AJUN: Balance = 1_000_000_000_000;
+pub const MILLI_AJUN: Balance = 1_000_000_000;
+pub const MICRO_AJUN: Balance = 1_000_000;
+pub const NANO_AJUN: Balance = 1_000;
+pub const PICO_AJUN: Balance = 1;
 
 /// The existential deposit. Set to 1/10 of the Connected Relay Chain.
-pub const EXISTENTIAL_DEPOSIT: Balance = MILLI_AJUNA;
+pub const EXISTENTIAL_DEPOSIT: Balance = MILLI_AJUN;
 
 /// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
 /// used to limit the maximal weight of a single extrinsic.
@@ -242,7 +242,7 @@ parameter_types! {
 		})
 		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
 		.build_or_panic();
-	pub const SS58Prefix: u16 = 1337;
+	pub const SS58Prefix: u16 = 1328;
 }
 
 // Configure FRAME pallets to include in runtime.
@@ -345,7 +345,7 @@ impl pallet_balances::Config for Runtime {
 
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = 10 * MICRO_AJUNA;
+	pub const TransactionByteFee: Balance = 10 * MICRO_AJUN;
 	pub const OperationalFeeMultiplier: u8 = 5;
 }
 
@@ -419,7 +419,7 @@ impl pallet_treasury::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 10 * AJUNA;
+	pub const MinVestedTransfer: Balance = 10 * AJUN;
 }
 
 impl orml_vesting::Config for Runtime {
