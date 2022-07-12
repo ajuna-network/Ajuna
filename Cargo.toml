@@ -9,6 +9,7 @@ members = [
     "rpc",
     "runtime/solo",
     "runtime/bajun",
+    "runtime/ajuna",
     "pallets/ajuna-matchmaker",
     "pallets/ajuna-gameregistry",
     "pallets/ajuna-runner",

@@ -16,6 +16,7 @@ ajuna-primitives   = { path = "../../primitives" }
 ajuna-rpc          = { path = "../../rpc" }
 ajuna-solo-runtime = { path = "../../runtime/solo", optional = true }
 bajun-runtime      = { path = "../../runtime/bajun", optional = true }
+ajuna-runtime      = { path = "../../runtime/ajuna", optional = true }
 
 # Substrate
 frame-benchmarking  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
@@ -69,8 +70,7 @@ cumulus-relay-chain-rpc-interface       = { git = "https://github.com/paritytech
 [features]
 default = [ "solo" ]
 
-bajun = [
-    "bajun-runtime",
+para = [
     "pallet-transaction-payment-rpc",
     "sc-network",
     "sc-rpc",
@@ -97,13 +97,17 @@ bajun = [
     "cumulus-relay-chain-rpc-interface",
 ]
 solo = [ "ajuna-solo-runtime" ]
+bajun = ["bajun-runtime", "para"]
+ajuna = ["ajuna-runtime", "para"]
 
 kusama-native = [ "polkadot-service/kusama-native" ]
 rococo-native = [ "polkadot-service/rococo-native" ]
+polkadot-native = [ "polkadot-service/polkadot-native" ]
 
 runtime-benchmarks = [
     "ajuna-solo-runtime/runtime-benchmarks",
     "bajun-runtime/runtime-benchmarks",
+    "ajuna-runtime/runtime-benchmarks",
 ]
 
 skip-ias-check = [ "ajuna-solo-runtime/skip-ias-check" ]
