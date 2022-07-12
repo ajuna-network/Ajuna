@@ -49,9 +49,8 @@ cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branc
 [features]
 default = [ "solo" ]
 
-bajun = [
+para = [
     "log",
-    "ajuna-service/bajun",
     "sc-telemetry",
     "sc-tracing",
     "polkadot-cli",
@@ -61,25 +60,13 @@ bajun = [
     "cumulus-client-service",
     "cumulus-primitives-core",
 ]
+solo = [ "ajuna-service/solo" ]
+bajun = ["ajuna-service/bajun", "para"]
+ajuna = ["ajuna-service/ajuna", "para"]
 
-ajuna = [
-    "log",
-    "ajuna-service/ajuna",
-    "sc-telemetry",
-    "sc-tracing",
-    "polkadot-cli",
-    "polkadot-parachain",
-    "polkadot-primitives",
-    "cumulus-client-cli",
-    "cumulus-client-service",
-    "cumulus-primitives-core",
-]
-
-solo = ["ajuna-service/solo"]
-
-polkadot-native = ["polkadot-cli/polkadot-native"]
-kusama-native = ["polkadot-cli/kusama-native"]
-rococo-native = ["polkadot-cli/rococo-native"]
+kusama-native = [ "polkadot-cli/kusama-native" ]
+rococo-native = [ "polkadot-cli/rococo-native" ]
+polkadot-native = [ "polkadot-cli/polkadot-native" ]
 
 runtime-benchmarks = [
     "ajuna-service/runtime-benchmarks",

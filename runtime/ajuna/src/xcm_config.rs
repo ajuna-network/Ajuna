@@ -130,7 +130,6 @@ where
 
 // See issue #5233
 pub struct DenyReserveTransferToRelayChain;
-
 impl ShouldExecute for DenyReserveTransferToRelayChain {
 	fn should_execute<Call>(
 		origin: &MultiLocation,
@@ -179,7 +178,6 @@ pub type Barrier = DenyThenTry<
 >;
 
 pub struct XcmConfig;
-
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
 	type XcmSender = XcmRouter;
@@ -187,8 +185,7 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type IsReserve = NativeAsset;
-	type IsTeleporter = ();
-	// Teleporting is disabled.
+	type IsTeleporter = (); // Teleporting is disabled.
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;

@@ -17,9 +17,9 @@
 pub mod chain_spec;
 
 #[cfg(feature = "ajuna")]
-pub mod para_ajuna;
+pub mod ajuna;
 #[cfg(feature = "bajun")]
-pub mod para_bajun;
+pub mod bajun;
 #[cfg(feature = "solo")]
 pub mod solo;
 

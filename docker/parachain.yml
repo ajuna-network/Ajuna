@@ -67,7 +67,7 @@ services:
       - bootnode
 
   collator-1:
-    image: ajuna/parachain:latest
+    image: ajuna/parachain-bajun:latest
     volumes:
       - ./data/parachain/collator-1:/data
       - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -102,7 +102,7 @@ services:
       - relay-bob
 
   collator-2:
-    image: ajuna/parachain:latest
+    image: ajuna/parachain-bajun:latest
     volumes:
       - ./data/parachain/collator-2:/data
       - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -156,31 +156,31 @@ services:
       local_relay_net:
 
   non-collator:
-      image: ajuna/parachain:latest
-      volumes:
-        - ./data/parachain/non-collator:/data
-        - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
-      command: |
-        --base-path=/data
-        --chain=/ajuna/rococo-local/rococo-local-raw.json
-        --port=40335
-        --ws-port=8846
-        --unsafe-ws-external
-        --rpc-cors=all
-        --
-        --execution=wasm
-        --chain=rococo-custom-2-raw.json
-        --port=30345
-        --ws-port=9979
-        --bootnodes=/ip4/172.40.1.0/tcp/30334/p2p/12D3KooWL5PE1d1b9ihGtrZ2AzLWJgBc8UPBZKqDF2rV9JuZLhaB
-      ports:
-        - 40335:40335
-        - 8846:8846
-        - 30345:30345
-        - 9979:9979
-      networks:
-        local_relay_net:
-          ipv4_address: 172.40.1.5
+    image: ajuna/parachain-bajun:latest
+    volumes:
+      - ./data/parachain/non-collator:/data
+      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+    command: |
+      --base-path=/data
+      --chain=/ajuna/rococo-local/rococo-local-raw.json
+      --port=40335
+      --ws-port=8846
+      --unsafe-ws-external
+      --rpc-cors=all
+      --
+      --execution=wasm
+      --chain=rococo-custom-2-raw.json
+      --port=30345
+      --ws-port=9979
+      --bootnodes=/ip4/172.40.1.0/tcp/30334/p2p/12D3KooWL5PE1d1b9ihGtrZ2AzLWJgBc8UPBZKqDF2rV9JuZLhaB
+    ports:
+      - 40335:40335
+      - 8846:8846
+      - 30345:30345
+      - 9979:9979
+    networks:
+      local_relay_net:
+        ipv4_address: 172.40.1.5
 
   polkadot-ui:
     image: jacogr/polkadot-js-apps:latest

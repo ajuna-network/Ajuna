@@ -123,7 +123,6 @@ pub type Executive = frame_executive::Executive<
 ///   - Setting it to `0` will essentially disable the weight fee.
 ///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
 pub struct WeightToFee;
-
 impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
@@ -141,9 +140,7 @@ impl WeightToFeePolynomial for WeightToFee {
 }
 
 pub struct NegativeImbalanceToTreasury;
-
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-
 impl OnUnbalanced<NegativeImbalance> for NegativeImbalanceToTreasury {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
 		if let Some(fees) = fees_then_tips.next() {
@@ -373,7 +370,6 @@ parameter_types! {
 }
 
 type CouncilCollective = pallet_collective::Instance2;
-
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -404,7 +400,6 @@ impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
 	type MaxMembers = CouncilMaxMembers;
 	type WeightInfo = pallet_membership::weights::SubstrateWeight<Runtime>;
 }
-
 impl pallet_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
 	type Event = Event;

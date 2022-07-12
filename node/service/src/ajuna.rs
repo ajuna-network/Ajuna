@@ -19,7 +19,7 @@ use std::{sync::Arc, time::Duration};
 use cumulus_client_cli::CollatorOptions;
 // Local Runtime Types
 use ajuna_primitives::{AccountId, Balance, Block, Hash, Index as Nonce};
-use bajun_runtime::RuntimeApi;
+use ajuna_runtime::RuntimeApi;
 
 // Cumulus Imports
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
@@ -48,32 +48,32 @@ use substrate_prometheus_endpoint::Registry;
 
 use polkadot_service::CollatorPair;
 
-pub struct BajunRuntimeExecutor;
+pub struct AjunaRuntimeExecutor;
 
-impl sc_executor::NativeExecutionDispatch for BajunRuntimeExecutor {
+impl sc_executor::NativeExecutionDispatch for AjunaRuntimeExecutor {
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		bajun_runtime::api::dispatch(method, data)
+		ajuna_runtime::api::dispatch(method, data)
 	}
 
 	fn native_version() -> sc_executor::NativeVersion {
-		bajun_runtime::native_version()
+		ajuna_runtime::native_version()
 	}
 }
 
 /// Can be called for a `Configuration` to identify which network the configuration targets.
 pub trait IdentifyVariant {
-	/// Returns if this is a configuration for the `Bajun` network.
-	fn is_bajun(&self) -> bool;
+	/// Returns if this is a configuration for the `Ajuna` network.
+	fn is_ajuna(&self) -> bool;
 
 	/// Returns true if this configuration is for a development network.
 	fn is_dev(&self) -> bool;
 }
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
-	fn is_bajun(&self) -> bool {
-		self.id().starts_with("bajun")
+	fn is_ajuna(&self) -> bool {
+		self.id().starts_with("ajuna")
 	}
 	fn is_dev(&self) -> bool {
 		self.id().ends_with("dev")
@@ -415,14 +415,14 @@ where
 
 /// Build the import queue for the parachain runtime.
 pub fn parachain_build_import_queue(
-	client: Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<BajunRuntimeExecutor>>>,
+	client: Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<AjunaRuntimeExecutor>>>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<
 		Block,
-		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<BajunRuntimeExecutor>>,
+		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<AjunaRuntimeExecutor>>,
 	>,
 	sc_service::Error,
 > {
@@ -466,9 +466,9 @@ pub async fn start_parachain_node(
 	id: ParaId,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<BajunRuntimeExecutor>>>,
+	Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<AjunaRuntimeExecutor>>>,
 )> {
-	start_node_impl::<RuntimeApi, BajunRuntimeExecutor, _, _, _>(
+	start_node_impl::<RuntimeApi, AjunaRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
@@ -501,19 +501,19 @@ pub async fn start_parachain_node(
 						let relay_chain_interface = relay_chain_interface.clone();
 						async move {
 							let parachain_inherent =
-								cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
-									relay_parent,
-									&relay_chain_interface,
-									&validation_data,
-									id,
-								).await;
+							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
+								relay_parent,
+								&relay_chain_interface,
+								&validation_data,
+								id,
+							).await;
 							let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 							let slot =
-								sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-									*time,
-									slot_duration,
-								);
+						sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+							*time,
+							slot_duration,
+						);
 
 							let parachain_inherent = parachain_inherent.ok_or_else(|| {
 								Box::<dyn std::error::Error + Send + Sync>::from(
