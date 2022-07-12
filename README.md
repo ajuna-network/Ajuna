@@ -25,6 +25,10 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
   # parachain with Bajun runtime
   cargo build-bajun-rococo
   cargo build-bajun-kusama
+
+  # parachain with Bajun runtime
+  cargo build-ajuna-rococo
+  cargo build-ajuna-polkadot
   ```
 
 - Using `Docker`:
@@ -34,7 +38,10 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
   docker build -f docker/Dockerfile -t ajuna/solochain:latest . --build-arg features=solo  --build-arg bin=ajuna-solo
 
   # parachain with Bajun runtime
-  docker build -f docker/Dockerfile -t ajuna/parachain:latest . --build-arg features=bajun --build-arg bin=ajuna-para
+  docker build -f docker/Dockerfile -t ajuna/parachain-bajun:latest . --build-arg features=bajun --build-arg bin=bajun-para
+
+  # parachain with Ajuna runtime
+  docker build -f docker/Dockerfile -t ajuna/parachain-ajuna:latest . --build-arg features=ajuna --build-arg bin=ajuna-para
   ```
 
 ## Run
