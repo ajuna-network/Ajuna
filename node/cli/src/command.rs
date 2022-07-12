@@ -16,15 +16,15 @@
 
 #[cfg(feature = "ajuna")]
 use ajuna_service::{
-	ajuna as para,
-	ajuna::AjunaRuntimeExecutor as RuntimeExecutor,
-	ajuna_runtime::{Block as ParaBlock, RuntimeApi},
+	ajuna,
+	ajuna::AjunaRuntimeExecutor,
+	ajuna_runtime::{Block as ParaAjunaBlock, RuntimeApi as AjunaRuntimeApi},
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
-	bajun as para,
-	bajun::BajunRuntimeExecutor as RuntimeExecutor,
-	bajun_runtime::{Block as ParaBlock, RuntimeApi},
+	bajun,
+	bajun::BajunRuntimeExecutor,
+	bajun_runtime::{Block as ParaBajunBlock, RuntimeApi as BajunRuntimeApi},
 };
 #[cfg(any(feature = "bajun", feature = "ajuna"))]
 use {
@@ -204,10 +204,16 @@ macro_rules! construct_async_run {
             #[cfg(feature = "solo")]
             let $components = solo::new_partial(&$config)?;
 
-			#[cfg(any(feature = "bajun", feature = "ajuna"))]
-            let $components = para::new_partial::<RuntimeApi, RuntimeExecutor, _>(
+			#[cfg(feature = "bajun")]
+            let $components = bajun::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
-                para::parachain_build_import_queue,
+                bajun::parachain_build_import_queue,
+            )?;
+
+			#[cfg(feature = "ajuna")]
+            let $components = ajuna::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+                &$config,
+                ajuna::parachain_build_import_queue,
             )?;
 
             let task_manager = $components.task_manager;
@@ -223,10 +229,16 @@ macro_rules! construct_sync_run {
             #[cfg(feature = "solo")]
             let $components = solo::new_partial(&$config)?;
 
-			#[cfg(any(feature = "bajun", feature = "ajuna"))]
-            let $components = para::new_partial::<RuntimeApi, RuntimeExecutor, _>(
+			#[cfg(feature = "bajun")]
+            let $components = bajun::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
-                para::parachain_build_import_queue,
+                bajun::parachain_build_import_queue,
+            )?;
+
+			#[cfg(feature = "ajuna")]
+            let $components = ajuna::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+                &$config,
+                ajuna::parachain_build_import_queue,
             )?;
 
             { $( $code )* }
@@ -249,7 +261,12 @@ pub fn run() -> sc_cli::Result<()> {
 
 			let spec = load_spec(&params.chain.clone().unwrap_or_default())?;
 			let state_version = Cli::native_runtime_version(&spec).state_version();
-			let block: ParaBlock = generate_genesis_block(&spec, state_version)?;
+
+			#[cfg(feature = "bajun")]
+			let block: ParaBajunBlock = generate_genesis_block(&spec, state_version)?;
+			#[cfg(feature = "ajuna")]
+			let block: ParaAjunaBlock = generate_genesis_block(&spec, state_version)?;
+
 			let raw_header = block.header().encode();
 			let output_buf = if params.raw {
 				raw_header
@@ -420,32 +437,60 @@ pub fn run() -> sc_cli::Result<()> {
 
 					let state_version =
 						RelayChainCli::native_runtime_version(&config.chain_spec).state_version();
-					let block: ParaBlock =
-						generate_genesis_block(&config.chain_spec, state_version)
-							.map_err(|e| format!("{:?}", e))?;
-					let genesis_state =
-						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-					let tokio_handle = config.tokio_handle.clone();
-					let polkadot_config = SubstrateCli::create_configuration(
-						&polkadot_cli,
-						&polkadot_cli,
-						tokio_handle,
-					)
-					.map_err(|err| format!("Relay chain argument error: {}", err))?;
+					if cfg!(feature = "bajun") {
+						let block: ParaBajunBlock =
+							generate_genesis_block(&config.chain_spec, state_version)
+								.map_err(|e| format!("{:?}", e))?;
+						let genesis_state =
+							format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-					info!("Parachain id: {:?}", id);
-					info!("Parachain Account: {}", parachain_account);
-					info!("Parachain genesis state: {}", genesis_state);
-					info!(
-						"Is collating: {}",
-						if config.role.is_authority() { "yes" } else { "no" }
-					);
+						let tokio_handle = config.tokio_handle.clone();
+						let polkadot_config = SubstrateCli::create_configuration(
+							&polkadot_cli,
+							&polkadot_cli,
+							tokio_handle,
+						)
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
-					para::start_parachain_node(config, polkadot_config, collator_options, id)
-						.await
-						.map(|r| r.0)
-						.map_err(Into::into)
+						info!("Parachain id: {:?}", id);
+						info!("Parachain Account: {}", parachain_account);
+						info!("Parachain genesis state: {}", genesis_state);
+						info!(
+							"Is collating: {}",
+							if config.role.is_authority() { "yes" } else { "no" }
+						);
+						bajun::start_parachain_node(config, polkadot_config, collator_options, id)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					} else {
+						let block: ParaAjunaBlock =
+							generate_genesis_block(&config.chain_spec, state_version)
+								.map_err(|e| format!("{:?}", e))?;
+						let genesis_state =
+							format!("0x{:?}", HexDisplay::from(&block.header().encode()));
+
+						let tokio_handle = config.tokio_handle.clone();
+						let polkadot_config = SubstrateCli::create_configuration(
+							&polkadot_cli,
+							&polkadot_cli,
+							tokio_handle,
+						)
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+
+						info!("Parachain id: {:?}", id);
+						info!("Parachain Account: {}", parachain_account);
+						info!("Parachain genesis state: {}", genesis_state);
+						info!(
+							"Is collating: {}",
+							if config.role.is_authority() { "yes" } else { "no" }
+						);
+						ajuna::start_parachain_node(config, polkadot_config, collator_options, id)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
 				})
 			}
 			let runner = cli.create_runner(&cli.run_solo)?;
