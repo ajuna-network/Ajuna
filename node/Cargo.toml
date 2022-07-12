@@ -2,29 +2,36 @@
 authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 edition    = "2021"
 homepage   = "https://ajuna.io"
-name       = "ajuna-node"
+name = "ajuna-node"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.0"
+version = "0.1.0"
 
 [[bin]]
-name              = "ajuna-solo"
-path              = "src/solo.rs"
-required-features = [ "solo" ]
+name = "ajuna-solo"
+path = "src/solo.rs"
+required-features = ["solo"]
 
 [[bin]]
-name              = "ajuna-para"
-path              = "src/para.rs"
-required-features = [ "bajun" ]
+name = "bajun-para"
+path = "src/bajun_para.rs"
+required-features = ["bajun"]
+
+[[bin]]
+name = "ajuna-para"
+path = "src/ajuna_para.rs"
+required-features = ["ajuna"]
 
 [dependencies]
-ajuna-cli     = { path = "cli" }
+ajuna-cli = { path = "cli" }
 ajuna-service = { path = "service" }
 
 [features]
-default = [ "solo" ]
+default = ["solo"]
 
-bajun = [ "ajuna-cli/bajun", "ajuna-service/bajun" ]
-solo  = [ "ajuna-cli/solo", "ajuna-service/solo" ]
+ajuna = ["ajuna-cli/ajuna", "ajuna-service/ajuna"]
+bajun = ["ajuna-cli/bajun", "ajuna-service/bajun"]
+solo = ["ajuna-cli/solo", "ajuna-service/solo"]
 
-kusama-native = [ "ajuna-cli/kusama-native", "ajuna-service/kusama-native" ]
-rococo-native = [ "ajuna-cli/rococo-native", "ajuna-service/rococo-native" ]
+polkadot-native = ["ajuna-cli/polkadot-native", "ajuna-service/polkadot-native"]
+kusama-native = ["ajuna-cli/kusama-native", "ajuna-service/kusama-native"]
+rococo-native = ["ajuna-cli/rococo-native", "ajuna-service/rococo-native"]
