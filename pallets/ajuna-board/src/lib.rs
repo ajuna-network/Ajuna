@@ -52,6 +52,7 @@ impl<BoardId, State, Players> BoardGame<BoardId, State, Players> {
 pub mod pallet {
 	use super::*;
 	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
+	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use sp_std::vec::Vec;
 
@@ -74,6 +75,10 @@ pub mod pallet {
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
+
+		#[pallet::constant]
+		/// Maximum number of successive blocks with no player activity
+		type MaxNumberOfIdleBlocks: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -87,6 +92,8 @@ pub mod pallet {
 		GameCreated { board_id: T::BoardId, players: Vec<T::AccountId> },
 		/// Game has finished with the winner
 		GameFinished { board_id: T::BoardId, winner: T::AccountId },
+		/// Game has expired from inactivity
+		GameExpired { board_id: T::BoardId }
 	}
 
 	#[pallet::error]
@@ -123,6 +130,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type BoardStates<T: Config> = StorageMap<_, Identity, T::BoardId, BoardGameOf<T>>;
 
+	/// Board expiry blocks for active games
+	#[pallet::storage]
+	pub type BoardExpiries<T: Config> = StorageMap<_, Identity, T::BoardId, BlockNumberFor<T>>;
+
 	/// The board winners by board id
 	#[pallet::storage]
 	pub type BoardWinners<T: Config> = StorageMap<_, Identity, T::BoardId, T::AccountId>;
@@ -134,6 +145,18 @@ pub mod pallet {
 	/// Random seed
 	#[pallet::storage]
 	pub type Seed<T> = StorageValue<_, u32>;
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
+			/*let a = BoardStates::<T>::iter().filter(|(board_id, board)| );
+			// Check all active games
+			// Filter those that have surpassed the block limit threshold
+			// For each of those
+			T::DbWeight::get().reads_writes()*/
+			10_000
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -180,6 +203,8 @@ pub mod pallet {
 
 			BoardStates::<T>::insert(board_id, board_game);
 
+			Self::set_or_update_expiry(board_id);
+
 			Self::deposit_event(Event::GameCreated { board_id, players: players.into_inner() });
 
 			Ok(())
@@ -206,6 +231,9 @@ pub mod pallet {
 						Self::seed_for_next(&board_game.state);
 						Self::deposit_event(Event::GameFinished { board_id, winner });
 					}
+
+					Self::set_or_update_expiry(board_id);
+
 					Ok(())
 				},
 				None => Err(Error::<T>::InvalidBoard.into()),
@@ -241,6 +269,22 @@ impl<T: Config> Pallet<T> {
 		match T::Game::seed(game_state) {
 			Some(seed) => Seed::<T>::put(seed),
 			None => Seed::<T>::kill(),
+		}
+	}
+
+	fn set_or_update_expiry(board_id: T::BoardId) {
+		let current_block_number = <frame_system::Pallet<T>>::block_number();
+		let expiry_block_count = T::MaxNumberOfIdleBlocks::get();
+
+		let block_of_expiry = current_block_number + expiry_block_count.into();
+
+		if BoardExpiries::<T>::contains_key(board_id) {
+			BoardExpiries::<T>::mutate(board_id, |entry| {
+				let mut entry = entry.unwrap();
+				entry = block_of_expiry;
+			});
+		} else {
+			BoardExpiries::<T>::insert(board_id, block_of_expiry);
 		}
 	}
 }
