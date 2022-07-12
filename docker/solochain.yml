@@ -27,7 +27,7 @@ services:
     command: key insert --chain=dev --base-path=/data --key-type=aura --scheme=sr25519 --suri=//Alice
 
   validator-insert-gran-key:
-    image: ajuna/solochain:local
+    image: ajuna/solochain:latest
     volumes:
       - ./data/validator:/data
     command: key insert --chain=dev --base-path=/data --key-type=gran --scheme=ed25519 --suri=//Alice
