@@ -82,7 +82,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace --all-features ${{ env.CARGO_ARGS }}
+          args: --workspace --all-features ${{ env.CARGO_ARGS }} --jobs 1
 
   dev-binaries:
     name: Build and upload development build
