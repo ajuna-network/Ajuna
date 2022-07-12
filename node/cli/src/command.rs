@@ -411,8 +411,8 @@ pub fn run() -> sc_cli::Result<()> {
 			}
 		},
 		None => {
-			#[cfg(any(feature = "bajun", feature = "ajuna"))]
-			if cfg!(feature = "bajun") || cfg!(feature = "ajuna") {
+			#[cfg(feature = "bajun")]
+			if cfg!(feature = "bajun") {
 				let runner = cli.create_runner(&cli.run_para.normalize())?;
 				let collator_options = cli.run_para.collator_options();
 
@@ -437,60 +437,84 @@ pub fn run() -> sc_cli::Result<()> {
 
 					let state_version =
 						RelayChainCli::native_runtime_version(&config.chain_spec).state_version();
+					let block: ParaBajunBlock =
+						generate_genesis_block(&config.chain_spec, state_version)
+							.map_err(|e| format!("{:?}", e))?;
+					let genesis_state =
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-					if cfg!(feature = "bajun") {
-						let block: ParaBajunBlock =
-							generate_genesis_block(&config.chain_spec, state_version)
-								.map_err(|e| format!("{:?}", e))?;
-						let genesis_state =
-							format!("0x{:?}", HexDisplay::from(&block.header().encode()));
+					let tokio_handle = config.tokio_handle.clone();
+					let polkadot_config = SubstrateCli::create_configuration(
+						&polkadot_cli,
+						&polkadot_cli,
+						tokio_handle,
+					)
+					.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
-						let tokio_handle = config.tokio_handle.clone();
-						let polkadot_config = SubstrateCli::create_configuration(
-							&polkadot_cli,
-							&polkadot_cli,
-							tokio_handle,
-						)
-						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+					info!("Parachain id: {:?}", id);
+					info!("Parachain Account: {}", parachain_account);
+					info!("Parachain genesis state: {}", genesis_state);
+					info!(
+						"Is collating: {}",
+						if config.role.is_authority() { "yes" } else { "no" }
+					);
+					bajun::start_parachain_node(config, polkadot_config, collator_options, id)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				})
+			}
+			#[cfg(feature = "ajuna")]
+			if cfg!(feature = "ajuna") {
+				let runner = cli.create_runner(&cli.run_para.normalize())?;
+				let collator_options = cli.run_para.collator_options();
 
-						info!("Parachain id: {:?}", id);
-						info!("Parachain Account: {}", parachain_account);
-						info!("Parachain genesis state: {}", genesis_state);
-						info!(
-							"Is collating: {}",
-							if config.role.is_authority() { "yes" } else { "no" }
+				return runner.run_node_until_exit(|config| async move {
+					let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+						.map(|e| e.para_id)
+						.ok_or("Could not find parachain ID in chain-spec.")?;
+
+					let polkadot_cli = RelayChainCli::new(
+						&config,
+						[RelayChainCli::executable_name()]
+							.iter()
+							.chain(cli.relay_chain_args.iter()),
+					);
+
+					let id = ParaId::from(para_id);
+
+					let parachain_account =
+						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(
+							&id,
 						);
-						bajun::start_parachain_node(config, polkadot_config, collator_options, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					} else {
-						let block: ParaAjunaBlock =
-							generate_genesis_block(&config.chain_spec, state_version)
-								.map_err(|e| format!("{:?}", e))?;
-						let genesis_state =
-							format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-						let tokio_handle = config.tokio_handle.clone();
-						let polkadot_config = SubstrateCli::create_configuration(
-							&polkadot_cli,
-							&polkadot_cli,
-							tokio_handle,
-						)
-						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+					let state_version =
+						RelayChainCli::native_runtime_version(&config.chain_spec).state_version();
+					let block: ParaAjunaBlock =
+						generate_genesis_block(&config.chain_spec, state_version)
+							.map_err(|e| format!("{:?}", e))?;
+					let genesis_state =
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-						info!("Parachain id: {:?}", id);
-						info!("Parachain Account: {}", parachain_account);
-						info!("Parachain genesis state: {}", genesis_state);
-						info!(
-							"Is collating: {}",
-							if config.role.is_authority() { "yes" } else { "no" }
-						);
-						ajuna::start_parachain_node(config, polkadot_config, collator_options, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
+					let tokio_handle = config.tokio_handle.clone();
+					let polkadot_config = SubstrateCli::create_configuration(
+						&polkadot_cli,
+						&polkadot_cli,
+						tokio_handle,
+					)
+					.map_err(|err| format!("Relay chain argument error: {}", err))?;
+
+					info!("Parachain id: {:?}", id);
+					info!("Parachain Account: {}", parachain_account);
+					info!("Parachain genesis state: {}", genesis_state);
+					info!(
+						"Is collating: {}",
+						if config.role.is_authority() { "yes" } else { "no" }
+					);
+					ajuna::start_parachain_node(config, polkadot_config, collator_options, id)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
 				})
 			}
 			let runner = cli.create_runner(&cli.run_solo)?;
