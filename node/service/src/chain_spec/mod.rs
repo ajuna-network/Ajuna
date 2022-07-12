@@ -26,9 +26,6 @@ pub mod solo;
 #[cfg(feature = "bajun")]
 pub mod bajun;
 
-#[cfg(feature = "ajuna")]
-pub mod ajuna;
-
 /// Helper function to generate a crypto pair from seed
 pub fn get_public_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)

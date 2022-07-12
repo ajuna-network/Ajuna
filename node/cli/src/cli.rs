@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 use {
 	clap::Parser,
 	sc_cli::{
@@ -34,12 +34,12 @@ pub struct Cli {
 	#[clap(flatten)]
 	pub run_solo: sc_cli::RunCmd,
 
-	#[cfg(any(feature = "bajun", feature = "ajuna"))]
+	#[cfg(feature = "bajun")]
 	#[clap(flatten)]
 	pub run_para: cumulus_client_cli::RunCmd,
 
 	/// Relay chain arguments
-	#[cfg(any(feature = "bajun", feature = "ajuna"))]
+	#[cfg(feature = "bajun")]
 	#[clap(raw = true)]
 	pub relay_chain_args: Vec<String>,
 }
@@ -51,12 +51,12 @@ pub enum Subcommand {
 	Key(sc_cli::KeySubcommand),
 
 	/// Export the genesis state of the parachain.
-	#[cfg(any(feature = "bajun", feature = "ajuna"))]
+	#[cfg(feature = "bajun")]
 	#[clap(name = "export-genesis-state")]
 	ExportGenesisState(ExportGenesisStateCommand),
 
 	/// Export the genesis wasm of the parachain.
-	#[cfg(any(feature = "bajun", feature = "ajuna"))]
+	#[cfg(feature = "bajun")]
 	#[clap(name = "export-genesis-wasm")]
 	ExportGenesisWasm(ExportGenesisWasmCommand),
 
@@ -80,7 +80,7 @@ pub enum Subcommand {
 	PurgeChainSolo(sc_cli::PurgeChainCmd),
 
 	/// Remove the whole parachain chain data.
-	#[cfg(any(feature = "bajun", feature = "ajuna"))]
+	#[cfg(feature = "bajun")]
 	PurgeChainPara(cumulus_client_cli::PurgeChainCmd),
 
 	/// Revert the chain to a previous state.
@@ -92,7 +92,7 @@ pub enum Subcommand {
 }
 
 // Command for exporting the genesis state of the parachain
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 #[derive(Debug, Parser)]
 pub struct ExportGenesisStateCommand {
 	/// Output file name or stdout if unspecified.
@@ -109,7 +109,7 @@ pub struct ExportGenesisStateCommand {
 }
 
 /// Command for exporting the genesis wasm file.
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 #[derive(Debug, Parser)]
 pub struct ExportGenesisWasmCommand {
 	/// Output file name or stdout if unspecified.
@@ -125,7 +125,7 @@ pub struct ExportGenesisWasmCommand {
 	pub chain: Option<String>,
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 #[derive(Debug)]
 pub struct RelayChainCli {
 	/// The actual relay chain cli object.
@@ -138,7 +138,7 @@ pub struct RelayChainCli {
 	pub base_path: Option<PathBuf>,
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 impl RelayChainCli {
 	/// Parse the relay chain CLI parameters using the para chain `Configuration`.
 	pub fn new<'a>(
@@ -152,7 +152,7 @@ impl RelayChainCli {
 	}
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 impl DefaultConfigurationValues for RelayChainCli {
 	fn p2p_listen_port() -> u16 {
 		30334
@@ -171,7 +171,7 @@ impl DefaultConfigurationValues for RelayChainCli {
 	}
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "bajun")]
 impl CliConfiguration<Self> for RelayChainCli {
 	fn shared_params(&self) -> &SharedParams {
 		self.base.base.shared_params()
