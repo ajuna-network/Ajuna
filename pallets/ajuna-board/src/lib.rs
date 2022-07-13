@@ -171,8 +171,8 @@ pub mod pallet {
 
 			// For now 'iter' is going to be considered the same as doing 1 read
 			let total_reads: Weight = 1_u64;
-			// We do 2 writes for each entry we expire
-			let total_writes: Weight = expired_board_ids.len() as u64 * 2_u64;
+			// We do 3 writes for each entry we expire
+			let total_writes: Weight = expired_board_ids.len() as u64 * 3_u64;
 			T::DbWeight::get().reads_writes(total_reads, total_writes)
 		}
 	}
