@@ -59,6 +59,12 @@ where
 		.ok()
 	}
 
+	fn abort(state: Self::State, winner: Self::Player) -> Self::State {
+		let mut state = state;
+		state.winner = Some(winner);
+		state
+	}
+
 	fn is_finished(state: &Self::State) -> Finished<Self::Player> {
 		match state.winner.clone() {
 			Some(winner) => Finished::Winner(winner),

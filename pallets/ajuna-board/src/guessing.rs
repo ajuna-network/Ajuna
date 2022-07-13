@@ -74,6 +74,12 @@ where
 		Some(state)
 	}
 
+	fn abort(state: Self::State, winner: Self::Player) -> Self::State {
+		let mut state = state;
+		state.winner = Some(winner);
+		state
+	}
+
 	fn is_finished(state: &Self::State) -> pallet_ajuna_board::Finished<Self::Player> {
 		let winner = &state.winner;
 		match winner.clone() {

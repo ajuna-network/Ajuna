@@ -160,10 +160,13 @@ pub mod pallet {
 				.collect::<Vec<T::BoardId>>();
 
 			expired_board_ids.iter().for_each(|expired_board_id| {
-				if let Some(board) = BoardStates::<T>::get(expired_board_id) {
-					let winner = T::Game::get_next_player(&board.state);
-					Self::declare_winner(expired_board_id, &winner, &board.state);
-				}
+				BoardStates::<T>::mutate(expired_board_id, |maybe_board_game| {
+					if let Some(board_game) = maybe_board_game {
+						let winner = T::Game::get_next_player(&board_game.state);
+						Self::declare_winner(expired_board_id, &winner, &board_game.state);
+						board_game.state = T::Game::abort(board_game.state.clone(), winner);
+					}
+				});
 			});
 
 			// For now 'iter' is going to be considered the same as doing 1 read

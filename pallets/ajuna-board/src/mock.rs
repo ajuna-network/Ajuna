@@ -72,6 +72,8 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
+	pub const MaxNumberOfIdleBlocks: u32 = 10;
+	pub const MaxNumberOfGamesToExpire: u32 = 2;
 }
 
 use crate::guessing::MockGame;
@@ -83,6 +85,8 @@ impl pallet_ajuna_board::Config for Test {
 	type GameState = crate::guessing::GameState<MockAccountId>;
 	type Game = MockGame<MockAccountId>;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
+	type MaxNumberOfIdleBlocks = MaxNumberOfIdleBlocks;
+	type MaxNumberOfGamesToExpire = MaxNumberOfGamesToExpire;
 }
 
 // Build genesis storage according to the mock runtime.

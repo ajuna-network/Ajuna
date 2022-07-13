@@ -176,3 +176,34 @@ fn should_finish_game_and_not_allow_new_game() {
 		);
 	});
 }
+
+#[test]
+fn game_should_properly_expire() {
+	new_test_ext().execute_with(|| {
+		let board_id = 1;
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			board_id,
+			BTreeSet::from([BOB, CHARLIE])
+		));
+
+		// We 'advance' to block number 20
+		System::set_block_number(20);
+
+		// We force the call to 'on_idle' to trigger the validation of state
+		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
+
+		// Here we check how Bob has automatically won because of inactivity
+		assert_eq!(
+			last_event(),
+			mock::Event::AjunaBoard(crate::Event::GameFinished { board_id, winner: BOB }),
+			"Bob should have won"
+		);
+		assert_eq!(
+			BoardWinners::<Test>::get(board_id).unwrap(),
+			BOB,
+			"Board stored to state with winner as Bob"
+		);
+		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
+	});
+}
