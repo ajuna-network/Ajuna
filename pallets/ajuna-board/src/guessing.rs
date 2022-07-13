@@ -43,6 +43,10 @@ where
 		}
 	}
 
+	fn get_next_player(state: &Self::State) -> Self::Player {
+		state.players[state.next_player as usize].clone()
+	}
+
 	fn play_turn(
 		player: Self::Player,
 		state: Self::State,

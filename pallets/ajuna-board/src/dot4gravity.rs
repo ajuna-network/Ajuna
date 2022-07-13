@@ -43,6 +43,10 @@ where
 		}
 	}
 
+	fn get_next_player(state: &Self::State) -> Self::Player {
+		state.next_player.clone()
+	}
+
 	fn play_turn(
 		player: Self::Player,
 		state: Self::State,
@@ -135,6 +139,8 @@ mod tests {
 		type GameState = crate::dot4gravity::GameState<MockAccountId>;
 		type Game = crate::dot4gravity::Game<MockAccountId>;
 		type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
+		type MaxNumberOfIdleBlocks = frame_support::traits::ConstU32<10>;
+		type MaxNumberOfGamesToExpire = frame_support::traits::ConstU32<5>;
 	}
 
 	#[test]
