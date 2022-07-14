@@ -52,9 +52,7 @@ where
 }
 
 /// The extensions for the [`ChainSpec`].
-#[derive(
-	Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
 #[serde(deny_unknown_fields)]
 pub struct Extensions {
 	/// The relay chain of the Parachain.
@@ -62,6 +60,8 @@ pub struct Extensions {
 	/// The id of the Parachain.
 	pub para_id: u32,
 }
+
+impl Eq for Extensions {}
 
 impl Extensions {
 	/// Try to get the extension from the given `ChainSpec`.
