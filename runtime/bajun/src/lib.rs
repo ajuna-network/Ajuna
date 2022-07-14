@@ -42,7 +42,7 @@ use sp_version::RuntimeVersion;
 
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Currency, EnsureOneOf, Everything, Imbalance, OnUnbalanced},
+	traits::{Contains, Currency, EnsureOneOf, Imbalance, OnUnbalanced},
 	weights::{
 		constants::WEIGHT_PER_SECOND, ConstantMultiplier, DispatchClass, Weight,
 		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -245,7 +245,34 @@ parameter_types! {
 	pub const SS58Prefix: u16 = 1337;
 }
 
-// Configure FRAME pallets to include in runtime.
+// Allow the following extrinsics only.
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
+	fn contains(call: &Call) -> bool {
+		match call {
+			// system
+			Call::System(_) |
+			Call::ParachainSystem(_) |
+			Call::Timestamp(_) |
+			// monetary
+			Call::Balances(_) |
+			Call::Vesting(_) |
+			// collator support
+			Call::Authorship(_) |
+			Call::CollatorSelection(_) |
+			Call::Session(_) |
+			// xcm helpers
+			Call::XcmpQueue(_) |
+			Call::PolkadotXcm(_) |
+			Call::DmpQueue(_) |
+			// governance
+			Call::Sudo(_) |
+			Call::Treasury(_) |
+			Call::Council(_) |
+			Call::CouncilMembership(_) => true
+		}
+	}
+}
 
 impl frame_system::Config for Runtime {
 	/// The identifier used to distinguish between accounts.
@@ -283,7 +310,7 @@ impl frame_system::Config for Runtime {
 	/// The weight of database operations that the runtime can invoke.
 	type DbWeight = RocksDbWeight;
 	/// The basic call filter to use in dispatchable.
-	type BaseCallFilter = Everything;
+	type BaseCallFilter = BaseCallFilter;
 	/// Weight information for the extrinsics of this pallet.
 	type SystemWeightInfo = weights::frame_system::WeightInfo<Runtime>;
 	/// Block & extrinsics weights: base values and limits.
