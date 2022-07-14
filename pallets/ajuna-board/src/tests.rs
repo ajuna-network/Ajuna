@@ -20,7 +20,10 @@ use frame_support::{assert_noop, assert_ok};
 const ALICE: u32 = 1;
 const BOB: u32 = 2;
 const CHARLIE: u32 = 3;
-const ERIN: u32 = 4;
+const DELTHEA: u32 = 4;
+const ERIN: u32 = 5;
+const FLORINA: u32 = 6;
+const HILDA: u32 = 7;
 
 #[test]
 fn should_create_new_game() {
@@ -177,6 +180,18 @@ fn should_finish_game_and_not_allow_new_game() {
 	});
 }
 
+fn run_to_block(n: u64) {
+	while System::block_number() < n {
+		if System::block_number() > 1 {
+			AjunaBoard::on_finalize(System::block_number());
+			System::on_finalize(System::block_number());
+		}
+		System::set_block_number(System::block_number() + 1);
+		System::on_initialize(System::block_number());
+		AjunaBoard::on_initialize(System::block_number());
+	}
+}
+
 #[test]
 fn game_should_properly_expire() {
 	new_test_ext().execute_with(|| {
@@ -187,8 +202,8 @@ fn game_should_properly_expire() {
 			BTreeSet::from([BOB, CHARLIE])
 		));
 
-		// We 'advance' to block number 20
-		System::set_block_number(20);
+		// We advance to block number 20
+		run_to_block(20);
 
 		// We force the call to 'on_idle' to trigger the validation of state
 		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
@@ -205,5 +220,157 @@ fn game_should_properly_expire() {
 			"Board stored to state with winner as Bob"
 		);
 		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1u32), Error::<Test>::InvalidTurn);
+	});
+}
+
+#[test]
+fn game_expiry_should_properly_extend_after_play() {
+	new_test_ext().execute_with(|| {
+		let board_id = 1;
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			board_id,
+			BTreeSet::from([BOB, CHARLIE])
+		));
+
+		let expiry_increase = MaxNumberOfIdleBlocks::get() as u64;
+		let current_block = System::block_number();
+
+		let game_expiry = BoardExpiries::<Test>::get(board_id);
+		assert_eq!(
+			game_expiry,
+			current_block + expiry_increase,
+			"New expiry should be {}",
+			current_block + expiry_increase
+		);
+
+		// Game should expire on this block during on_idle
+		run_to_block(game_expiry);
+
+		// We play a turn extending it's expiry
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 1_u32));
+
+		// We run on_idle with the remaining weight
+
+		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
+
+		// The latest event is still the game creation
+		assert_eq!(
+			last_event(),
+			mock::Event::AjunaBoard(crate::Event::GameCreated {
+				board_id,
+				players: vec![BOB, CHARLIE]
+			}),
+			"Should be a GameCreated event for {}",
+			board_id
+		);
+
+		// We validate that the new expiry is set to the correct value
+		let new_game_expiry = BoardExpiries::<Test>::get(board_id);
+
+		assert!(new_game_expiry > game_expiry, "New expiry should be greater");
+		assert_eq!(
+			new_game_expiry,
+			game_expiry + expiry_increase,
+			"New expiry should be {}",
+			game_expiry + expiry_increase
+		);
+	});
+}
+
+#[test]
+fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
+	new_test_ext().execute_with(|| {
+		let board_id_1 = 1;
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			board_id_1,
+			BTreeSet::from([BOB, CHARLIE])
+		));
+
+		let board_id_2 = 2;
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			board_id_2,
+			BTreeSet::from([DELTHEA, ERIN])
+		));
+
+		let board_id_3 = 3;
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			board_id_3,
+			BTreeSet::from([FLORINA, HILDA])
+		));
+
+		// We 'advance' to block number 20
+		run_to_block(20);
+
+		// We force the call to 'on_idle' to trigger the validation of state
+		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
+
+		let (event_1, event_2) = last_two_events();
+
+		// Here we check how Bob has automatically won because of inactivity
+		assert_eq!(
+			event_1,
+			mock::Event::AjunaBoard(crate::Event::GameFinished {
+				board_id: board_id_2,
+				winner: DELTHEA
+			}),
+			"Delthea should have won"
+		);
+		assert_eq!(
+			BoardWinners::<Test>::get(board_id_2).unwrap(),
+			DELTHEA,
+			"Board stored to state with winner as Delthea"
+		);
+		assert_noop!(
+			AjunaBoard::play_turn(Origin::signed(DELTHEA), 1_u32),
+			Error::<Test>::InvalidTurn
+		);
+
+		// Here we check how Bob has automatically won because of inactivity
+		assert_eq!(
+			event_2,
+			mock::Event::AjunaBoard(crate::Event::GameFinished {
+				board_id: board_id_1,
+				winner: BOB
+			}),
+			"Bob should have won"
+		);
+		assert_eq!(
+			BoardWinners::<Test>::get(board_id_1).unwrap(),
+			BOB,
+			"Board stored to state with winner as Bob"
+		);
+		assert_noop!(AjunaBoard::play_turn(Origin::signed(BOB), 1_u32), Error::<Test>::InvalidTurn);
+
+		// The third game can still be played even though it should be expired by this block
+		assert!(!BoardWinners::<Test>::contains_key(board_id_3), "Should contain {}", board_id_3);
+
+		// We 'advance' to block number 21
+		run_to_block(21);
+
+		// We force the call to 'on_idle' to trigger the validation of state
+		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
+
+		// Here we check how Bob has automatically won because of inactivity
+		assert_eq!(
+			last_event(),
+			mock::Event::AjunaBoard(crate::Event::GameFinished {
+				board_id: board_id_3,
+				winner: FLORINA
+			}),
+			"Florina should have won"
+		);
+		assert_eq!(
+			BoardWinners::<Test>::get(board_id_3).unwrap(),
+			FLORINA,
+			"Board stored to state with winner as Florina"
+		);
+		assert_noop!(
+			AjunaBoard::play_turn(Origin::signed(FLORINA), 1_u32),
+			Error::<Test>::InvalidTurn
+		);
 	});
 }

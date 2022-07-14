@@ -72,7 +72,9 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
+	// Used as assumption in tests beware if changed
 	pub const MaxNumberOfIdleBlocks: u32 = 10;
+	// Used as assumption in tests beware if changed
 	pub const MaxNumberOfGamesToExpire: u32 = 2;
 }
 
@@ -104,4 +106,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub fn last_event() -> Event {
 	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
+}
+
+pub fn last_two_events() -> (Event, Event) {
+	let mut events = frame_system::Pallet::<Test>::events();
+	(events.pop().expect("Event expected").event, events.pop().expect("Event expected").event)
 }
