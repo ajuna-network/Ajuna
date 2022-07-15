@@ -1,10 +1,10 @@
 name: E2E Tests
 
 on: push
-#  workflow_run:
-#    workflows: ["Build"]
-#    types:
-#      - completed
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
 
 # Ensures only one build is run per branch, unless pushing to main
 concurrency:
@@ -17,6 +17,7 @@ env:
 jobs:
   build-node-and-run-e2e-tests:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v3
