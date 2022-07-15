@@ -61,8 +61,6 @@ pub struct Extensions {
 	pub para_id: u32,
 }
 
-impl Eq for Extensions {}
-
 impl Extensions {
 	/// Try to get the extension from the given `ChainSpec`.
 	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Self> {
