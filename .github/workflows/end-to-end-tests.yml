@@ -1,0 +1,34 @@
+name: E2E Tests
+
+on: push
+#  workflow_run:
+#    workflows: ["Build"]
+#    types:
+#      - completed
+
+# Ensures only one build is run per branch, unless pushing to main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  build-node-and-run-e2e-tests:
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup show
+      - name: Build Docker image
+        run: docker build -f ci/Dockerfile.node -t backend-devel.azurecr.io/node:$GITHUB_SHA .
+      - name: Launch Compose
+        run: |
+          sed 's/@@HASH@@/$GITHUB_SHA/' ci/e2e-compose.yml.base > ci/e2e-compose.yml
+          docker-compose -f ci/e2e-compose.yml up -d
+          sleep 120
+      - name: Launch Tests
+        run: |
+          docker cp ci_worker_1:/service/integritee-cli .
+          ci/e2e-tests.sh
