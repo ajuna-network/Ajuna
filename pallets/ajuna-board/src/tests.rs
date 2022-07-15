@@ -251,7 +251,6 @@ fn game_expiry_should_properly_extend_after_play() {
 		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), 1_u32));
 
 		// We run on_idle with the remaining weight
-
 		AjunaBoard::on_idle(mock::System::block_number(), 10_000);
 
 		// The latest event is still the game creation

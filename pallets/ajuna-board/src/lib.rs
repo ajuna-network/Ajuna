@@ -78,12 +78,12 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
 
-		#[pallet::constant]
 		/// Maximum number of successive blocks with no player activity
+		#[pallet::constant]
 		type MaxNumberOfIdleBlocks: Get<u32>;
 
-		#[pallet::constant]
 		/// Maximum number of games to be expired in a single run
+		#[pallet::constant]
 		type MaxNumberOfGamesToExpire: Get<u32>;
 	}
 
@@ -222,7 +222,7 @@ pub mod pallet {
 
 			BoardStates::<T>::insert(board_id, board_game);
 
-			Self::set_or_update_expiry(board_id);
+			Self::upsert_expiry(board_id);
 
 			Self::deposit_event(Event::GameCreated { board_id, players: players.into_inner() });
 
@@ -247,7 +247,7 @@ pub mod pallet {
 					{
 						Self::declare_winner(&board_id, &winner, &board_game.state);
 					} else {
-						Self::set_or_update_expiry(board_id);
+						Self::upsert_expiry(board_id);
 					}
 
 					Ok(())
@@ -300,18 +300,12 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::GameFinished { board_id: *board_id, winner: winner.clone() });
 	}
 
-	fn set_or_update_expiry(board_id: T::BoardId) {
+	fn upsert_expiry(board_id: T::BoardId) {
 		let current_block_number = <frame_system::Pallet<T>>::block_number();
 		let expiry_block_count = T::MaxNumberOfIdleBlocks::get();
 
 		let block_of_expiry = current_block_number + expiry_block_count.into();
 
-		if BoardExpiries::<T>::contains_key(board_id) {
-			BoardExpiries::<T>::mutate(board_id, |entry| {
-				*entry = block_of_expiry;
-			});
-		} else {
-			BoardExpiries::<T>::insert(board_id, block_of_expiry);
-		}
+		BoardExpiries::<T>::insert(board_id, block_of_expiry);
 	}
 }
