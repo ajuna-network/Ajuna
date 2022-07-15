@@ -137,9 +137,14 @@ pub trait TurnBasedGame {
 	type State: Codec;
 	/// Initialise turn based game with players returning the initial state
 	fn init(players: &[Self::Player], seed: Option<u32>) -> Option<Self::State>;
+	/// Get the player that should play its turn next
+	fn get_next_player(state: &Self::State) -> Self::Player;
 	/// Play a turn with player on the current state returning the new state
 	fn play_turn(player: Self::Player, state: Self::State, turn: Self::Turn)
 		-> Option<Self::State>;
+	/// Forces the termination of a game with a designated winner, useful when games
+	/// get stalled for some reason.
+	fn abort(state: Self::State, winner: Self::Player) -> Self::State;
 	/// Check if the game has finished with winner
 	fn is_finished(state: &Self::State) -> Finished<Self::Player>;
 	/// Get seed if any

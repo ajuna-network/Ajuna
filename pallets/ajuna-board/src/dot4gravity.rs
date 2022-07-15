@@ -43,6 +43,10 @@ where
 		}
 	}
 
+	fn get_next_player(state: &Self::State) -> Self::Player {
+		state.next_player.clone()
+	}
+
 	fn play_turn(
 		player: Self::Player,
 		state: Self::State,
@@ -53,6 +57,12 @@ where
 			Turn::DropStone((side, pos)) => Dot4Gravity::drop_stone(state, player, side, pos),
 		}
 		.ok()
+	}
+
+	fn abort(state: Self::State, winner: Self::Player) -> Self::State {
+		let mut state = state;
+		state.winner = Some(winner);
+		state
 	}
 
 	fn is_finished(state: &Self::State) -> Finished<Self::Player> {
@@ -135,6 +145,8 @@ mod tests {
 		type GameState = crate::dot4gravity::GameState<MockAccountId>;
 		type Game = crate::dot4gravity::Game<MockAccountId>;
 		type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
+		type MaxNumberOfIdleBlocks = frame_support::traits::ConstU32<10>;
+		type MaxNumberOfGamesToExpire = frame_support::traits::ConstU32<5>;
 	}
 
 	#[test]

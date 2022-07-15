@@ -43,6 +43,10 @@ where
 		}
 	}
 
+	fn get_next_player(state: &Self::State) -> Self::Player {
+		state.players[state.next_player as usize].clone()
+	}
+
 	fn play_turn(
 		player: Self::Player,
 		state: Self::State,
@@ -68,6 +72,12 @@ where
 		}
 
 		Some(state)
+	}
+
+	fn abort(state: Self::State, winner: Self::Player) -> Self::State {
+		let mut state = state;
+		state.winner = Some(winner);
+		state
 	}
 
 	fn is_finished(state: &Self::State) -> pallet_ajuna_board::Finished<Self::Player> {

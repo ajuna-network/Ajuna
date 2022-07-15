@@ -51,7 +51,10 @@ impl<BoardId, State, Players> BoardGame<BoardId, State, Players> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
+	use frame_system::{
+		ensure_signed,
+		pallet_prelude::{BlockNumberFor, OriginFor},
+	};
 	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use sp_std::vec::Vec;
 
@@ -74,6 +77,14 @@ pub mod pallet {
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
+
+		/// Maximum number of successive blocks with no player activity
+		#[pallet::constant]
+		type MaxNumberOfIdleBlocks: Get<u32>;
+
+		/// Maximum number of games to be expired in a single run
+		#[pallet::constant]
+		type MaxNumberOfGamesToExpire: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -123,6 +134,11 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type BoardStates<T: Config> = StorageMap<_, Identity, T::BoardId, BoardGameOf<T>>;
 
+	/// Board expiry blocks for active games
+	#[pallet::storage]
+	pub type BoardExpiries<T: Config> =
+		StorageMap<_, Identity, T::BoardId, BlockNumberFor<T>, ValueQuery>;
+
 	/// The board winners by board id
 	#[pallet::storage]
 	pub type BoardWinners<T: Config> = StorageMap<_, Identity, T::BoardId, T::AccountId>;
@@ -134,6 +150,32 @@ pub mod pallet {
 	/// Random seed
 	#[pallet::storage]
 	pub type Seed<T> = StorageValue<_, u32>;
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_idle(n: BlockNumberFor<T>, _remaining_weight: Weight) -> Weight {
+			let expired_board_ids = BoardExpiries::<T>::iter()
+				.filter_map(|(board_id, expiry_block)| (expiry_block < n).then(|| board_id))
+				.take(T::MaxNumberOfGamesToExpire::get() as usize)
+				.collect::<Vec<T::BoardId>>();
+
+			expired_board_ids.iter().for_each(|expired_board_id| {
+				BoardStates::<T>::mutate(expired_board_id, |maybe_board_game| {
+					if let Some(board_game) = maybe_board_game {
+						let winner = T::Game::get_next_player(&board_game.state);
+						Self::declare_winner(expired_board_id, &winner, &board_game.state);
+						board_game.state = T::Game::abort(board_game.state.clone(), winner);
+					}
+				});
+			});
+
+			// For now 'iter' is going to be considered the same as doing 1 read
+			let total_reads: Weight = 1_u64;
+			// We do 3 writes for each entry we expire
+			let total_writes: Weight = expired_board_ids.len() as u64 * 3_u64;
+			T::DbWeight::get().reads_writes(total_reads, total_writes)
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -180,6 +222,8 @@ pub mod pallet {
 
 			BoardStates::<T>::insert(board_id, board_game);
 
+			Self::upsert_expiry(board_id);
+
 			Self::deposit_event(Event::GameCreated { board_id, players: players.into_inner() });
 
 			Ok(())
@@ -201,11 +245,11 @@ pub mod pallet {
 					if let Finished::Winner::<T::AccountId>(winner) =
 						T::Game::is_finished(&board_game.state)
 					{
-						// Cache result in storage, this would be cleared on `flush_winner`
-						BoardWinners::<T>::insert(board_id, winner.clone());
-						Self::seed_for_next(&board_game.state);
-						Self::deposit_event(Event::GameFinished { board_id, winner });
+						Self::declare_winner(&board_id, &winner, &board_game.state);
+					} else {
+						Self::upsert_expiry(board_id);
 					}
+
 					Ok(())
 				},
 				None => Err(Error::<T>::InvalidBoard.into()),
@@ -242,5 +286,26 @@ impl<T: Config> Pallet<T> {
 			Some(seed) => Seed::<T>::put(seed),
 			None => Seed::<T>::kill(),
 		}
+	}
+
+	fn declare_winner(
+		board_id: &T::BoardId,
+		winner: &<<T as Config>::Game as TurnBasedGame>::Player,
+		board_state: &<<T as Config>::Game as TurnBasedGame>::State,
+	) {
+		// Cache result in storage, this would be cleared on `flush_winner`
+		BoardWinners::<T>::insert(board_id, winner.clone());
+		BoardExpiries::<T>::remove(board_id);
+		Self::seed_for_next(board_state);
+		Self::deposit_event(Event::GameFinished { board_id: *board_id, winner: winner.clone() });
+	}
+
+	fn upsert_expiry(board_id: T::BoardId) {
+		let current_block_number = <frame_system::Pallet<T>>::block_number();
+		let expiry_block_count = T::MaxNumberOfIdleBlocks::get();
+
+		let block_of_expiry = current_block_number + expiry_block_count.into();
+
+		BoardExpiries::<T>::insert(board_id, block_of_expiry);
 	}
 }

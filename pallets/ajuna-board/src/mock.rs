@@ -72,6 +72,10 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
+	// Used as assumption in tests beware if changed
+	pub const MaxNumberOfIdleBlocks: u32 = 10;
+	// Used as assumption in tests beware if changed
+	pub const MaxNumberOfGamesToExpire: u32 = 2;
 }
 
 use crate::guessing::MockGame;
@@ -83,6 +87,8 @@ impl pallet_ajuna_board::Config for Test {
 	type GameState = crate::guessing::GameState<MockAccountId>;
 	type Game = MockGame<MockAccountId>;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
+	type MaxNumberOfIdleBlocks = MaxNumberOfIdleBlocks;
+	type MaxNumberOfGamesToExpire = MaxNumberOfGamesToExpire;
 }
 
 // Build genesis storage according to the mock runtime.
@@ -100,4 +106,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub fn last_event() -> Event {
 	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
+}
+
+pub fn last_two_events() -> (Event, Event) {
+	let mut events = frame_system::Pallet::<Test>::events();
+	(events.pop().expect("Event expected").event, events.pop().expect("Event expected").event)
 }
