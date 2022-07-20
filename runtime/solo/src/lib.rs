@@ -464,6 +464,18 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
+impl pallet_ajuna_board::Config for Runtime {
+	type Event = Event;
+	type BoardId = u32;
+	type PlayersTurn = pallet_ajuna_board::dot4gravity::Turn;
+	type GameState = pallet_ajuna_board::dot4gravity::GameState<AccountId>;
+	type Game = pallet_ajuna_board::dot4gravity::Game<AccountId>;
+	type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
+	type MaxNumberOfIdleBlocks = frame_support::traits::ConstU32<10>;
+	type MaxNumberOfGamesToExpire = frame_support::traits::ConstU32<5>;
+	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Runtime>;
+}
+
 impl pallet_ajuna_matchmaker::Config for Runtime {
 	type Event = Event;
 }
@@ -559,6 +571,7 @@ construct_runtime!(
 		Observers: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
 		Teerex: pallet_teerex = 19,
 		Sidechain: pallet_sidechain = 20,
+		Board: pallet_ajuna_board = 21,
 	}
 );
 
@@ -603,6 +616,7 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
+		[pallet_ajuna_board, Board]
 		[pallet_ajuna_gameregistry, GameRegistry]
 	);
 }

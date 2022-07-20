@@ -290,6 +290,7 @@ dependencies = [
  "hex-literal",
  "log",
  "orml-vesting",
+ "pallet-ajuna-board",
  "pallet-ajuna-gameregistry",
  "pallet-ajuna-matchmaker",
  "pallet-ajuna-runner",
@@ -5554,6 +5555,7 @@ version = "0.1.0"
 dependencies = [
  "ajuna-common",
  "dot4gravity",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",

@@ -78,17 +78,16 @@ parameter_types! {
 	pub const MaxNumberOfGamesToExpire: u32 = 2;
 }
 
-use crate::guessing::MockGame;
-
 impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
 	type BoardId = u32;
-	type PlayersTurn = u32;
-	type GameState = crate::guessing::GameState<MockAccountId>;
-	type Game = MockGame<MockAccountId>;
+	type PlayersTurn = crate::dot4gravity::Turn;
+	type GameState = crate::dot4gravity::GameState<MockAccountId>;
+	type Game = crate::dot4gravity::Game<MockAccountId>;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 	type MaxNumberOfIdleBlocks = MaxNumberOfIdleBlocks;
 	type MaxNumberOfGamesToExpire = MaxNumberOfGamesToExpire;
+	type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.
