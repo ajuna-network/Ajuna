@@ -1,9 +1,16 @@
 [alias]
-build-ajuna-solo     = "build --release --no-default-features --bin ajuna-solo --features solo"
-build-bajun-kusama   = "build --release --no-default-features --bin bajun-para --features bajun,kusama-native"
-build-bajun-rococo   = "build --release --no-default-features --bin bajun-para --features bajun,rococo-native"
-build-ajuna-polkadot = "build --release --no-default-features --bin ajuna-para --features ajuna,polkadot-native"
-build-ajuna-rococo   = "build --release --no-default-features --bin ajuna-para --features ajuna,rococo-native"
+build-ajuna-solo            = "build --release --no-default-features --bin ajuna-solo --features solo"
+build-ajuna-solo-benchmarks = [ "build-ajuna-solo", "--features", "runtime-benchmarks" ]
+
+build-bajun            = "build --release --no-default-features --bin bajun-para --features bajun"
+build-bajun-benchmarks = [ "build-bajun", "--features", "runtime-benchmarks" ]
+build-bajun-kusama     = [ "build-bajun", "--features", "kusama-native" ]
+build-bajun-rococo     = [ "build-bajun", "--features", "rococo-native" ]
+
+build-ajuna            = "build --release --no-default-features --bin ajuna-para --features ajuna"
+build-ajuna-benchmarks = [ "build-ajuna", "--features", "runtime-benchmarks" ]
+build-ajuna-polkadot   = [ "build-ajuna", "--features", "polkadot-native" ]
+build-ajuna-rococo     = [ "build-ajuna", "--features", "rococo-native" ]
 
 [target.'cfg(feature = "cargo-clippy")']
 rustflags = [
