@@ -1,10 +1,10 @@
-version: '3'
+version: "3"
 services:
   bootnode:
     image: parity/polkadot:v0.9.19
     volumes:
       - ./data/relay/bootnode:/data
-      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
     command: |
       --name=bootnode
       --base-path=/data
@@ -14,9 +14,9 @@ services:
       --node-key=9996ea9571cc5f586fadbbbace60319d2cc35f96338a6fe6444c4e871b23799d
     ports:
       - 30333:30333 # p2p
-      - 9933:9933   # http RPC
-      - 9944:9944   # websocket RPC
-      - 9615:9615   # Prometheus
+      - 9933:9933 # http RPC
+      - 9944:9944 # websocket RPC
+      - 9615:9615 # Prometheus
     networks:
       local_relay_net:
         ipv4_address: 172.40.1.0
@@ -25,7 +25,7 @@ services:
     image: parity/polkadot:v0.9.19
     volumes:
       - ./data/relay/alice:/data
-      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
     command: |
       --alice
       --validator
@@ -47,7 +47,7 @@ services:
     image: parity/polkadot:v0.9.19
     volumes:
       - ./data/relay/bob:/data
-      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
     command: |
       --bob
       --validator
@@ -70,11 +70,11 @@ services:
     image: ajuna/parachain-bajun:latest
     volumes:
       - ./data/parachain/collator-1:/data
-      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
     command: |
       --collator
       --base-path=/data
-      --chain=/ajuna/rococo-local/rococo-local-raw.json
+      --chain=/bajun/rococo-local/bajun-raw.json
       --port=40333
       --ws-port=8844
       --unsafe-ws-external
@@ -105,11 +105,11 @@ services:
     image: ajuna/parachain-bajun:latest
     volumes:
       - ./data/parachain/collator-2:/data
-      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
     command: |
       --collator
       --base-path=/data
-      --chain=/ajuna/rococo-local/rococo-local-raw.json
+      --chain=/bajun/rococo-local/bajun-raw.json
       --bootnodes=/ip4/172.40.1.3/tcp/30333/p2p/12D3KooWQCCUSRvqQkgndyDJ4UCH8Rk72x2GypFfA3C57iHDEZau
       --port=40334
       --ws-port=8845
@@ -140,8 +140,8 @@ services:
   insert-key:
     image: ubuntu:20.04
     volumes:
-      - ./../resources/rococo-local/collator-1-insert-key.json:/collator-1-insert-key.json
-      - ./../resources/rococo-local/collator-2-insert-key.json:/collator-2-insert-key.json
+      - ./../resources/bajun/rococo-local/collator-1-insert-key.json:/collator-1-insert-key.json
+      - ./../resources/bajun/rococo-local/collator-2-insert-key.json:/collator-2-insert-key.json
     command:
       - /bin/bash
       - -c
@@ -159,10 +159,10 @@ services:
     image: ajuna/parachain-bajun:latest
     volumes:
       - ./data/parachain/non-collator:/data
-      - ./../resources/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
+      - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
     command: |
       --base-path=/data
-      --chain=/ajuna/rococo-local/rococo-local-raw.json
+      --chain=/bajun/rococo-local/bajun-raw.json
       --port=40335
       --ws-port=8846
       --unsafe-ws-external
