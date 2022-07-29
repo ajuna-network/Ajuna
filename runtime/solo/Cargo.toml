@@ -71,6 +71,9 @@ pallet-ajuna-gameregistry = { default-features = false, path = "../../pallets/aj
 pallet-ajuna-matchmaker   = { default-features = false, path = "../../pallets/ajuna-matchmaker" }
 pallet-ajuna-runner       = { default-features = false, path = "../../pallets/ajuna-runner" }
 
+[dev-dependencies]
+sp-keyring = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+
 [features]
 default = [ "std" ]
 runtime-benchmarks = [

@@ -62,9 +62,10 @@ jobs:
           command: check
           args: --all-features ${{ env.CARGO_ARGS }}
 
-  test:
-    name: Test
+  test-node:
+    name: Test Node packages
     runs-on: ubuntu-latest
+    needs: [fmt, check]
     continue-on-error: false
     env:
       SKIP_WASM_BUILD: 1
@@ -82,12 +83,81 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace --all-features ${{ env.CARGO_ARGS }} --jobs 1
+          args: --workspace --all-features ${{ env.CARGO_ARGS }} --package "ajuna-node" --package "ajuna-cli" --package "ajuna-service" --jobs 1
+
+  test-rpc:
+    name: Test RPC packages
+    runs-on: ubuntu-latest
+    needs: [fmt, check]
+    continue-on-error: false
+    env:
+      SKIP_WASM_BUILD: 1
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --all-features ${{ env.CARGO_ARGS }} --package "ajuna-rpc" --jobs 1
+
+  test-runtime:
+    name: Test Runtime packages
+    runs-on: ubuntu-latest
+    needs: [fmt, check]
+    continue-on-error: false
+    env:
+      SKIP_WASM_BUILD: 1
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --all-features ${{ env.CARGO_ARGS }} --package "ajuna-solo-runtime" --package "bajun-runtime" --package "ajuna-runtime" --jobs 1
+
+  test-pallets:
+    name: Test Pallet packages
+    runs-on: ubuntu-latest
+    needs: [fmt, check]
+    continue-on-error: false
+    env:
+      SKIP_WASM_BUILD: 1
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --all-features ${{ env.CARGO_ARGS }} --package "pallet-*" --jobs 1
 
   notify:
     name: Notify on Slack
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [test-node, test-rpc, test-runtime, test-pallets]
     steps:
       - uses: 8398a7/action-slack@v3
         with:

@@ -25,6 +25,13 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod weights;
 pub mod xcm_config;
 
+#[cfg(test)]
+mod keyring;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -448,6 +455,8 @@ impl pallet_treasury::Config for Runtime {
 parameter_types! {
 	pub const MinVestedTransfer: Balance = 10 * AJUN;
 }
+
+pub const MIN_VESTED_TRANSFER: Balance = 10 * AJUN;
 
 impl orml_vesting::Config for Runtime {
 	type Event = Event;
