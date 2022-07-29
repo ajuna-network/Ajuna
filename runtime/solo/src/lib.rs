@@ -76,6 +76,13 @@ pub use pallet_sidechain;
 pub use pallet_teerex;
 pub use pallet_timestamp::Call as TimestampCall;
 
+#[cfg(test)]
+mod keyring;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub aura: Aura,
@@ -216,6 +223,8 @@ parameter_types! {
 	pub const ArbitraryUpperBound: u32 = 1_000_000;
 }
 
+pub const EXISTENTIAL_DEPOSIT: Balance = 100 * NANO_AJUNS;
+
 impl pallet_balances::Config for Runtime {
 	type MaxLocks = ArbitraryUpperBound;
 	type MaxReserves = ArbitraryUpperBound;
@@ -273,6 +282,8 @@ parameter_types! {
 	pub const MinVestedTransfer: Balance = 100 * MICRO_AJUNS;
 	pub const MaxVestingSchedules: u32 = 100;
 }
+
+pub const MIN_VESTED_TRANSFER: Balance = 100 * MICRO_AJUNS;
 
 impl orml_vesting::Config for Runtime {
 	type Event = Event;
