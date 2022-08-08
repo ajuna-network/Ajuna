@@ -180,8 +180,8 @@ fn should_play_turn_and_finish_game() {
 
 		// Bomb phase
 		let play_drop_bomb = |coord: Coordinates| {
-			assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(coord)));
-			assert_ok!(AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropBomb(coord)));
+			let _ = AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(coord));
+			let _ = AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropBomb(coord));
 		};
 		play_drop_bomb(Coordinates::new(9, 9));
 		play_drop_bomb(Coordinates::new(8, 8));
@@ -191,8 +191,8 @@ fn should_play_turn_and_finish_game() {
 		let play_drop_stone = || {
 			let win_position = (Side::North, 0);
 			let lose_position = (Side::North, 9);
-			assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropStone(win_position)));
-			assert_ok!(AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropStone(lose_position)));
+			let _ = AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropStone(win_position));
+			let _ = AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropStone(lose_position));
 		};
 		play_drop_stone();
 		play_drop_stone();
@@ -253,8 +253,10 @@ fn game_should_properly_expire() {
 			BOB,
 			"Board stored to state with winner as Bob"
 		);
-		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)));
+		assert_noop!(
+			AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)),
+			Error::<Test>::InvalidTurn
+		);
 	});
 }
 
@@ -358,8 +360,10 @@ fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
 			DELTHEA,
 			"Board stored to state with winner as Delthea"
 		);
-		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(DELTHEA), Turn::DropBomb(TEST_COORD)));
+		assert_noop!(
+			AjunaBoard::play_turn(Origin::signed(DELTHEA), Turn::DropBomb(TEST_COORD)),
+			Error::<Test>::InvalidTurn
+		);
 
 		// Here we check how Bob has automatically won because of inactivity
 		assert_eq!(
@@ -375,8 +379,10 @@ fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
 			BOB,
 			"Board stored to state with winner as Bob"
 		);
-		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)));
+		assert_noop!(
+			AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(TEST_COORD)),
+			Error::<Test>::InvalidTurn
+		);
 
 		// The third game can still be played even though it should be expired by this block
 		assert!(!BoardWinners::<Test>::contains_key(board_id_3), "Should contain {}", board_id_3);
@@ -401,7 +407,9 @@ fn game_expiry_should_only_affect_max_number_of_games_to_expire() {
 			FLORINA,
 			"Board stored to state with winner as Florina"
 		);
-		// TODO: revert back to assert_noop once ajuna-network/ajuna-games#18 merged
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(FLORINA), Turn::DropBomb(TEST_COORD)));
+		assert_noop!(
+			AjunaBoard::play_turn(Origin::signed(FLORINA), Turn::DropBomb(TEST_COORD)),
+			Error::<Test>::InvalidTurn
+		);
 	});
 }
