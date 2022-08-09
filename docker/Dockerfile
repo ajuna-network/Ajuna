@@ -24,7 +24,7 @@ FROM docker.io/library/ubuntu:20.04
 ARG bin
 
 COPY --from=builder /ajuna/target/release/${bin} /usr/local/bin/ajuna
-COPY --from=builder /ajuna/resources/ /ajuna
+COPY --from=builder /ajuna/resources/ /
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /ajuna ajuna && \
   mkdir -p /data /ajuna/.local/share && \
