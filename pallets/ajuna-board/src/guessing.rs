@@ -43,6 +43,10 @@ where
 		}
 	}
 
+	fn get_last_player(_state: &Self::State) -> Self::Player {
+		unimplemented!()
+	}
+
 	fn get_next_player(state: &Self::State) -> Self::Player {
 		state.players[state.next_player as usize].clone()
 	}
