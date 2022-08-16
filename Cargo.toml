@@ -14,6 +14,7 @@ members = [
     "pallets/ajuna-gameregistry",
     "pallets/ajuna-runner",
     "pallets/ajuna-board",
+	"pallets/ajuna-awesome-avatars",
     "primitives",
     "ajuna-common",
 ]

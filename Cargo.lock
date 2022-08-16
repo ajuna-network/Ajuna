@@ -290,6 +290,7 @@ dependencies = [
  "hex-literal",
  "log",
  "orml-vesting",
+ "pallet-ajuna-awesome-avatars",
  "pallet-ajuna-board",
  "pallet-ajuna-gameregistry",
  "pallet-ajuna-matchmaker",
@@ -5547,6 +5548,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce"
 dependencies = [
  "stable_deref_trait",
+]
+
+[[package]]
+name = "pallet-ajuna-awesome-avatars"
+version = "0.1.0"
+dependencies = [
+ "ajuna-common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
