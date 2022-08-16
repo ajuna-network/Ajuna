@@ -474,6 +474,10 @@ impl pallet_ajuna_board::Config for Runtime {
 	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Runtime>;
 }
 
+impl pallet_ajuna_awesome_avatars::Config for Runtime {
+	type Event = Event;
+}
+
 impl pallet_ajuna_matchmaker::Config for Runtime {
 	type Event = Event;
 }
@@ -571,6 +575,7 @@ construct_runtime!(
 		Teerex: pallet_teerex = 19,
 		Sidechain: pallet_sidechain = 20,
 		Board: pallet_ajuna_board = 21,
+		AAA: pallet_ajuna_awesome_avatars = 22,
 	}
 );
 
