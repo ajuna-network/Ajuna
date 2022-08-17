@@ -30,6 +30,7 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
+	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -40,15 +41,60 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 	}
 
-	// Add pallet storage here
-
 	#[pallet::event]
-	// #[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// A new organizer has been set
+		OrganizerSet { organizer: T::AccountId },
+		/// The previous organizer has been replaced
+		OrganizerReplaced { new_organizer: T::AccountId, prev_organizer: T::AccountId },
+	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// The specified account is not an organizer
+		AccountIsNotOrganizer,
+		/// There is no account set as the organizer
+		OrganizerNotSet,
+		/// Account used to perform action doesn't have enough privileges
+		InsufficientPrivileges,
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn organizer)]
+	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(10_000)]
+		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+			if let Err(_) = ensure_root(origin) {
+				return Err(Error::<T>::InsufficientPrivileges.into())
+			}
+
+			let event = if let Some(prev_organizer) = Organizer::<T>::get() {
+				Event::OrganizerReplaced { new_organizer: organizer.clone(), prev_organizer }
+			} else {
+				Event::OrganizerSet { organizer: organizer.clone() }
+			};
+
+			Organizer::<T>::put(organizer.clone());
+
+			Self::deposit_event(event);
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+			let account = ensure_signed(origin)?;
+			match Organizer::<T>::get() {
+				Some(organizer) => match organizer == account {
+					true => Ok(()),
+					false => Err(Error::<T>::AccountIsNotOrganizer.into()),
+				},
+				None => Err(Error::<T>::OrganizerNotSet.into()),
+			}
+		}
+	}
 }
