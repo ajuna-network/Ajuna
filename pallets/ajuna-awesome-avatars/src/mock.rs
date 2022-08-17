@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate as pallet_ajuna_awesome_avatars;
+use crate::{self as pallet_ajuna_awesome_avatars};
 use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -33,8 +34,8 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system,
-		TemplateModule: pallet_ajuna_awesome_avatars,
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		AAA: pallet_ajuna_awesome_avatars::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -49,7 +50,7 @@ impl system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = u32;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -70,5 +71,17 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	let config = GenesisConfig { system: Default::default() };
+
+	let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+	});
+
+	ext
+}
+
+pub fn last_event() -> Event {
+	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
 }
