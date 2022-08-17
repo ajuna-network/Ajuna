@@ -68,7 +68,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
-			if let Err(_) = ensure_root(origin) {
+			if ensure_root(origin).is_err() {
 				return Err(Error::<T>::InsufficientPrivileges.into())
 			}
 
@@ -78,7 +78,7 @@ pub mod pallet {
 				Event::OrganizerSet { organizer: organizer.clone() }
 			};
 
-			Organizer::<T>::put(organizer.clone());
+			Organizer::<T>::put(organizer);
 
 			Self::deposit_event(event);
 
