@@ -72,6 +72,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		#[allow(dead_code)]
 		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
