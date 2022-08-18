@@ -46,8 +46,6 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A new organizer has been set
 		OrganizerSet { organizer: T::AccountId },
-		/// The previous organizer has been replaced
-		OrganizerReplaced { new_organizer: T::AccountId, prev_organizer: T::AccountId },
 	}
 
 	#[pallet::error]
@@ -56,8 +54,6 @@ pub mod pallet {
 		AccountIsNotOrganizer,
 		/// There is no account set as the organizer
 		OrganizerNotSet,
-		/// Account used to perform action doesn't have enough privileges
-		InsufficientPrivileges,
 	}
 
 	#[pallet::storage]
@@ -68,32 +64,22 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
-			if ensure_root(origin).is_err() {
-				return Err(Error::<T>::InsufficientPrivileges.into())
-			}
+			ensure_root(origin)?;
 
-			let event = if let Some(prev_organizer) = Organizer::<T>::get() {
-				Event::OrganizerReplaced { new_organizer: organizer.clone(), prev_organizer }
-			} else {
-				Event::OrganizerSet { organizer: organizer.clone() }
-			};
-
-			Organizer::<T>::put(organizer);
-
-			Self::deposit_event(event);
+			Organizer::<T>::put(organizer.clone());
+			Self::deposit_event(Event::OrganizerSet { organizer });
 
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		pub fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-			match Organizer::<T>::get() {
-				Some(organizer) => match organizer == account {
-					true => Ok(()),
-					false => Err(Error::<T>::AccountIsNotOrganizer.into()),
-				},
-				None => Err(Error::<T>::OrganizerNotSet.into()),
+			let maybe_organizer = ensure_signed(origin)?;
+			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+
+			match maybe_organizer == existing_organizer {
+				true => Ok(()),
+				false => Err(Error::<T>::AccountIsNotOrganizer.into()),
 			}
 		}
 	}

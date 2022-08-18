@@ -16,6 +16,7 @@
 
 use crate::{mock::*, *};
 use frame_support::{assert_noop, assert_ok};
+use sp_runtime::DispatchError;
 
 #[cfg(test)]
 mod organizer {
@@ -32,18 +33,13 @@ mod organizer {
 	#[test]
 	fn only_root_should_set_organizer() {
 		new_test_ext().execute_with(|| {
-			let root_origin = Origin::root();
-			let non_root_origin = Origin::signed(ALICE);
-
 			assert_noop!(
-				AjunaAwesomeAvatars::set_organizer(non_root_origin, HILDA),
-				Error::<Test>::InsufficientPrivileges
+				AjunaAwesomeAvatars::set_organizer(Origin::signed(ALICE), HILDA),
+				DispatchError::BadOrigin
 			);
-
-			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin, HILDA));
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), HILDA));
 
 			assert_eq!(Organizer::<Test>::get(), Some(HILDA), "Organizer should be Hilda");
-
 			assert_eq!(
 				last_event(),
 				mock::Event::AjunaAwesomeAvatars(crate::Event::OrganizerSet { organizer: HILDA }),
@@ -57,24 +53,17 @@ mod organizer {
 			let root_origin = Origin::root();
 
 			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin.clone(), BOB));
-
 			assert_eq!(Organizer::<Test>::get(), Some(BOB), "Organizer should be Bob");
-
 			assert_eq!(
 				last_event(),
 				mock::Event::AjunaAwesomeAvatars(crate::Event::OrganizerSet { organizer: BOB }),
 			);
 
 			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin, FLORINA));
-
 			assert_eq!(Organizer::<Test>::get(), Some(FLORINA), "Organizer should be Florina");
-
 			assert_eq!(
 				last_event(),
-				mock::Event::AjunaAwesomeAvatars(crate::Event::OrganizerReplaced {
-					prev_organizer: BOB,
-					new_organizer: FLORINA
-				}),
+				mock::Event::AjunaAwesomeAvatars(crate::Event::OrganizerSet { organizer: FLORINA }),
 			);
 		});
 	}
@@ -82,10 +71,8 @@ mod organizer {
 	#[test]
 	fn ensure_organizer_should_fail_if_no_organizer_set() {
 		new_test_ext().execute_with(|| {
-			let organizer = Origin::signed(DELTHEA);
-
 			assert_noop!(
-				AjunaAwesomeAvatars::ensure_organizer(organizer),
+				AjunaAwesomeAvatars::ensure_organizer(Origin::signed(DELTHEA)),
 				Error::<Test>::OrganizerNotSet
 			);
 		});
@@ -94,12 +81,9 @@ mod organizer {
 	#[test]
 	fn ensure_organizer_should_fail_if_account_is_no_organizer() {
 		new_test_ext().execute_with(|| {
-			let organizer = Origin::signed(DELTHEA);
-			let root_origin = Origin::root();
-
-			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin.clone(), ERIN));
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), ERIN));
 			assert_noop!(
-				AjunaAwesomeAvatars::ensure_organizer(organizer),
+				AjunaAwesomeAvatars::ensure_organizer(Origin::signed(DELTHEA)),
 				Error::<Test>::AccountIsNotOrganizer
 			);
 		});
@@ -108,11 +92,8 @@ mod organizer {
 	#[test]
 	fn ensure_organizer_should_validate_newly_set_organizer() {
 		new_test_ext().execute_with(|| {
-			let organizer = Origin::signed(CHARLIE);
-			let root_origin = Origin::root();
-
-			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin.clone(), CHARLIE));
-			assert_ok!(AjunaAwesomeAvatars::ensure_organizer(organizer));
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), CHARLIE));
+			assert_ok!(AjunaAwesomeAvatars::ensure_organizer(Origin::signed(CHARLIE)));
 		});
 	}
 }
