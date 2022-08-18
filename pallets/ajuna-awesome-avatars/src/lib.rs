@@ -54,14 +54,32 @@ pub mod ajuna_awesome_avatar {
 		) -> Self {
 			Self { early_access_start, start, end, max_mints, max_mythical_mints }
 		}
+
+		/// Checks that first season end is set before second season early access start.
+		pub fn are_seasons_overlapped(
+			first_season: &Season<BlockNumber>,
+			second_season: &Season<BlockNumber>,
+		) -> bool {
+			first_season.end >= second_season.early_access_start
+		}
+
+		/// Checks if season early access start is set before start.
+		pub fn is_early_access_start_too_late(&self) -> bool {
+			self.early_access_start >= self.start
+		}
+
+		/// Checks if season start is set before end.
+		pub fn is_season_start_too_late(&self) -> bool {
+			self.start >= self.end
+		}
 	}
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::ajuna_awesome_avatar::*;
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+	use frame_support::pallet_prelude::{DispatchResult, *};
+	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_runtime::ArithmeticError;
 
 	// type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
@@ -94,6 +112,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		NewSeasonCreated(Season<BlockNumberFor<T>>),
+		SeasonUpdated(Season<BlockNumberFor<T>>, SeasonId),
 	}
 
 	#[pallet::error]
@@ -119,21 +138,19 @@ pub mod pallet {
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			if new_season.start < new_season.early_access_start {
+			if new_season.is_early_access_start_too_late() {
 				return Err(Error::<T>::EarlyAccessStartsTooLate.into())
 			}
 
-			if new_season.start > new_season.end {
+			if new_season.is_season_start_too_late() {
 				return Err(Error::<T>::SeasonStartsTooLate.into())
 			}
 
 			let season_id = Self::next_season_id();
 
 			if season_id > 0 {
-				let maybe_season = Seasons::<T>::get(season_id - 1);
-
-				if let Some(season) = maybe_season {
-					if season.end > new_season.early_access_start {
+				if let Some(season) = Seasons::<T>::get(season_id - 1) {
+					if Season::are_seasons_overlapped(&season, &new_season) {
 						return Err(Error::<T>::EarlyAccessStartsTooEarly.into())
 					}
 				}
@@ -149,6 +166,81 @@ pub mod pallet {
 			};
 
 			Self::deposit_event(Event::NewSeasonCreated(new_season));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		pub fn update_season(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			season: Season<BlockNumberFor<T>>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			if season.is_early_access_start_too_late() {
+				return Err(Error::<T>::EarlyAccessStartsTooLate.into())
+			}
+
+			if season.is_season_start_too_late() {
+				return Err(Error::<T>::SeasonStartsTooLate.into())
+			}
+
+			if Seasons::<T>::get(season_id).is_none() {
+				return Err(Error::<T>::UnknownSeason.into())
+			}
+
+			let mut maybe_previous_season: Option<
+				Season<<T as frame_system::Config>::BlockNumber>,
+			> = None;
+
+			if season_id > 0 {
+				maybe_previous_season = Seasons::<T>::get(season_id - 1);
+			}
+
+			let maybe_next_season = Seasons::<T>::get(season_id + 1);
+
+			enum UpdateError {
+				OverlappedWithPreviousSeason,
+				OverlappedWithNextSeason,
+				NotFound,
+			}
+
+			let mutate_result = Seasons::<T>::try_mutate(season_id, |maybe_season| {
+				if let Some(existing_season) = maybe_season {
+					if let Some(previous_season) = maybe_previous_season {
+						if Season::are_seasons_overlapped(&previous_season, &season) {
+							return Err(UpdateError::OverlappedWithPreviousSeason)
+						}
+					}
+
+					if let Some(next_season) = maybe_next_season {
+						if Season::are_seasons_overlapped(&season, &next_season) {
+							return Err(UpdateError::OverlappedWithNextSeason)
+						}
+					}
+
+					existing_season.end = season.end;
+					existing_season.start = season.start;
+					existing_season.early_access_start = season.early_access_start;
+					existing_season.max_mints = season.max_mints;
+					existing_season.max_mythical_mints = season.max_mythical_mints;
+					Ok(())
+				} else {
+					Err(UpdateError::NotFound)
+				}
+			});
+
+			match mutate_result {
+				Err(UpdateError::OverlappedWithPreviousSeason) =>
+					return Err(Error::<T>::EarlyAccessStartsTooEarly.into()),
+				Err(UpdateError::OverlappedWithNextSeason) =>
+					return Err(Error::<T>::SeasonEndsTooLate.into()),
+				Err(UpdateError::NotFound) => return Err(Error::<T>::UnknownSeason.into()),
+				Ok(_) => {},
+			}
+
+			Self::deposit_event(Event::SeasonUpdated(season, season_id));
 
 			Ok(())
 		}
