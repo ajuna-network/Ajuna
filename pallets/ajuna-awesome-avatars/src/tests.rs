@@ -31,7 +31,7 @@ mod organizer {
 	const HILDA: u32 = 7;
 
 	#[test]
-	fn only_root_should_set_organizer() {
+	fn set_organizer_should_only_accept_root_caller() {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
 				AjunaAwesomeAvatars::set_organizer(Origin::signed(ALICE), HILDA),
@@ -48,7 +48,7 @@ mod organizer {
 	}
 
 	#[test]
-	fn set_organizer_should_replace_previous_organizer() {
+	fn set_organizer_should_replace_existing_organizer() {
 		new_test_ext().execute_with(|| {
 			let root_origin = Origin::root();
 
@@ -79,12 +79,12 @@ mod organizer {
 	}
 
 	#[test]
-	fn ensure_organizer_should_fail_if_account_is_no_organizer() {
+	fn ensure_organizer_should_fail_if_caller_is_not_organizer() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), ERIN));
 			assert_noop!(
 				AjunaAwesomeAvatars::ensure_organizer(Origin::signed(DELTHEA)),
-				Error::<Test>::AccountIsNotOrganizer
+				DispatchError::BadOrigin
 			);
 		});
 	}

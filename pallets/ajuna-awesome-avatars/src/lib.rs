@@ -50,8 +50,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The specified account is not an organizer
-		AccountIsNotOrganizer,
 		/// There is no account set as the organizer
 		OrganizerNotSet,
 	}
@@ -71,15 +69,16 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
 
-		#[pallet::weight(10_000)]
-		pub fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+	impl<T: Config> Pallet<T> {
+		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
 
 			match maybe_organizer == existing_organizer {
 				true => Ok(()),
-				false => Err(Error::<T>::AccountIsNotOrganizer.into()),
+				false => Err(DispatchError::BadOrigin),
 			}
 		}
 	}

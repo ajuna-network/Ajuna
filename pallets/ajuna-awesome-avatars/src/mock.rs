@@ -33,8 +33,8 @@ frame_support::construct_runtime!(
 		NodeBlock = MockBlock<Test>,
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AjunaAwesomeAvatars: pallet_ajuna_awesome_avatars::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		AjunaAwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
 
@@ -83,9 +83,4 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub fn last_event() -> Event {
 	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
-}
-
-pub fn _last_two_events() -> (Event, Event) {
-	let mut events = frame_system::Pallet::<Test>::events();
-	(events.pop().expect("Event expected").event, events.pop().expect("Event expected").event)
 }
