@@ -50,16 +50,14 @@ mod organizer {
 	#[test]
 	fn set_organizer_should_replace_existing_organizer() {
 		new_test_ext().execute_with(|| {
-			let root_origin = Origin::root();
-
-			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin.clone(), BOB));
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), BOB));
 			assert_eq!(Organizer::<Test>::get(), Some(BOB), "Organizer should be Bob");
 			assert_eq!(
 				last_event(),
 				mock::Event::AjunaAwesomeAvatars(crate::Event::OrganizerSet { organizer: BOB }),
 			);
 
-			assert_ok!(AjunaAwesomeAvatars::set_organizer(root_origin, FLORINA));
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), FLORINA));
 			assert_eq!(Organizer::<Test>::get(), Some(FLORINA), "Organizer should be Florina");
 			assert_eq!(
 				last_event(),
