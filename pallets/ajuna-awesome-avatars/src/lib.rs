@@ -30,6 +30,7 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
+	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -40,15 +41,46 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 	}
 
-	// Add pallet storage here
-
 	#[pallet::event]
-	// #[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// A new organizer has been set
+		OrganizerSet { organizer: T::AccountId },
+	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// There is no account set as the organizer
+		OrganizerNotSet,
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn organizer)]
+	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(10_000)]
+		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			Organizer::<T>::put(organizer.clone());
+			Self::deposit_event(Event::OrganizerSet { organizer });
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		#[allow(dead_code)]
+		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+			let maybe_organizer = ensure_signed(origin)?;
+			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+
+			match maybe_organizer == existing_organizer {
+				true => Ok(()),
+				false => Err(DispatchError::BadOrigin),
+			}
+		}
+	}
 }
