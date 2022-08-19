@@ -60,6 +60,7 @@ pub mod pallet {
 
 	/// Storage for the seasons.
 	#[pallet::storage]
+	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
 
 	#[pallet::event]
@@ -72,13 +73,13 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// The season starts before the previous season has ended.
-		EarlyAccessStartsTooEarly,
+		EarlyStartTooEarly,
 		/// The season season start later than its early access
-		EarlyAccessStartsTooLate,
+		EarlyStartTooLate,
 		/// The season start date is newer than its end date.
-		SeasonStartsTooLate,
+		SeasonStartTooLate,
 		/// The season ends after the new season has started.
-		SeasonEndsTooLate,
+		SeasonEndTooLate,
 		/// The season doesn't exist.
 		UnknownSeason,
 	}
@@ -86,38 +87,26 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn new_season(
-			origin: OriginFor<T>,
-			new_season: SeasonOf<T>,
-		) -> DispatchResult {
+		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			if new_season.is_early_start_too_late() {
-				return Err(Error::<T>::EarlyAccessStartsTooLate.into())
-			}
-
-			if new_season.is_season_start_too_late() {
-				return Err(Error::<T>::SeasonStartsTooLate.into())
-			}
+			ensure!(new_season.early_start < new_season.start, Error::<T>::EarlyStartTooLate);
+			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
 
 			let season_id = Self::next_season_id();
-
 			if season_id > 0 {
-				if let Some(season) = Seasons::<T>::get(season_id - 1) {
-					if Season::are_seasons_overlapped(&season, &new_season) {
-						return Err(Error::<T>::EarlyAccessStartsTooEarly.into())
-					}
+				if let Some(prev_season) = Self::seasons(season_id - 1) {
+					ensure!(
+						prev_season.end < new_season.early_start,
+						Error::<T>::EarlyStartTooEarly
+					);
 				}
 			}
 
-			// save season
 			Seasons::<T>::insert(season_id, new_season.clone());
 
-			// increase next season id
-			match season_id.checked_add(1) {
-				Some(number) => NextSeasonId::<T>::put(number),
-				None => return Err(ArithmeticError::Overflow.into()),
-			};
+			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			NextSeasonId::<T>::put(next_season_id);
 
 			Self::deposit_event(Event::NewSeasonCreated(new_season));
 
@@ -132,13 +121,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			if season.is_early_start_too_late() {
-				return Err(Error::<T>::EarlyAccessStartsTooLate.into())
-			}
-
-			if season.is_season_start_too_late() {
-				return Err(Error::<T>::SeasonStartsTooLate.into())
-			}
+			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
+			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 
 			if Seasons::<T>::get(season_id).is_none() {
 				return Err(Error::<T>::UnknownSeason.into())
@@ -187,9 +171,9 @@ pub mod pallet {
 
 			match mutate_result {
 				Err(UpdateError::OverlappedWithPreviousSeason) =>
-					return Err(Error::<T>::EarlyAccessStartsTooEarly.into()),
+					return Err(Error::<T>::EarlyStartTooEarly.into()),
 				Err(UpdateError::OverlappedWithNextSeason) =>
-					return Err(Error::<T>::SeasonEndsTooLate.into()),
+					return Err(Error::<T>::SeasonEndTooLate.into()),
 				Err(UpdateError::NotFound) => return Err(Error::<T>::UnknownSeason.into()),
 				Ok(_) => {},
 			}

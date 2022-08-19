@@ -35,14 +35,4 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	) -> bool {
 		first_season.end >= second_season.early_start
 	}
-
-	/// Checks if season early access start is set before start.
-	pub fn is_early_start_too_late(&self) -> bool {
-		self.early_start >= self.start
-	}
-
-	/// Checks if season start is set before end.
-	pub fn is_season_start_too_late(&self) -> bool {
-		self.start >= self.end
-	}
 }

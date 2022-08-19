@@ -20,14 +20,6 @@ pub mod season {
 	use crate::season::Season;
 
 	#[test]
-	fn season_ok() {
-		let season =
-			Season { early_start: 1, start: 10, end: 20, max_mints: 1, max_mythical_mints: 1 };
-		assert!(!season.is_early_start_too_late());
-		assert!(!season.is_season_start_too_late());
-	}
-
-	#[test]
 	fn season_not_overlapped() {
 		let first_season =
 			Season { early_start: 1, start: 10, end: 20, max_mints: 1, max_mythical_mints: 1 };
@@ -35,14 +27,6 @@ pub mod season {
 			Season { early_start: 21, start: 30, end: 40, max_mints: 1, max_mythical_mints: 1 };
 
 		assert!(!Season::are_seasons_overlapped(&first_season, &second_season));
-	}
-
-	#[test]
-	fn season_early_start_is_too_late_when_set_after_start() {
-		let season =
-			Season { early_start: 30, start: 10, end: 20, max_mints: 1, max_mythical_mints: 1 };
-
-		assert!(season.is_early_start_too_late());
 	}
 }
 pub mod new_season {
@@ -93,7 +77,7 @@ pub mod new_season {
 				Season { early_start: 3, start: 7, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::EarlyAccessStartsTooEarly
+				Error::<Test>::EarlyStartTooEarly
 			);
 		});
 	}
@@ -106,7 +90,7 @@ pub mod new_season {
 				Season { early_start: 6, start: 3, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::EarlyAccessStartsTooLate
+				Error::<Test>::EarlyStartTooLate
 			);
 		});
 	}
@@ -119,7 +103,7 @@ pub mod new_season {
 				Season { early_start: 11, start: 12, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::SeasonStartsTooLate
+				Error::<Test>::SeasonStartTooLate
 			);
 		});
 	}
@@ -174,7 +158,7 @@ pub mod update_season {
 				Season { early_start: 1, start: 5, end: 14, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 0, first_season_update),
-				Error::<Test>::SeasonEndsTooLate
+				Error::<Test>::SeasonEndTooLate
 			);
 		});
 	}
@@ -235,21 +219,21 @@ pub mod update_season {
 				Season { early_start: 8, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 1, second_season_update.clone()),
-				Error::<Test>::EarlyAccessStartsTooEarly
+				Error::<Test>::EarlyStartTooEarly
 			);
 
 			let second_season_update =
 				Season { early_start: 9, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 1, second_season_update),
-				Error::<Test>::EarlyAccessStartsTooEarly
+				Error::<Test>::EarlyStartTooEarly
 			);
 
 			let second_season_update =
 				Season { early_start: 10, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 1, second_season_update),
-				Error::<Test>::EarlyAccessStartsTooEarly
+				Error::<Test>::EarlyStartTooEarly
 			);
 		});
 	}
@@ -266,14 +250,14 @@ pub mod update_season {
 				Season { early_start: 5, start: 1, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 0, season_update),
-				Error::<Test>::EarlyAccessStartsTooLate
+				Error::<Test>::EarlyStartTooLate
 			);
 
 			let season_update =
 				Season { early_start: 5, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 0, season_update),
-				Error::<Test>::EarlyAccessStartsTooLate
+				Error::<Test>::EarlyStartTooLate
 			);
 		});
 	}
@@ -291,7 +275,7 @@ pub mod update_season {
 				Season { early_start: 1, start: 15, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
 				AAA::update_season(Origin::signed(ALICE), 0, season_update),
-				Error::<Test>::SeasonStartsTooLate
+				Error::<Test>::SeasonStartTooLate
 			);
 		});
 	}
