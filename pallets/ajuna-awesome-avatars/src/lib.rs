@@ -92,7 +92,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			if new_season.is_early_access_start_too_late() {
+			if new_season.is_early_start_too_late() {
 				return Err(Error::<T>::EarlyAccessStartsTooLate.into())
 			}
 
@@ -132,7 +132,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			if season.is_early_access_start_too_late() {
+			if season.is_early_start_too_late() {
 				return Err(Error::<T>::EarlyAccessStartsTooLate.into())
 			}
 
@@ -176,7 +176,7 @@ pub mod pallet {
 
 					existing_season.end = season.end;
 					existing_season.start = season.start;
-					existing_season.early_access_start = season.early_access_start;
+					existing_season.early_start = season.early_start;
 					existing_season.max_mints = season.max_mints;
 					existing_season.max_mythical_mints = season.max_mythical_mints;
 					Ok(())

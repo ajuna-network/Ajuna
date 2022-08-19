@@ -20,7 +20,7 @@ use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, Clone, Default, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Season<BlockNumber> {
-	pub early_access_start: BlockNumber,
+	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
 	pub max_mints: u16,
@@ -33,12 +33,12 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 		first_season: &Season<BlockNumber>,
 		second_season: &Season<BlockNumber>,
 	) -> bool {
-		first_season.end >= second_season.early_access_start
+		first_season.end >= second_season.early_start
 	}
 
 	/// Checks if season early access start is set before start.
-	pub fn is_early_access_start_too_late(&self) -> bool {
-		self.early_access_start >= self.start
+	pub fn is_early_start_too_late(&self) -> bool {
+		self.early_start >= self.start
 	}
 
 	/// Checks if season start is set before end.
