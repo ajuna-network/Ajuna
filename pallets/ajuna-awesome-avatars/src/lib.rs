@@ -36,7 +36,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_runtime::ArithmeticError;
 
-	// type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
+	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	type SeasonId = u16;
 
 	#[pallet::pallet]
@@ -60,13 +60,13 @@ pub mod pallet {
 
 	/// Storage for the seasons.
 	#[pallet::storage]
-	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, Season<BlockNumberFor<T>>>;
+	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NewSeasonCreated(Season<BlockNumberFor<T>>),
-		SeasonUpdated(Season<BlockNumberFor<T>>, SeasonId),
+		NewSeasonCreated(SeasonOf<T>),
+		SeasonUpdated(SeasonOf<T>, SeasonId),
 	}
 
 	#[pallet::error]
@@ -88,7 +88,7 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn new_season(
 			origin: OriginFor<T>,
-			new_season: Season<BlockNumberFor<T>>,
+			new_season: SeasonOf<T>,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -128,7 +128,7 @@ pub mod pallet {
 		pub fn update_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
-			season: Season<BlockNumberFor<T>>,
+			season: SeasonOf<T>,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
