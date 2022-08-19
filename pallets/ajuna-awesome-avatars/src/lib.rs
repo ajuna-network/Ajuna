@@ -124,63 +124,23 @@ pub mod pallet {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 
-			if Seasons::<T>::get(season_id).is_none() {
-				return Err(Error::<T>::UnknownSeason.into())
-			}
-
-			let mut maybe_previous_season: Option<
-				Season<<T as frame_system::Config>::BlockNumber>,
-			> = None;
-
-			if season_id > 0 {
-				maybe_previous_season = Seasons::<T>::get(season_id - 1);
-			}
-
-			let maybe_next_season = Seasons::<T>::get(season_id + 1);
-
-			enum UpdateError {
-				OverlappedWithPreviousSeason,
-				OverlappedWithNextSeason,
-				NotFound,
-			}
-
-			let mutate_result = Seasons::<T>::try_mutate(season_id, |maybe_season| {
-				if let Some(existing_season) = maybe_season {
-					if let Some(previous_season) = maybe_previous_season {
-						if Season::are_seasons_overlapped(&previous_season, &season) {
-							return Err(UpdateError::OverlappedWithPreviousSeason)
-						}
+			Seasons::<T>::try_mutate(season_id, |maybe_season| {
+				if season_id > 0 {
+					if let Some(prev_season) = Self::seasons(season_id - 1) {
+						ensure!(
+							prev_season.end < season.early_start,
+							Error::<T>::EarlyStartTooEarly
+						);
 					}
-
-					if let Some(next_season) = maybe_next_season {
-						if Season::are_seasons_overlapped(&season, &next_season) {
-							return Err(UpdateError::OverlappedWithNextSeason)
-						}
-					}
-
-					existing_season.end = season.end;
-					existing_season.start = season.start;
-					existing_season.early_start = season.early_start;
-					existing_season.max_mints = season.max_mints;
-					existing_season.max_mythical_mints = season.max_mythical_mints;
-					Ok(())
-				} else {
-					Err(UpdateError::NotFound)
 				}
-			});
-
-			match mutate_result {
-				Err(UpdateError::OverlappedWithPreviousSeason) =>
-					return Err(Error::<T>::EarlyStartTooEarly.into()),
-				Err(UpdateError::OverlappedWithNextSeason) =>
-					return Err(Error::<T>::SeasonEndTooLate.into()),
-				Err(UpdateError::NotFound) => return Err(Error::<T>::UnknownSeason.into()),
-				Ok(_) => {},
-			}
-
-			Self::deposit_event(Event::SeasonUpdated(season, season_id));
-
-			Ok(())
+				if let Some(next_season) = Self::seasons(season_id + 1) {
+					ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
+				}
+				let existing_season = maybe_season.as_mut().ok_or(Error::<T>::UnknownSeason)?;
+				*existing_season = season.clone();
+				Self::deposit_event(Event::SeasonUpdated(season, season_id));
+				Ok(())
+			})
 		}
 	}
 }
