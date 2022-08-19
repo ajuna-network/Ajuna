@@ -31,14 +31,14 @@ pub mod season;
 
 #[frame_support::pallet]
 pub mod pallet {
+
 	use super::season::*;
-	use frame_support::pallet_prelude::{DispatchResult, *};
-	use frame_system::pallet_prelude::{OriginFor, *};
+	use frame_support::pallet_prelude::*;
+	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::ArithmeticError;
 
 	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	type SeasonId = u16;
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
