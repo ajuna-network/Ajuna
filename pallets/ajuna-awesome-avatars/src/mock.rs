@@ -26,6 +26,7 @@ use sp_runtime::{
 
 type MockAccountId = u32;
 type MockBlockNumber = u64;
+type MockBalance = u64;
 
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
@@ -43,6 +44,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
 		System: frame_system,
+		Balances: pallet_balances,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
@@ -65,7 +67,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<MockBalance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -74,8 +76,21 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_balances::Config for Test {
+	type Balance = MockBalance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = frame_support::traits::ConstU64<1>;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
+	type Currency = Balances;
 }
 
 #[derive(Default)]
@@ -94,7 +109,7 @@ impl ExtBuilder {
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
-		let config = GenesisConfig { system: Default::default() };
+		let config = GenesisConfig { system: Default::default(), balances: Default::default() };
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));
 		ext.execute_with(|| {
