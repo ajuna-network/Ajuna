@@ -26,13 +26,3 @@ pub struct Season<BlockNumber> {
 	pub max_mints: u16,
 	pub max_mythical_mints: u16,
 }
-
-impl<BlockNumber: PartialOrd> Season<BlockNumber> {
-	/// Checks that first season end is set before second season early access start.
-	pub fn are_seasons_overlapped(
-		first_season: &Season<BlockNumber>,
-		second_season: &Season<BlockNumber>,
-	) -> bool {
-		first_season.end >= second_season.early_start
-	}
-}

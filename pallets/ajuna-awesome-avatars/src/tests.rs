@@ -16,19 +16,6 @@
 
 const ALICE: u32 = 1;
 
-pub mod season {
-	use crate::season::Season;
-
-	#[test]
-	fn season_not_overlapped() {
-		let first_season =
-			Season { early_start: 1, start: 10, end: 20, max_mints: 1, max_mythical_mints: 1 };
-		let second_season =
-			Season { early_start: 21, start: 30, end: 40, max_mints: 1, max_mythical_mints: 1 };
-
-		assert!(!Season::are_seasons_overlapped(&first_season, &second_season));
-	}
-}
 pub mod new_season {
 	use frame_support::{assert_noop, assert_ok};
 
