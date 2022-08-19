@@ -40,10 +40,10 @@ pub mod pallet {
 	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	type SeasonId = u16;
 
-	#[derive(Encode, Decode, Clone, Default)]
-	struct SeasonMetadata {
-		name: Vec<u8>,
-		description: Vec<u8>,
+	#[derive(Debug, Eq, PartialEq, Encode, Decode, Clone, MaxEncodedLen, TypeInfo)]
+	pub struct SeasonMetadata {
+		pub name: [u8; 100],
+		pub description: [u8; 1000],
 	}
 
 	#[allow(non_snake_case)]
@@ -133,10 +133,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			if season_id >= NextSeasonId::get() {
-				Err(Error::UnknownSeason.into())
+			if season_id >= NextSeasonId::<T>::get() {
+				Err(Error::<T>::UnknownSeason.into())
 			} else {
-				SeasonsMetadata::insert(season_id, metadata.clone());
+				SeasonsMetadata::<T>::insert(season_id, metadata.clone());
 
 				Self::deposit_event(Event::UpdatedSeasonMetadata {
 					season_id,

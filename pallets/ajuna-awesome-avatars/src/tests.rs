@@ -351,3 +351,84 @@ mod season {
 		});
 	}
 }
+
+#[cfg(test)]
+mod season_metadata {
+	use super::*;
+
+	const ALICE: u32 = 1;
+	const BOB: u32 = 2;
+
+	const METADATA: SeasonMetadata = SeasonMetadata { name: [0; 100], description: [0; 1000] };
+
+	const SEASON_ID: SeasonId = 0;
+
+	#[test]
+	fn update_season_metadata_happy_path() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), ALICE));
+
+			assert_ok!(AjunaAwesomeAvatars::update_season_metadata(
+				Origin::signed(ALICE),
+				SEASON_ID,
+				METADATA.clone()
+			));
+
+			assert_eq!(
+				last_event(),
+				mock::Event::AjunaAwesomeAvatars(crate::Event::UpdatedSeasonMetadata {
+					season_id: SEASON_ID,
+					season_metadata: METADATA
+				}),
+			);
+
+			assert_eq!(SeasonsMetadata::<Test>::get(SEASON_ID), Some(METADATA));
+		});
+	}
+
+	#[test]
+	fn update_season_metadata_not_allowed_when_organizer_not_set() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				AjunaAwesomeAvatars::update_season_metadata(
+					Origin::signed(ALICE),
+					SEASON_ID,
+					METADATA.clone()
+				),
+				Error::<Test>::OrganizerNotSet
+			);
+		});
+	}
+
+	#[test]
+	fn update_season_metadata_not_allowed_without_organizer_account() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), ALICE));
+
+			assert_noop!(
+				AjunaAwesomeAvatars::update_season_metadata(
+					Origin::signed(BOB),
+					SEASON_ID,
+					METADATA.clone()
+				),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn update_season_metadata_fails_with_invalid_season_id() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AjunaAwesomeAvatars::set_organizer(Origin::root(), ALICE));
+
+			assert_noop!(
+				AjunaAwesomeAvatars::update_season_metadata(
+					Origin::signed(ALICE),
+					SEASON_ID + 10,
+					METADATA.clone()
+				),
+				Error::<Test>::UnknownSeason
+			);
+		});
+	}
+}
