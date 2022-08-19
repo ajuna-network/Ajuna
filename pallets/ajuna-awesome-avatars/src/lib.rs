@@ -40,6 +40,18 @@ pub mod pallet {
 	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	type SeasonId = u16;
 
+	#[derive(Encode, Decode, Clone, Default)]
+	struct SeasonMetadata {
+		name: Vec<u8>,
+		description: Vec<u8>,
+	}
+
+	#[allow(non_snake_case)]
+	#[pallet::type_value]
+	pub fn DefaultNextSeasonId() -> SeasonId {
+		1
+	}
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -53,11 +65,6 @@ pub mod pallet {
 	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
-	#[pallet::type_value]
-	pub fn DefaultNextSeasonId() -> SeasonId {
-		1
-	}
-
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
@@ -67,6 +74,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_id)]
 	pub type ActiveSeason<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn seasons_metadata)]
+	pub type SeasonsMetadata = StorageMap<_, Identity, SeasonId, SeasonMetadata>;
 
 	/// Storage for the seasons.
 	#[pallet::storage]
@@ -82,6 +93,8 @@ pub mod pallet {
 		NewSeasonCreated(SeasonOf<T>),
 		/// An existing season has been updated.
 		SeasonUpdated(SeasonOf<T>, SeasonId),
+		/// The metadata for {season_id} has been updated
+		UpdatedSeasonMetadata { season_id: SeasonId, season_metadata: SeasonMetadata },
 	}
 
 	#[pallet::error]
@@ -110,6 +123,28 @@ pub mod pallet {
 			Self::deposit_event(Event::OrganizerSet { organizer });
 
 			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn update_season_metadata(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			metadata: SeasonMetadata,
+		) -> DispatchResult {
+			Self::ensure_organizer(origin)?;
+
+			if season_id >= NextSeasonId::get() {
+				Err(Error::UnknownSeason.into())
+			} else {
+				SeasonsMetadata::insert(season_id, metadata.clone());
+
+				Self::deposit_event(Event::UpdatedSeasonMetadata {
+					season_id,
+					season_metadata: metadata,
+				});
+
+				Ok(())
+			}
 		}
 
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
