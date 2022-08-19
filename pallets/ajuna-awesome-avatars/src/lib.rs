@@ -48,6 +48,10 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 	}
 
+	#[pallet::storage]
+	#[pallet::getter(fn organizer)]
+	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
@@ -66,12 +70,18 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// A new organizer has been set.
+		OrganizerSet { organizer: T::AccountId },
+		/// A new season has been created.
 		NewSeasonCreated(SeasonOf<T>),
+		/// An existing season has been updated.
 		SeasonUpdated(SeasonOf<T>, SeasonId),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// There is no account set as the organizer
+		OrganizerNotSet,
 		/// The season starts before the previous season has ended.
 		EarlyStartTooEarly,
 		/// The season season start later than its early access
@@ -86,6 +96,16 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(10_000)]
+		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			Organizer::<T>::put(organizer.clone());
+			Self::deposit_event(Event::OrganizerSet { organizer });
+
+			Ok(())
+		}
+
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
@@ -141,6 +161,19 @@ pub mod pallet {
 				Self::deposit_event(Event::SeasonUpdated(season, season_id));
 				Ok(())
 			})
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		#[allow(dead_code)]
+		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+			let maybe_organizer = ensure_signed(origin)?;
+			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+
+			match maybe_organizer == existing_organizer {
+				true => Ok(()),
+				false => Err(DispatchError::BadOrigin),
+			}
 		}
 	}
 }

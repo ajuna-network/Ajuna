@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{self as pallet_ajuna_awesome_avatars};
+use crate as pallet_ajuna_awesome_avatars;
 use frame_support::traits::{ConstU16, ConstU64};
-use frame_system as system;
+use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -24,22 +24,21 @@ use sp_runtime::{
 	BuildStorage,
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type MockAccountId = u32;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+		Block = MockBlock<Test>,
+		NodeBlock = MockBlock<Test>,
+		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AAA: pallet_ajuna_awesome_avatars::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		AjunaAwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -50,7 +49,7 @@ impl system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u32;
+	type AccountId = MockAccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
