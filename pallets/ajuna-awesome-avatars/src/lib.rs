@@ -16,8 +16,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
-use frame_support::RuntimeDebug;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -29,55 +27,11 @@ mod tests;
 // #[cfg(feature = "runtime-benchmarks")]
 // mod benchmarking;
 
-pub mod ajuna_awesome_avatar {
-
-	use super::{Decode, Encode, RuntimeDebug};
-	use codec::MaxEncodedLen;
-	use scale_info::TypeInfo;
-
-	#[derive(Encode, Decode, Clone, Default, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
-	pub struct Season<BlockNumber> {
-		pub early_access_start: BlockNumber,
-		pub start: BlockNumber,
-		pub end: BlockNumber,
-		pub max_mints: u16,
-		pub max_mythical_mints: u16,
-	}
-
-	impl<BlockNumber: PartialOrd> Season<BlockNumber> {
-		pub fn new(
-			early_access_start: BlockNumber,
-			start: BlockNumber,
-			end: BlockNumber,
-			max_mints: u16,
-			max_mythical_mints: u16,
-		) -> Self {
-			Self { early_access_start, start, end, max_mints, max_mythical_mints }
-		}
-
-		/// Checks that first season end is set before second season early access start.
-		pub fn are_seasons_overlapped(
-			first_season: &Season<BlockNumber>,
-			second_season: &Season<BlockNumber>,
-		) -> bool {
-			first_season.end >= second_season.early_access_start
-		}
-
-		/// Checks if season early access start is set before start.
-		pub fn is_early_access_start_too_late(&self) -> bool {
-			self.early_access_start >= self.start
-		}
-
-		/// Checks if season start is set before end.
-		pub fn is_season_start_too_late(&self) -> bool {
-			self.start >= self.end
-		}
-	}
-}
+pub mod season;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use crate::ajuna_awesome_avatar::*;
+	use super::season::*;
 	use frame_support::pallet_prelude::{DispatchResult, *};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_runtime::ArithmeticError;

@@ -17,7 +17,7 @@
 const ALICE: u32 = 1;
 
 pub mod season {
-	use crate::ajuna_awesome_avatar::Season;
+	use crate::season::Season;
 
 	#[test]
 	fn season_ok() {
@@ -44,7 +44,7 @@ pub mod season {
 pub mod new_season {
 	use frame_support::{assert_noop, assert_ok};
 
-	use crate::{ajuna_awesome_avatar::Season, mock::*, tests::ALICE, *};
+	use crate::{season::Season, mock::*, tests::ALICE, *};
 
 	#[test]
 	fn new_season_should_create_first_season() {
@@ -107,7 +107,7 @@ pub mod new_season {
 pub mod update_season {
 	use frame_support::{assert_noop, assert_ok};
 
-	use crate::{ajuna_awesome_avatar::Season, mock::*, tests::ALICE, *};
+	use crate::{season::Season, mock::*, tests::ALICE, *};
 
 	#[test]
 	fn update_season_should_return_error_when_season_not_found() {
