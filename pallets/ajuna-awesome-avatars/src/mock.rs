@@ -26,6 +26,14 @@ use sp_runtime::{
 
 type MockAccountId = u32;
 
+pub const ALICE: MockAccountId = 1;
+pub const BOB: MockAccountId = 2;
+pub const CHARLIE: MockAccountId = 3;
+pub const DELTHEA: MockAccountId = 4;
+pub const ERIN: MockAccountId = 5;
+pub const FLORINA: MockAccountId = 6;
+pub const HILDA: MockAccountId = 7;
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -34,7 +42,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
 		System: frame_system,
-		AjunaAwesomeAvatars: pallet_ajuna_awesome_avatars,
+		AwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
 

@@ -39,6 +39,7 @@ pub mod pallet {
 
 	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	type SeasonId = u16;
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -52,10 +53,15 @@ pub mod pallet {
 	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
+	#[pallet::type_value]
+	pub fn DefaultNextSeasonId() -> SeasonId {
+		1
+	}
+
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
-	pub type NextSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
+	pub type NextSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultNextSeasonId>;
 
 	/// Season id currently active.
 	#[pallet::storage]
@@ -114,18 +120,13 @@ pub mod pallet {
 			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
 
 			let season_id = Self::next_season_id();
-			if season_id > 0 {
-				if let Some(prev_season) = Self::seasons(season_id - 1) {
-					ensure!(
-						prev_season.end < new_season.early_start,
-						Error::<T>::EarlyStartTooEarly
-					);
-				}
+			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
+			if let Some(prev_season) = Self::seasons(season_id - 1) {
+				ensure!(prev_season.end < new_season.early_start, Error::<T>::EarlyStartTooEarly);
 			}
 
 			Seasons::<T>::insert(season_id, new_season.clone());
-
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
 			NextSeasonId::<T>::put(next_season_id);
 
 			Self::deposit_event(Event::NewSeasonCreated(new_season));
@@ -145,13 +146,8 @@ pub mod pallet {
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 
 			Seasons::<T>::try_mutate(season_id, |maybe_season| {
-				if season_id > 0 {
-					if let Some(prev_season) = Self::seasons(season_id - 1) {
-						ensure!(
-							prev_season.end < season.early_start,
-							Error::<T>::EarlyStartTooEarly
-						);
-					}
+				if let Some(prev_season) = Self::seasons(season_id - 1) {
+					ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
 				}
 				if let Some(next_season) = Self::seasons(season_id + 1) {
 					ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
