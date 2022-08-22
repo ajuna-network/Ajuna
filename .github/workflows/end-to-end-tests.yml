@@ -1,6 +1,6 @@
 name: E2E Tests
 
-on: push
+on:
   workflow_run:
     workflows: ["Build"]
     types:
