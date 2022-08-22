@@ -139,10 +139,7 @@ mod new_season {
 				Season { early_start: 6, start: 3, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert!(new_season.early_start > new_season.start);
 			assert_noop!(
-				AwesomeAvatars::new_season(
-					Origin::signed(ALICE),
-					new_season,
-				),
+				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season,),
 				Error::<Test>::EarlyStartTooLate
 			);
 		});
@@ -155,10 +152,7 @@ mod new_season {
 				Season { early_start: 11, start: 12, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert!(new_season.early_start < new_season.start);
 			assert_noop!(
-				AwesomeAvatars::new_season(
-					Origin::signed(ALICE),
-					new_season
-				),
+				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
 				Error::<Test>::SeasonStartTooLate
 			);
 		});
