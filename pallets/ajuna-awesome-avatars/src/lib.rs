@@ -37,16 +37,18 @@ pub mod pallet {
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::ArithmeticError;
 
-	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
-	type SeasonId = u16;
+	pub type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
+	pub type SeasonId = u16;
+
+	pub type NameOfSeason = BoundedVec<u8, ConstU32<100>>;
+	pub type DescriptionOfSeason = BoundedVec<u8, ConstU32<1000>>;
 
 	#[derive(Debug, Eq, PartialEq, Encode, Decode, Clone, MaxEncodedLen, TypeInfo)]
 	pub struct SeasonMetadata {
-		pub name: [u8; 100],
-		pub description: [u8; 1000],
+		pub name: NameOfSeason,
+		pub description: DescriptionOfSeason,
 	}
 
-	#[allow(non_snake_case)]
 	#[pallet::type_value]
 	pub fn DefaultNextSeasonId() -> SeasonId {
 		1
@@ -77,7 +79,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn seasons_metadata)]
-	pub type SeasonsMetadata = StorageMap<_, Identity, SeasonId, SeasonMetadata>;
+	pub type SeasonsMetadata<T: Config> = StorageMap<_, Identity, SeasonId, SeasonMetadata>;
 
 	/// Storage for the seasons.
 	#[pallet::storage]
