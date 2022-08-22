@@ -99,7 +99,8 @@ pub mod pallet {
 		/// The season doesn't exist.
 		UnknownSeason,
 		/// The combination of all tiers rarity chances doesn't add up to 100
-		IncompleteRarityChances,
+		IncorrectRarityChances,
+		/// At least one RarityTier is missing from the tier map
 		MissingRarityTiers,
 	}
 
@@ -123,7 +124,7 @@ pub mod pallet {
 			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
 			ensure!(
 				new_season.rarity_tiers.values().sum::<RarityChance>() == 100,
-				Error::<T>::IncompleteRarityChances
+				Error::<T>::IncorrectRarityChances
 			);
 			ensure!(new_season.rarity_tiers.keys().len() == 6, Error::<T>::MissingRarityTiers);
 
@@ -154,7 +155,7 @@ pub mod pallet {
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 			ensure!(
 				season.rarity_tiers.values().sum::<RarityChance>() == 100,
-				Error::<T>::IncompleteRarityChances
+				Error::<T>::IncorrectRarityChances
 			);
 			ensure!(season.rarity_tiers.keys().len() == 6, Error::<T>::MissingRarityTiers);
 

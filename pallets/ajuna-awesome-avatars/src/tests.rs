@@ -238,6 +238,55 @@ mod season {
 	}
 
 	#[test]
+	fn new_season_should_error_when_rarity_tier_sum_is_incorrect() {
+		new_test_ext().execute_with(|| {
+			let mut incorrect_tiers = get_rarity_tiers();
+			incorrect_tiers.try_insert(RarityTier::Epic, 100).expect("Should insert item");
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			let new_season = Season {
+				early_start: 1,
+				start: 5,
+				end: 10,
+				max_mints: 1,
+				max_mythical_mints: 1,
+				rarity_tiers: incorrect_tiers,
+				max_variations: 1,
+			};
+			assert_noop!(
+				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
+				Error::<Test>::IncorrectRarityChances
+			);
+		});
+	}
+
+	#[test]
+	fn new_season_should_error_when_some_rarity_tiers_are_missing() {
+		new_test_ext().execute_with(|| {
+			let mut incomplete_tiers = RarityTiers::new();
+			incomplete_tiers
+				.try_insert(RarityTier::Common, 50)
+				.expect("Should insert element");
+			incomplete_tiers
+				.try_insert(RarityTier::Uncommon, 50)
+				.expect("Should insert element");
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			let new_season = Season {
+				early_start: 1,
+				start: 5,
+				end: 10,
+				max_mints: 1,
+				max_mythical_mints: 1,
+				rarity_tiers: incomplete_tiers,
+				max_variations: 1,
+			};
+			assert_noop!(
+				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
+				Error::<Test>::MissingRarityTiers
+			);
+		});
+	}
+
+	#[test]
 	fn update_season_should_reject_non_organizer_as_caller() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
@@ -520,6 +569,78 @@ mod season {
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 0, season_update),
 				Error::<Test>::SeasonStartTooLate
+			);
+		});
+	}
+
+	#[test]
+	fn update_season_should_error_when_rarity_tier_sum_is_incorrect() {
+		new_test_ext().execute_with(|| {
+			let first_season = Season {
+				early_start: 1,
+				start: 5,
+				end: 10,
+				max_mints: 1,
+				max_mythical_mints: 1,
+				rarity_tiers: get_rarity_tiers(),
+				max_variations: 1,
+			};
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
+
+			let mut incorrect_tiers = get_rarity_tiers();
+			incorrect_tiers.try_insert(RarityTier::Epic, 100).expect("Should insert item");
+			let updated_season = Season {
+				early_start: 1,
+				start: 5,
+				end: 10,
+				max_mints: 1,
+				max_mythical_mints: 1,
+				rarity_tiers: incorrect_tiers,
+				max_variations: 1,
+			};
+			assert_noop!(
+				AwesomeAvatars::new_season(Origin::signed(ALICE), updated_season),
+				Error::<Test>::IncorrectRarityChances
+			);
+		});
+	}
+
+	#[test]
+	fn updated_season_should_error_when_some_rarity_tiers_are_missing() {
+		new_test_ext().execute_with(|| {
+			let first_season = Season {
+				early_start: 1,
+				start: 5,
+				end: 10,
+				max_mints: 1,
+				max_mythical_mints: 1,
+				rarity_tiers: get_rarity_tiers(),
+				max_variations: 1,
+			};
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
+
+			let mut incomplete_tiers = RarityTiers::new();
+			incomplete_tiers
+				.try_insert(RarityTier::Common, 50)
+				.expect("Should insert element");
+			incomplete_tiers
+				.try_insert(RarityTier::Uncommon, 50)
+				.expect("Should insert element");
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			let updated_season = Season {
+				early_start: 1,
+				start: 5,
+				end: 10,
+				max_mints: 1,
+				max_mythical_mints: 1,
+				rarity_tiers: incomplete_tiers,
+				max_variations: 1,
+			};
+			assert_noop!(
+				AwesomeAvatars::new_season(Origin::signed(ALICE), updated_season),
+				Error::<Test>::MissingRarityTiers
 			);
 		});
 	}
