@@ -114,7 +114,7 @@ pub mod pallet {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			Self::ensure_organizer(origin)?;
 
 			ensure!(new_season.early_start < new_season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
@@ -140,7 +140,7 @@ pub mod pallet {
 			season_id: SeasonId,
 			season: SeasonOf<T>,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			Self::ensure_organizer(origin)?;
 
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
@@ -161,15 +161,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		#[allow(dead_code)]
 		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
-
-			match maybe_organizer == existing_organizer {
-				true => Ok(()),
-				false => Err(DispatchError::BadOrigin),
-			}
+			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
+			Ok(())
 		}
 	}
 }

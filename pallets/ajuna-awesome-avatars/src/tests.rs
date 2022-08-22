@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{mock::*, *};
+use crate::{mock::*, season::*, *};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::DispatchError;
-
-use season::*;
 
 mod organizer {
 	use super::*;
@@ -89,14 +87,35 @@ mod organizer {
 	}
 }
 
-mod new_season {
+mod season {
 	use super::*;
+
+	#[test]
+	fn new_season_should_reject_non_organizer_as_caller() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_noop!(
+				AwesomeAvatars::new_season(
+					Origin::signed(BOB),
+					Season {
+						early_start: 1,
+						start: 2,
+						end: 3,
+						max_mints: 4,
+						max_mythical_mints: 5,
+					}
+				),
+				DispatchError::BadOrigin
+			);
+		});
+	}
 
 	#[test]
 	fn new_season_should_work() {
 		new_test_ext().execute_with(|| {
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(1), Some(first_season.clone()));
 			assert_eq!(
@@ -120,6 +139,7 @@ mod new_season {
 		new_test_ext().execute_with(|| {
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 
 			let second_season =
@@ -138,6 +158,7 @@ mod new_season {
 			let new_season =
 				Season { early_start: 6, start: 3, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert!(new_season.early_start > new_season.start);
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_noop!(
 				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season,),
 				Error::<Test>::EarlyStartTooLate
@@ -151,6 +172,7 @@ mod new_season {
 			let new_season =
 				Season { early_start: 11, start: 12, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert!(new_season.early_start < new_season.start);
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_noop!(
 				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
 				Error::<Test>::SeasonStartTooLate
@@ -159,8 +181,30 @@ mod new_season {
 	}
 
 	#[test]
+	fn update_season_should_reject_non_organizer_as_caller() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_noop!(
+				AwesomeAvatars::update_season(
+					Origin::signed(BOB),
+					7357,
+					Season {
+						early_start: 1,
+						start: 2,
+						end: 3,
+						max_mints: 4,
+						max_mythical_mints: 5,
+					}
+				),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
 	fn update_season_should_work() {
 		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
@@ -187,6 +231,7 @@ mod new_season {
 	#[test]
 	fn update_season_should_return_error_when_season_not_found() {
 		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_noop!(
 				AwesomeAvatars::update_season(
 					Origin::signed(ALICE),
@@ -207,6 +252,7 @@ mod new_season {
 	#[test]
 	fn update_season_should_return_error_when_season_to_update_ends_after_next_season_start() {
 		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
@@ -228,6 +274,7 @@ mod new_season {
 	#[test]
 	fn update_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
 		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
@@ -265,6 +312,7 @@ mod new_season {
 		new_test_ext().execute_with(|| {
 			let season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season.clone()));
 
 			let season_update =
@@ -290,11 +338,8 @@ mod new_season {
 		new_test_ext().execute_with(|| {
 			let season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season.clone()));
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(season))
-			);
 
 			// Update the second season and set early access start before previous season end
 			let season_update =
