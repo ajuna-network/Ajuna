@@ -135,18 +135,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			if season_id >= NextSeasonId::<T>::get() {
-				Err(Error::<T>::UnknownSeason.into())
-			} else {
-				SeasonsMetadata::<T>::insert(season_id, metadata.clone());
+			ensure!(Self::seasons(season_id).is_some(), Error::<T>::UnknownSeason);
 
-				Self::deposit_event(Event::UpdatedSeasonMetadata {
-					season_id,
-					season_metadata: metadata,
-				});
+			SeasonsMetadata::<T>::insert(season_id, metadata.clone());
 
-				Ok(())
-			}
+			Self::deposit_event(Event::UpdatedSeasonMetadata {
+				season_id,
+				season_metadata: metadata,
+			});
+
+			Ok(())
 		}
 
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
