@@ -85,8 +85,6 @@ impl pallet_ajuna_board::Config for Test {
 	type GameState = crate::dot4gravity::GameState<MockAccountId>;
 	type Game = crate::dot4gravity::Game<MockAccountId>;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
-	type MaxNumberOfIdleBlocks = MaxNumberOfIdleBlocks;
-	type MaxNumberOfGamesToExpire = MaxNumberOfGamesToExpire;
 	type WeightInfo = ();
 }
 
@@ -105,9 +103,4 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub fn last_event() -> Event {
 	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
-}
-
-pub fn last_two_events() -> (Event, Event) {
-	let mut events = frame_system::Pallet::<Test>::events();
-	(events.pop().expect("Event expected").event, events.pop().expect("Event expected").event)
 }
