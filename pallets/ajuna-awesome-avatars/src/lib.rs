@@ -98,6 +98,9 @@ pub mod pallet {
 		SeasonEndTooLate,
 		/// The season doesn't exist.
 		UnknownSeason,
+		/// The combination of all tiers rarity chances doesn't add up to 100
+		IncompleteRarityChances,
+		MissingRarityTiers,
 	}
 
 	#[pallet::call]
@@ -118,6 +121,11 @@ pub mod pallet {
 
 			ensure!(new_season.early_start < new_season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				new_season.rarity_tiers.values().sum::<RarityChance>() == 100,
+				Error::<T>::IncompleteRarityChances
+			);
+			ensure!(new_season.rarity_tiers.keys().len() == 6, Error::<T>::MissingRarityTiers);
 
 			let season_id = Self::next_season_id();
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -144,6 +152,11 @@ pub mod pallet {
 
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				season.rarity_tiers.values().sum::<RarityChance>() == 100,
+				Error::<T>::IncompleteRarityChances
+			);
+			ensure!(season.rarity_tiers.keys().len() == 6, Error::<T>::MissingRarityTiers);
 
 			Seasons::<T>::try_mutate(season_id, |maybe_season| {
 				if let Some(prev_season) = Self::seasons(season_id - 1) {

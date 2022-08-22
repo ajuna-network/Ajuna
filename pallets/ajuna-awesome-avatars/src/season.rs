@@ -15,8 +15,25 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::RuntimeDebug;
+use frame_support::{traits::ConstU32, BoundedBTreeMap, RuntimeDebug};
 use scale_info::TypeInfo;
+
+#[derive(
+	Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, Ord,
+)]
+pub enum RarityTier {
+	Common = 1,
+	Uncommon = 2,
+	Rare = 3,
+	Epic = 4,
+	Legendary = 5,
+	Mythical = 6,
+}
+
+/// Percentage of a given RarityTier
+pub type RarityChance = u8;
+
+pub type RarityTiers = BoundedBTreeMap<RarityTier, RarityChance, ConstU32<6>>;
 
 #[derive(Encode, Decode, Clone, Default, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Season<BlockNumber> {
@@ -25,4 +42,6 @@ pub struct Season<BlockNumber> {
 	pub end: BlockNumber,
 	pub max_mints: u16,
 	pub max_mythical_mints: u16,
+	pub rarity_tiers: RarityTiers,
+	pub max_variations: u8,
 }
