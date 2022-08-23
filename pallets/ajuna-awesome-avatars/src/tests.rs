@@ -142,7 +142,7 @@ mod season {
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 
 			let second_season =
 				Season { early_start: 3, start: 7, end: 10, max_mints: 1, max_mythical_mints: 1 };
@@ -210,10 +210,10 @@ mod season {
 			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			let second_season =
 				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 
 			// Update the first one to end before the second has started
 			let first_season_update =
@@ -258,10 +258,10 @@ mod season {
 			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			let second_season =
 				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 
 			// Update the first one to end after the second has started
 			let first_season_update =
@@ -280,10 +280,10 @@ mod season {
 			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			let second_season =
 				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 
 			// Update the second season and set early start before previous season end
 			let second_season_update =
@@ -315,7 +315,7 @@ mod season {
 			let season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season.clone()));
 
 			let season_update =
 				Season { early_start: 5, start: 1, end: 10, max_mints: 1, max_mythical_mints: 1 };
@@ -341,7 +341,7 @@ mod season {
 			let season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season.clone()));
 
 			// Update the second season and set early access start before previous season end
 			let season_update =
