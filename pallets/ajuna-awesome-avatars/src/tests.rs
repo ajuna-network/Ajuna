@@ -90,6 +90,8 @@ mod organizer {
 mod season {
 	use super::*;
 
+	const SEASON_ID: SeasonId = 1;
+
 	#[test]
 	fn new_season_should_reject_non_organizer_as_caller() {
 		new_test_ext().execute_with(|| {
@@ -350,20 +352,6 @@ mod season {
 			);
 		});
 	}
-}
-
-#[cfg(test)]
-mod season_metadata {
-	use super::*;
-	use frame_support::BoundedVec;
-
-	const SEASON_ID: SeasonId = 1;
-
-	impl Default for SeasonMetadata {
-		fn default() -> Self {
-			Self { name: BoundedVec::default(), description: BoundedVec::default() }
-		}
-	}
 
 	#[test]
 	fn update_season_metadata_should_work() {
@@ -389,7 +377,7 @@ mod season_metadata {
 				}),
 			);
 
-			assert_eq!(SeasonsMetadata::<Test>::get(SEASON_ID), Some(metadata));
+			assert_eq!(AwesomeAvatars::seasons_metadata(SEASON_ID), Some(metadata));
 		});
 	}
 
