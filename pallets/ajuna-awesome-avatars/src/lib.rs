@@ -100,8 +100,6 @@ pub mod pallet {
 		UnknownSeason,
 		/// The combination of all tiers rarity chances doesn't add up to 100
 		IncorrectRarityChances,
-		/// At least one RarityTier is missing from the tier map
-		MissingRarityTiers,
 	}
 
 	#[pallet::call]
@@ -126,7 +124,6 @@ pub mod pallet {
 				new_season.rarity_tiers.values().sum::<RarityChance>() == 100,
 				Error::<T>::IncorrectRarityChances
 			);
-			ensure!(new_season.rarity_tiers.keys().len() == 6, Error::<T>::MissingRarityTiers);
 
 			let season_id = Self::next_season_id();
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -157,7 +154,6 @@ pub mod pallet {
 				season.rarity_tiers.values().sum::<RarityChance>() == 100,
 				Error::<T>::IncorrectRarityChances
 			);
-			ensure!(season.rarity_tiers.keys().len() == 6, Error::<T>::MissingRarityTiers);
 
 			Seasons::<T>::try_mutate(season_id, |maybe_season| {
 				if let Some(prev_season) = Self::seasons(season_id - 1) {
