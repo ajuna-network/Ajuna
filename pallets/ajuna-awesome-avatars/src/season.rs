@@ -15,11 +15,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::ConstU32, BoundedBTreeMap, RuntimeDebug};
+use frame_support::{pallet_prelude::*, BoundedBTreeMap};
 use scale_info::TypeInfo;
 
 #[derive(
-	Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, Ord,
+	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum RarityTier {
 	Common = 1,
@@ -35,7 +35,7 @@ pub type RarityChance = u8;
 
 pub type RarityTiers = BoundedBTreeMap<RarityTier, RarityChance, ConstU32<6>>;
 
-#[derive(Encode, Decode, Clone, Default, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
@@ -44,4 +44,10 @@ pub struct Season<BlockNumber> {
 	pub max_mythical_mints: u16,
 	pub rarity_tiers: RarityTiers,
 	pub max_variations: u8,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
+pub struct SeasonMetadata {
+	pub name: BoundedVec<u8, ConstU32<100>>,
+	pub description: BoundedVec<u8, ConstU32<1000>>,
 }
