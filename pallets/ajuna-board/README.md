@@ -41,7 +41,8 @@ impl pallet_ajuna_board::Config for Test {
 	type BoardId = u32;
 	type PlayersTurn = u32;
 	type GameState = GameState;
-	type Game = Game;
+    type Game = Game;
+    type IdleBoardTimeout = IdleBoardTimeout;
 }
 ```
 
