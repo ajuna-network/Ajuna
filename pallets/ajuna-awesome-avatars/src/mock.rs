@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate as pallet_ajuna_awesome_avatars;
+use crate::{self as pallet_ajuna_awesome_avatars, season::Season};
 use frame_support::traits::{ConstU16, ConstU64};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
@@ -25,6 +25,7 @@ use sp_runtime::{
 };
 
 type MockAccountId = u32;
+type MockBlockNumber = u64;
 
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
@@ -54,7 +55,7 @@ impl frame_system::Config for Test {
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
-	type BlockNumber = u64;
+	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = MockAccountId;
@@ -77,14 +78,35 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
 }
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let config = GenesisConfig { system: Default::default() };
+#[derive(Default)]
+pub struct ExtBuilder {
+	organizer: Option<MockAccountId>,
+	seasons: Vec<Season<MockBlockNumber>>,
+}
 
-	let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+impl ExtBuilder {
+	pub fn organizer(mut self, organizer: MockAccountId) -> Self {
+		self.organizer = Some(organizer);
+		self
+	}
+	pub fn seasons(mut self, seasons: Vec<Season<MockBlockNumber>>) -> Self {
+		self.seasons = seasons;
+		self
+	}
+	pub fn build(self) -> sp_io::TestExternalities {
+		let config = GenesisConfig { system: Default::default() };
+		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| {
+			if let Some(organizer) = self.organizer {
+				let _ = AwesomeAvatars::set_organizer(Origin::root(), organizer);
+			}
 
-	ext.execute_with(|| {
-		System::set_block_number(1);
-	});
-
-	ext
+			for season in self.seasons.into_iter() {
+				let organizer = AwesomeAvatars::organizer().unwrap();
+				let _ = AwesomeAvatars::new_season(Origin::signed(organizer), season);
+			}
+		});
+		ext
+	}
 }
