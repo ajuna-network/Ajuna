@@ -22,14 +22,9 @@ mod organizer {
 	use super::*;
 
 	#[test]
-	fn set_organizer_should_only_accept_root_caller() {
+	fn set_organizer_should_work() {
 		new_test_ext().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::set_organizer(Origin::signed(ALICE), HILDA),
-				DispatchError::BadOrigin
-			);
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), HILDA));
-
 			assert_eq!(Organizer::<Test>::get(), Some(HILDA), "Organizer should be Hilda");
 			assert_eq!(
 				last_event(),
@@ -39,14 +34,19 @@ mod organizer {
 	}
 
 	#[test]
+	fn set_organizer_should_reject_non_root_caller() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				AwesomeAvatars::set_organizer(Origin::signed(ALICE), HILDA),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
 	fn set_organizer_should_replace_existing_organizer() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), BOB));
-			assert_eq!(Organizer::<Test>::get(), Some(BOB), "Organizer should be Bob");
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::OrganizerSet { organizer: BOB }),
-			);
 
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), FLORINA));
 			assert_eq!(Organizer::<Test>::get(), Some(FLORINA), "Organizer should be Florina");
