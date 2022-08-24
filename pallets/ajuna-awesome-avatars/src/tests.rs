@@ -206,18 +206,17 @@ mod season {
 	#[test]
 	fn update_season_should_work() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
 			let second_season =
 				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season));
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 
-			// Update the first one to end before the second has started
 			let first_season_update =
 				Season { early_start: 1, start: 5, end: 8, max_mints: 1, max_mythical_mints: 1 };
+			assert!(first_season_update.end < second_season.early_start);
 			assert_ok!(AwesomeAvatars::update_season(
 				Origin::signed(ALICE),
 				1,
@@ -254,18 +253,17 @@ mod season {
 	#[test]
 	fn update_season_should_return_error_when_season_to_update_ends_after_next_season_start() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
 			let second_season =
 				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season));
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 
-			// Update the first one to end after the second has started
 			let first_season_update =
 				Season { early_start: 1, start: 5, end: 14, max_mints: 1, max_mythical_mints: 1 };
+			assert!(first_season_update.end > second_season.early_start);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 1, first_season_update),
 				Error::<Test>::SeasonEndTooLate
@@ -276,18 +274,17 @@ mod season {
 	#[test]
 	fn update_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			// Create two seasons
 			let first_season =
 				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
 			let second_season =
 				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season));
 
-			// Update the second season and set early start before previous season end
 			let second_season_update =
 				Season { early_start: 8, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
+			assert!(second_season_update.early_start < first_season.end);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
 				Error::<Test>::EarlyStartTooEarly
@@ -295,6 +292,7 @@ mod season {
 
 			let second_season_update =
 				Season { early_start: 9, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 };
+			assert!(second_season_update.early_start < first_season.end);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
 				Error::<Test>::EarlyStartTooEarly
@@ -302,6 +300,7 @@ mod season {
 
 			let second_season_update =
 				Season { early_start: 10, start: 15, end: 20, max_mints: 2, max_mythical_mints: 1 };
+			assert!(second_season_update.early_start == first_season.end);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
 				Error::<Test>::EarlyStartTooEarly
@@ -312,16 +311,13 @@ mod season {
 	#[test]
 	fn update_season_should_return_error_when_early_start_is_earlier_than_or_equal_to_start() {
 		new_test_ext().execute_with(|| {
-			let season =
-				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season));
 
 			let season_update =
 				Season { early_start: 5, start: 1, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert!(season_update.early_start > season_update.start);
 			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), 0, season_update),
+				AwesomeAvatars::update_season(Origin::signed(ALICE), 111, season_update),
 				Error::<Test>::EarlyStartTooLate
 			);
 
@@ -329,7 +325,7 @@ mod season {
 				Season { early_start: 5, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert!(season_update.early_start == season_update.start);
 			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), 0, season_update),
+				AwesomeAvatars::update_season(Origin::signed(ALICE), 222, season_update),
 				Error::<Test>::EarlyStartTooLate
 			);
 		});
@@ -338,16 +334,13 @@ mod season {
 	#[test]
 	fn update_season_should_return_error_when_start_is_later_than_end() {
 		new_test_ext().execute_with(|| {
-			let season =
-				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), season));
 
-			// Update the second season and set early access start before previous season end
 			let season_update =
 				Season { early_start: 1, start: 15, end: 10, max_mints: 1, max_mythical_mints: 1 };
+			assert!(season_update.start > season_update.end);
 			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), 0, season_update),
+				AwesomeAvatars::update_season(Origin::signed(ALICE), 123, season_update),
 				Error::<Test>::SeasonStartTooLate
 			);
 		});
