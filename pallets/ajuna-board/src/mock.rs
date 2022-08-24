@@ -72,10 +72,6 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
-	// Used as assumption in tests beware if changed
-	pub const MaxNumberOfIdleBlocks: u32 = 10;
-	// Used as assumption in tests beware if changed
-	pub const MaxNumberOfGamesToExpire: u32 = 2;
 }
 
 impl pallet_ajuna_board::Config for Test {
