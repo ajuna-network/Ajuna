@@ -266,11 +266,9 @@ pub mod pallet {
 		pub fn dispute_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 			let board = BoardStates::<T>::get(board_id).ok_or(Error::<T>::InvalidBoard)?;
-			ensure!(
-				board.started.saturating_add(T::IdleBoardTimeout::get()) <
-					frame_system::Pallet::<T>::current_block_number(),
-				Error::<T>::DisputeFailed
-			);
+			let timeout_block_number = board.started.saturating_add(T::IdleBoardTimeout::get());
+			let current_block_number = frame_system::Pallet::<T>::current_block_number();
+			ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
 
 			let winner = T::Game::get_next_player(&board.state);
 			Self::declare_winner(&board_id, &winner, &board.state);
