@@ -469,6 +469,8 @@ impl pallet_ajuna_board::Config for Runtime {
 	type GameState = pallet_ajuna_board::dot4gravity::GameState<AccountId>;
 	type Game = pallet_ajuna_board::dot4gravity::Game<AccountId>;
 	type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
+	// Based on 600ms blocks this would be 10 minutesc
+	type IdleBoardTimeout = frame_support::traits::ConstU32<1000>;
 	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Runtime>;
 }
 
