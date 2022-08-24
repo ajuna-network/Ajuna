@@ -26,10 +26,9 @@ mod organizer {
 		new_test_ext().execute_with(|| {
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), HILDA));
 			assert_eq!(Organizer::<Test>::get(), Some(HILDA), "Organizer should be Hilda");
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::OrganizerSet { organizer: HILDA }),
-			);
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::OrganizerSet {
+				organizer: HILDA,
+			}));
 		});
 	}
 
@@ -50,10 +49,9 @@ mod organizer {
 
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), FLORINA));
 			assert_eq!(Organizer::<Test>::get(), Some(FLORINA), "Organizer should be Florina");
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::OrganizerSet { organizer: FLORINA }),
-			);
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::OrganizerSet {
+				organizer: FLORINA,
+			}));
 		});
 	}
 
@@ -120,19 +118,17 @@ mod season {
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(1), Some(first_season.clone()));
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(first_season))
-			);
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(
+				first_season,
+			)));
 
 			let second_season =
 				Season { early_start: 11, start: 12, end: 13, max_mints: 1, max_mythical_mints: 1 };
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(2), Some(second_season.clone()));
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(second_season))
-			);
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(
+				second_season,
+			)));
 		});
 	}
 
@@ -222,10 +218,10 @@ mod season {
 				1,
 				first_season_update.clone()
 			));
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::SeasonUpdated(first_season_update, 1))
-			);
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::SeasonUpdated(
+				first_season_update,
+				1,
+			)));
 		});
 	}
 
@@ -362,13 +358,12 @@ mod season {
 				metadata.clone()
 			));
 
-			assert_eq!(
-				last_event(),
-				mock::Event::AwesomeAvatars(crate::Event::UpdatedSeasonMetadata {
+			System::assert_last_event(mock::Event::AwesomeAvatars(
+				crate::Event::UpdatedSeasonMetadata {
 					season_id: SEASON_ID,
-					season_metadata: metadata.clone()
-				}),
-			);
+					season_metadata: metadata.clone(),
+				},
+			));
 
 			assert_eq!(AwesomeAvatars::seasons_metadata(SEASON_ID), Some(metadata));
 		});
