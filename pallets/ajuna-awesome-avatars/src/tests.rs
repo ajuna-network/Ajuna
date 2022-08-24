@@ -16,7 +16,7 @@
 
 use crate::{mock::*, season::*, *};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::DispatchError;
+use sp_runtime::{ArithmeticError, DispatchError};
 
 mod organizer {
 	use super::*;
@@ -360,6 +360,26 @@ mod season {
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 123, season_update),
 				Error::<Test>::SeasonStartTooLate
+			);
+		});
+	}
+
+	#[test]
+	fn update_season_should_handle_overflow() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let season_update =
+				Season { early_start: 1, start: 2, end: 3, max_mints: 1, max_mythical_mints: 1 };
+			assert_noop!(
+				AwesomeAvatars::update_season(
+					Origin::signed(ALICE),
+					SeasonId::MIN,
+					season_update.clone()
+				),
+				ArithmeticError::Overflow
+			);
+			assert_noop!(
+				AwesomeAvatars::update_season(Origin::signed(ALICE), SeasonId::MAX, season_update),
+				ArithmeticError::Overflow
 			);
 		});
 	}
