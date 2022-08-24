@@ -146,7 +146,7 @@ pub mod pallet {
 			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
 
 			let season_id = Self::next_season_id();
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Overflow)?;
+			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
 			if let Some(prev_season) = Self::seasons(prev_season_id) {
@@ -172,7 +172,7 @@ pub mod pallet {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Overflow)?;
+			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
 			Seasons::<T>::try_mutate(season_id, |maybe_season| {

@@ -365,18 +365,22 @@ mod season {
 	}
 
 	#[test]
-	fn update_season_should_handle_overflow() {
+	fn update_season_should_handle_underflow() {
+		let season_update =
+			Season { early_start: 1, start: 2, end: 3, max_mints: 1, max_mythical_mints: 1 };
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let season_update =
-				Season { early_start: 1, start: 2, end: 3, max_mints: 1, max_mythical_mints: 1 };
 			assert_noop!(
-				AwesomeAvatars::update_season(
-					Origin::signed(ALICE),
-					SeasonId::MIN,
-					season_update.clone()
-				),
-				ArithmeticError::Overflow
+				AwesomeAvatars::update_season(Origin::signed(ALICE), SeasonId::MIN, season_update),
+				ArithmeticError::Underflow
 			);
+		});
+	}
+
+	#[test]
+	fn update_season_should_handle_overflow() {
+		let season_update =
+			Season { early_start: 1, start: 2, end: 3, max_mints: 1, max_mythical_mints: 1 };
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), SeasonId::MAX, season_update),
 				ArithmeticError::Overflow
