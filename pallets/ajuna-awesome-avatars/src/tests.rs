@@ -412,4 +412,46 @@ mod season {
 			);
 		});
 	}
+
+	#[test]
+	fn active_season_hooks_should_update_active_season_on_block_initialize() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(AwesomeAvatars::active_season_id().is_none(), true);
+
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+
+			assert_ok!(AwesomeAvatars::new_season(
+				Origin::signed(ALICE),
+				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 }
+			));
+			assert_ok!(AwesomeAvatars::new_season(
+				Origin::signed(ALICE),
+				Season { early_start: 11, start: 15, end: 20, max_mints: 1, max_mythical_mints: 1 }
+			));
+
+			run_to_block(2);
+			assert_eq!(AwesomeAvatars::active_season_id().is_none(), false);
+			assert_eq!(AwesomeAvatars::active_season_id().unwrap(), 1);
+
+			run_to_block(15);
+			assert_eq!(AwesomeAvatars::active_season_id().is_none(), false);
+			assert_eq!(AwesomeAvatars::active_season_id().unwrap(), 2);
+		});
+	}
+
+	#[test]
+	fn active_season_hooks_should_do_nothing_if_no_season_created() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(AwesomeAvatars::active_season_id().is_none(), true);
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+
+			run_to_block(2);
+			assert_eq!(AwesomeAvatars::active_season_id().is_none(), true);
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+
+			run_to_block(15);
+			assert_eq!(AwesomeAvatars::active_season_id().is_none(), true);
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+		});
+	}
 }

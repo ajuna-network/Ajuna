@@ -33,9 +33,12 @@ pub mod season;
 pub mod pallet {
 
 	use super::season::*;
-	use frame_support::pallet_prelude::*;
+	use frame_support::{
+		pallet_prelude::{OptionQuery, ValueQuery, *},
+		traits::Hooks,
+	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::ArithmeticError;
+	use sp_runtime::{traits::Saturating, ArithmeticError};
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type SeasonId = u16;
@@ -58,6 +61,11 @@ pub mod pallet {
 		1
 	}
 
+	#[pallet::type_value]
+	pub fn DefaultNextActiveSeasonId() -> SeasonId {
+		1
+	}
+
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
@@ -66,7 +74,12 @@ pub mod pallet {
 	/// Season id currently active.
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_id)]
-	pub type ActiveSeason<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
+	pub type ActiveSeasonId<T: Config> = StorageValue<_, SeasonId, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn next_active_season_id)]
+	pub type NextActiveSeasonId<T: Config> =
+		StorageValue<_, SeasonId, ValueQuery, DefaultNextActiveSeasonId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn seasons_metadata)]
@@ -192,6 +205,34 @@ pub mod pallet {
 			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
 			Ok(())
+		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(block_number: T::BlockNumber) -> Weight {
+			let active_season_id = Self::active_season_id();
+			let next_season_id = Self::next_active_season_id();
+			let season_id = active_season_id.unwrap_or(next_season_id);
+			let maybe_season = Self::seasons(season_id);
+
+			if let Some(season) = maybe_season {
+				if season.early_start <= block_number && block_number <= season.end {
+					ActiveSeasonId::<T>::put(season_id);
+					if block_number >= season.end {
+						NextActiveSeasonId::<T>::mutate(|season_id| season_id.saturating_inc());
+					}
+				} else {
+					ActiveSeasonId::<T>::kill();
+				}
+			}
+
+			// Register the Weight used on_finalize.
+			// 	- One storage read to get the block_weight.
+			// 	- One storage read to get the Elasticity.
+			// 	- One write to BaseFeePerGas.
+			let db_weight = <T as frame_system::Config>::DbWeight::get();
+			db_weight.reads(2).saturating_add(db_weight.write)
 		}
 	}
 }
