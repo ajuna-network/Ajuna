@@ -76,9 +76,9 @@ pub mod pallet {
 		type GameState: Codec + TypeInfo + MaxEncodedLen + Clone;
 		/// A turn based game
 		type Game: TurnBasedGame<
-			Player=Self::AccountId,
-			Turn=Self::PlayersTurn,
-			State=Self::GameState,
+			Player = Self::AccountId,
+			Turn = Self::PlayersTurn,
+			State = Self::GameState,
 		>;
 		// TODO: consider adding MinNumberOfPlayers to return before Game::init fails
 		/// Maximum number of players
@@ -131,7 +131,7 @@ pub mod pallet {
 	}
 
 	type BoundedPlayersOf<T> =
-	BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
+		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
 
 	pub(crate) type BoardGameOf<T> = BoardGame<
 		<T as Config>::BoardId,
