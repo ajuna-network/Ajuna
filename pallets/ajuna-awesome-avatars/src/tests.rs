@@ -25,7 +25,7 @@ mod organizer {
 	fn set_organizer_should_work() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), HILDA));
-			assert_eq!(Organizer::<Test>::get(), Some(HILDA), "Organizer should be Hilda");
+			assert_eq!(AwesomeAvatars::organizer(), Some(HILDA), "Organizer should be Hilda");
 			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::OrganizerSet {
 				organizer: HILDA,
 			}));
@@ -48,7 +48,7 @@ mod organizer {
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), BOB));
 
 			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), FLORINA));
-			assert_eq!(Organizer::<Test>::get(), Some(FLORINA), "Organizer should be Florina");
+			assert_eq!(AwesomeAvatars::organizer(), Some(FLORINA), "Organizer should be Florina");
 			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::OrganizerSet {
 				organizer: FLORINA,
 			}));
