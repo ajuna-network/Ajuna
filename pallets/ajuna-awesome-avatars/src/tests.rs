@@ -90,6 +90,8 @@ mod organizer {
 mod season {
 	use super::*;
 
+	const SEASON_ID: SeasonId = 1;
+
 	#[test]
 	fn new_season_should_reject_non_organizer_as_caller() {
 		new_test_ext().execute_with(|| {
@@ -347,6 +349,66 @@ mod season {
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 0, season_update),
 				Error::<Test>::SeasonStartTooLate
+			);
+		});
+	}
+
+	#[test]
+	fn update_season_metadata_should_work() {
+		new_test_ext().execute_with(|| {
+			let first_season =
+				Season { early_start: 1, start: 5, end: 10, max_mints: 1, max_mythical_mints: 1 };
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season));
+
+			let metadata = SeasonMetadata::default();
+
+			assert_ok!(AwesomeAvatars::update_season_metadata(
+				Origin::signed(ALICE),
+				SEASON_ID,
+				metadata.clone()
+			));
+
+			assert_eq!(
+				last_event(),
+				mock::Event::AwesomeAvatars(crate::Event::UpdatedSeasonMetadata {
+					season_id: SEASON_ID,
+					season_metadata: metadata.clone()
+				}),
+			);
+
+			assert_eq!(AwesomeAvatars::seasons_metadata(SEASON_ID), Some(metadata));
+		});
+	}
+
+	#[test]
+	fn update_season_metadata_should_fail_if_caller_is_not_organizer() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+
+			assert_noop!(
+				AwesomeAvatars::update_season_metadata(
+					Origin::signed(BOB),
+					SEASON_ID,
+					SeasonMetadata::default()
+				),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn update_season_metadata_should_fail_with_invalid_season_id() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(AwesomeAvatars::set_organizer(Origin::root(), ALICE));
+
+			assert_noop!(
+				AwesomeAvatars::update_season_metadata(
+					Origin::signed(ALICE),
+					SEASON_ID + 10,
+					SeasonMetadata::default()
+				),
+				Error::<Test>::UnknownSeason
 			);
 		});
 	}

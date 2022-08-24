@@ -37,8 +37,8 @@ pub mod pallet {
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::ArithmeticError;
 
-	type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
-	type SeasonId = u16;
+	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
+	pub(crate) type SeasonId = u16;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -68,6 +68,10 @@ pub mod pallet {
 	#[pallet::getter(fn active_season_id)]
 	pub type ActiveSeason<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn seasons_metadata)]
+	pub type SeasonsMetadata<T: Config> = StorageMap<_, Identity, SeasonId, SeasonMetadata>;
+
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -82,6 +86,8 @@ pub mod pallet {
 		NewSeasonCreated(SeasonOf<T>),
 		/// An existing season has been updated.
 		SeasonUpdated(SeasonOf<T>, SeasonId),
+		/// The metadata for {season_id} has been updated
+		UpdatedSeasonMetadata { season_id: SeasonId, season_metadata: SeasonMetadata },
 	}
 
 	#[pallet::error]
@@ -108,6 +114,26 @@ pub mod pallet {
 
 			Organizer::<T>::put(organizer.clone());
 			Self::deposit_event(Event::OrganizerSet { organizer });
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn update_season_metadata(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			metadata: SeasonMetadata,
+		) -> DispatchResult {
+			Self::ensure_organizer(origin)?;
+
+			ensure!(Self::seasons(season_id).is_some(), Error::<T>::UnknownSeason);
+
+			SeasonsMetadata::<T>::insert(season_id, metadata.clone());
+
+			Self::deposit_event(Event::UpdatedSeasonMetadata {
+				season_id,
+				season_metadata: metadata,
+			});
 
 			Ok(())
 		}
