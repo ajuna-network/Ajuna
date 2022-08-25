@@ -43,6 +43,11 @@ where
 		}
 	}
 
+	fn get_last_player(state: &Self::State) -> Self::Player {
+		let next_player_index = (state.next_player as usize + 1) % state.players.len();
+		state.players[next_player_index].clone()
+	}
+
 	fn get_next_player(state: &Self::State) -> Self::Player {
 		state.players[state.next_player as usize].clone()
 	}

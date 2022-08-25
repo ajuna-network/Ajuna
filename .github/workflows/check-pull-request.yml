@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release --all-targets' || '' }}
+  CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release' || '' }}
 
 jobs:
   fmt:
@@ -56,11 +56,11 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features ${{ env.CARGO_ARGS }} -- -D warnings
+          args: --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
       - uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --all-features ${{ env.CARGO_ARGS }}
+          args: --all-features --all-targets ${{ env.CARGO_ARGS }}
 
   test:
     name: Test
@@ -82,7 +82,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace --all-features ${{ env.CARGO_ARGS }} --jobs 1
+          args: --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   notify:
     name: Notify on Slack

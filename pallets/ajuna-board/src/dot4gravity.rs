@@ -43,6 +43,14 @@ where
 		}
 	}
 
+	fn get_last_player(state: &Self::State) -> Self::Player {
+		state
+			.last_move
+			.clone()
+			.map(|last_move_of| last_move_of.player)
+			.unwrap_or_else(|| state.next_player.clone())
+	}
+
 	fn get_next_player(state: &Self::State) -> Self::Player {
 		state.next_player.clone()
 	}

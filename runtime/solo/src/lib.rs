@@ -469,13 +469,12 @@ impl pallet_ajuna_board::Config for Runtime {
 	type GameState = pallet_ajuna_board::dot4gravity::GameState<AccountId>;
 	type Game = pallet_ajuna_board::dot4gravity::Game<AccountId>;
 	type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
-	type MaxNumberOfIdleBlocks = frame_support::traits::ConstU32<10>;
-	type MaxNumberOfGamesToExpire = frame_support::traits::ConstU32<5>;
 	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Runtime>;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
 }
 
 impl pallet_ajuna_matchmaker::Config for Runtime {
