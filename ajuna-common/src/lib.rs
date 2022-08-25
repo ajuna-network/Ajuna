@@ -137,6 +137,8 @@ pub trait TurnBasedGame {
 	type State: Codec;
 	/// Initialise turn based game with players returning the initial state
 	fn init(players: &[Self::Player], seed: Option<u32>) -> Option<Self::State>;
+	/// Get the player that played its turn last
+	fn get_last_player(state: &Self::State) -> Self::Player;
 	/// Get the player that should play its turn next
 	fn get_next_player(state: &Self::State) -> Self::Player;
 	/// Play a turn with player on the current state returning the new state
