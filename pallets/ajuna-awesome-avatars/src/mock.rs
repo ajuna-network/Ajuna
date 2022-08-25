@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate as pallet_ajuna_awesome_avatars;
+use crate::{self as pallet_ajuna_awesome_avatars, season::Season};
 use frame_support::traits::{ConstU16, ConstU64, Hooks};
+
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_runtime::{
@@ -25,6 +26,8 @@ use sp_runtime::{
 };
 
 type MockAccountId = u32;
+type MockBlockNumber = u64;
+type MockBalance = u64;
 
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
@@ -42,6 +45,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
 		System: frame_system,
+		Balances: pallet_balances,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
@@ -54,7 +58,7 @@ impl frame_system::Config for Test {
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
-	type BlockNumber = u64;
+	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = MockAccountId;
@@ -64,7 +68,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<MockBalance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -73,24 +77,54 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_balances::Config for Test {
+	type Balance = MockBalance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = frame_support::traits::ConstU64<1>;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
+	type Currency = Balances;
 }
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let config = GenesisConfig { system: Default::default() };
-
-	let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
-
-	ext.execute_with(|| {
-		System::set_block_number(1);
-	});
-
-	ext
+#[derive(Default)]
+pub struct ExtBuilder {
+	organizer: Option<MockAccountId>,
+	seasons: Vec<Season<MockBlockNumber>>,
 }
 
-pub fn last_event() -> Event {
-	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
+impl ExtBuilder {
+	pub fn organizer(mut self, organizer: MockAccountId) -> Self {
+		self.organizer = Some(organizer);
+		self
+	}
+	pub fn seasons(mut self, seasons: Vec<Season<MockBlockNumber>>) -> Self {
+		self.seasons = seasons;
+		self
+	}
+	pub fn build(self) -> sp_io::TestExternalities {
+		let config = GenesisConfig { system: Default::default(), balances: Default::default() };
+		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| {
+			if let Some(organizer) = self.organizer {
+				let _ = AwesomeAvatars::set_organizer(Origin::root(), organizer);
+			}
+
+			for season in self.seasons.into_iter() {
+				let organizer = AwesomeAvatars::organizer().unwrap();
+				let _ = AwesomeAvatars::new_season(Origin::signed(organizer), season);
+			}
+		});
+		ext
+	}
 }
 
 pub fn run_to_block(n: u64) {

@@ -18,5 +18,5 @@ Please describe your pull request and link relevant issues.
 - [ ] Tests for the changes have been added
 - [ ] Necessary documentation is added (if appropriate)
 - [ ] Formatted with `cargo fmt --all`
-- [ ] Linted with `cargo clippy --all-features -- -D warnings`
-- [ ] Tested with `cargo test --workspace --all-features`
+- [ ] Linted with `cargo clippy --all-features --all-targets`
+- [ ] Tested with `cargo test --workspace --all-features --all-targets`
