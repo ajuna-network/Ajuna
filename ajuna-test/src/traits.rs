@@ -46,8 +46,8 @@ pub trait BlockProcessing<B: Copy + AtLeast32BitUnsigned + One, T: BlockNumbers<
 #[macro_export]
 macro_rules! impl_block_numbers {
 	($system:ty, $block_number:ty) => {
-		use crate::traits::BlockNumbers;
 		use sp_runtime::traits::BlockNumberProvider;
+		use $crate::traits::BlockNumbers;
 
 		pub struct RuntimeBlocks;
 		impl BlockNumbers<$block_number> for RuntimeBlocks {

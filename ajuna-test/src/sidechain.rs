@@ -172,6 +172,10 @@ impl TurnBasedGame for NumberGame {
 		})
 	}
 
+	fn get_last_player(state: &Self::State) -> Self::Player {
+		state.players[(state.next_player as usize - 1) % state.players.len()].clone()
+	}
+
 	fn get_next_player(state: &Self::State) -> Self::Player {
 		state.players[state.next_player as usize].clone()
 	}
