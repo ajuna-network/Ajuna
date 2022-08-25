@@ -474,6 +474,7 @@ impl pallet_ajuna_board::Config for Runtime {
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
 }
 
 impl pallet_ajuna_matchmaker::Config for Runtime {

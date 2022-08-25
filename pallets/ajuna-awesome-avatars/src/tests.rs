@@ -616,3 +616,85 @@ mod season {
 		});
 	}
 }
+
+mod config {
+	use super::*;
+
+	#[test]
+	fn update_mint_available_should_work() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert!(!AwesomeAvatars::mint_available());
+			assert_ok!(AwesomeAvatars::update_mint_available(Origin::signed(ALICE), true));
+			assert!(AwesomeAvatars::mint_available());
+			System::assert_last_event(mock::Event::AwesomeAvatars(
+				crate::Event::UpdatedMintAvailability { availability: true },
+			));
+		});
+	}
+
+	#[test]
+	fn update_mint_available_should_reject_non_organizer_as_caller() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let original_mint_available = AwesomeAvatars::mint_available();
+			assert_noop!(
+				AwesomeAvatars::update_mint_available(Origin::signed(BOB), true),
+				DispatchError::BadOrigin
+			);
+			assert_eq!(AwesomeAvatars::mint_available(), original_mint_available);
+		});
+	}
+
+	#[test]
+	fn update_mint_fee_should_work() {
+		let original_fee = 550_000_000_000;
+		let update_fee = 650_000_000_000;
+
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert_eq!(AwesomeAvatars::mint_fee(), original_fee);
+			assert_ok!(AwesomeAvatars::update_mint_fee(Origin::signed(ALICE), update_fee));
+			assert_eq!(AwesomeAvatars::mint_fee(), update_fee);
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::UpdatedMintFee {
+				fee: update_fee,
+			}));
+		});
+	}
+
+	#[test]
+	fn update_mint_fee_should_reject_non_organizer_as_caller() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let original_mint_fee = AwesomeAvatars::mint_fee();
+			assert_noop!(
+				AwesomeAvatars::update_mint_fee(Origin::signed(BOB), 123),
+				DispatchError::BadOrigin
+			);
+			assert_eq!(AwesomeAvatars::mint_fee(), original_mint_fee);
+		});
+	}
+
+	#[test]
+	fn update_mint_cooldown_should_update_work() {
+		let original_cd = 5;
+		let update_cd = 10;
+
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert_eq!(AwesomeAvatars::mint_cooldown(), original_cd);
+			assert_ok!(AwesomeAvatars::update_mint_cooldown(Origin::signed(ALICE), update_cd));
+			assert_eq!(AwesomeAvatars::mint_cooldown(), update_cd);
+			System::assert_last_event(mock::Event::AwesomeAvatars(
+				crate::Event::UpdatedMintCooldown { cooldown: update_cd },
+			));
+		});
+	}
+
+	#[test]
+	fn update_mint_cooldown_should_fail_for_not_organizer_account() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let original_cd = AwesomeAvatars::mint_cooldown();
+			assert_noop!(
+				AwesomeAvatars::update_mint_cooldown(Origin::signed(BOB), 120_934),
+				DispatchError::BadOrigin
+			);
+			assert_eq!(AwesomeAvatars::mint_cooldown(), original_cd);
+		});
+	}
+}
