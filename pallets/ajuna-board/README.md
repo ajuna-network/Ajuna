@@ -37,6 +37,7 @@ You should implement its trait with something like:
 ```rust
 impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
+	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 	type BoardId = u32;
 	type PlayersTurn = u32;
 	type GameState = GameState;
