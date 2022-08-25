@@ -18,7 +18,7 @@
 use ajuna_common::{GetIdentifier, Identifier, Runner, RunnerState, State};
 use frame_support::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::traits::One;
+use sp_runtime::traits::Saturating;
 use sp_std::prelude::*;
 
 #[cfg(test)]
@@ -63,8 +63,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// An internal error has occurred
-		InternalError,
 		/// A errorneous state transition
 		InvalidState,
 		/// Indentifier used for runner is unknown
@@ -76,7 +74,7 @@ pub struct AjunaIdentifier<T: Config>(PhantomData<T>);
 impl<T: Config> GetIdentifier<T::RunnerId> for AjunaIdentifier<T> {
 	fn get_identifier() -> T::RunnerId {
 		Nonce::<T>::mutate(|nonce| {
-			*nonce += One::one();
+			nonce.saturating_inc();
 			*nonce
 		})
 	}
@@ -113,40 +111,48 @@ impl<T: Config> Runner for Running<T> {
 		Some(identifier)
 	}
 
-	fn accept(identifier: &Self::RunnerId, new_state: Option<State>) -> DispatchResult {
-		if let Some(RunnerState::Queued(original_state)) = Self::get_state(identifier) {
-			match new_state {
-				Some(new_state) => {
-					Self::update_state(identifier, RunnerState::Accepted(new_state))
-						.map_err(|_| Error::<T>::InternalError)?;
+	// Review comment: `accept` and `finished` were re-written to accommodate the following:
+	//   * Return `UnknownRunner` instead of `InvalidState` when the runner is not found,
+	//   * Always emit `StateAccepted` and `StatedFinished` events, not only when the
+	//     `new_state`/`final_state` is not-None,
+	//   * Eliminated `InternalError` completely (it would never be raised).
 
-					Pallet::<T>::deposit_event(Event::StateAccepted { runner_id: *identifier });
-				},
-				None => Self::update_state(identifier, RunnerState::Accepted(original_state))
-					.map_err(|_| Error::<T>::InternalError)?,
-			}
+	fn accept(identifier: &Self::RunnerId, new_state: Option<State>) -> DispatchResult {
+		Runners::<T>::try_mutate(identifier, |state| {
+			let state = match state {
+				Some(state) => state,
+				None => return Err(Error::<T>::UnknownRunner),
+			};
+			let original_state = match state {
+				RunnerState::Queued(state) => state,
+				_ => return Err(Error::<T>::InvalidState),
+			};
+			let new_state = new_state.unwrap_or(original_state.clone());
+
+			*state = RunnerState::Accepted(new_state);
+			Pallet::<T>::deposit_event(Event::StateAccepted { runner_id: *identifier });
 			Ok(())
-		} else {
-			Err(Error::<T>::InvalidState.into())
-		}
+		})?;
+		Ok(())
 	}
 
 	fn finished(identifier: &Self::RunnerId, final_state: Option<State>) -> DispatchResult {
-		if let Some(RunnerState::Accepted(original_state)) = Self::get_state(identifier) {
-			match final_state {
-				Some(final_state) => {
-					Self::update_state(identifier, RunnerState::Finished(final_state))
-						.map_err(|_| Error::<T>::InternalError)?;
+		Runners::<T>::try_mutate(identifier, |state| {
+			let state = match state {
+				Some(state) => state,
+				None => return Err(Error::<T>::UnknownRunner),
+			};
+			let original_state = match state {
+				RunnerState::Accepted(state) => state,
+				_ => return Err(Error::<T>::InvalidState),
+			};
+			let final_state = final_state.unwrap_or(original_state.clone());
 
-					Pallet::<T>::deposit_event(Event::StateFinished { runner_id: *identifier });
-				},
-				None => Self::update_state(identifier, RunnerState::Finished(original_state))
-					.map_err(|_| Error::<T>::InternalError)?,
-			}
+			*state = RunnerState::Finished(final_state);
+			Pallet::<T>::deposit_event(Event::StateFinished { runner_id: *identifier });
 			Ok(())
-		} else {
-			Err(Error::<T>::InvalidState.into())
-		}
+		})?;
+		Ok(())
 	}
 
 	fn remove(identifier: &Self::RunnerId) -> DispatchResult {

@@ -61,6 +61,8 @@ pub trait GetIdentifier<T: Identifier> {
 	fn get_identifier() -> T;
 }
 
+// Review comment: Why not use `BoundedVec` for `State`?
+// There's `MAX_STATE_LENGTH` defined later and manually implemented `MaxEncodedLen`.
 #[derive(Clone, Eq, Default, PartialEq, RuntimeDebugNoBound, Encode, Decode, TypeInfo)]
 pub struct State(Vec<u8>);
 

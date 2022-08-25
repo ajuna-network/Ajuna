@@ -8,6 +8,8 @@
 
 A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready for hacking :rocket:
 
+Review comment: Top-level README is a bit too brief. It would help (e.g. reviewers) if it had the repo structure described.
+
 ## Prerequisites
 
 - [Build dependencies](https://docs.substrate.io/v3/getting-started/installation/#1-build-dependencies)

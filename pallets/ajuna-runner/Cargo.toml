@@ -16,6 +16,7 @@ ajuna-common = { default-features = false, path = "../../ajuna-common" }
 codec        = { default-features = false, features = [ "derive", "max-encoded-len" ], package = "parity-scale-codec", version = "3.0.0" }
 scale-info   = { default-features = false, features = [ "derive" ], version = "2.1" }
 
+# Review comment: Recommended substrate update to `polkadot-v0.9.28`
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 frame-system  = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-runtime    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }

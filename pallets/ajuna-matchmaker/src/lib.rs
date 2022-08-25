@@ -16,8 +16,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ajuna_common::{Bracket, MatchMaker};
-use frame_support::pallet_prelude::*;
+use ajuna_common::{Bracket, BracketCounter, MatchMaker};
+use frame_support::{pallet_prelude::*, sp_runtime::traits::Saturating};
 pub use pallet::*;
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -32,6 +32,8 @@ pub mod pallet {
 	use super::*;
 	use ajuna_common::{Bracket, BracketCounter};
 
+	// Review comment: The whole logic could be simplified by using `BoundedVec<Player>`
+	// instead of `BracketRange`. Are there any reasons not to do that?
 	///A range describing the start and end points of the bracket, a rudimentary FIFO
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo, MaxEncodedLen)]
 	pub struct BracketRange {
@@ -68,7 +70,7 @@ pub mod pallet {
 	/// A map tracking which accounts are queued
 	#[pallet::storage]
 	pub type PlayerQueue<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, u8, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, (), OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -92,8 +94,8 @@ impl<T: Config> MatchMaker for MatchMaking<T> {
 
 		Brackets::<T>::mutate(bracket, |range| {
 			Players::<T>::insert(bracket, range.end, account_id.clone());
-			range.end += 1;
-			PlayerQueue::<T>::insert(account_id.clone(), 1);
+			range.end.saturating_inc();
+			PlayerQueue::<T>::insert(account_id.clone(), ());
 
 			Pallet::<T>::deposit_event(Event::Queued(account_id));
 			true
@@ -123,7 +125,8 @@ impl<T: Config> MatchMaker for MatchMaking<T> {
 		let players = (0..number_required)
 			.into_iter()
 			.filter_map(|index| {
-				let index = index as u32 + Brackets::<T>::get(bracket).start;
+				let index =
+					(index as BracketCounter).saturating_add(Brackets::<T>::get(bracket).start);
 				Players::<T>::take(bracket, index)
 			})
 			.map(|player| {
@@ -133,7 +136,7 @@ impl<T: Config> MatchMaker for MatchMaking<T> {
 			.collect::<Vec<_>>();
 
 		Brackets::<T>::mutate(bracket, |range| {
-			range.start += players.len() as u32;
+			range.start.saturating_accrue(players.len() as BracketCounter);
 		});
 
 		Pallet::<T>::deposit_event(Event::Matched(players.clone()));

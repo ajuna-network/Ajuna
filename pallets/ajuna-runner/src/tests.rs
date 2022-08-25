@@ -112,3 +112,6 @@ fn should_remove_runner() {
 		assert_eq!(AjunaRunner::runners(identifier), None, "storage doesn't contain runner");
 	});
 }
+
+// Review comment: Tests do not check event emitting.
+// Error scenarios for `accept` and `finished` are not tested.

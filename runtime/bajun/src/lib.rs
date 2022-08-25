@@ -22,6 +22,9 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+// Review comment: A lot o this code is copied from runtime/ajuna.
+// Maybe this duplication could be avoided by using feature toggles?
+
 mod weights;
 pub mod xcm_config;
 

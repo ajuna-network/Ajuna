@@ -70,15 +70,6 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-// #[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-// pub struct MockIdentifier(u32);
-// impl GetIdentifier for MockIdentifier {
-// 	type Identifier = Self;
-// 	fn get_identifier() -> Self {
-// 		MockIdentifier(0u32)
-// 	}
-// }
-
 pub struct MockGetIdentifier;
 impl GetIdentifier<u32> for MockGetIdentifier {
 	fn get_identifier() -> u32 {
