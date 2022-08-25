@@ -76,6 +76,7 @@ pub mod pallet {
 			State = Self::GameState,
 		>;
 		// TODO: consider adding MinNumberOfPlayers to return before Game::init fails
+		// Agree =)
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
@@ -92,6 +93,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Game has been created
+		/// Vec<T::AccountId> -> BoundedPlayersOf<T>
 		GameCreated { board_id: T::BoardId, players: Vec<T::AccountId> },
 		/// Game has finished with the winner
 		GameFinished { board_id: T::BoardId, winner: T::AccountId },
@@ -157,10 +159,15 @@ pub mod pallet {
 			// There is potentially more than one attack vector here as anyone could assign any
 			// account to a board and hence block them from playing in a legitimate game
 			// As this would be ran in L2 we may want to check that we are in L2??
+			//
+			// One way to solve it would be not "adding" a player to a game but "inviting" them.
+			// After being invited, a player (AccountId) would be able to accept or decline it.
 			let _ = ensure_signed(origin)?;
 
 			// Ensure we have players
 			ensure!(!players.is_empty(), Error::<T>::NotEnoughPlayers);
+			// Maybe using a global board counter here, incremented (+1) on every new_game().
+			// That way we'd avoid game creators being aware of available "board_ids".
 			ensure!(!BoardStates::<T>::contains_key(board_id), Error::<T>::BoardExists);
 
 			let player_len = players.len();
@@ -175,6 +182,13 @@ pub mod pallet {
 			.map_err(|_| Error::<T>::TooManyPlayers)?;
 
 			// If we have new players this will be the same based on the filter
+			//
+			// Why allow "players: PlayersOf<T>," to have more elements than "BoundedPlayersOf<T>"?
+			// Checking "players_len" before creating "players BoundedPlayersOf<T>" makes more sense:
+			// ensure!(
+			//     players.len() <= T::MaxNumberOfPlayers::get() as usize,
+			//     Error::<T>::TooManyPlayers
+			// );
 			ensure!(player_len == players.len(), Error::<T>::PlayerAlreadyInGame);
 
 			let seed = Seed::<T>::get();
@@ -224,6 +238,12 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::finish_game())]
 		pub fn finish_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
 			// TODO if this is L2 do we really need to check the origin?
+			//
+			// There is no check for the "origin", so is anyone able to finish any game?
+			// What if the game is still running (no winner)?
+			// Maybe we should allow the game's creator and its players to finish it.
+			// Or finish it right after "declare_winner()" is called, as we already deposit an
+			// "Event::GameFinished" there.
 			let _ = ensure_signed(origin)?;
 			// Free players to play another game
 			BoardStates::<T>::get(board_id)

@@ -48,6 +48,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 
+	// Vec<T> -> BoundedVec<AccountId, MaxAccounts>
 	#[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug)]
 	pub struct Game<AccountId> {
 		pub tee_id: Option<AccountId>,
@@ -102,6 +103,7 @@ pub mod pallet {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	// Maybe this pallet is still in an early stage of development, but, why not use Events?
 	#[pallet::event]
 	pub enum Event<T: Config> {}
 
@@ -139,11 +141,15 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Queue sender for a game
 		/// We also use this as an opportunity to match a player and set off a runner for the game
+		///
+		/// This one weight seems high compared with the other extrinsics,
+		/// maybe it worth to refactor or split it into more than one.
 		#[pallet::weight(T::WeightInfo::queue())]
 		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!Players::<T>::contains_key(who.clone()), Error::<T>::AlreadyPlaying);
 			// Queue sender as player
+			// Not sure why "DEFAULT_BRACKET" and "DEFAULT_PLAYERS" are constants.
 			ensure!(T::MatchMaker::enqueue(who, DEFAULT_BRACKET), Error::<T>::AlreadyQueued);
 			// Let's process a match, *may* not include this player based on the queue but we
 			// get this work paid for by the players and not the community
@@ -176,7 +182,9 @@ pub mod pallet {
 			// Ensure this is signed by an observer
 			// TODO: reinstate this after we have a way of adding observers via Teerex
 			// ensure!(T::Observers::contains(&who), Error::<T>::NotSignedByObserver);
+			// Important TODOs, as for now, anyone can drop, ack or finish any game.
 
+			// What about the players that were playing the game?
 			// We silently remove the game id whether it exists or not
 			T::Runner::remove(&game_id)?;
 

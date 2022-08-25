@@ -44,16 +44,22 @@ You should implement it's trait like so:
 
 ```rust
 parameter_types! {
-
+    pub const MaxAcknowledgeBatch: u32 = crate::ajuna::MAX_ACKNOWLEDGE_BATCH;
 }
 
 impl pallet_ajuna_gameregistry::Config for Runtime {
     type Event = Event;
     type Proposal = Call;
-    type Randomness = Randomness;
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
-    type MatchMaker = Matchmaker;
+    type GameId = GameId;
+    type Runner = pallet_ajuna_runner::Running<Runtime>;
+    type GetIdentifier = pallet_ajuna_runner::AjunaIdentifier<Runtime>;
+    type MatchMaker = pallet_ajuna_matchmaker::MatchMaking<Runtime>;
+    type Observers = Observers;
+    type MaxAcknowledgeBatch = MaxAcknowledgeBatch;
+    type ShardIdentifier = H256;
+    type WeightInfo = pallet_ajuna_gameregistry::weights::AjunaWeight<Runtime>;
 }
 ```
 

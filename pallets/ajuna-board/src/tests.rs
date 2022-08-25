@@ -121,6 +121,7 @@ fn should_create_new_game() {
 		assert!(BoardStates::<Test>::contains_key(BOARD_ID));
 		assert!(Seed::<Test>::get().is_none());
 
+		// Add BTreeSet::from([BOB, BOB]) case.
 		let tests_for_errors = vec![
 			(BTreeSet::from([BOB, CHARLIE]), BOARD_ID, Error::<Test>::BoardExists),
 			(BTreeSet::from([ALICE, BOB]), 11, Error::<Test>::PlayerAlreadyInGame),
@@ -210,3 +211,5 @@ fn should_play_turn_and_finish_game() {
 		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
 	})
 }
+
+// There is no test (or case) for "Error::<T>::InvalidBoard, InvalidTurn and DuplicatePlayer".

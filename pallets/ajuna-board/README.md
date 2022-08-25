@@ -37,17 +37,18 @@ You should implement its trait with something like:
 ```rust
 impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
-	type MaxNumberOfPlayers = MaxNumberOfPlayers;
 	type BoardId = u32;
 	type PlayersTurn = u32;
 	type GameState = GameState;
 	type Game = Game;
+	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Test>;  // Or ()
 }
 ```
 
 and include it in your `construct_runtime!` macro:
 
 ```rust
+?
 ```
 
 ### Genesis Configuration
@@ -65,3 +66,5 @@ You can view the reference docs for this pallet by running:
 ```
 cargo doc --open
 ```
+
+**_Would be good to have, at least, one use case described here._**
