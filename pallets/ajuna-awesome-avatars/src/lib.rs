@@ -104,6 +104,8 @@ pub mod pallet {
 		SeasonEndTooLate,
 		/// The season doesn't exist.
 		UnknownSeason,
+		/// The combination of all tiers rarity chances doesn't add up to 100
+		IncorrectRarityChances,
 	}
 
 	#[pallet::call]
@@ -144,6 +146,10 @@ pub mod pallet {
 
 			ensure!(new_season.early_start < new_season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				new_season.rarity_tiers.values().sum::<RarityChance>() == 100,
+				Error::<T>::IncorrectRarityChances
+			);
 
 			let season_id = Self::next_season_id();
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
@@ -171,6 +177,10 @@ pub mod pallet {
 
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				season.rarity_tiers.values().sum::<RarityChance>() == 100,
+				Error::<T>::IncorrectRarityChances
+			);
 
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
