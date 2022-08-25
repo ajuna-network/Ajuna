@@ -35,44 +35,8 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		AjunaBoard: pallet_ajuna_board::{Pallet, Call, Storage, Event<T>},
-		Vesting: orml_vesting,
-		Balances: pallet_balances,
 	}
 );
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 100 * NANO_AJUNS;
-	pub const ArbitraryUpperBound: u32 = 1_000_000;
-}
-
-pub const EXISTENTIAL_DEPOSIT: Balance = 100 * NANO_AJUNS;
-
-impl pallet_balances::Config for SideChainRuntime {
-	type MaxLocks = ArbitraryUpperBound;
-	type MaxReserves = ArbitraryUpperBound;
-	type ReserveIdentifier = [u8; 8];
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const MinVestedTransfer: Balance = 100 * MICRO_AJUNS;
-	pub const MaxVestingSchedules: u32 = 100;
-}
-
-impl orml_vesting::Config for SideChainRuntime {
-	type Event = Event;
-	type Currency = Balances;
-	type MinVestedTransfer = MinVestedTransfer;
-	type VestedTransferOrigin = EnsureSigned<AccountId>;
-	type MaxVestingSchedules = MaxVestingSchedules;
-	type BlockNumberProvider = System;
-	type WeightInfo = ();
-}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -115,9 +79,7 @@ parameter_types! {
 pub type Guess = u32;
 
 use crate::traits::BlockProcessing;
-use ajuna_solo_runtime::currency::{MICRO_AJUNS, NANO_AJUNS};
 use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
-use frame_system::EnsureSigned;
 use pallet_ajuna_board::{dot4gravity, dot4gravity::Turn};
 use scale_info::TypeInfo;
 
@@ -255,23 +217,9 @@ impl<K: SigningKey> BlockProcessing<BlockNumber, RuntimeBlocks> for SideChain<K>
 impl<K: SigningKey> SideChain<K> {
 	// Build genesis storage according to the mock runtime.
 	pub fn build() -> sp_io::TestExternalities {
-		use crate::keyring::*;
 		use sp_runtime::BuildStorage;
 
-		let config = GenesisConfig {
-			system: Default::default(),
-			balances: pallet_balances::GenesisConfig {
-				balances: vec![
-					(alice(), 10_000 * EXISTENTIAL_DEPOSIT),
-					(bob(), 20_000 * EXISTENTIAL_DEPOSIT),
-					(charlie(), 30_000 * EXISTENTIAL_DEPOSIT),
-					(dave(), 40_000 * EXISTENTIAL_DEPOSIT),
-					(eve(), 10_000 * EXISTENTIAL_DEPOSIT),
-					(ferdie(), 9_999_000 * EXISTENTIAL_DEPOSIT),
-				],
-			},
-			vesting: orml_vesting::GenesisConfig { vesting: vec![] },
-		};
+		let config = GenesisConfig { system: Default::default() };
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 
