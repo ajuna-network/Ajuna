@@ -620,6 +620,7 @@ mod season {
 	fn active_season_hooks_should_update_active_season_on_block_initialize() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert!(AwesomeAvatars::active_season_id().is_none());
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
 
 			assert_ok!(AwesomeAvatars::new_season(
 				Origin::signed(ALICE),
@@ -647,20 +648,25 @@ mod season {
 			));
 
 			run_to_block(2);
-			assert!(AwesomeAvatars::active_season_id().is_some());
-			assert_eq!(AwesomeAvatars::active_season_id().unwrap(), 1);
+			assert_eq!(AwesomeAvatars::active_season_id(), Some(1));
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 2);
 
 			run_to_block(15);
-			assert!(AwesomeAvatars::active_season_id().is_some());
-			assert_eq!(AwesomeAvatars::active_season_id().unwrap(), 2);
+			assert_eq!(AwesomeAvatars::active_season_id(), Some(2));
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
+
+			run_to_block(22);
+			assert!(AwesomeAvatars::active_season_id().is_none());
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
 		});
 	}
 
 	#[test]
-	fn active_season_hooks_should_do_nothing_if_no_season_created() {
+	fn active_season_hooks_should_do_nothing_if_no_season_exists() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert!(AwesomeAvatars::active_season_id().is_none());
 			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+
 			run_to_block(2);
 			assert!(AwesomeAvatars::active_season_id().is_none());
 			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);

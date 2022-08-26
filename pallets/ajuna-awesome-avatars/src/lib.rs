@@ -37,10 +37,7 @@ pub mod pallet {
 		traits::{Currency, Hooks},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::{
-		traits::{Saturating, UniqueSaturatedInto},
-		ArithmeticError,
-	};
+	use sp_runtime::{traits::UniqueSaturatedInto, ArithmeticError};
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type SeasonId = u16;
@@ -290,29 +287,22 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(block_number: T::BlockNumber) -> Weight {
-			let active_season_id = Self::active_season_id();
-			let next_season_id = Self::next_active_season_id();
-			let season_id = active_season_id.unwrap_or(next_season_id);
-			let maybe_season = Self::seasons(season_id);
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			let season_id = Self::active_season_id().unwrap_or_else(Self::next_active_season_id);
+			let mut db_weight = T::DbWeight::get().reads(2);
 
-			if let Some(season) = maybe_season {
-				if season.early_start <= block_number && block_number <= season.end {
+			if let Some(season) = Self::seasons(season_id) {
+				db_weight += T::DbWeight::get().reads(1);
+				if season.early_start <= now && now <= season.end {
 					ActiveSeasonId::<T>::put(season_id);
-					if block_number >= season.end {
-						NextActiveSeasonId::<T>::mutate(|season_id| season_id.saturating_inc());
-					}
+					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
+					db_weight += T::DbWeight::get().writes(2);
 				} else {
 					ActiveSeasonId::<T>::kill();
+					db_weight += T::DbWeight::get().writes(1);
 				}
 			}
-
-			// Register the Weight used on_finalize.
-			// 	- One storage read to get the block_weight.
-			// 	- One storage read to get the Elasticity.
-			// 	- One write to BaseFeePerGas.
-			let db_weight = <T as frame_system::Config>::DbWeight::get();
-			db_weight.reads(2).saturating_add(db_weight.write)
+			db_weight
 		}
 	}
 }
