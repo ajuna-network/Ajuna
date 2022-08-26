@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{mock::*, season::*, *};
+use crate::{mock::*, types::*, *};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::{ArithmeticError, DispatchError};
 

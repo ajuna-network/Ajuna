@@ -27,12 +27,15 @@ mod tests;
 // #[cfg(feature = "runtime-benchmarks")]
 // mod benchmarking;
 
-pub mod season;
+pub mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::season::*;
-	use frame_support::{pallet_prelude::*, traits::Currency};
+	use super::types::*;
+	use frame_support::{
+		pallet_prelude::{DispatchResult, *},
+		traits::Currency,
+	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{traits::UniqueSaturatedInto, ArithmeticError};
 
@@ -154,13 +157,7 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-
-			ensure!(new_season.early_start < new_season.start, Error::<T>::EarlyStartTooLate);
-			ensure!(new_season.start < new_season.end, Error::<T>::SeasonStartTooLate);
-			ensure!(
-				new_season.rarity_tiers.values().sum::<RarityChance>() == 100,
-				Error::<T>::IncorrectRarityChances
-			);
+			Self::ensure_season(&new_season)?;
 
 			let season_id = Self::next_season_id();
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
@@ -184,13 +181,7 @@ pub mod pallet {
 			season: SeasonOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-
-			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
-			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
-			ensure!(
-				season.rarity_tiers.values().sum::<RarityChance>() == 100,
-				Error::<T>::IncorrectRarityChances
-			);
+			Self::ensure_season(&season)?;
 
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -268,6 +259,17 @@ pub mod pallet {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
+			Ok(())
+		}
+
+		pub(crate) fn ensure_season(season: &SeasonOf<T>) -> DispatchResult {
+			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
+			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				season.rarity_tiers.values().sum::<RarityChance>() == 100,
+				Error::<T>::IncorrectRarityChances
+			);
+
 			Ok(())
 		}
 	}
