@@ -38,6 +38,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{traits::UniqueSaturatedInto, ArithmeticError};
+	use sp_std::vec::Vec;
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type SeasonId = u16;
@@ -140,6 +141,8 @@ pub mod pallet {
 		UnknownSeason,
 		/// The combination of all tiers rarity chances doesn't add up to 100
 		IncorrectRarityChances,
+		/// Some rarity tier are duplicated.
+		DuplicatedRarityTier,
 	}
 
 	#[pallet::call]
@@ -157,7 +160,7 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			Self::ensure_season(&new_season)?;
+			let new_season = Self::ensure_season(new_season)?;
 
 			let season_id = Self::next_season_id();
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
@@ -181,7 +184,7 @@ pub mod pallet {
 			season: SeasonOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			Self::ensure_season(&season)?;
+			let season = Self::ensure_season(season)?;
 
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -262,15 +265,25 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(crate) fn ensure_season(season: &SeasonOf<T>) -> DispatchResult {
+		pub(crate) fn ensure_season(mut season: SeasonOf<T>) -> Result<SeasonOf<T>, DispatchError> {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
+
+			season.rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
+			let (tiers, chances) = {
+				let (mut tiers, chances): (Vec<_>, Vec<_>) =
+					season.rarity_tiers.clone().into_iter().unzip();
+				tiers.sort();
+				tiers.dedup();
+				(tiers, chances)
+			};
 			ensure!(
-				season.rarity_tiers.values().sum::<RarityChance>() == 100,
+				chances.iter().sum::<RarityChance>() == 100,
 				Error::<T>::IncorrectRarityChances
 			);
+			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
 
-			Ok(())
+			Ok(season)
 		}
 	}
 }
