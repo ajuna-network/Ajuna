@@ -462,6 +462,10 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
+parameter_types! {
+	pub const TenMinutes: BlockNumber = 10 * MINUTES;
+}
+
 impl pallet_ajuna_board::Config for Runtime {
 	type Event = Event;
 	type BoardId = u32;
@@ -469,8 +473,7 @@ impl pallet_ajuna_board::Config for Runtime {
 	type GameState = pallet_ajuna_board::dot4gravity::GameState<AccountId>;
 	type Game = pallet_ajuna_board::dot4gravity::Game<AccountId>;
 	type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
-	// Based on 600ms blocks this would be 10 minutesc
-	type IdleBoardTimeout = frame_support::traits::ConstU32<1000>;
+	type IdleBoardTimeout = TenMinutes;
 	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Runtime>;
 }
 
