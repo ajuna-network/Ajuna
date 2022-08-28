@@ -16,7 +16,6 @@
 
 use crate::{self as pallet_ajuna_awesome_avatars, season::Season};
 use frame_support::traits::{ConstU16, ConstU64, Hooks};
-
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_runtime::{
