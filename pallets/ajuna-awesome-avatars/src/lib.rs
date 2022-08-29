@@ -33,7 +33,7 @@ pub mod types;
 pub mod pallet {
 	use super::types::*;
 	use frame_support::{
-		pallet_prelude::{DispatchResult, *},
+		pallet_prelude::*,
 		traits::{Currency, Hooks},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
