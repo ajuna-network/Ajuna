@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{self as pallet_ajuna_awesome_avatars, season::Season};
+use crate::{self as pallet_ajuna_awesome_avatars, types::Season};
 use frame_support::traits::{ConstU16, ConstU64, Hooks};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;

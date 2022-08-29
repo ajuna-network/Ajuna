@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{pallet_prelude::*, BoundedBTreeMap};
+use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
 
 #[derive(
@@ -33,7 +33,7 @@ pub enum RarityTier {
 /// Percentage of a given RarityTier
 pub type RarityChance = u8;
 
-pub type RarityTiers = BoundedBTreeMap<RarityTier, RarityChance, ConstU32<6>>;
+pub type RarityTiers = BoundedVec<(RarityTier, RarityChance), ConstU32<6>>;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct Season<BlockNumber> {
