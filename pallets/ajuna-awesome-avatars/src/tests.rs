@@ -88,57 +88,11 @@ mod season {
 
 	const SEASON_ID: SeasonId = 1;
 
-	fn get_rarity_tiers() -> RarityTiers {
-		let mut tiers = RarityTiers::default();
-
-		tiers.try_push((RarityTier::Common, 50)).expect("Should insert element");
-		tiers.try_push((RarityTier::Uncommon, 30)).expect("Should insert element");
-		tiers.try_push((RarityTier::Rare, 12)).expect("Should insert element");
-		tiers.try_push((RarityTier::Epic, 5)).expect("Should insert element");
-		tiers.try_push((RarityTier::Legendary, 2)).expect("Should insert element");
-		tiers.try_push((RarityTier::Mythical, 1)).expect("Should insert element");
-
-		tiers
-	}
-
-	fn get_duplicated_rarity_tiers() -> RarityTiers {
-		let mut tiers = get_rarity_tiers();
-		tiers.pop();
-		tiers.try_push((RarityTier::Epic, 1)).expect("Should insert item");
-
-		tiers
-	}
-
-	fn get_incorrect_rarity_tiers_with_sum_greater_than_100() -> RarityTiers {
-		let mut tiers = get_rarity_tiers();
-
-		tiers.pop();
-		tiers.try_push((RarityTier::Epic, 100)).expect("Should insert item");
-		tiers
-	}
-
-	fn get_incorrect_rarity_tiers_with_sum_less_than_100() -> RarityTiers {
-		let mut tiers = get_rarity_tiers();
-		tiers.pop();
-		tiers
-	}
-
 	#[test]
 	fn new_season_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::new_season(
-					Origin::signed(BOB),
-					Season {
-						early_start: 1,
-						start: 2,
-						end: 3,
-						max_mints: 4,
-						max_mythical_mints: 5,
-						rarity_tiers: get_rarity_tiers(),
-						max_variations: 1
-					}
-				),
+				AwesomeAvatars::new_season(Origin::signed(BOB), Season::default(),),
 				DispatchError::BadOrigin
 			);
 		});
@@ -147,30 +101,14 @@ mod season {
 	#[test]
 	fn new_season_should_work() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let first_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let first_season = Season::default().early_start(1).start(5).end(10);
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(1), Some(first_season.clone()));
 			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(
 				first_season,
 			)));
 
-			let second_season = Season {
-				early_start: 11,
-				start: 12,
-				end: 13,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let second_season = Season::default().early_start(11).start(12).end(13);
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(2), Some(second_season.clone()));
 			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(
@@ -181,30 +119,12 @@ mod season {
 
 	#[test]
 	fn new_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
-		let first_season = Season {
-			early_start: 1,
-			start: 5,
-			end: 10,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![first_season])
+			.seasons(vec![Season::default().early_start(1).start(5).end(10)])
 			.build()
 			.execute_with(|| {
-				let second_season = Season {
-					early_start: 3,
-					start: 7,
-					end: 10,
-					max_mints: 1,
-					max_mythical_mints: 1,
-					rarity_tiers: get_rarity_tiers(),
-					max_variations: 1,
-				};
+				let second_season = Season::default().early_start(3).start(7).end(10);
 				assert!(second_season.early_start < second_season.start);
 				assert_noop!(
 					AwesomeAvatars::new_season(Origin::signed(ALICE), second_season),
@@ -216,15 +136,7 @@ mod season {
 	#[test]
 	fn new_season_should_return_error_when_early_start_is_later_than_start() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season {
-				early_start: 6,
-				start: 3,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let new_season = Season::default().early_start(6).start(3).end(10);
 			assert!(new_season.early_start > new_season.start);
 			assert_noop!(
 				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season,),
@@ -236,15 +148,7 @@ mod season {
 	#[test]
 	fn new_season_should_return_error_when_start_is_later_than_end() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season {
-				early_start: 11,
-				start: 12,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let new_season = Season::default().early_start(11).start(12).end(10);
 			assert!(new_season.early_start < new_season.start);
 			assert_noop!(
 				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
@@ -256,52 +160,50 @@ mod season {
 	#[test]
 	fn new_season_should_return_error_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_duplicated_rarity_tiers(),
-				max_variations: 1,
-			};
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::DuplicatedRarityTier
-			);
+			for duplicated_rarity_tiers in [
+				test_rarity_tiers(vec![(RarityTier::Common, 1), (RarityTier::Common, 99)]),
+				test_rarity_tiers(vec![
+					(RarityTier::Common, 10),
+					(RarityTier::Common, 10),
+					(RarityTier::Legendary, 80),
+				]),
+			] {
+				assert_noop!(
+					AwesomeAvatars::new_season(
+						Origin::signed(ALICE),
+						Season::default().rarity_tiers(duplicated_rarity_tiers)
+					),
+					Error::<Test>::DuplicatedRarityTier
+				);
+			}
 		});
 	}
 
 	#[test]
 	fn new_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_incorrect_rarity_tiers_with_sum_greater_than_100(),
-				max_variations: 1,
-			};
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::IncorrectRarityChances
-			);
-
-			let new_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_incorrect_rarity_tiers_with_sum_less_than_100(),
-				max_variations: 1,
-			};
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::IncorrectRarityChances
-			);
+			for incorrect_rarity_tiers in [
+				test_rarity_tiers(vec![(RarityTier::Common, 10), (RarityTier::Common, 10)]),
+				test_rarity_tiers(vec![(RarityTier::Common, 100), (RarityTier::Common, 100)]),
+				test_rarity_tiers(vec![
+					(RarityTier::Common, 70),
+					(RarityTier::Uncommon, 20),
+					(RarityTier::Rare, 9),
+				]),
+				test_rarity_tiers(vec![
+					(RarityTier::Epic, 70),
+					(RarityTier::Legendary, 20),
+					(RarityTier::Mythical, 11),
+				]),
+			] {
+				assert_noop!(
+					AwesomeAvatars::new_season(
+						Origin::signed(ALICE),
+						Season::default().rarity_tiers(incorrect_rarity_tiers)
+					),
+					Error::<Test>::IncorrectRarityChances
+				);
+			}
 		});
 	}
 
@@ -309,19 +211,7 @@ mod season {
 	fn update_season_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::update_season(
-					Origin::signed(BOB),
-					7357,
-					Season {
-						early_start: 1,
-						start: 2,
-						end: 3,
-						max_mints: 4,
-						max_mythical_mints: 5,
-						rarity_tiers: get_rarity_tiers(),
-						max_variations: 1
-					}
-				),
+				AwesomeAvatars::update_season(Origin::signed(BOB), 7357, Season::default()),
 				DispatchError::BadOrigin
 			);
 		});
@@ -329,39 +219,15 @@ mod season {
 
 	#[test]
 	fn update_season_should_work() {
-		let first_season = Season {
-			early_start: 1,
-			start: 5,
-			end: 10,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-		let second_season = Season {
-			early_start: 11,
-			start: 15,
-			end: 20,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
+		let first_season = Season::default().early_start(1).start(5).end(10);
+		let second_season = Season::default().early_start(11).start(11).end(20);
 
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![first_season, second_season.clone()])
 			.build()
 			.execute_with(|| {
-				let first_season_update = Season {
-					early_start: 1,
-					start: 5,
-					end: 8,
-					max_mints: 1,
-					max_mythical_mints: 1,
-					rarity_tiers: get_rarity_tiers(),
-					max_variations: 1,
-				};
+				let first_season_update = Season::default().early_start(1).start(5).end(8);
 				assert!(first_season_update.end < second_season.early_start);
 				assert_ok!(AwesomeAvatars::update_season(
 					Origin::signed(ALICE),
@@ -381,15 +247,7 @@ mod season {
 				AwesomeAvatars::update_season(
 					Origin::signed(ALICE),
 					10,
-					Season {
-						early_start: 1,
-						start: 12,
-						end: 30,
-						max_mints: 1,
-						max_mythical_mints: 1,
-						rarity_tiers: get_rarity_tiers(),
-						max_variations: 1,
-					}
+					Season::default().early_start(1).start(12).end(30)
 				),
 				Error::<Test>::UnknownSeason
 			);
@@ -398,39 +256,15 @@ mod season {
 
 	#[test]
 	fn update_season_should_return_error_when_season_to_update_ends_after_next_season_start() {
-		let first_season = Season {
-			early_start: 1,
-			start: 5,
-			end: 10,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-		let second_season = Season {
-			early_start: 11,
-			start: 15,
-			end: 20,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
+		let first_season = Season::default().early_start(1).start(5).end(10);
+		let second_season = Season::default().early_start(11).start(15).end(20);
 
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![first_season, second_season.clone()])
 			.build()
 			.execute_with(|| {
-				let first_season_update = Season {
-					early_start: 1,
-					start: 5,
-					end: 14,
-					max_mints: 1,
-					max_mythical_mints: 1,
-					rarity_tiers: get_rarity_tiers(),
-					max_variations: 1,
-				};
+				let first_season_update = Season::default().early_start(1).start(5).end(14);
 				assert!(first_season_update.end > second_season.early_start);
 				assert_noop!(
 					AwesomeAvatars::update_season(Origin::signed(ALICE), 1, first_season_update),
@@ -441,69 +275,29 @@ mod season {
 
 	#[test]
 	fn update_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
-		let first_season = Season {
-			early_start: 1,
-			start: 5,
-			end: 10,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-		let second_season = Season {
-			early_start: 11,
-			start: 15,
-			end: 20,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
+		let first_season = Season::default().early_start(1).start(5).end(10);
+		let second_season = Season::default().early_start(11).start(15).end(20);
 
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![first_season.clone(), second_season])
 			.build()
 			.execute_with(|| {
-				let second_season_update = Season {
-					early_start: 8,
-					start: 15,
-					end: 20,
-					max_mints: 1,
-					max_mythical_mints: 1,
-					rarity_tiers: get_rarity_tiers(),
-					max_variations: 1,
-				};
+				let second_season_update = Season::default().early_start(8).start(15).end(20);
 				assert!(second_season_update.early_start < first_season.end);
 				assert_noop!(
 					AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
 					Error::<Test>::EarlyStartTooEarly
 				);
 
-				let second_season_update = Season {
-					early_start: 9,
-					start: 15,
-					end: 20,
-					max_mints: 1,
-					max_mythical_mints: 1,
-					rarity_tiers: get_rarity_tiers(),
-					max_variations: 1,
-				};
+				let second_season_update = Season::default().early_start(9).start(15).end(20);
 				assert!(second_season_update.early_start < first_season.end);
 				assert_noop!(
 					AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
 					Error::<Test>::EarlyStartTooEarly
 				);
 
-				let second_season_update = Season {
-					early_start: 10,
-					start: 15,
-					end: 20,
-					max_mints: 2,
-					max_mythical_mints: 1,
-					rarity_tiers: get_rarity_tiers(),
-					max_variations: 1,
-				};
+				let second_season_update = Season::default().early_start(10).start(15).end(20);
 				assert!(second_season_update.early_start == first_season.end);
 				assert_noop!(
 					AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
@@ -515,30 +309,14 @@ mod season {
 	#[test]
 	fn update_season_should_return_error_when_early_start_is_earlier_than_or_equal_to_start() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let season_update = Season {
-				early_start: 5,
-				start: 1,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let season_update = Season::default().early_start(5).start(1).end(10);
 			assert!(season_update.early_start > season_update.start);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 111, season_update),
 				Error::<Test>::EarlyStartTooLate
 			);
 
-			let season_update = Season {
-				early_start: 5,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let season_update = Season::default().early_start(5).start(5).end(10);
 			assert!(season_update.early_start == season_update.start);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 222, season_update),
@@ -550,15 +328,7 @@ mod season {
 	#[test]
 	fn update_season_should_return_error_when_start_is_later_than_end() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let season_update = Season {
-				early_start: 1,
-				start: 15,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_rarity_tiers(),
-				max_variations: 1,
-			};
+			let season_update = Season::default().early_start(1).start(15).end(10);
 			assert!(season_update.start > season_update.end);
 			assert_noop!(
 				AwesomeAvatars::update_season(Origin::signed(ALICE), 123, season_update),
@@ -569,18 +339,13 @@ mod season {
 
 	#[test]
 	fn update_season_should_handle_underflow() {
-		let season_update = Season {
-			early_start: 1,
-			start: 2,
-			end: 3,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), SeasonId::MIN, season_update),
+				AwesomeAvatars::update_season(
+					Origin::signed(ALICE),
+					SeasonId::MIN,
+					Season::default()
+				),
 				ArithmeticError::Underflow
 			);
 		});
@@ -588,18 +353,13 @@ mod season {
 
 	#[test]
 	fn update_season_should_handle_overflow() {
-		let season_update = Season {
-			early_start: 1,
-			start: 2,
-			end: 3,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), SeasonId::MAX, season_update),
+				AwesomeAvatars::update_season(
+					Origin::signed(ALICE),
+					SeasonId::MAX,
+					Season::default()
+				),
 				ArithmeticError::Overflow
 			);
 		});
@@ -607,19 +367,9 @@ mod season {
 
 	#[test]
 	fn update_season_metadata_should_work() {
-		let first_season = Season {
-			early_start: 1,
-			start: 5,
-			end: 10,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![first_season])
+			.seasons(vec![Season::default()])
 			.build()
 			.execute_with(|| {
 				let metadata = SeasonMetadata::default();
@@ -671,33 +421,9 @@ mod season {
 
 	#[test]
 	fn active_season_hooks_should_work() {
-		let season_1 = Season {
-			early_start: 1,
-			start: 5,
-			end: 10,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-		let season_2 = Season {
-			early_start: 11,
-			start: 15,
-			end: 20,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
-		let season_3 = Season {
-			early_start: 30,
-			start: 31,
-			end: 32,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: get_rarity_tiers(),
-			max_variations: 1,
-		};
+		let season_1 = Season::default().early_start(1).start(5).end(10);
+		let season_2 = Season::default().early_start(11).start(15).end(20);
+		let season_3 = Season::default().early_start(30).start(31).end(32);
 
 		ExtBuilder::default()
 			.organizer(ALICE)

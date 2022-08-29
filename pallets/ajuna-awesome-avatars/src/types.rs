@@ -35,7 +35,7 @@ pub type RarityChance = u8;
 
 pub type RarityTiers = BoundedVec<(RarityTier, RarityChance), ConstU32<6>>;
 
-#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,

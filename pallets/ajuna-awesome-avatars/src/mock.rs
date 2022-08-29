@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{self as pallet_ajuna_awesome_avatars, types::Season};
+use crate::{self as pallet_ajuna_awesome_avatars, types::*};
 use frame_support::traits::{ConstU16, ConstU64, Hooks};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
@@ -135,5 +135,49 @@ pub fn run_to_block(n: u64) {
 		System::set_block_number(System::block_number() + 1);
 		System::on_initialize(System::block_number());
 		AwesomeAvatars::on_initialize(System::block_number());
+	}
+}
+
+pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityChance)>) -> RarityTiers {
+	rarity_tiers.try_into().unwrap()
+}
+
+impl Default for Season<MockBlockNumber> {
+	fn default() -> Self {
+		Self {
+			early_start: 1,
+			start: 2,
+			end: 3,
+			max_mints: 1,
+			max_mythical_mints: 1,
+			rarity_tiers: test_rarity_tiers(vec![
+				(RarityTier::Common, 50),
+				(RarityTier::Uncommon, 30),
+				(RarityTier::Rare, 12),
+				(RarityTier::Epic, 5),
+				(RarityTier::Legendary, 2),
+				(RarityTier::Mythical, 1),
+			]),
+			max_variations: 1,
+		}
+	}
+}
+
+impl Season<MockBlockNumber> {
+	pub fn early_start(mut self, early_start: MockBlockNumber) -> Self {
+		self.early_start = early_start;
+		self
+	}
+	pub fn start(mut self, start: MockBlockNumber) -> Self {
+		self.start = start;
+		self
+	}
+	pub fn end(mut self, end: MockBlockNumber) -> Self {
+		self.end = end;
+		self
+	}
+	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
+		self.rarity_tiers = rarity_tiers;
+		self
 	}
 }
