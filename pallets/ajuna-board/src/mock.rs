@@ -72,10 +72,7 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
-	// Used as assumption in tests beware if changed
-	pub const MaxNumberOfIdleBlocks: u32 = 10;
-	// Used as assumption in tests beware if changed
-	pub const MaxNumberOfGamesToExpire: u32 = 2;
+	pub const IdleBoardTimeout: u64 = 10;
 }
 
 impl pallet_ajuna_board::Config for Test {
@@ -85,6 +82,7 @@ impl pallet_ajuna_board::Config for Test {
 	type GameState = crate::dot4gravity::GameState<MockAccountId>;
 	type Game = crate::dot4gravity::Game<MockAccountId>;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
+	type IdleBoardTimeout = IdleBoardTimeout;
 	type WeightInfo = ();
 }
 

@@ -34,7 +34,7 @@ pub mod pallet {
 	use super::types::*;
 	use frame_support::{
 		pallet_prelude::{DispatchResult, *},
-		traits::Currency,
+		traits::{Currency, Hooks},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{traits::UniqueSaturatedInto, ArithmeticError};
@@ -64,6 +64,11 @@ pub mod pallet {
 		1
 	}
 
+	#[pallet::type_value]
+	pub fn DefaultNextActiveSeasonId() -> SeasonId {
+		1
+	}
+
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
@@ -72,7 +77,12 @@ pub mod pallet {
 	/// Season id currently active.
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_id)]
-	pub type ActiveSeason<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
+	pub type ActiveSeasonId<T: Config> = StorageValue<_, SeasonId, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn next_active_season_id)]
+	pub type NextActiveSeasonId<T: Config> =
+		StorageValue<_, SeasonId, ValueQuery, DefaultNextActiveSeasonId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn seasons_metadata)]
@@ -284,6 +294,27 @@ pub mod pallet {
 			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
 
 			Ok(season)
+		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			let season_id = Self::active_season_id().unwrap_or_else(Self::next_active_season_id);
+			let mut db_weight = T::DbWeight::get().reads(2);
+
+			if let Some(season) = Self::seasons(season_id) {
+				db_weight += T::DbWeight::get().reads(1);
+				if season.early_start <= now && now <= season.end {
+					ActiveSeasonId::<T>::put(season_id);
+					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
+					db_weight += T::DbWeight::get().writes(2);
+				} else {
+					ActiveSeasonId::<T>::kill();
+					db_weight += T::DbWeight::get().writes(1);
+				}
+			}
+			db_weight
 		}
 	}
 }

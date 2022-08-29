@@ -38,26 +38,31 @@ pub mod weights;
 
 /// The state of the board game
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct BoardGame<BoardId, State, Players> {
+pub struct BoardGame<BoardId, State, Players, Start> {
 	board_id: BoardId,
 	/// Players in the game
 	players: Players,
 	/// The current state of the game
 	pub state: State,
+	/// When the game started
+	pub started: Start,
 }
 
-impl<BoardId, State, Players> BoardGame<BoardId, State, Players> {
+impl<BoardId, State, Players, Start> BoardGame<BoardId, State, Players, Start> {
 	/// Create a BoardGame
-	fn new(board_id: BoardId, players: Players, state: State) -> Self {
-		Self { board_id, players, state }
+	fn new(board_id: BoardId, players: Players, state: State, started: Start) -> Self {
+		Self { board_id, players, state, started }
 	}
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::traits::AtLeast32BitUnsigned;
+	use frame_system::{
+		ensure_signed,
+		pallet_prelude::{BlockNumberFor, OriginFor},
+	};
+	use sp_runtime::traits::{AtLeast32BitUnsigned, BlockNumberProvider, Saturating};
 	use sp_std::vec::Vec;
 
 	#[pallet::config]
@@ -79,6 +84,10 @@ pub mod pallet {
 		/// Maximum number of players
 		#[pallet::constant]
 		type MaxNumberOfPlayers: Get<u32>;
+
+		/// Timeout in blocks we allow a game to be idle
+		#[pallet::constant]
+		type IdleBoardTimeout: Get<BlockNumberFor<Self>>;
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
@@ -117,13 +126,19 @@ pub mod pallet {
 		PlayerAlreadyInGame,
 		/// Board already exists
 		BoardExists,
+		/// A dispute failed
+		DisputeFailed,
 	}
 
 	type BoundedPlayersOf<T> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
 
-	pub(crate) type BoardGameOf<T> =
-		BoardGame<<T as Config>::BoardId, <T as Config>::GameState, BoundedPlayersOf<T>>;
+	pub(crate) type BoardGameOf<T> = BoardGame<
+		<T as Config>::BoardId,
+		<T as Config>::GameState,
+		BoundedPlayersOf<T>,
+		BlockNumberFor<T>,
+	>;
 
 	type PlayersOf<T> = BTreeSet<<T as frame_system::Config>::AccountId>;
 
@@ -184,7 +199,12 @@ pub mod pallet {
 				PlayerBoards::<T>::insert(player, board_id);
 			});
 
-			let board_game = BoardGameOf::<T>::new(board_id, players.clone(), state);
+			let board_game = BoardGameOf::<T>::new(
+				board_id,
+				players.clone(),
+				state,
+				frame_system::Pallet::<T>::current_block_number(),
+			);
 
 			BoardStates::<T>::insert(board_id, board_game);
 
@@ -237,6 +257,22 @@ pub mod pallet {
 			BoardStates::<T>::remove(board_id);
 			// Clear winner
 			BoardWinners::<T>::remove(board_id);
+			Ok(())
+		}
+
+		/// Dispute a board a prevent players leaving stale boards. After the `IdleBoardTimeout` a
+		/// board maybe disputed and then awarded to the player awaiting their turn
+		#[pallet::weight(10_000)]
+		pub fn dispute_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			let board = BoardStates::<T>::get(board_id).ok_or(Error::<T>::InvalidBoard)?;
+			let timeout_block_number = board.started.saturating_add(T::IdleBoardTimeout::get());
+			let current_block_number = frame_system::Pallet::<T>::current_block_number();
+			ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
+
+			let winner = T::Game::get_last_player(&board.state);
+			Self::declare_winner(&board_id, &winner, &board.state);
+
 			Ok(())
 		}
 	}

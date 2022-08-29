@@ -649,6 +649,88 @@ mod season {
 			);
 		});
 	}
+
+	#[test]
+	fn active_season_hooks_should_work() {
+		let season_1 = Season {
+			early_start: 1,
+			start: 5,
+			end: 10,
+			max_mints: 1,
+			max_mythical_mints: 1,
+			rarity_tiers: get_rarity_tiers(),
+			max_variations: 1,
+		};
+		let season_2 = Season {
+			early_start: 11,
+			start: 15,
+			end: 20,
+			max_mints: 1,
+			max_mythical_mints: 1,
+			rarity_tiers: get_rarity_tiers(),
+			max_variations: 1,
+		};
+		let season_3 = Season {
+			early_start: 30,
+			start: 31,
+			end: 32,
+			max_mints: 1,
+			max_mythical_mints: 1,
+			rarity_tiers: get_rarity_tiers(),
+			max_variations: 1,
+		};
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![season_1.clone(), season_2.clone(), season_3.clone()])
+			.build()
+			.execute_with(|| {
+				for _ in 0..season_1.early_start {
+					assert_eq!(AwesomeAvatars::active_season_id(), None);
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+				}
+
+				for block_number in season_1.early_start..season_1.end {
+					run_to_block(block_number + 1);
+					assert_eq!(AwesomeAvatars::active_season_id(), Some(1));
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 2);
+				}
+
+				for block_number in season_2.early_start..season_2.end {
+					run_to_block(block_number + 1);
+					assert_eq!(AwesomeAvatars::active_season_id(), Some(2));
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
+				}
+
+				for block_number in season_2.end..(season_3.early_start - 1) {
+					run_to_block(block_number + 1);
+					assert_eq!(AwesomeAvatars::active_season_id(), None);
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
+				}
+
+				for block_number in season_3.early_start..season_3.end {
+					run_to_block(block_number + 1);
+					assert_eq!(AwesomeAvatars::active_season_id(), Some(3));
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 4);
+				}
+			});
+	}
+
+	#[test]
+	fn active_season_hooks_should_do_nothing_if_no_season_exists() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert!(AwesomeAvatars::active_season_id().is_none());
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+
+			run_to_block(2);
+			assert!(AwesomeAvatars::active_season_id().is_none());
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+
+			run_to_block(15);
+			assert!(AwesomeAvatars::active_season_id().is_none());
+			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
+		});
+	}
 }
 
 mod config {

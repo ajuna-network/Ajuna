@@ -210,3 +210,41 @@ fn should_play_turn_and_finish_game() {
 		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
 	})
 }
+
+#[test]
+fn should_be_able_to_dispute_a_stale_board() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(AjunaBoard::new_game(
+			Origin::signed(ALICE),
+			BOARD_ID,
+			BTreeSet::from([BOB, CHARLIE])
+		));
+
+		assert_ok!(AjunaBoard::play_turn(Origin::signed(CHARLIE), Turn::DropBomb(TEST_COORD)));
+
+		// We shouldn't be able to dispute an active game
+		assert_noop!(
+			AjunaBoard::dispute_game(Origin::signed(ALICE), BOARD_ID),
+			Error::<Test>::DisputeFailed
+		);
+
+		// Jump to the future when the game is now stale
+		System::set_block_number(IdleBoardTimeout::get() + 1);
+
+		assert_ok!(AjunaBoard::dispute_game(Origin::signed(ALICE), BOARD_ID));
+
+		// Some final checks that the dispute awarding the game actually awards and clears the game
+		System::assert_last_event(mock::Event::AjunaBoard(crate::Event::GameFinished {
+			board_id: BOARD_ID,
+			winner: BOB,
+		}));
+
+		assert_eq!(BoardWinners::<Test>::get(BOARD_ID), Some(BOB));
+		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
+
+		// finish game and check
+		assert_ok!(AjunaBoard::finish_game(Origin::signed(ALICE), BOARD_ID));
+		assert!(BoardStates::<Test>::get(BOARD_ID).is_none());
+		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
+	});
+}

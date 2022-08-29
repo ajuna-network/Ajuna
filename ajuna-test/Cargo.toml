@@ -1,0 +1,43 @@
+[package]
+authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
+edition    = "2021"
+homepage   = "https://ajuna.io"
+name       = "ajuna-test"
+repository = "https://github.com/ajuna-network/Ajuna"
+version    = "0.1.0"
+
+[dependencies]
+
+# Local
+ajuna-common       = { path = "../ajuna-common", default-features = false }
+ajuna-primitives   = { path = "../primitives", default-features = false }
+ajuna-solo-runtime = { path = "../runtime/solo", default-features = false }
+pallet-ajuna-board = { path = "../pallets/ajuna-board", default-features = false }
+
+# Substrate
+frame-support     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+frame-system      = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+pallet-balances   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+pallet-sudo       = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+sp-core           = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-io             = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-keyring        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+sp-runtime        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+sp-std            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false }
+
+codec      = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { version = "2.1", default-features = false, features = ["derive"] }
+
+# open-runtime-module-library
+orml-vesting = { git = "https://github.com/ajuna-network/open-runtime-module-library", default-features = false, rev = "polkadot-v0.9.20" }
+
+[features]
+default = ["std"]
+std = [
+    "ajuna-solo-runtime/std",
+    "frame-support/std",
+    "sp-runtime/std",
+    "frame-system/std",
+    "pallet-ajuna-board/std",
+]
