@@ -138,6 +138,10 @@ pub fn run_to_block(n: u64) {
 	}
 }
 
+pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityChance)>) -> RarityTiers {
+	rarity_tiers.try_into().unwrap()
+}
+
 impl Default for Season<MockBlockNumber> {
 	fn default() -> Self {
 		Self {
@@ -146,16 +150,14 @@ impl Default for Season<MockBlockNumber> {
 			end: 3,
 			max_mints: 1,
 			max_mythical_mints: 1,
-			rarity_tiers: vec![
+			rarity_tiers: test_rarity_tiers(vec![
 				(RarityTier::Common, 50),
 				(RarityTier::Uncommon, 30),
 				(RarityTier::Rare, 12),
 				(RarityTier::Epic, 5),
 				(RarityTier::Legendary, 2),
 				(RarityTier::Mythical, 1),
-			]
-			.try_into()
-			.unwrap(),
+			]),
 			max_variations: 1,
 		}
 	}

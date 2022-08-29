@@ -88,41 +88,6 @@ mod season {
 
 	const SEASON_ID: SeasonId = 1;
 
-	fn get_rarity_tiers() -> RarityTiers {
-		let mut tiers = RarityTiers::default();
-
-		tiers.try_push((RarityTier::Common, 50)).expect("Should insert element");
-		tiers.try_push((RarityTier::Uncommon, 30)).expect("Should insert element");
-		tiers.try_push((RarityTier::Rare, 12)).expect("Should insert element");
-		tiers.try_push((RarityTier::Epic, 5)).expect("Should insert element");
-		tiers.try_push((RarityTier::Legendary, 2)).expect("Should insert element");
-		tiers.try_push((RarityTier::Mythical, 1)).expect("Should insert element");
-
-		tiers
-	}
-
-	fn get_duplicated_rarity_tiers() -> RarityTiers {
-		let mut tiers = get_rarity_tiers();
-		tiers.pop();
-		tiers.try_push((RarityTier::Epic, 1)).expect("Should insert item");
-
-		tiers
-	}
-
-	fn get_incorrect_rarity_tiers_with_sum_greater_than_100() -> RarityTiers {
-		let mut tiers = get_rarity_tiers();
-
-		tiers.pop();
-		tiers.try_push((RarityTier::Epic, 100)).expect("Should insert item");
-		tiers
-	}
-
-	fn get_incorrect_rarity_tiers_with_sum_less_than_100() -> RarityTiers {
-		let mut tiers = get_rarity_tiers();
-		tiers.pop();
-		tiers
-	}
-
 	#[test]
 	fn new_season_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
@@ -195,52 +160,50 @@ mod season {
 	#[test]
 	fn new_season_should_return_error_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_duplicated_rarity_tiers(),
-				max_variations: 1,
-			};
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::DuplicatedRarityTier
-			);
+			for duplicated_rarity_tiers in [
+				test_rarity_tiers(vec![(RarityTier::Common, 1), (RarityTier::Common, 99)]),
+				test_rarity_tiers(vec![
+					(RarityTier::Common, 10),
+					(RarityTier::Common, 10),
+					(RarityTier::Legendary, 80),
+				]),
+			] {
+				assert_noop!(
+					AwesomeAvatars::new_season(
+						Origin::signed(ALICE),
+						Season::default().rarity_tiers(duplicated_rarity_tiers)
+					),
+					Error::<Test>::DuplicatedRarityTier
+				);
+			}
 		});
 	}
 
 	#[test]
 	fn new_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_incorrect_rarity_tiers_with_sum_greater_than_100(),
-				max_variations: 1,
-			};
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::IncorrectRarityChances
-			);
-
-			let new_season = Season {
-				early_start: 1,
-				start: 5,
-				end: 10,
-				max_mints: 1,
-				max_mythical_mints: 1,
-				rarity_tiers: get_incorrect_rarity_tiers_with_sum_less_than_100(),
-				max_variations: 1,
-			};
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
-				Error::<Test>::IncorrectRarityChances
-			);
+			for incorrect_rarity_tiers in [
+				test_rarity_tiers(vec![(RarityTier::Common, 10), (RarityTier::Common, 10)]),
+				test_rarity_tiers(vec![(RarityTier::Common, 100), (RarityTier::Common, 100)]),
+				test_rarity_tiers(vec![
+					(RarityTier::Common, 70),
+					(RarityTier::Uncommon, 20),
+					(RarityTier::Rare, 9),
+				]),
+				test_rarity_tiers(vec![
+					(RarityTier::Epic, 70),
+					(RarityTier::Legendary, 20),
+					(RarityTier::Mythical, 11),
+				]),
+			] {
+				assert_noop!(
+					AwesomeAvatars::new_season(
+						Origin::signed(ALICE),
+						Season::default().rarity_tiers(incorrect_rarity_tiers)
+					),
+					Error::<Test>::IncorrectRarityChances
+				);
+			}
 		});
 	}
 
