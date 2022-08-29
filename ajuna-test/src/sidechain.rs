@@ -74,6 +74,7 @@ impl frame_system::Config for SideChainRuntime {
 
 parameter_types! {
 	pub const MaxNumberOfPlayers: u8 = 2;
+	pub const IdleBoardTimeout: u64 = 10;
 }
 
 pub type Guess = u32;
@@ -194,6 +195,7 @@ impl pallet_ajuna_board::Config for SideChainRuntime {
 	type GameState = GameState;
 	type Game = NumberGame;
 	type MaxNumberOfPlayers = MaxNumberOfPlayers;
+	type IdleBoardTimeout = IdleBoardTimeout;
 	type WeightInfo = ();
 }
 
