@@ -559,3 +559,51 @@ mod config {
 		});
 	}
 }
+
+mod minting {
+	use frame_support::error::BadOrigin;
+
+	use super::*;
+
+	#[test]
+	fn mint_should_generate_avatar_if_season_is_active() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.with_mint_availability(true)
+			.build()
+			.execute_with(|| {
+				todo!();
+			});
+	}
+
+	#[test]
+	fn mint_should_raise_error_when_minting_is_not_available() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AwesomeAvatars::mint(Origin::signed(ALICE)),
+				Error::<Test>::MintUnavailable
+			);
+		});
+	}
+
+	#[test]
+	fn mint_should_raise_error_when_origin_not_signed() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(AwesomeAvatars::mint(Origin::none()), BadOrigin);
+		});
+	}
+
+	#[test]
+	fn mint_should_raise_error_when_season_not_active() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.with_mint_availability(true)
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AwesomeAvatars::mint(Origin::signed(ALICE)),
+					Error::<Test>::OutOfSeason
+				);
+			});
+	}
+}

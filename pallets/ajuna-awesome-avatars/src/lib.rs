@@ -37,13 +37,18 @@ pub mod pallet {
 		traits::{Currency, Hooks},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::{traits::UniqueSaturatedInto, ArithmeticError};
+	use sp_runtime::{
+		traits::{Hash, UniqueSaturatedInto},
+		ArithmeticError,
+	};
 	use sp_std::vec::Vec;
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
-	pub(crate) type SeasonId = u16;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+	const MAX_NUM_OF_AVATARS_PER_PLAYER: u32 = 1_000;
+	const MINTING_MAX_RANDOM_NUM: u8 = 100;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -116,6 +121,19 @@ pub mod pallet {
 	pub type MintCooldown<T: Config> =
 		StorageValue<_, T::BlockNumber, ValueQuery, DefaultMintCooldown<T>>;
 
+	#[pallet::storage]
+	pub type Avatars<T: Config> =
+		StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, AwesomeAvatar)>;
+
+	#[pallet::storage]
+	pub type Players<T: Config> = StorageMap<
+		_,
+		Identity,
+		T::AccountId,
+		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_NUM_OF_AVATARS_PER_PLAYER>>,
+		ValueQuery,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -133,6 +151,8 @@ pub mod pallet {
 		UpdatedMintFee { fee: BalanceOf<T> },
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
+		/// Avatar minted.
+		AvatarMinted { avatar_id: AvatarIdOf<T> },
 	}
 
 	#[pallet::error]
@@ -153,6 +173,14 @@ pub mod pallet {
 		IncorrectRarityChances,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
+		/// Minting is not available at the moment.
+		MintUnavailable,
+		/// No season active currently.
+		OutOfSeason,
+		/// Max ownership reached.
+		MaxOwnershipReached,
+		/// Incorrect DNA.
+		IncorrectDna,
 	}
 
 	#[pallet::call]
@@ -265,6 +293,28 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(10_000)]
+		pub fn mint(origin: OriginFor<T>) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
+
+			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
+			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
+
+			let dna = Self::random_dna(&player, &active_season)?;
+			let avatar = AwesomeAvatar { season: active_season_id, dna };
+			let avatar_id = T::Hashing::hash_of(&avatar);
+
+			let mut avatars = Players::<T>::take(&player);
+			ensure!(avatars.try_push(avatar_id).is_ok(), Error::<T>::MaxOwnershipReached);
+			Players::<T>::insert(&player, avatars);
+			Avatars::<T>::insert(avatar_id, (player, avatar));
+
+			Self::deposit_event(Event::AvatarMinted { avatar_id });
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -294,6 +344,46 @@ pub mod pallet {
 			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
 
 			Ok(season)
+		}
+
+		fn random_number(who: &T::AccountId, until: u8) -> u8 {
+			let nonce = frame_system::Pallet::<T>::account_nonce(who);
+			let block_number = frame_system::Pallet::<T>::block_number();
+			let random_hash = (nonce, who, block_number).using_encoded(sp_io::hashing::twox_128);
+			frame_system::Pallet::<T>::inc_account_nonce(who);
+			random_hash[0] % until
+		}
+
+		fn random_component(who: &T::AccountId, season: &SeasonOf<T>) -> (u8, u8) {
+			let random_tier = {
+				let random_percent = Self::random_number(who, MINTING_MAX_RANDOM_NUM);
+				let mut cumulative_sum = 0;
+				let mut random_tier = season.rarity_tiers[0].0.clone() as u8;
+				for (tier, chance) in season.rarity_tiers.iter() {
+					let new_cumulative_sum = cumulative_sum + chance;
+					if random_percent >= cumulative_sum && random_percent < new_cumulative_sum {
+						random_tier = tier.clone() as u8;
+						break
+					}
+					cumulative_sum = new_cumulative_sum;
+				}
+				random_tier
+			};
+			let random_variation = Self::random_number(who, season.max_variations);
+			(random_tier, random_variation)
+		}
+
+		pub(crate) fn random_dna(
+			who: &T::AccountId,
+			season: &SeasonOf<T>,
+		) -> Result<Dna, DispatchError> {
+			let dna = (0..season.max_components)
+				.map(|_| {
+					let (random_tier, random_variation) = Self::random_component(who, season);
+					((random_tier << 4) | random_variation) as u8
+				})
+				.collect::<Vec<_>>();
+			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 	}
 

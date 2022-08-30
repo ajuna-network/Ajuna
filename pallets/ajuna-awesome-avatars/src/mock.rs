@@ -97,6 +97,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<Season<MockBlockNumber>>,
+	mint_availability: bool,
 }
 
 impl ExtBuilder {
@@ -106,6 +107,10 @@ impl ExtBuilder {
 	}
 	pub fn seasons(mut self, seasons: Vec<Season<MockBlockNumber>>) -> Self {
 		self.seasons = seasons;
+		self
+	}
+	pub fn with_mint_availability(mut self, mint_availability: bool) -> Self {
+		self.mint_availability = mint_availability;
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -121,6 +126,9 @@ impl ExtBuilder {
 				let organizer = AwesomeAvatars::organizer().unwrap();
 				let _ = AwesomeAvatars::new_season(Origin::signed(organizer), season);
 			}
+
+			let _ =
+				AwesomeAvatars::update_mint_available(Origin::signed(1), self.mint_availability);
 		});
 		ext
 	}
@@ -159,6 +167,7 @@ impl Default for Season<MockBlockNumber> {
 				(RarityTier::Mythical, 1),
 			]),
 			max_variations: 1,
+			max_components: MAX_COMPONENTS,
 		}
 	}
 }

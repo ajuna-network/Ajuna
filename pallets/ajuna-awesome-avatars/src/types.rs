@@ -35,6 +35,8 @@ pub type RarityChance = u8;
 
 pub type RarityTiers = BoundedVec<(RarityTier, RarityChance), ConstU32<6>>;
 
+pub(crate) type SeasonId = u16;
+
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
@@ -44,6 +46,7 @@ pub struct Season<BlockNumber> {
 	pub max_mythical_mints: u16,
 	pub rarity_tiers: RarityTiers,
 	pub max_variations: u8,
+	pub max_components: u32,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
@@ -51,3 +54,29 @@ pub struct SeasonMetadata {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1000>>,
 }
+
+pub const DNA_VERSION: u8 = 0;
+pub const MAX_COMPONENTS: u32 = 100;
+
+#[derive(Encode, Decode, Default, Clone, MaxEncodedLen, PartialEq, TypeInfo)]
+pub struct Dna(BoundedVec<u8, ConstU32<MAX_COMPONENTS>>);
+
+impl TryFrom<Vec<u8>> for Dna {
+	type Error = ();
+
+	fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+		if let Ok(dna) = BoundedVec::try_from(value) {
+			Ok(Self(dna))
+		} else {
+			Err(())
+		}
+	}
+}
+
+#[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
+pub struct AwesomeAvatar {
+	pub season: SeasonId,
+	pub dna: Dna,
+}
+
+pub type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
