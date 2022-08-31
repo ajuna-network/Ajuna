@@ -561,7 +561,9 @@ mod config {
 }
 
 mod minting {
-	use frame_support::error::BadOrigin;
+
+	use frame_support::{traits::ConstU32, BoundedVec};
+	use sp_core::H256;
 
 	use super::*;
 
@@ -569,10 +571,16 @@ mod minting {
 	fn mint_should_generate_avatar_if_season_is_active() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.with_mint_availability(true)
+			.seasons(vec![Season::default().end(10)])
+			.mint_availability(true)
 			.build()
 			.execute_with(|| {
-				todo!();
+				run_to_block(5);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
+				// 0xbedccb00d3405e5fb931cfb0d00cf0ae46c181ffe204745673389ae7a07a355f
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarMinted { avatar_id: H256::zero() },
+				));
 			});
 	}
 
@@ -589,7 +597,7 @@ mod minting {
 	#[test]
 	fn mint_should_raise_error_when_origin_not_signed() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_noop!(AwesomeAvatars::mint(Origin::none()), BadOrigin);
+			assert_noop!(AwesomeAvatars::mint(Origin::none()), DispatchError::BadOrigin);
 		});
 	}
 
@@ -597,13 +605,35 @@ mod minting {
 	fn mint_should_raise_error_when_season_not_active() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.with_mint_availability(true)
+			.mint_availability(true)
 			.build()
 			.execute_with(|| {
 				assert_noop!(
 					AwesomeAvatars::mint(Origin::signed(ALICE)),
 					Error::<Test>::OutOfSeason
 				);
+			});
+	}
+
+	#[test]
+	fn mint_should_raise_error_when_max_minting_reached() {
+		let mut avatars =
+			BoundedVec::<AvatarIdOf<Test>, ConstU32<MAX_AVATARS_PER_PLAYER>>::default();
+		for _ in 0..1_000 {
+			let _ = avatars.try_push(H256::default());
+		}
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![Season::default().end(10)])
+			.mint_availability(true)
+			.avatars(ALICE, avatars)
+			.build()
+			.execute_with(|| {
+				run_to_block(5);
+				let result = AwesomeAvatars::mint(Origin::signed(ALICE));
+				assert!(result.is_err());
+				assert_noop!(result, Error::<Test>::MaxOwnershipReached);
 			});
 	}
 }
