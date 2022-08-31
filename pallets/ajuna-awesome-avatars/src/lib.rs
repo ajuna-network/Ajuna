@@ -49,7 +49,7 @@ pub mod pallet {
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
-	pub(crate) const RANDOM_NUM_CEIL: u8 = 100;
+	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -170,8 +170,8 @@ pub mod pallet {
 		SeasonEndTooLate,
 		/// The season doesn't exist.
 		UnknownSeason,
-		/// The combination of all tiers rarity chances doesn't add up to 100
-		IncorrectRarityChances,
+		/// The combination of all tiers rarity percentages doesn't add up to 100
+		IncorrectRarityPercentages,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
 		/// Minting is not available at the moment.
@@ -339,8 +339,8 @@ pub mod pallet {
 				(tiers, chances)
 			};
 			ensure!(
-				chances.iter().sum::<RarityChance>() == RANDOM_NUM_CEIL,
-				Error::<T>::IncorrectRarityChances
+				chances.iter().sum::<RarityPercent>() == MAX_PERCENTAGE,
+				Error::<T>::IncorrectRarityPercentages
 			);
 			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
 
@@ -357,7 +357,7 @@ pub mod pallet {
 
 		fn random_component(who: &T::AccountId, season: &SeasonOf<T>) -> (u8, u8) {
 			let random_tier = {
-				let random_percent = Self::random_number(who, RANDOM_NUM_CEIL);
+				let random_percent = Self::random_number(who, MAX_PERCENTAGE);
 				let mut cumulative_sum = 0;
 				let mut random_tier = season.rarity_tiers[0].0.clone() as u8;
 				for (tier, chance) in season.rarity_tiers.iter() {

@@ -164,7 +164,7 @@ pub fn run_to_block(n: u64) {
 	}
 }
 
-pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityChance)>) -> RarityTiers {
+pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityPercent)>) -> RarityTiers {
 	rarity_tiers.try_into().unwrap()
 }
 

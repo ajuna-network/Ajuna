@@ -202,7 +202,7 @@ mod season {
 						Origin::signed(ALICE),
 						Season::default().rarity_tiers(incorrect_rarity_tiers)
 					),
-					Error::<Test>::IncorrectRarityChances
+					Error::<Test>::IncorrectRarityPercentages
 				);
 			}
 		});

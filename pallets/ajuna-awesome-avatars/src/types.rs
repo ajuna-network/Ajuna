@@ -33,10 +33,9 @@ pub enum RarityTier {
 	Mythical = 6,
 }
 
-/// Percentage of a given RarityTier
-pub type RarityChance = u8;
+pub type RarityPercent = u8;
 
-pub type RarityTiers = BoundedVec<(RarityTier, RarityChance), ConstU32<6>>;
+pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
 
 pub type SeasonId = u16;
 
