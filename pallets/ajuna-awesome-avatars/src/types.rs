@@ -38,7 +38,7 @@ pub type RarityChance = u8;
 
 pub type RarityTiers = BoundedVec<(RarityTier, RarityChance), ConstU32<6>>;
 
-pub(crate) type SeasonId = u16;
+pub type SeasonId = u16;
 
 pub type Dna = BoundedVec<u8, ConstU32<MAX_COMPONENTS>>;
 

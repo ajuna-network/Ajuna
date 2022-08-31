@@ -44,12 +44,12 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
-	type BalanceOf<T> =
+	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-	pub type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
+	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 
-	pub const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
-	const RANDOM_NUM_CEIL: u8 = 100;
+	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
+	pub(crate) const RANDOM_NUM_CEIL: u8 = 100;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
