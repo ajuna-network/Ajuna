@@ -183,6 +183,7 @@ mod season {
 	fn new_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for incorrect_rarity_tiers in [
+				test_rarity_tiers(vec![]),
 				test_rarity_tiers(vec![(RarityTier::Common, 10), (RarityTier::Common, 10)]),
 				test_rarity_tiers(vec![(RarityTier::Common, 100), (RarityTier::Common, 100)]),
 				test_rarity_tiers(vec![

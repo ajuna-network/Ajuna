@@ -161,7 +161,7 @@ pub mod pallet {
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 
-			Organizer::<T>::put(organizer.clone());
+			Organizer::<T>::put(&organizer);
 			Self::deposit_event(Event::OrganizerSet { organizer });
 
 			Ok(())
@@ -180,7 +180,7 @@ pub mod pallet {
 				ensure!(prev_season.end < new_season.early_start, Error::<T>::EarlyStartTooEarly);
 			}
 
-			Seasons::<T>::insert(season_id, new_season.clone());
+			Seasons::<T>::insert(season_id, &new_season);
 			NextSeasonId::<T>::put(next_season_id);
 
 			Self::deposit_event(Event::NewSeasonCreated(new_season));
@@ -223,7 +223,7 @@ pub mod pallet {
 
 			ensure!(Self::seasons(season_id).is_some(), Error::<T>::UnknownSeason);
 
-			SeasonsMetadata::<T>::insert(season_id, metadata.clone());
+			SeasonsMetadata::<T>::insert(season_id, &metadata);
 
 			Self::deposit_event(Event::UpdatedSeasonMetadata {
 				season_id,
