@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	self as pallet_ajuna_awesome_avatars, types::*, AvatarIdOf, MintAvailable, Players,
-	MAX_AVATARS_PER_PLAYER,
-};
+use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::{
 	traits::{ConstU16, ConstU32, ConstU64, Hooks},
 	BoundedVec,
@@ -136,12 +133,13 @@ impl ExtBuilder {
 		ext.execute_with(|| System::set_block_number(1));
 		ext.execute_with(|| {
 			if let Some(organizer) = self.organizer {
-				let _ = AwesomeAvatars::set_organizer(Origin::root(), organizer);
+				Organizer::<Test>::put(organizer);
 			}
 
-			for season in self.seasons.into_iter() {
-				let organizer = AwesomeAvatars::organizer().unwrap();
-				let _ = AwesomeAvatars::new_season(Origin::signed(organizer), season);
+			for season in self.seasons {
+				let season_id = AwesomeAvatars::next_season_id();
+				Seasons::<Test>::insert(season_id, season);
+				NextSeasonId::<Test>::put(season_id + 1);
 			}
 
 			if let Some(player_avatars) = self.avatars {
