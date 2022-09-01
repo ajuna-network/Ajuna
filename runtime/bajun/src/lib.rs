@@ -269,7 +269,9 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Sudo(_) |
 			Call::Treasury(_) |
 			Call::Council(_) |
-			Call::CouncilMembership(_) => true
+			Call::CouncilMembership(_) |
+			// ajuna pallets
+			Call::AwesomeAvatars(_	) => true
 		}
 	}
 }
@@ -550,6 +552,11 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Runtime>;
 }
 
+impl pallet_ajuna_awesome_avatars::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -588,6 +595,9 @@ construct_runtime!(
 		Treasury: pallet_treasury = 41,
 		Council: pallet_collective::<Instance2> = 42,
 		CouncilMembership: pallet_membership::<Instance2> = 43,
+
+		// Indexes 50-59 should be reserved for our games.
+		AwesomeAvatars: pallet_ajuna_awesome_avatars = 50,
 	}
 );
 

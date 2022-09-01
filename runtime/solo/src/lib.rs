@@ -579,7 +579,7 @@ construct_runtime!(
 		Teerex: pallet_teerex = 19,
 		Sidechain: pallet_sidechain = 20,
 		Board: pallet_ajuna_board = 21,
-		AAA: pallet_ajuna_awesome_avatars = 22,
+		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 	}
 );
 
