@@ -30,10 +30,8 @@ pub enum RarityTier {
 	Mythical = 6,
 }
 
-/// Percentage of a given RarityTier
-pub type RarityChance = u8;
-
-pub type RarityTiers = BoundedVec<(RarityTier, RarityChance), ConstU32<6>>;
+pub type RarityPercent = u8;
+pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
@@ -44,10 +42,20 @@ pub struct Season<BlockNumber> {
 	pub max_mythical_mints: u16,
 	pub rarity_tiers: RarityTiers,
 	pub max_variations: u8,
+	pub max_components: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
 pub struct SeasonMetadata {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1000>>,
+}
+
+pub type SeasonId = u16;
+pub type Dna = BoundedVec<u8, ConstU32<100>>;
+
+#[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
+pub struct Avatar {
+	pub season: SeasonId,
+	pub dna: Dna,
 }
