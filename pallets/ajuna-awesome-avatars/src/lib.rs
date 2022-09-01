@@ -129,8 +129,8 @@ pub mod pallet {
 	pub type Avatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn players)]
-	pub type Players<T: Config> =
+	#[pallet::getter(fn owners)]
+	pub type Owners<T: Config> =
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
 	#[pallet::event]
@@ -298,7 +298,7 @@ pub mod pallet {
 			let player = ensure_signed(origin)?;
 			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
 			ensure!(
-				Self::players(&player).len() < MAX_AVATARS_PER_PLAYER as usize,
+				Self::owners(&player).len() < MAX_AVATARS_PER_PLAYER as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
@@ -309,9 +309,9 @@ pub mod pallet {
 			let avatar = Avatar { season: active_season_id, dna };
 			let avatar_id = T::Hashing::hash_of(&avatar);
 
-			let mut avatars = Players::<T>::get(&player);
+			let mut avatars = Owners::<T>::get(&player);
 			ensure!(avatars.try_push(avatar_id).is_ok(), Error::<T>::MaxOwnershipReached);
-			Players::<T>::insert(&player, avatars);
+			Owners::<T>::insert(&player, avatars);
 			Avatars::<T>::insert(avatar_id, (player, avatar));
 
 			Self::deposit_event(Event::AvatarMinted { avatar_id });

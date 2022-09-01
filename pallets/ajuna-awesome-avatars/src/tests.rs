@@ -584,21 +584,21 @@ mod minting {
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
 				expected_nonce += expected_nonce_increment;
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
-				assert_eq!(AwesomeAvatars::players(ALICE).len(), 1);
+				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 1);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted { avatar_id: AwesomeAvatars::players(ALICE)[0] },
+					crate::Event::AvatarMinted { avatar_id: AwesomeAvatars::owners(ALICE)[0] },
 				));
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
 				expected_nonce += expected_nonce_increment;
-				assert_eq!(AwesomeAvatars::players(ALICE).len(), 2);
+				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 2);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted { avatar_id: AwesomeAvatars::players(ALICE)[1] },
+					crate::Event::AvatarMinted { avatar_id: AwesomeAvatars::owners(ALICE)[1] },
 				));
 
-				let avatar_ids = AwesomeAvatars::players(ALICE);
+				let avatar_ids = AwesomeAvatars::owners(ALICE);
 				let (player_0, avatar_0) = AwesomeAvatars::avatars(avatar_ids[0]).unwrap();
 				let (player_1, avatar_1) = AwesomeAvatars::avatars(avatar_ids[1]).unwrap();
 
@@ -664,7 +664,7 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				run_to_block(2);
-				Players::<Test>::insert(ALICE, avatar_ids);
+				Owners::<Test>::insert(ALICE, avatar_ids);
 				assert_noop!(
 					AwesomeAvatars::mint(Origin::signed(ALICE)),
 					Error::<Test>::MaxOwnershipReached
