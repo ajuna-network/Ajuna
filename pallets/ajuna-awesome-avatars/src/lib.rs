@@ -47,6 +47,8 @@ pub mod pallet {
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
+	pub(crate) type BoundedAvatarIdsOf<T> =
+		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
@@ -128,13 +130,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn players)]
-	pub type Players<T: Config> = StorageMap<
-		_,
-		Identity,
-		T::AccountId,
-		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>,
-		ValueQuery,
-	>;
+	pub type Players<T: Config> =
+		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]

@@ -649,13 +649,12 @@ mod minting {
 
 	#[test]
 	fn mint_should_return_error_when_max_ownership_has_reached() {
-		let avatar_ids =
-			BoundedVec::<AvatarIdOf<Test>, ConstU32<MAX_AVATARS_PER_PLAYER>>::try_from(
-				(0..MAX_AVATARS_PER_PLAYER)
-					.map(|_| sp_core::H256::default())
-					.collect::<Vec<_>>(),
-			)
-			.unwrap();
+		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
+			(0..MAX_AVATARS_PER_PLAYER)
+				.map(|_| sp_core::H256::default())
+				.collect::<Vec<_>>(),
+		)
+		.unwrap();
 		assert!(avatar_ids.is_full());
 
 		ExtBuilder::default()
