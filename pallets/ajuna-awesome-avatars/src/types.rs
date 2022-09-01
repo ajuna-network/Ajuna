@@ -18,9 +18,6 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
 
-pub const DNA_VERSION: u8 = 0;
-pub const MAX_COMPONENTS: u32 = 100;
-
 #[derive(
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
 )]

@@ -185,7 +185,7 @@ impl Default for Season<MockBlockNumber> {
 				(RarityTier::Mythical, 1),
 			]),
 			max_variations: 1,
-			max_components: MAX_COMPONENTS,
+			max_components: 1,
 		}
 	}
 }
