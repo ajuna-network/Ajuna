@@ -60,7 +60,7 @@ pub struct SeasonMetadata {
 }
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
-pub struct AwesomeAvatar {
+pub struct Avatar {
 	pub season: SeasonId,
 	pub dna: Dna,
 }

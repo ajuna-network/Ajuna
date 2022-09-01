@@ -124,7 +124,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type Avatars<T: Config> =
-		StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, AwesomeAvatar)>;
+		StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
 
 	#[pallet::storage]
 	pub type Players<T: Config> = StorageMap<
@@ -304,7 +304,7 @@ pub mod pallet {
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
 			let dna = Self::random_dna(&player, &active_season)?;
-			let avatar = AwesomeAvatar { season: active_season_id, dna };
+			let avatar = Avatar { season: active_season_id, dna };
 			let avatar_id = T::Hashing::hash_of(&avatar);
 
 			let mut avatars = Players::<T>::take(&player);
