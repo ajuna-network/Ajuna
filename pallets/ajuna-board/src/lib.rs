@@ -268,7 +268,7 @@ pub mod pallet {
 			let board = BoardStates::<T>::get(board_id).ok_or(Error::<T>::InvalidBoard)?;
 			let timeout_block_number = board.started.saturating_add(T::IdleBoardTimeout::get());
 			let current_block_number = frame_system::Pallet::<T>::current_block_number();
-			ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
+			//ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
 
 			let winner = T::Game::get_last_player(&board.state);
 			Self::declare_winner(&board_id, &winner, &board.state);
