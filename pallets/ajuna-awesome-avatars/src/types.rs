@@ -34,12 +34,7 @@ pub enum RarityTier {
 }
 
 pub type RarityPercent = u8;
-
 pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
-
-pub type SeasonId = u16;
-
-pub type Dna = BoundedVec<u8, ConstU32<MAX_COMPONENTS>>;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
@@ -58,6 +53,9 @@ pub struct SeasonMetadata {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1000>>,
 }
+
+pub type SeasonId = u16;
+pub type Dna = BoundedVec<u8, ConstU32<100>>;
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct Avatar {
