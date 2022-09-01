@@ -41,7 +41,7 @@ use pallet_grandpa::{
 use pallet_transaction_payment::CurrencyAdapter;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -69,11 +69,7 @@ use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
 use types::governance::*;
 
 // Some public reexports..
-pub use pallet_ajuna_gameregistry;
-pub use pallet_ajuna_matchmaker;
 pub use pallet_balances::Call as BalancesCall;
-pub use pallet_sidechain;
-pub use pallet_teerex;
 pub use pallet_timestamp::Call as TimestampCall;
 
 impl_opaque_keys! {
@@ -462,53 +458,9 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
-parameter_types! {
-	pub const TenMinutes: BlockNumber = 10 * MINUTES;
-}
-
-impl pallet_ajuna_board::Config for Runtime {
-	type Event = Event;
-	type BoardId = u32;
-	type PlayersTurn = pallet_ajuna_board::dot4gravity::Turn;
-	type GameState = pallet_ajuna_board::dot4gravity::GameState<AccountId>;
-	type Game = pallet_ajuna_board::dot4gravity::Game<AccountId>;
-	type MaxNumberOfPlayers = frame_support::traits::ConstU32<2>;
-	type IdleBoardTimeout = TenMinutes;
-	type WeightInfo = pallet_ajuna_board::weights::AjunaWeight<Runtime>;
-}
-
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-}
-
-impl pallet_ajuna_matchmaker::Config for Runtime {
-	type Event = Event;
-}
-
-pub type GameId = u32;
-impl pallet_ajuna_runner::Config for Runtime {
-	type Event = Event;
-	type RunnerId = GameId;
-}
-
-parameter_types! {
-	pub const MaxAcknowledgeBatch: u32 = crate::ajuna::MAX_ACKNOWLEDGE_BATCH;
-}
-
-impl pallet_ajuna_gameregistry::Config for Runtime {
-	type Event = Event;
-	type Proposal = Call;
-	type Scheduler = Scheduler;
-	type PalletsOrigin = OriginCaller;
-	type GameId = GameId;
-	type Runner = pallet_ajuna_runner::Running<Runtime>;
-	type GetIdentifier = pallet_ajuna_runner::AjunaIdentifier<Runtime>;
-	type MatchMaker = pallet_ajuna_matchmaker::MatchMaking<Runtime>;
-	type Observers = Observers;
-	type MaxAcknowledgeBatch = MaxAcknowledgeBatch;
-	type ShardIdentifier = H256;
-	type WeightInfo = pallet_ajuna_gameregistry::weights::AjunaWeight<Runtime>;
 }
 
 pub type ObserverInstance = pallet_membership::Instance1;
@@ -524,29 +476,6 @@ impl pallet_membership::Config<ObserverInstance> for Runtime {
 	/// For now we assume only a small amount of observers, this is not a hard limit or enforced by
 	/// the pallet. This is just used for weights.
 	type MaxMembers = frame_support::pallet_prelude::ConstU32<25>;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const MomentsPerDay: u64 = 86_400_000; // [ms/d]
-	pub const MaxSilenceTime: u64 = 172_800_000; // 48h
-}
-
-impl pallet_teerex::Config for Runtime {
-	type Event = Event;
-	type Currency = pallet_balances::Pallet<Runtime>;
-	type MomentsPerDay = MomentsPerDay;
-	type MaxSilenceTime = MaxSilenceTime;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const EarlyBlockProposalLenience: u64 = 100;
-}
-
-impl pallet_sidechain::Config for Runtime {
-	type Event = Event;
-	type EarlyBlockProposalLenience = EarlyBlockProposalLenience;
 	type WeightInfo = ();
 }
 
@@ -572,13 +501,7 @@ construct_runtime!(
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
 		Scheduler: pallet_scheduler = 14,
-		Matchmaker: pallet_ajuna_matchmaker = 15,
-		Runner: pallet_ajuna_runner = 16,
-		GameRegistry: pallet_ajuna_gameregistry = 17,
 		Observers: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
-		Teerex: pallet_teerex = 19,
-		Sidechain: pallet_sidechain = 20,
-		Board: pallet_ajuna_board = 21,
 		AAA: pallet_ajuna_awesome_avatars = 22,
 	}
 );
@@ -623,8 +546,6 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
-		[pallet_ajuna_board, Board]
-		[pallet_ajuna_gameregistry, GameRegistry]
 	);
 }
 

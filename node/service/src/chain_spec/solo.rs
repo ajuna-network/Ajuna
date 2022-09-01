@@ -18,7 +18,7 @@ use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
 	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GenesisConfig,
-	GrandpaConfig, ObserversConfig, SudoConfig, SystemConfig, TeerexConfig, VestingConfig,
+	GrandpaConfig, ObserversConfig, SudoConfig, SystemConfig, VestingConfig,
 	WASM_BINARY,
 };
 use sc_service::ChainType;
@@ -210,6 +210,5 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		council_membership: Default::default(),
 		treasury: Default::default(),
 		democracy: Default::default(),
-		teerex: TeerexConfig { allow_sgx_debug_mode: true },
 	}
 }

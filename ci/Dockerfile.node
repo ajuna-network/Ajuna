@@ -2,7 +2,7 @@
 FROM integritee/integritee-dev:0.1.9 as build
 WORKDIR /workspace
 COPY . .
-RUN cargo build --release --features skip-ias-check
+RUN cargo build --release
 
 # produce a 'development' image
 FROM integritee/integritee-dev:0.1.9

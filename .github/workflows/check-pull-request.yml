@@ -108,7 +108,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build-ajuna-solo
-          args: --features skip-ias-check
       - uses: actions/upload-artifact@v3
         with:
           name: ajuna-solo-dev-${{ github.sha }}
