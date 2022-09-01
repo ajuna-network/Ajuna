@@ -1,3 +1,0 @@
-FROM andyajuna/ajuna-worker:polkadot-decoded
-
-COPY --from=powerman/dockerize /usr/local/bin/dockerize /usr/local/bin/dockerize
