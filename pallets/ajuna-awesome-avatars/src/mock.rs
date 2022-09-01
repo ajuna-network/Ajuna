@@ -24,9 +24,10 @@ use sp_runtime::{
 	BuildStorage,
 };
 
-type MockAccountId = u32;
-type MockBlockNumber = u64;
-type MockBalance = u64;
+pub type MockAccountId = u32;
+pub type MockBlockNumber = u64;
+pub type MockBalance = u64;
+pub type MockIndex = u64;
 
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
@@ -56,7 +57,7 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type Origin = Origin;
 	type Call = Call;
-	type Index = u64;
+	type Index = MockIndex;
 	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -97,6 +98,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<Season<MockBlockNumber>>,
+	mint_availability: bool,
 }
 
 impl ExtBuilder {
@@ -106,6 +108,10 @@ impl ExtBuilder {
 	}
 	pub fn seasons(mut self, seasons: Vec<Season<MockBlockNumber>>) -> Self {
 		self.seasons = seasons;
+		self
+	}
+	pub fn mint_availability(mut self, mint_availability: bool) -> Self {
+		self.mint_availability = mint_availability;
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -122,6 +128,8 @@ impl ExtBuilder {
 				Seasons::<Test>::insert(season_id, season);
 				NextSeasonId::<Test>::put(season_id + 1);
 			}
+
+			MintAvailable::<Test>::set(self.mint_availability);
 		});
 		ext
 	}
@@ -139,7 +147,7 @@ pub fn run_to_block(n: u64) {
 	}
 }
 
-pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityChance)>) -> RarityTiers {
+pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityPercent)>) -> RarityTiers {
 	rarity_tiers.try_into().unwrap()
 }
 
@@ -160,6 +168,7 @@ impl Default for Season<MockBlockNumber> {
 				(RarityTier::Mythical, 1),
 			]),
 			max_variations: 1,
+			max_components: 1,
 		}
 	}
 }
@@ -179,6 +188,10 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
 		self.rarity_tiers = rarity_tiers;
+		self
+	}
+	pub fn max_components(mut self, max_components: u8) -> Self {
+		self.max_components = max_components;
 		self
 	}
 }
