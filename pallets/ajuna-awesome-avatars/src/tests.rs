@@ -569,25 +569,60 @@ mod minting {
 	use super::*;
 
 	#[test]
-	fn mint_should_generate_avatar_if_season_is_active() {
+	fn mint_should_work() {
+		let max_components = 7;
+		let season = Season::default().max_components(max_components);
+
+		let expected_nonce_increment = 2 * max_components as MockIndex;
+		let mut expected_nonce = 0;
+
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![Season::default().end(10)])
+			.seasons(vec![season.clone()])
 			.mint_availability(true)
 			.build()
 			.execute_with(|| {
-				run_to_block(5);
+				run_to_block(season.early_start + 1);
+
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
-				// 0xbedccb00d3405e5fb931cfb0d00cf0ae46c181ffe204745673389ae7a07a355f
+				expected_nonce += expected_nonce_increment;
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_eq!(AwesomeAvatars::players(ALICE).len(), 1);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted { avatar_id: H256::zero() },
+					crate::Event::AvatarMinted { avatar_id: AwesomeAvatars::players(ALICE)[0] },
 				));
+
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
+				expected_nonce += expected_nonce_increment;
+				assert_eq!(AwesomeAvatars::players(ALICE).len(), 2);
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarMinted { avatar_id: AwesomeAvatars::players(ALICE)[1] },
+				));
+
+				let avatar_ids = AwesomeAvatars::players(ALICE);
+				let (player_0, avatar_0) = AwesomeAvatars::avatars(avatar_ids[0]).unwrap();
+				let (player_1, avatar_1) = AwesomeAvatars::avatars(avatar_ids[1]).unwrap();
+
+				assert_eq!(player_0, player_1);
+				assert_eq!(player_0, ALICE);
+				assert_eq!(player_1, ALICE);
+
+				assert_eq!(avatar_0.season, avatar_1.season);
+				assert_eq!(avatar_0.season, AwesomeAvatars::active_season_id().unwrap());
+				assert_eq!(avatar_1.season, AwesomeAvatars::active_season_id().unwrap());
+
+				assert_ne!(avatar_0.dna, avatar_1.dna);
+				assert_eq!(avatar_0.dna.len(), (2 * max_components as usize) / 2);
+				assert_eq!(avatar_1.dna.len(), (2 * max_components as usize) / 2);
 			});
 	}
 
 	#[test]
-	fn mint_should_raise_error_when_minting_is_not_available() {
-		ExtBuilder::default().build().execute_with(|| {
+	fn mint_should_return_error_when_minting_is_unavailable() {
+		ExtBuilder::default().mint_availability(false).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::mint(Origin::signed(ALICE)),
 				Error::<Test>::MintUnavailable
@@ -596,14 +631,14 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_raise_error_when_origin_not_signed() {
+	fn mint_should_reject_unsigned_caller() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(AwesomeAvatars::mint(Origin::none()), DispatchError::BadOrigin);
 		});
 	}
 
 	#[test]
-	fn mint_should_raise_error_when_season_not_active() {
+	fn mint_should_return_error_when_season_is_inactive() {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.mint_availability(true)

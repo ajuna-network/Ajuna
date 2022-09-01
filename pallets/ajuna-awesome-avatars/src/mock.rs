@@ -27,9 +27,10 @@ use sp_runtime::{
 	BuildStorage,
 };
 
-type MockAccountId = u32;
-type MockBlockNumber = u64;
-type MockBalance = u64;
+pub type MockAccountId = u32;
+pub type MockBlockNumber = u64;
+pub type MockBalance = u64;
+pub type MockIndex = u64;
 
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
@@ -59,7 +60,7 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type Origin = Origin;
 	type Call = Call;
-	type Index = u64;
+	type Index = MockIndex;
 	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -205,6 +206,10 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
 		self.rarity_tiers = rarity_tiers;
+		self
+	}
+	pub fn max_components(mut self, max_components: u8) -> Self {
+		self.max_components = max_components;
 		self
 	}
 }

@@ -42,7 +42,7 @@ pub struct Season<BlockNumber> {
 	pub max_mythical_mints: u16,
 	pub rarity_tiers: RarityTiers,
 	pub max_variations: u8,
-	pub max_components: u32,
+	pub max_components: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
