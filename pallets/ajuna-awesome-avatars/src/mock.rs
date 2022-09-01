@@ -15,10 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
-use frame_support::{
-	traits::{ConstU16, ConstU32, ConstU64, Hooks},
-	BoundedVec,
-};
+use frame_support::traits::{ConstU16, ConstU64, Hooks};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_runtime::{
@@ -101,8 +98,6 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<Season<MockBlockNumber>>,
-	avatars:
-		Option<(MockAccountId, BoundedVec<AvatarIdOf<Test>, ConstU32<MAX_AVATARS_PER_PLAYER>>)>,
 	mint_availability: bool,
 }
 
@@ -119,15 +114,6 @@ impl ExtBuilder {
 		self.mint_availability = mint_availability;
 		self
 	}
-	pub fn avatars(
-		mut self,
-		player: MockAccountId,
-		avatars: BoundedVec<AvatarIdOf<Test>, ConstU32<MAX_AVATARS_PER_PLAYER>>,
-	) -> Self {
-		self.avatars = Some((player, avatars));
-		self
-	}
-
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig { system: Default::default(), balances: Default::default() };
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
@@ -141,10 +127,6 @@ impl ExtBuilder {
 				let season_id = AwesomeAvatars::next_season_id();
 				Seasons::<Test>::insert(season_id, season);
 				NextSeasonId::<Test>::put(season_id + 1);
-			}
-
-			if let Some(player_avatars) = self.avatars {
-				Players::<Test>::insert(&player_avatars.0, player_avatars.1);
 			}
 
 			MintAvailable::<Test>::set(self.mint_availability);

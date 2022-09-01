@@ -562,10 +562,6 @@ mod config {
 }
 
 mod minting {
-
-	use frame_support::{traits::ConstU32, BoundedVec};
-	use sp_core::H256;
-
 	use super::*;
 
 	#[test]
@@ -652,24 +648,28 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_raise_error_when_max_minting_reached() {
-		let mut avatars =
-			BoundedVec::<AvatarIdOf<Test>, ConstU32<MAX_AVATARS_PER_PLAYER>>::default();
-		for _ in 0..1_000 {
-			let _ = avatars.try_push(H256::default());
-		}
+	fn mint_should_return_error_when_max_ownership_has_reached() {
+		let avatar_ids =
+			BoundedVec::<AvatarIdOf<Test>, ConstU32<MAX_AVATARS_PER_PLAYER>>::try_from(
+				(0..MAX_AVATARS_PER_PLAYER)
+					.map(|_| sp_core::H256::default())
+					.collect::<Vec<_>>(),
+			)
+			.unwrap();
+		assert!(avatar_ids.is_full());
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![Season::default().end(10)])
+			.seasons(vec![Season::default()])
 			.mint_availability(true)
-			.avatars(ALICE, avatars)
 			.build()
 			.execute_with(|| {
-				run_to_block(5);
-				let result = AwesomeAvatars::mint(Origin::signed(ALICE));
-				assert!(result.is_err());
-				assert_noop!(result, Error::<Test>::MaxOwnershipReached);
+				run_to_block(2);
+				Players::<Test>::insert(ALICE, avatar_ids);
+				assert_noop!(
+					AwesomeAvatars::mint(Origin::signed(ALICE)),
+					Error::<Test>::MaxOwnershipReached
+				);
 			});
 	}
 }

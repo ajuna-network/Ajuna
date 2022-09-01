@@ -123,10 +123,11 @@ pub mod pallet {
 		StorageValue<_, T::BlockNumber, ValueQuery, DefaultMintCooldown<T>>;
 
 	#[pallet::storage]
-	pub type Avatars<T: Config> =
-		StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
+	#[pallet::getter(fn avatars)]
+	pub type Avatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn players)]
 	pub type Players<T: Config> = StorageMap<
 		_,
 		Identity,
@@ -299,6 +300,10 @@ pub mod pallet {
 		pub fn mint(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
+			ensure!(
+				Self::players(&player).len() < MAX_AVATARS_PER_PLAYER as usize,
+				Error::<T>::MaxOwnershipReached
+			);
 
 			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
@@ -307,7 +312,7 @@ pub mod pallet {
 			let avatar = Avatar { season: active_season_id, dna };
 			let avatar_id = T::Hashing::hash_of(&avatar);
 
-			let mut avatars = Players::<T>::take(&player);
+			let mut avatars = Players::<T>::get(&player);
 			ensure!(avatars.try_push(avatar_id).is_ok(), Error::<T>::MaxOwnershipReached);
 			Players::<T>::insert(&player, avatars);
 			Avatars::<T>::insert(avatar_id, (player, avatar));
