@@ -10,6 +10,7 @@ members = [
     "runtime/solo",
     "runtime/bajun",
     "runtime/ajuna",
+    "runtime/rococo",
     "pallets/ajuna-awesome-avatars",
     "primitives",
     "ajuna-common",
