@@ -286,6 +286,7 @@ name = "ajuna-service"
 version = "0.1.0"
 dependencies = [
  "ajuna-primitives",
+ "ajuna-rococo-runtime",
  "ajuna-rpc",
  "ajuna-runtime",
  "ajuna-solo-runtime",

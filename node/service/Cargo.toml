@@ -12,11 +12,12 @@ jsonrpc-core = "18.0.0"
 serde        = { version = "1.0.132", features = [ "derive" ] }
 
 # Local
-ajuna-primitives   = { path = "../../primitives" }
-ajuna-rpc          = { path = "../../rpc" }
-ajuna-solo-runtime = { path = "../../runtime/solo", optional = true }
-bajun-runtime      = { path = "../../runtime/bajun", optional = true }
-ajuna-runtime      = { path = "../../runtime/ajuna", optional = true }
+ajuna-primitives     = { path = "../../primitives" }
+ajuna-rpc            = { path = "../../rpc" }
+ajuna-solo-runtime   = { path = "../../runtime/solo", optional = true }
+bajun-runtime        = { path = "../../runtime/bajun", optional = true }
+ajuna-runtime        = { path = "../../runtime/ajuna", optional = true }
+ajuna-rococo-runtime = { path = "../../runtime/rococo", optional = true }
 
 # Substrate
 frame-benchmarking  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
@@ -99,6 +100,7 @@ para = [
 solo = [ "ajuna-solo-runtime" ]
 bajun = ["bajun-runtime", "para"]
 ajuna = ["ajuna-runtime", "para"]
+rococo = ["ajuna-rococo-runtime", "para"]
 
 kusama-native = [ "polkadot-service/kusama-native" ]
 rococo-native = [ "polkadot-service/rococo-native" ]

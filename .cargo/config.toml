@@ -7,6 +7,8 @@ build-bajun-benchmarks = [ "build-bajun", "--features", "runtime-benchmarks" ]
 build-bajun-kusama     = [ "build-bajun", "--features", "kusama-native" ]
 build-bajun-rococo     = [ "build-bajun", "--features", "rococo-native" ]
 
+build-rococo = "build --release --no-default-features --bin ajuna-rococo-para --features rococo"
+
 build-ajuna            = "build --release --no-default-features --bin ajuna-para --features ajuna"
 build-ajuna-benchmarks = [ "build-ajuna", "--features", "runtime-benchmarks" ]
 build-ajuna-polkadot   = [ "build-ajuna", "--features", "polkadot-native" ]

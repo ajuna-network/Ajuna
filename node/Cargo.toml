@@ -21,6 +21,11 @@ name              = "ajuna-para"
 path              = "src/ajuna.rs"
 required-features = [ "ajuna" ]
 
+[[bin]]
+name              = "ajuna-rococo-para"
+path              = "src/rococo.rs"
+required-features = [ "rococo" ]
+
 [dependencies]
 ajuna-cli     = { path = "cli" }
 ajuna-service = { path = "service" }
@@ -31,6 +36,7 @@ default = [ "solo" ]
 bajun = [ "ajuna-cli/bajun", "ajuna-service/bajun" ]
 ajuna = [ "ajuna-cli/ajuna", "ajuna-service/ajuna" ]
 solo  = [ "ajuna-cli/solo", "ajuna-service/solo" ]
+rococo = [ "ajuna-cli/rococo", "ajuna-service/rococo" ]
 
 kusama-native = [ "ajuna-cli/kusama-native", "ajuna-service/kusama-native" ]
 rococo-native = [ "ajuna-cli/rococo-native", "ajuna-service/rococo-native" ]

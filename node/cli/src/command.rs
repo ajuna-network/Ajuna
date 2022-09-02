@@ -26,7 +26,13 @@ use ajuna_service::{
 	bajun::BajunRuntimeExecutor,
 	bajun_runtime::{Block as ParaBajunBlock, RuntimeApi as BajunRuntimeApi},
 };
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(feature = "rococo")]
+use ajuna_service::{
+	rococo,
+	rococo::RococoRuntimeExecutor,
+	ajuna_rococo_runtime::{Block as ParaRococoBlock, RuntimeApi as RococoRuntimeApi},
+};
+#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 use {
 	crate::cli::RelayChainCli, codec::Encode,
 	cumulus_client_service::genesis::generate_genesis_block, cumulus_primitives_core::ParaId,
@@ -64,6 +70,18 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, St
 			})
 		}
 		#[cfg(not(feature = "bajun"))]
+		return Err("Chain spec for Bajun doesn't exist".into())
+	} else if cfg!(feature = "rococo") {
+		#[cfg(feature = "rococo")]
+		{
+			Ok(match id {
+				"dev" => Box::new(chain_spec::rococo::development_config()),
+				"" | "local" => Box::new(chain_spec::rococo::local_testnet_config()),
+				path =>
+					Box::new(chain_spec::rococo::ChainSpec::from_json_file(PathBuf::from(path))?),
+			})
+		}
+		#[cfg(not(feature = "rococo"))]
 		return Err("Chain spec for Bajun doesn't exist".into())
 	} else if cfg!(feature = "ajuna") {
 		#[cfg(feature = "ajuna")]
@@ -103,6 +121,10 @@ impl SubstrateCli for Cli {
 		if cfg!(feature = "bajun") {
 			return "Bajun Node".into()
 		}
+		#[cfg(feature = "rococo")]
+		if cfg!(feature = "rococo") {
+			return "Ajuna Rococo Node".into()
+		}
 		#[cfg(feature = "ajuna")]
 		if cfg!(feature = "ajuna") {
 			return "Ajuna Node".into()
@@ -139,6 +161,10 @@ impl SubstrateCli for Cli {
 		if cfg!(feature = "bajun") {
 			return &ajuna_service::bajun_runtime::VERSION
 		}
+		#[cfg(feature = "rococo")]
+		if cfg!(feature = "rococo") {
+			return &ajuna_service::ajuna_rococo_runtime::VERSION
+		}
 		#[cfg(feature = "ajuna")]
 		if cfg!(feature = "ajuna") {
 			return &ajuna_service::ajuna_runtime::VERSION
@@ -147,7 +173,7 @@ impl SubstrateCli for Cli {
 	}
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 impl SubstrateCli for RelayChainCli {
 	fn impl_name() -> String {
 		"Parachain Collator Template".into()
@@ -186,7 +212,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
+#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 #[allow(clippy::borrowed_box)]
 fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<Vec<u8>> {
 	let mut storage = chain_spec.build_storage()?;
@@ -208,6 +234,12 @@ macro_rules! construct_async_run {
             let $components = bajun::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
                 bajun::parachain_build_import_queue,
+            )?;
+
+			#[cfg(feature = "rococo")]
+            let $components = rococo::new_partial::<RococoRuntimeApi, RococoRuntimeExecutor, _>(
+                &$config,
+                rococo::parachain_build_import_queue,
             )?;
 
 			#[cfg(feature = "ajuna")]
@@ -235,6 +267,12 @@ macro_rules! construct_sync_run {
                 bajun::parachain_build_import_queue,
             )?;
 
+			#[cfg(feature = "rococo")]
+            let $components = rococo::new_partial::<RococoRuntimeApi, RococoRuntimeExecutor, _>(
+                &$config,
+                rococo::parachain_build_import_queue,
+            )?;
+
 			#[cfg(feature = "ajuna")]
             let $components = ajuna::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
                 &$config,
@@ -253,7 +291,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 	match &cli.subcommand {
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
-		#[cfg(any(feature = "bajun", feature = "ajuna"))]
+		#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 		Some(Subcommand::ExportGenesisState(params)) => {
 			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
@@ -264,6 +302,8 @@ pub fn run() -> sc_cli::Result<()> {
 
 			#[cfg(feature = "bajun")]
 			let block: ParaBajunBlock = generate_genesis_block(&spec, state_version)?;
+			#[cfg(feature = "rococo")]
+			let block: ParaRococoBlock = generate_genesis_block(&spec, state_version)?;
 			#[cfg(feature = "ajuna")]
 			let block: ParaAjunaBlock = generate_genesis_block(&spec, state_version)?;
 
@@ -282,7 +322,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 			Ok(())
 		},
-		#[cfg(any(feature = "bajun", feature = "ajuna"))]
+		#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 		Some(Subcommand::ExportGenesisWasm(params)) => {
 			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
@@ -333,7 +373,7 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.database))
 		},
-		#[cfg(any(feature = "bajun", feature = "ajuna"))]
+		#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 		Some(Subcommand::PurgeChainPara(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 
@@ -354,8 +394,8 @@ pub fn run() -> sc_cli::Result<()> {
 			})
 		},
 		Some(Subcommand::Revert(cmd)) => {
-			#[cfg(any(feature = "bajun", feature = "ajuna"))]
-			if cfg!(feature = "bajun") || cfg!(feature = "ajuna") {
+			#[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
+			if cfg!(feature = "bajun") || cfg!(feature = "ajuna") || cfg!(feature = "rococo") {
 				return construct_async_run!(|components, cli, cmd, config| {
 					Ok(cmd.run(components.client, components.backend, None))
 				})
@@ -396,7 +436,7 @@ pub fn run() -> sc_cli::Result<()> {
 					})
 				},
 				BenchmarkCmd::Overhead(cmd) => {
-					if cfg!(feature = "bajun") {
+					if cfg!(feature = "bajun") || cfg!(feature = "rococo") {
 						return Err("Unsupported benchmarking command".into())
 					}
 					runner.sync_run(|config| {
@@ -459,6 +499,59 @@ pub fn run() -> sc_cli::Result<()> {
 						if config.role.is_authority() { "yes" } else { "no" }
 					);
 					bajun::start_parachain_node(config, polkadot_config, collator_options, id)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				})
+			}
+			#[cfg(feature = "rococo")]
+			if cfg!(feature = "rococo") {
+				let runner = cli.create_runner(&cli.run_para.normalize())?;
+				let collator_options = cli.run_para.collator_options();
+
+				return runner.run_node_until_exit(|config| async move {
+					let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+						.map(|e| e.para_id)
+						.ok_or("Could not find parachain ID in chain-spec.")?;
+
+					let polkadot_cli = RelayChainCli::new(
+						&config,
+						[RelayChainCli::executable_name()]
+							.iter()
+							.chain(cli.relay_chain_args.iter()),
+					);
+
+					let id = ParaId::from(para_id);
+
+					let parachain_account =
+						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(
+							&id,
+						);
+
+					let state_version =
+						RelayChainCli::native_runtime_version(&config.chain_spec).state_version();
+					let block: ParaRococoBlock =
+						generate_genesis_block(&config.chain_spec, state_version)
+							.map_err(|e| format!("{:?}", e))?;
+					let genesis_state =
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
+
+					let tokio_handle = config.tokio_handle.clone();
+					let polkadot_config = SubstrateCli::create_configuration(
+						&polkadot_cli,
+						&polkadot_cli,
+						tokio_handle,
+					)
+						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+
+					info!("Parachain id: {:?}", id);
+					info!("Parachain Account: {}", parachain_account);
+					info!("Parachain genesis state: {}", genesis_state);
+					info!(
+						"Is collating: {}",
+						if config.role.is_authority() { "yes" } else { "no" }
+					);
+					rococo::start_parachain_node(config, polkadot_config, collator_options, id)
 						.await
 						.map(|r| r.0)
 						.map_err(Into::into)
