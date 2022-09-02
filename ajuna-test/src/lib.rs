@@ -1,6 +1,5 @@
 use ajuna_solo_runtime::{
-	currency::NANO_AJUNS, AccountId, Balance, BlockNumber, ObserversConfig, Runtime, SudoConfig,
-	System,
+	currency::NANO_AJUNS, AccountId, Balance, BlockNumber, Runtime, SudoConfig, System,
 };
 use sp_runtime::{BuildStorage, Storage};
 mod keyring;
@@ -20,7 +19,6 @@ impl RuntimeBuilding<Runtime, BlockNumber, RuntimeBlocks> for AjunaNode {
 	fn configure_storages(&self, storage: &mut Storage) {
 		ajuna_solo_runtime::GenesisConfig {
 			sudo: SudoConfig { key: Some(self.account_id.clone()) },
-			observers: ObserversConfig { ..Default::default() },
 			balances: pallet_balances::GenesisConfig {
 				balances: vec![
 					(alice(), 10_000 * EXISTENTIAL_DEPOSIT),

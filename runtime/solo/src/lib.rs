@@ -463,22 +463,6 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Currency = Balances;
 }
 
-pub type ObserverInstance = pallet_membership::Instance1;
-impl pallet_membership::Config<ObserverInstance> for Runtime {
-	type Event = Event;
-	type AddOrigin = EnsureRoot<AccountId>;
-	type RemoveOrigin = EnsureRoot<AccountId>;
-	type SwapOrigin = EnsureRoot<AccountId>;
-	type ResetOrigin = EnsureRoot<AccountId>;
-	type PrimeOrigin = EnsureRoot<AccountId>;
-	type MembershipInitialized = ();
-	type MembershipChanged = ();
-	/// For now we assume only a small amount of observers, this is not a hard limit or enforced by
-	/// the pallet. This is just used for weights.
-	type MaxMembers = frame_support::pallet_prelude::ConstU32<25>;
-	type WeightInfo = ();
-}
-
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -501,7 +485,6 @@ construct_runtime!(
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
 		Scheduler: pallet_scheduler = 14,
-		Observers: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
 		AAA: pallet_ajuna_awesome_avatars = 22,
 	}
 );
