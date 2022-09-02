@@ -59,18 +59,10 @@ sp-version                                 = { default-features = false, git = "
 # open-runtime-module-library
 orml-vesting = { default-features = false, git = "https://github.com/ajuna-network/open-runtime-module-library", rev = "polkadot-v0.9.20" }
 
-# Integritee pallet
-pallet-sidechain = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
-pallet-teerex    = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
-
 # Ajuna pallets
 ajuna-common                 = { default-features = false, path = "../../ajuna-common" }
 ajuna-primitives             = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
-pallet-ajuna-board           = { default-features = false, path = "../../pallets/ajuna-board" }
-pallet-ajuna-gameregistry    = { default-features = false, path = "../../pallets/ajuna-gameregistry" }
-pallet-ajuna-matchmaker      = { default-features = false, path = "../../pallets/ajuna-matchmaker" }
-pallet-ajuna-runner          = { default-features = false, path = "../../pallets/ajuna-runner" }
 
 [features]
 default = [ "std" ]
@@ -81,17 +73,12 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hex-literal",
     "pallet-ajuna-awesome-avatars/runtime-benchmarks",
-    "pallet-ajuna-board/runtime-benchmarks",
-    "pallet-ajuna-gameregistry/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
-    "pallet-sidechain/runtime-benchmarks",
-    "pallet-teerex/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
 # allow workers to register without remote attestation for dev purposes
-skip-ias-check = [ "pallet-teerex/skip-ias-check" ]
 std = [
     "log/std",
     "codec/std",
@@ -101,9 +88,6 @@ std = [
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
-    "pallet-ajuna-gameregistry/std",
-    "pallet-ajuna-matchmaker/std",
-    "pallet-ajuna-runner/std",
     "ajuna-common/std",
     "ajuna-primitives/std",
     "pallet-asset-tx-payment/std",
@@ -114,9 +98,7 @@ std = [
     "pallet-democracy/std",
     "pallet-grandpa/std",
     "pallet-membership/std",
-    "pallet-sidechain/std",
     "pallet-sudo/std",
-    "pallet-teerex/std",
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
