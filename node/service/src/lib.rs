@@ -20,16 +20,16 @@ pub mod chain_spec;
 pub mod ajuna;
 #[cfg(feature = "bajun")]
 pub mod bajun;
-#[cfg(feature = "solo")]
-pub mod solo;
 #[cfg(feature = "rococo")]
 pub mod rococo;
+#[cfg(feature = "solo")]
+pub mod solo;
 
+#[cfg(feature = "rococo")]
+pub use ajuna_rococo_runtime;
 #[cfg(feature = "ajuna")]
 pub use ajuna_runtime;
 #[cfg(feature = "solo")]
 pub use ajuna_solo_runtime;
 #[cfg(feature = "bajun")]
 pub use bajun_runtime;
-#[cfg(feature = "rococo")]
-pub use ajuna_rococo_runtime;

@@ -154,8 +154,8 @@ fn testnet_genesis(
 				.into_iter()
 				.map(|(acc, aura)| {
 					(
-						acc.clone(),                         // account id
-						acc,                                 // validator id
+						acc.clone(),                                // account id
+						acc,                                        // validator id
 						ajuna_rococo_runtime::SessionKeys { aura }, // session keys
 					)
 				})
@@ -166,6 +166,8 @@ fn testnet_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
-		polkadot_xcm: ajuna_rococo_runtime::PolkadotXcmConfig { safe_xcm_version: Some(SAFE_XCM_VERSION) },
+		polkadot_xcm: ajuna_rococo_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }

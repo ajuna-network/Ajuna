@@ -20,17 +20,17 @@ use ajuna_service::{
 	ajuna::AjunaRuntimeExecutor,
 	ajuna_runtime::{Block as ParaAjunaBlock, RuntimeApi as AjunaRuntimeApi},
 };
+#[cfg(feature = "rococo")]
+use ajuna_service::{
+	ajuna_rococo_runtime::{Block as ParaRococoBlock, RuntimeApi as RococoRuntimeApi},
+	rococo,
+	rococo::RococoRuntimeExecutor,
+};
 #[cfg(feature = "bajun")]
 use ajuna_service::{
 	bajun,
 	bajun::BajunRuntimeExecutor,
 	bajun_runtime::{Block as ParaBajunBlock, RuntimeApi as BajunRuntimeApi},
-};
-#[cfg(feature = "rococo")]
-use ajuna_service::{
-	rococo,
-	rococo::RococoRuntimeExecutor,
-	ajuna_rococo_runtime::{Block as ParaRococoBlock, RuntimeApi as RococoRuntimeApi},
 };
 #[cfg(any(feature = "bajun", feature = "ajuna", feature = "rococo"))]
 use {
@@ -542,7 +542,7 @@ pub fn run() -> sc_cli::Result<()> {
 						&polkadot_cli,
 						tokio_handle,
 					)
-						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+					.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 					info!("Parachain id: {:?}", id);
 					info!("Parachain Account: {}", parachain_account);
