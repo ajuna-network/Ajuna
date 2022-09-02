@@ -110,4 +110,3 @@ runtime-benchmarks = [
     "ajuna-runtime/runtime-benchmarks",
 ]
 
-skip-ias-check = [ "ajuna-solo-runtime/skip-ias-check" ]

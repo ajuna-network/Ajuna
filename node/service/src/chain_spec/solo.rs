@@ -18,8 +18,7 @@ use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
 	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GenesisConfig,
-	GrandpaConfig, ObserversConfig, SudoConfig, SystemConfig, TeerexConfig, VestingConfig,
-	WASM_BINARY,
+	GrandpaConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 
@@ -71,7 +70,6 @@ struct Config {
 	aura: AuraConfig,
 	grandpa: GrandpaConfig,
 	sudo: SudoConfig,
-	observers: ObserversConfig,
 	council: CouncilConfig,
 	balances: BalancesConfig,
 	assets: AssetsConfig,
@@ -96,10 +94,6 @@ fn development_config_genesis() -> GenesisConfig {
 		aura: AuraConfig { authorities: aura_authorities },
 		grandpa: GrandpaConfig { authorities: grandpa_authorities },
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
-		observers: ObserversConfig {
-			members: vec![accounts.alice.clone()],
-			phantom: Default::default(),
-		},
 		council: CouncilConfig {
 			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
 			phantom: Default::default(),
@@ -165,7 +159,6 @@ fn testnet_config_genesis() -> GenesisConfig {
 			],
 		},
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
-		observers: ObserversConfig::default(),
 		council: CouncilConfig::default(),
 		balances: BalancesConfig {
 			balances: vec![
@@ -193,13 +186,12 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 	let wasm_binary = WASM_BINARY.expect(
 		"Development wasm binary is not available. Please rebuild with SKIP_WASM_BUILD disabled.",
 	);
-	let Config { aura, grandpa, sudo, council, balances, assets, vesting, observers } = config;
+	let Config { aura, grandpa, sudo, council, balances, assets, vesting } = config;
 	GenesisConfig {
 		// overridden config
 		aura,
 		grandpa,
 		sudo,
-		observers,
 		council,
 		balances,
 		assets,
@@ -210,6 +202,5 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		council_membership: Default::default(),
 		treasury: Default::default(),
 		democracy: Default::default(),
-		teerex: TeerexConfig { allow_sgx_debug_mode: true },
 	}
 }

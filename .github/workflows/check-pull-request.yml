@@ -97,19 +97,3 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: always()
-
-  dev-binaries:
-    name: Build and upload development build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    container: integritee/integritee-dev:0.1.9
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build-ajuna-solo
-          args: --features skip-ias-check
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ajuna-solo-dev-${{ github.sha }}
-          path: target/release/ajuna-solo
