@@ -26,11 +26,11 @@ sp-keyring        = { git = "https://github.com/paritytech/substrate", branch = 
 sp-runtime        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
 sp-std            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
 
-codec      = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
 
 # open-runtime-module-library
-orml-vesting = { git = "https://github.com/ajuna-network/open-runtime-module-library", default-features = false, rev = "polkadot-v0.9.20" }
+orml-vesting = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.27" }
 
 [features]
 default = ["std"]
