@@ -567,7 +567,7 @@ mod minting {
 	#[test]
 	fn mint_should_work() {
 		let max_components = 7;
-		let season = Season::default().max_components(max_components);
+		let season = Season::default().end(20).max_components(max_components);
 
 		let expected_nonce_increment = 2 * max_components as MockIndex;
 		let mut expected_nonce = 0;
@@ -576,6 +576,7 @@ mod minting {
 			.organizer(ALICE)
 			.seasons(vec![season.clone()])
 			.mint_availability(true)
+			.mint_cooldown(1)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -590,6 +591,7 @@ mod minting {
 				));
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				run_to_block(season.early_start + 3);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
 				expected_nonce += expected_nonce_increment;
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 2);
@@ -669,6 +671,28 @@ mod minting {
 					AwesomeAvatars::mint(Origin::signed(ALICE)),
 					Error::<Test>::MaxOwnershipReached
 				);
+			});
+	}
+
+	#[test]
+	fn mint_should_wait_for_cooldown() {
+		let season = Season::default().early_start(1).start(3).end(20);
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![season.clone()])
+			.mint_availability(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start + 1);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
+				run_to_block(season.start + 3);
+				assert_noop!(
+					AwesomeAvatars::mint(Origin::signed(ALICE)),
+					Error::<Test>::MintCooldown
+				);
+				run_to_block(season.start + 8);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE)));
 			});
 	}
 }

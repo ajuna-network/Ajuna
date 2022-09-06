@@ -133,6 +133,11 @@ pub mod pallet {
 	pub type Owners<T: Config> =
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn last_minted_block_number)]
+	pub type LastMintedBlockNumbers<T: Config> =
+		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -180,6 +185,8 @@ pub mod pallet {
 		MaxOwnershipReached,
 		/// Incorrect DNA.
 		IncorrectDna,
+		/// Too recent request. The player must wait cooldown period.
+		MintCooldown,
 	}
 
 	#[pallet::call]
@@ -305,6 +312,12 @@ pub mod pallet {
 			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			if let Some(last_block) = Self::last_minted_block_number(&player) {
+				let cooldown = Self::mint_cooldown();
+				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
+			}
+
 			let dna = Self::random_dna(&player, &active_season)?;
 			let avatar = Avatar { season: active_season_id, dna };
 			let avatar_id = T::Hashing::hash_of(&avatar);
@@ -312,7 +325,9 @@ pub mod pallet {
 			let mut avatars = Owners::<T>::get(&player);
 			ensure!(avatars.try_push(avatar_id).is_ok(), Error::<T>::MaxOwnershipReached);
 			Owners::<T>::insert(&player, avatars);
-			Avatars::<T>::insert(avatar_id, (player, avatar));
+			Avatars::<T>::insert(avatar_id, (player.clone(), avatar));
+
+			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
 			Self::deposit_event(Event::AvatarMinted { avatar_id });
 
