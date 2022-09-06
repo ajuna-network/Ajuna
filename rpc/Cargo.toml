@@ -8,6 +8,7 @@ version    = "0.1.0"
 
 [dependencies]
 ajuna-primitives = { path = "../primitives" }
+jsonrpsee = { version = "0.14.0", features = ["server"] }
 
 jsonrpc-core = "18.0.0"
 

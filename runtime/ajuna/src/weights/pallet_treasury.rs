@@ -44,15 +44,18 @@ use sp_std::marker::PhantomData;
 /// Weight functions for `pallet_treasury`.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
-	// Storage: Treasury ProposalCount (r:1 w:1)
-	// Storage: Treasury Proposals (r:0 w:1)
-	fn propose_spend() -> Weight {
-		(45_265_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	// Storage: Treasury Proposals (r:1 w:1)
-	// Storage: System Account (r:1 w:1)
+    fn spend() -> u64 { todo!() }
+    fn remove_approval() -> u64 { todo!() }
+
+    // Storage: Treasury ProposalCount (r:1 w:1)
+    // Storage: Treasury Proposals (r:0 w:1)
+    fn propose_spend() -> Weight {
+        (45_265_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    // Storage: Treasury Proposals (r:1 w:1)
+    // Storage: System Account (r:1 w:1)
 	fn reject_proposal() -> Weight {
 		(54_434_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))

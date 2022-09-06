@@ -41,13 +41,13 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{Contains, Currency, EnsureOneOf, Imbalance, OnUnbalanced},
-	weights::{
-		constants::WEIGHT_PER_SECOND, ConstantMultiplier, DispatchClass, Weight,
-		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
-	},
-	PalletId,
+    construct_runtime, parameter_types,
+    traits::{Contains, Currency, EitherOfDiverse, EnsureOrigin, Imbalance, OnUnbalanced},
+    weights::{
+        constants::WEIGHT_PER_SECOND, ConstantMultiplier, DispatchClass, Weight,
+        WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+    },
+    PalletId,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -377,7 +377,8 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-	type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
+    type Event = Event;
+    type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
@@ -408,34 +409,56 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
-type EnsureRootOrMoreThanHalfCouncil = EnsureOneOf<
-	EnsureRoot<AccountId>,
-	EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
+type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
+    EnsureRoot<AccountId>,
+    EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
-type EnsureRootOrAtLeastTwoThirdsCouncil =
-	EnsureOneOf<EnsureRoot<AccountId>, EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>>;
+type EnsureRootOrAtLeastTwoThirdsCouncil = EitherOfDiverse<
+    EnsureRoot<AccountId>,
+    EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+>;
 
 impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
 	type Event = Event;
-	type AddOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type RemoveOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type SwapOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type ResetOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
-	type PrimeOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
-	type MembershipInitialized = Council;
-	type MembershipChanged = Council;
-	type MaxMembers = CouncilMaxMembers;
-	type WeightInfo = weights::pallet_membership::WeightInfo<Runtime>;
+    type AddOrigin = EnsureRootOrMoreThanHalfCouncil;
+    type RemoveOrigin = EnsureRootOrMoreThanHalfCouncil;
+    type SwapOrigin = EnsureRootOrMoreThanHalfCouncil;
+    type ResetOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
+    type PrimeOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
+    type MembershipInitialized = Council;
+    type MembershipChanged = Council;
+    type MaxMembers = CouncilMaxMembers;
+    type WeightInfo = weights::pallet_membership::WeightInfo<Runtime>;
 }
+
+pub struct RootMaxSpendOrigin;
+
+impl EnsureOrigin<Origin> for RootMaxSpendOrigin {
+    type Success = Balance;
+
+    fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
+        Result::<frame_system::RawOrigin<_>, Origin>::from(o).and_then(|o| match o {
+            frame_system::RawOrigin::Root => Ok(Balance::MAX),
+            r => Err(Origin::from(r)),
+        })
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<Origin, ()> {
+        Ok(Origin::root())
+    }
+}
+
 impl pallet_treasury::Config for Runtime {
-	type PalletId = TreasuryPalletId;
-	type Event = Event;
-	type Currency = Balances;
-	type MaxApprovals = frame_support::traits::ConstU32<100>;
-	type ApproveOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type RejectOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type OnSlash = ();
-	type ProposalBond = FivePercent;
+    type PalletId = TreasuryPalletId;
+    type Event = Event;
+    type Currency = Balances;
+    type MaxApprovals = frame_support::traits::ConstU32<100>;
+    type ApproveOrigin = EnsureRootOrMoreThanHalfCouncil;
+    type RejectOrigin = EnsureRootOrMoreThanHalfCouncil;
+    type SpendOrigin = RootMaxSpendOrigin;
+    type OnSlash = ();
+    type ProposalBond = FivePercent;
 	type ProposalBondMinimum = MinimumProposalBond;
 	type ProposalBondMaximum = ();
 	type SpendPeriod = Weekly;
@@ -472,7 +495,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
-	type ReservedXcmpWeight = ReservedXcmpWeight;
+    type ReservedXcmpWeight = ReservedXcmpWeight;
+    type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -567,7 +591,7 @@ construct_runtime!(
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 11,
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 11,
 		Vesting: orml_vesting = 12,
 
 		// Collator support. The order of these 4 are important and shall not change.

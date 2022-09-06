@@ -17,18 +17,18 @@
 pub mod governance {
 	use crate::CouncilCollective;
 	use ajuna_primitives::AccountId;
-	use frame_support::traits::EnsureOneOf;
-	use frame_system::EnsureRoot;
+    use frame_support::traits::EitherOfDiverse;
+    use frame_system::EnsureRoot;
 	use pallet_collective::{EnsureProportionAtLeast, EnsureProportionMoreThan};
 
-	pub(crate) type EnsureRootOrMoreThanHalfCouncil = EnsureOneOf<
-		EnsureRoot<AccountId>,
-		EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
-	>;
-	pub(crate) type EnsureRootOrAtLeastTwoThirdsCouncil = EnsureOneOf<
-		EnsureRoot<AccountId>,
-		EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
-	>;
+    pub(crate) type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
+        EnsureRoot<AccountId>,
+        EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
+    >;
+    pub(crate) type EnsureRootOrAtLeastTwoThirdsCouncil = EitherOfDiverse<
+        EnsureRoot<AccountId>,
+        EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+    >;
 
 	pub(crate) type EnsureAtLeastHalfCouncil =
 		EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;

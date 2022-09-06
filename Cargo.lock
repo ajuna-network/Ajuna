@@ -94,6 +94,7 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-benchmarking-cli",
  "frame-system",
+ "jsonrpsee",
  "log",
  "pallet-asset-tx-payment",
  "parity-scale-codec",
@@ -146,6 +147,7 @@ version = "0.1.0"
 dependencies = [
  "ajuna-primitives",
  "jsonrpc-core",
+ "jsonrpsee",
  "pallet-transaction-payment-rpc",
  "sc-client-api",
  "sc-rpc",
