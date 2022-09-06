@@ -687,6 +687,7 @@ dependencies = [
  "hex-literal",
  "log",
  "orml-vesting",
+ "pallet-ajuna-awesome-avatars",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",

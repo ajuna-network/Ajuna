@@ -75,6 +75,9 @@ cumulus-primitives-utility          = { git = "https://github.com/paritytech/cum
 pallet-collator-selection           = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.20" }
 parachain-info                      = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.20" }
 
+# Ajuna pallets
+pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+
 [features]
 default = [
     "std",
@@ -98,6 +101,7 @@ std = [
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
     "orml-vesting/std",
+	"pallet-ajuna-awesome-avatars/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-balances/std",
@@ -148,6 +152,7 @@ runtime-benchmarks = [
     "xcm-builder/runtime-benchmarks",
     "cumulus-pallet-session-benchmarking/runtime-benchmarks",
     "cumulus-pallet-xcmp-queue/runtime-benchmarks",
+	"pallet-ajuna-awesome-avatars/runtime-benchmarks",
 ]
 
 try-runtime = [
