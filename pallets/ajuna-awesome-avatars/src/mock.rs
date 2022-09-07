@@ -100,6 +100,7 @@ pub struct ExtBuilder {
 	seasons: Vec<Season<MockBlockNumber>>,
 	mint_availability: bool,
 	mint_cooldown: Option<MockBlockNumber>,
+	balances: Option<Vec<(MockAccountId, MockBalance)>>,
 }
 
 impl ExtBuilder {
@@ -119,8 +120,15 @@ impl ExtBuilder {
 		self.mint_cooldown = Some(mint_cooldown);
 		self
 	}
+	pub fn balances(mut self, balances: Vec<(MockAccountId, MockBalance)>) -> Self {
+		self.balances = Some(balances);
+		self
+	}
 	pub fn build(self) -> sp_io::TestExternalities {
-		let config = GenesisConfig { system: Default::default(), balances: Default::default() };
+		let balances = self.balances.unwrap_or(Default::default());
+		let config =
+			GenesisConfig { system: Default::default(), balances: BalancesConfig { balances } };
+
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));
 		ext.execute_with(|| {
