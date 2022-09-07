@@ -99,6 +99,7 @@ pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<Season<MockBlockNumber>>,
 	mint_availability: bool,
+	mint_cooldown: Option<MockBlockNumber>,
 }
 
 impl ExtBuilder {
@@ -112,6 +113,10 @@ impl ExtBuilder {
 	}
 	pub fn mint_availability(mut self, mint_availability: bool) -> Self {
 		self.mint_availability = mint_availability;
+		self
+	}
+	pub fn mint_cooldown(mut self, mint_cooldown: MockBlockNumber) -> Self {
+		self.mint_cooldown = Some(mint_cooldown);
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -130,6 +135,10 @@ impl ExtBuilder {
 			}
 
 			MintAvailable::<Test>::set(self.mint_availability);
+
+			if let Some(mint_cooldown) = self.mint_cooldown {
+				MintCooldown::<Test>::set(mint_cooldown);
+			}
 		});
 		ext
 	}

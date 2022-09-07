@@ -485,7 +485,7 @@ construct_runtime!(
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
 		Scheduler: pallet_scheduler = 14,
-		AAA: pallet_ajuna_awesome_avatars = 22,
+		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 	}
 );
 

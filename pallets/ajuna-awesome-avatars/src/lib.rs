@@ -133,6 +133,11 @@ pub mod pallet {
 	pub type Owners<T: Config> =
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn last_minted_block_numbers)]
+	pub type LastMintedBlockNumbers<T: Config> =
+		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -182,6 +187,8 @@ pub mod pallet {
 		IncorrectDna,
 		/// Minting the batch would overflow the max ownership.
 		BatchSizeTooBig,
+		/// The player must wait cooldown period.
+		MintCooldown,
 	}
 
 	#[pallet::call]
@@ -311,7 +318,15 @@ pub mod pallet {
 			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
+				let cooldown = Self::mint_cooldown();
+				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
+			}
+
 			Self::do_mint(&player, &active_season, active_season_id, how_many)?;
+
+			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
 			Ok(())
 		}
