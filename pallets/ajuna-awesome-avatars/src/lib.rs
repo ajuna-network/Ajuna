@@ -134,7 +134,7 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn last_minted_block_number)]
+	#[pallet::getter(fn last_minted_block_numbers)]
 	pub type LastMintedBlockNumbers<T: Config> =
 		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
 
@@ -185,7 +185,7 @@ pub mod pallet {
 		MaxOwnershipReached,
 		/// Incorrect DNA.
 		IncorrectDna,
-		/// Too recent request. The player must wait cooldown period.
+		/// The player must wait cooldown period.
 		MintCooldown,
 	}
 
@@ -313,7 +313,7 @@ pub mod pallet {
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			if let Some(last_block) = Self::last_minted_block_number(&player) {
+			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
 				let cooldown = Self::mint_cooldown();
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
@@ -326,7 +326,6 @@ pub mod pallet {
 			ensure!(avatars.try_push(avatar_id).is_ok(), Error::<T>::MaxOwnershipReached);
 			Owners::<T>::insert(&player, avatars);
 			Avatars::<T>::insert(avatar_id, (player.clone(), avatar));
-
 			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
 			Self::deposit_event(Event::AvatarMinted { avatar_id });
