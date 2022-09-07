@@ -237,7 +237,6 @@ mod block_importer {
 	use super::AjunaBoard;
 	use ajuna_common::RunnerState;
 	use ajuna_solo_runtime::{pallet_ajuna_gameregistry::Game, AccountId, GameRegistry, Runner};
-	use codec::Decode;
 	use frame_support::assert_ok;
 	use sp_core::H256;
 	use std::collections::BTreeSet;
@@ -259,16 +258,16 @@ mod block_importer {
 			// execute `new_game` on the board pallet
 			for game_id in queued_games {
 				if let Some(RunnerState::Accepted(mut state)) = Runner::runners(game_id) {
-					let game =
-						Game::<AccountId>::decode(&mut state).expect("game state as accepted");
-					let players = <[AccountId; 2]>::try_from(game.players)
-						.expect("the game should have 2 players");
-					// Call `pallet_board::new_game` with players from game
-					assert_ok!(AjunaBoard::new_game(
-						crate::sidechain::Origin::signed(signing_key.clone()),
-						game_id,
-						BTreeSet::from(players),
-					));
+					// let game =
+					// 	Game::<AccountId>::decode(&mut state).expect("game state as accepted");
+					// let players = <[AccountId; 2]>::try_from(game.players)
+					// 	.expect("the game should have 2 players");
+					// // Call `pallet_board::new_game` with players from game
+					// assert_ok!(AjunaBoard::new_game(
+					// 	crate::sidechain::Origin::signed(signing_key.clone()),
+					// 	game_id,
+					// 	BTreeSet::from(players),
+					// ));
 				}
 			}
 		}

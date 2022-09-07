@@ -4,7 +4,7 @@ use crate::{
 	traits::{BlockProcessing, RuntimeBuilding},
 };
 use ajuna_solo_runtime::{AccountId, Balance, BlockNumber, Runtime, System};
-use sp_runtime::Storage;
+use sp_runtime::{BoundedVec, Storage};
 
 pub struct AjunaNode {
 	/// The account owning the node(sudo)
@@ -23,7 +23,7 @@ impl RuntimeBuilding<Runtime, BlockNumber, RuntimeBlocks> for AjunaNode {
 		ajuna_solo_runtime::GenesisConfig {
 			sudo: SudoConfig { key: Some(self.account_id.clone()) },
 			observers: ObserversConfig {
-				members: vec![self.sidechain.clone()],
+				members: BoundedVec::try_from(vec![self.sidechain.clone()]).unwrap(),
 				..Default::default()
 			},
 			balances: pallet_balances::GenesisConfig {

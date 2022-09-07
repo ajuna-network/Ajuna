@@ -50,27 +50,27 @@ sp-consensus-aura                          = { default-features = false, git = "
 sp-core                                    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
 sp-inherents                               = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
 sp-offchain                                = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-sp-runtime                                 = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-sp-session                                 = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-sp-std                                     = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-sp-transaction-pool                        = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
-sp-version                                 = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
+sp-session = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
+sp-std = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
+sp-transaction-pool = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
+sp-version = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
 
 # open-runtime-module-library
 orml-vesting = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.27" }
 
 # Integritee pallet
-pallet-sidechain = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
-pallet-teerex    = { default-features = false, git = "https://github.com/integritee-network/pallets", rev = "4d1b0e9" }
+pallet-sidechain = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "polkadot-v0.9.27" }
+pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "polkadot-v0.9.27" }
 
 # Ajuna pallets
-ajuna-common                 = { default-features = false, path = "../../ajuna-common" }
-ajuna-primitives             = { default-features = false, path = "../../primitives" }
+ajuna-common = { default-features = false, path = "../../ajuna-common" }
+ajuna-primitives = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
-pallet-ajuna-board           = { default-features = false, path = "../../pallets/ajuna-board" }
-pallet-ajuna-gameregistry    = { default-features = false, path = "../../pallets/ajuna-gameregistry" }
-pallet-ajuna-matchmaker      = { default-features = false, path = "../../pallets/ajuna-matchmaker" }
-pallet-ajuna-runner          = { default-features = false, path = "../../pallets/ajuna-runner" }
+pallet-ajuna-board = { default-features = false, path = "../../pallets/ajuna-board" }
+pallet-ajuna-gameregistry = { default-features = false, path = "../../pallets/ajuna-gameregistry" }
+pallet-ajuna-matchmaker = { default-features = false, path = "../../pallets/ajuna-matchmaker" }
+pallet-ajuna-runner = { default-features = false, path = "../../pallets/ajuna-runner" }
 
 [features]
 default = [ "std" ]

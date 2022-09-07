@@ -22,6 +22,7 @@ use ajuna_solo_runtime::{
 	WASM_BINARY,
 };
 use sc_service::ChainType;
+use sp_runtime::BoundedVec;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
@@ -97,7 +98,7 @@ fn development_config_genesis() -> GenesisConfig {
 		grandpa: GrandpaConfig { authorities: grandpa_authorities },
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		observers: ObserversConfig {
-			members: vec![accounts.alice.clone()],
+			members: BoundedVec::try_from(vec![accounts.alice.clone()]).unwrap(),
 			phantom: Default::default(),
 		},
 		council: CouncilConfig {
