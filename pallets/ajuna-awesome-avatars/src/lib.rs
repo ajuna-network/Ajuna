@@ -388,6 +388,13 @@ pub mod pallet {
 			(random_tier, random_variation)
 		}
 
+		fn finish_season(season_id: SeasonId) {
+			ActiveSeasonId::<T>::kill();
+			ActiveSeasonLegendaryOrMythicalMintCount::<T>::kill();
+
+			Self::deposit_event(Event::SeasonEnded { season_id });
+		}
+
 		pub(crate) fn random_dna(
 			who: &T::AccountId,
 			season: &SeasonOf<T>,
@@ -478,9 +485,7 @@ pub mod pallet {
 					if active_season.max_high_tier_mints >=
 						ActiveSeasonLegendaryOrMythicalMintCount::<T>::get()
 					{
-						ActiveSeasonId::<T>::kill();
-
-						Self::deposit_event(Event::SeasonEnded { season_id });
+						Self::finish_season(season_id);
 
 						db_weight += T::DbWeight::get().reads_writes(2, 1);
 					}
@@ -500,9 +505,7 @@ pub mod pallet {
 
 						db_weight += T::DbWeight::get().writes(2);
 					} else {
-						ActiveSeasonId::<T>::kill();
-
-						Self::deposit_event(Event::SeasonEnded { season_id });
+						Self::finish_season(season_id);
 
 						db_weight += T::DbWeight::get().writes(1);
 					}
