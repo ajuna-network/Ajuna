@@ -50,6 +50,9 @@ pub mod pallet {
 	pub(crate) type BoundedAvatarIdsOf<T> =
 		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
 
+	pub(crate) type LegendaryMinted = bool;
+	pub(crate) type MythicalMinted = bool;
+
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
@@ -138,6 +141,20 @@ pub mod pallet {
 	pub type LastMintedBlockNumbers<T: Config> =
 		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
 
+	#[pallet::type_value]
+	pub fn DefaultActiveSeasonLegendaryOrMythicalMintCount() -> MaximumHighTierMints {
+		0
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn active_season_legendary_or_mythical_mint_count)]
+	pub type ActiveSeasonLegendaryOrMythicalMintCount<T: Config> = StorageValue<
+		_,
+		MaximumHighTierMints,
+		ValueQuery,
+		DefaultActiveSeasonLegendaryOrMythicalMintCount,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -145,6 +162,10 @@ pub mod pallet {
 		OrganizerSet { organizer: T::AccountId },
 		/// A new season has been created.
 		NewSeasonCreated(SeasonOf<T>),
+		/// The specific SeasonId season has started in the block the event has been emitted
+		SeasonStarted { season_id: SeasonId },
+		/// The specific SeasonId season has ended in the block the event has been emitted
+		SeasonEnded { season_id: SeasonId },
 		/// An existing season has been updated.
 		SeasonUpdated(SeasonOf<T>, SeasonId),
 		/// The metadata for {season_id} has been updated
@@ -157,6 +178,10 @@ pub mod pallet {
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
 		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// Avatar of [Legendary](RarityTier::Legendary) rarity minted
+		LegendaryAvatarMinted { avatar_id: AvatarIdOf<T> },
+		/// Avatar of [Mythical](RarityTier::Mythical) rarity minted
+		MythicalAvatarMinted { avatar_id: AvatarIdOf<T> },
 	}
 
 	#[pallet::error]
@@ -366,14 +391,22 @@ pub mod pallet {
 		pub(crate) fn random_dna(
 			who: &T::AccountId,
 			season: &SeasonOf<T>,
-		) -> Result<Dna, DispatchError> {
-			let dna = (0..season.max_components)
-				.map(|_| {
-					let (random_tier, random_variation) = Self::random_component(who, season);
-					((random_tier << 4) | random_variation) as u8
-				})
+		) -> Result<(Dna, MythicalMinted, LegendaryMinted), DispatchError> {
+			let mut dna_components =
+				(0..season.max_components).map(|_| Self::random_component(who, season));
+
+			let minted_mythical =
+				dna_components.all(|(tier, _)| tier == RarityTier::Mythical as u8);
+			let minted_legendary = !minted_mythical &&
+				dna_components.all(|(tier, _)| tier >= RarityTier::Legendary as u8);
+
+			let dna = dna_components
+				.map(|(tier, variation)| ((tier << 4) | variation) as u8)
 				.collect::<Vec<_>>();
-			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
+
+			let dna: Result<BoundedVec<u8, ConstU32<100>>, DispatchError> =
+				Dna::try_from(dna).map_err(|_: ()| Error::<T>::IncorrectDna.into());
+			Ok((dna?, minted_mythical, minted_legendary))
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
@@ -396,9 +429,21 @@ pub mod pallet {
 
 			let generated_avatars = (0..how_many)
 				.map(|_| {
-					let dna = Self::random_dna(player, &active_season)?;
+					let (dna, minted_mythical, minted_legendary) =
+						Self::random_dna(&player, &active_season)?;
 					let avatar = Avatar { season: active_season_id, dna };
 					let avatar_id = T::Hashing::hash_of(&avatar);
+
+					if minted_mythical || minted_legendary {
+						ActiveSeasonLegendaryOrMythicalMintCount::<T>::mutate(|value| *value += 1);
+
+						if minted_mythical {
+							Self::deposit_event(Event::MythicalAvatarMinted { avatar_id });
+						} else {
+							Self::deposit_event(Event::LegendaryAvatarMinted { avatar_id });
+						}
+					}
+
 					Ok((avatar_id, avatar))
 				})
 				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
@@ -425,21 +470,45 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			let season_id = Self::active_season_id().unwrap_or_else(Self::next_active_season_id);
-			let mut db_weight = T::DbWeight::get().reads(2);
+			if let Some(season_id) = Self::active_season_id() {
+				let mut db_weight = T::DbWeight::get().reads(1);
+				if let Some(active_season) = Self::seasons(season_id) {
+					db_weight += T::DbWeight::get().reads(1);
 
-			if let Some(season) = Self::seasons(season_id) {
-				db_weight += T::DbWeight::get().reads(1);
-				if season.early_start <= now && now <= season.end {
-					ActiveSeasonId::<T>::put(season_id);
-					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
-					db_weight += T::DbWeight::get().writes(2);
-				} else {
-					ActiveSeasonId::<T>::kill();
-					db_weight += T::DbWeight::get().writes(1);
+					if active_season.max_high_tier_mints >=
+						ActiveSeasonLegendaryOrMythicalMintCount::<T>::get()
+					{
+						ActiveSeasonId::<T>::kill();
+
+						Self::deposit_event(Event::SeasonEnded { season_id });
+
+						db_weight += T::DbWeight::get().reads_writes(2, 1);
+					}
 				}
+				db_weight
+			} else {
+				let season_id = Self::next_active_season_id();
+				let mut db_weight = T::DbWeight::get().reads(2);
+
+				if let Some(season) = Self::seasons(season_id) {
+					db_weight += T::DbWeight::get().reads(1);
+					if season.early_start <= now && now <= season.end {
+						ActiveSeasonId::<T>::put(season_id);
+						NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
+
+						Self::deposit_event(Event::SeasonStarted { season_id });
+
+						db_weight += T::DbWeight::get().writes(2);
+					} else {
+						ActiveSeasonId::<T>::kill();
+
+						Self::deposit_event(Event::SeasonEnded { season_id });
+
+						db_weight += T::DbWeight::get().writes(1);
+					}
+				}
+				db_weight
 			}
-			db_weight
 		}
 	}
 }

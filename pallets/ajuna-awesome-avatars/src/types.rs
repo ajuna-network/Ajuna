@@ -33,13 +33,15 @@ pub enum RarityTier {
 pub type RarityPercent = u8;
 pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
 
+pub type MaximumHighTierMints = u16;
+
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
-	pub max_mints: u16,
-	pub max_mythical_mints: u16,
+	/// Maximum amount of Legendary and Mythical mints that can be minted in the Season
+	pub max_high_tier_mints: MaximumHighTierMints,
 	pub rarity_tiers: RarityTiers,
 	pub max_variations: u8,
 	pub max_components: u8,
