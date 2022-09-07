@@ -49,8 +49,6 @@ pub mod pallet {
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> =
 		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
-	pub(crate) type BoundedMintedAvatarIdsOf<T> =
-		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_MINT_AVATARS_PER_BATCH>>;
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
@@ -153,7 +151,7 @@ pub mod pallet {
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
-		AvatarMinted { avatar_ids: BoundedMintedAvatarIdsOf<T> },
+		AvatarMinted { avatar_ids: BoundedAvatarIdsOf<T> },
 	}
 
 	#[pallet::error]
@@ -307,19 +305,13 @@ pub mod pallet {
 				Error::<T>::MaxOwnershipReached
 			);
 			ensure!(
-				(num_of_existing_avatars + how_many.clone() as usize) <
-					MAX_AVATARS_PER_PLAYER as usize,
+				(num_of_existing_avatars + how_many as usize) < MAX_AVATARS_PER_PLAYER as usize,
 				Error::<T>::BatchSizeTooBig
 			);
 			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
-			let mut avatars = Vec::new();
-			for _ in 0..how_many as usize {
-				avatars.push(Self::do_mint(&player, &active_season, active_season_id)?);
-			}
-			let avatars_ids = BoundedVec::try_from(avatars).unwrap();
-			Self::deposit_event(Event::AvatarMinted { avatar_ids: avatars_ids });
+			Self::do_mint(&player, &active_season, active_season_id, how_many)?;
 
 			Ok(())
 		}
@@ -398,17 +390,32 @@ pub mod pallet {
 			player: &T::AccountId,
 			active_season: &SeasonOf<T>,
 			active_season_id: SeasonId,
-		) -> Result<T::Hash, DispatchError> {
-			let dna = Self::random_dna(player, active_season)?;
-			let avatar = Avatar { season: active_season_id, dna };
-			let avatar_id = T::Hashing::hash_of(&avatar);
+			how_many: MintCount,
+		) -> Result<(), DispatchError> {
+			let mut generated_avatars = Vec::new();
+			let mut generated_avatars_ids = Vec::new();
 
-			let mut avatars = Owners::<T>::get(&player);
-			ensure!(avatars.try_push(avatar_id).is_ok(), Error::<T>::MaxOwnershipReached);
-			Owners::<T>::insert(&player, avatars);
-			Avatars::<T>::insert(avatar_id, (player, avatar));
+			for _ in 0..how_many as usize {
+				let dna = Self::random_dna(player, active_season)?;
+				let avatar = Avatar { season: active_season_id, dna };
+				let avatar_id = T::Hashing::hash_of(&avatar);
 
-			Ok(avatar_id)
+				generated_avatars.push(avatar.clone());
+				generated_avatars_ids.push(avatar_id);
+				Avatars::<T>::insert(avatar_id, (player, avatar));
+			}
+
+			let mut player_avatars = Owners::<T>::get(&player);
+			for avatar in &generated_avatars_ids {
+				ensure!(player_avatars.try_push(*avatar).is_ok(), Error::<T>::MaxOwnershipReached);
+			}
+			Owners::<T>::insert(&player, player_avatars);
+
+			Self::deposit_event(Event::AvatarMinted {
+				avatar_ids: BoundedVec::try_from(generated_avatars_ids).unwrap(),
+			});
+
+			Ok(())
 		}
 	}
 

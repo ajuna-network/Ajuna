@@ -61,7 +61,7 @@ pub struct Avatar {
 }
 
 /// Number of avatars to be minted.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
 pub enum MintCount {
 	One = 1,
 	Three = 3,
