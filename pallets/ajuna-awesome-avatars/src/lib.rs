@@ -315,8 +315,6 @@ pub mod pallet {
 				(num_of_existing_avatars + how_many as usize) < MAX_AVATARS_PER_PLAYER as usize,
 				Error::<T>::BatchSizeTooBig
 			);
-			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
-			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
@@ -324,7 +322,7 @@ pub mod pallet {
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
 
-			Self::do_mint(&player, &active_season, active_season_id, how_many)?;
+			Self::do_mint(&player, how_many)?;
 
 			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
@@ -403,15 +401,16 @@ pub mod pallet {
 
 		pub(crate) fn do_mint(
 			player: &T::AccountId,
-			active_season: &SeasonOf<T>,
-			active_season_id: SeasonId,
 			how_many: MintCount,
 		) -> Result<(), DispatchError> {
+			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
+			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
+
 			let mut generated_avatars = Vec::new();
 			let mut generated_avatars_ids = Vec::new();
 
 			for _ in 0..how_many as usize {
-				let dna = Self::random_dna(player, active_season)?;
+				let dna = Self::random_dna(player, &active_season)?;
 				let avatar = Avatar { season: active_season_id, dna };
 				let avatar_id = T::Hashing::hash_of(&avatar);
 
