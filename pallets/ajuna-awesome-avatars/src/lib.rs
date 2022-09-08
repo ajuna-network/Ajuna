@@ -303,19 +303,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, how_many: MintCount) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
-
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				let cooldown = Self::mint_cooldown();
-				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
-			}
-
-			Self::do_mint(&player, how_many)?;
-
-			LastMintedBlockNumbers::<T>::insert(&player, current_block);
-
-			Ok(())
+			Self::do_mint(&player, how_many)
 		}
 	}
 
@@ -389,6 +377,14 @@ pub mod pallet {
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
+			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
+
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
+				let cooldown = Self::mint_cooldown();
+				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
+			}
+
 			let how_many = how_many as usize;
 			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
 				.checked_sub(how_many)
@@ -416,6 +412,7 @@ pub mod pallet {
 				ensure!(player_avatars.try_push(*avatar).is_ok(), Error::<T>::MaxOwnershipReached);
 			}
 			Owners::<T>::insert(&player, player_avatars);
+			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
 			Self::deposit_event(Event::AvatarMinted {
 				avatar_ids: BoundedVec::try_from(generated_avatars_ids).unwrap(),
