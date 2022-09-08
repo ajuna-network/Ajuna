@@ -156,7 +156,7 @@ pub mod pallet {
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
-		AvatarMinted { avatar_ids: BoundedAvatarIdsOf<T> },
+		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 	}
 
 	#[pallet::error]
@@ -414,9 +414,7 @@ pub mod pallet {
 			Owners::<T>::insert(&player, player_avatars);
 			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
-			Self::deposit_event(Event::AvatarMinted {
-				avatar_ids: BoundedVec::try_from(generated_avatars_ids).unwrap(),
-			});
+			Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
 
 			Ok(())
 		}

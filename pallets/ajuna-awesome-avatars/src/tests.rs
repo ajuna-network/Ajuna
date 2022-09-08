@@ -562,8 +562,6 @@ mod config {
 }
 
 mod minting {
-	use frame_support::BoundedVec;
-
 	use super::*;
 
 	#[test]
@@ -592,8 +590,7 @@ mod minting {
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 1);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
 					crate::Event::AvatarMinted {
-						avatar_ids: BoundedVec::try_from(vec![AwesomeAvatars::owners(ALICE)[0]])
-							.unwrap(),
+						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[0]],
 					},
 				));
 
@@ -605,8 +602,7 @@ mod minting {
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
 					crate::Event::AvatarMinted {
-						avatar_ids: BoundedVec::try_from(vec![AwesomeAvatars::owners(ALICE)[1]])
-							.unwrap(),
+						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[1]],
 					},
 				));
 
@@ -714,12 +710,11 @@ mod minting {
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 3);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
 					crate::Event::AvatarMinted {
-						avatar_ids: BoundedVec::try_from(vec![
+						avatar_ids: vec![
 							AwesomeAvatars::owners(ALICE)[0],
 							AwesomeAvatars::owners(ALICE)[1],
 							AwesomeAvatars::owners(ALICE)[2],
-						])
-						.unwrap(),
+						],
 					},
 				));
 
@@ -731,15 +726,14 @@ mod minting {
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
 					crate::Event::AvatarMinted {
-						avatar_ids: BoundedVec::try_from(vec![
+						avatar_ids: vec![
 							AwesomeAvatars::owners(ALICE)[3],
 							AwesomeAvatars::owners(ALICE)[4],
 							AwesomeAvatars::owners(ALICE)[5],
 							AwesomeAvatars::owners(ALICE)[6],
 							AwesomeAvatars::owners(ALICE)[7],
 							AwesomeAvatars::owners(ALICE)[8],
-						])
-						.unwrap(),
+						],
 					},
 				));
 
