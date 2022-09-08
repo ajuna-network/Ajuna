@@ -125,7 +125,7 @@ impl ExtBuilder {
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
-		let balances = self.balances.unwrap_or(Default::default());
+		let balances = self.balances.unwrap_or_default();
 		let config =
 			GenesisConfig { system: Default::default(), balances: BalancesConfig { balances } };
 

@@ -49,7 +49,6 @@ pub mod pallet {
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> =
 		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
-	pub(crate) type MintFeesFor<T> = (BalanceOf<T>, BalanceOf<T>, BalanceOf<T>);
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
@@ -107,17 +106,18 @@ pub mod pallet {
 	pub type MintAvailable<T: Config> = StorageValue<_, bool, ValueQuery>;
 
 	#[pallet::type_value]
-	pub fn DefaultMintFee<T: Config>() -> MintFeesFor<T> {
-		(
-			(1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-			(1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-			(1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
-		)
+	pub fn DefaultMintFee<T: Config>() -> MintFees<BalanceOf<T>> {
+		MintFees {
+			one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+			three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
+			six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+		}
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn mint_fees)]
-	pub type MintFee<T: Config> = StorageValue<_, MintFeesFor<T>, ValueQuery, DefaultMintFee<T>>;
+	pub type MintFee<T: Config> =
+		StorageValue<_, MintFees<BalanceOf<T>>, ValueQuery, DefaultMintFee<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultMintCooldown<T: Config>() -> T::BlockNumber {
@@ -157,7 +157,7 @@ pub mod pallet {
 		/// Mint availability updated.
 		UpdatedMintAvailability { availability: bool },
 		/// Mint fee updated.
-		UpdatedMintFee { fee: MintFeesFor<T> },
+		UpdatedMintFee { fee: MintFees<BalanceOf<T>> },
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
@@ -275,7 +275,10 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn update_mint_fees(origin: OriginFor<T>, new_fees: MintFeesFor<T>) -> DispatchResult {
+		pub fn update_mint_fees(
+			origin: OriginFor<T>,
+			new_fees: MintFees<BalanceOf<T>>,
+		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
 			MintFee::<T>::set(new_fees);
@@ -392,11 +395,7 @@ pub mod pallet {
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
 
-			let fee = match how_many {
-				MintCount::One => Self::mint_fees().0,
-				MintCount::Three => Self::mint_fees().1,
-				MintCount::Six => Self::mint_fees().2,
-			};
+			let fee = Self::mint_fees().fee_for(how_many);
 
 			let how_many = how_many as usize;
 			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)

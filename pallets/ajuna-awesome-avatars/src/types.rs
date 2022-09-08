@@ -67,3 +67,20 @@ pub enum MintCount {
 	Three = 3,
 	Six = 6,
 }
+
+#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+pub struct MintFees<Balance> {
+	pub one: Balance,
+	pub three: Balance,
+	pub six: Balance,
+}
+
+impl<Balance> MintFees<Balance> {
+	pub fn fee_for(self, mint_count: MintCount) -> Balance {
+		match mint_count {
+			MintCount::One => self.one,
+			MintCount::Three => self.three,
+			MintCount::Six => self.six,
+		}
+	}
+}

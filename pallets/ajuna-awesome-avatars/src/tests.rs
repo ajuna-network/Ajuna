@@ -508,8 +508,10 @@ mod config {
 
 	#[test]
 	fn update_mint_fees_should_work() {
-		let original_fees = (550_000_000_000, 500_000_000_000, 450_000_000_000);
-		let update_fees = (650_000_000_000, 600_000_000_000, 750_000_000_000);
+		let original_fees =
+			MintFees { one: 550_000_000_000, three: 500_000_000_000, six: 450_000_000_000 };
+		let update_fees =
+			MintFees { one: 650_000_000_000, three: 600_000_000_000, six: 750_000_000_000 };
 
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_eq!(AwesomeAvatars::mint_fees(), original_fees);
@@ -528,7 +530,7 @@ mod config {
 			assert_noop!(
 				AwesomeAvatars::update_mint_fees(
 					Origin::signed(BOB),
-					(550_000_000_000, 500_000_000_000, 450_000_000_000)
+					MintFees { one: 550_000_000_000, three: 500_000_000_000, six: 450_000_000_000 }
 				),
 				DispatchError::BadOrigin
 			);
