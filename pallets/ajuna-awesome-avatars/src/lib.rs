@@ -176,12 +176,12 @@ pub mod pallet {
 		UpdatedMintFee { fee: BalanceOf<T> },
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
-		/// Avatar minted.
+		/// Avatars minted.
 		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
-		/// Avatar of [Legendary](RarityTier::Legendary) rarity minted
-		LegendaryAvatarMinted { avatar_id: AvatarIdOf<T> },
-		/// Avatar of [Mythical](RarityTier::Mythical) rarity minted
-		MythicalAvatarMinted { avatar_id: AvatarIdOf<T> },
+		/// Avatars of [Legendary](RarityTier::Legendary) rarity minted
+		LegendaryAvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// Avatars of [Mythical](RarityTier::Mythical) rarity minted
+		MythicalAvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 	}
 
 	#[pallet::error]
@@ -460,34 +460,62 @@ pub mod pallet {
 					let avatar = Avatar { season: active_season_id, dna };
 					let avatar_id = T::Hashing::hash_of(&avatar);
 
-					if minted_mythical || minted_legendary {
-						ActiveSeasonLegendaryOrMythicalMintCount::<T>::mutate(|value| *value += 1);
-
-						if minted_mythical {
-							Self::deposit_event(Event::MythicalAvatarMinted { avatar_id });
-						} else {
-							Self::deposit_event(Event::LegendaryAvatarMinted { avatar_id });
-						}
-					}
-
-					Ok((avatar_id, avatar))
+					Ok((avatar_id, avatar, minted_mythical, minted_legendary))
 				})
-				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
+				.collect::<Result<Vec<_>, DispatchError>>()?;
 
 			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
 				let generated_avatars_ids = generated_avatars
 					.into_iter()
-					.map(|(avatar_id, avatar)| {
+					.map(|(avatar_id, avatar, mythical, legendary)| {
 						Avatars::<T>::insert(avatar_id, (&player, avatar));
-						avatar_id
+						(avatar_id, mythical, legendary)
 					})
 					.collect::<Vec<_>>();
+
+				let all_avatar_ids = generated_avatars_ids
+					.clone()
+					.into_iter()
+					.map(|(avatar_id, _, _)| avatar_id)
+					.collect::<Vec<_>>();
+
 				ensure!(
-					avatar_ids.try_extend(generated_avatars_ids.clone().into_iter()).is_ok(),
+					avatar_ids.try_extend(all_avatar_ids.clone().into_iter()).is_ok(),
 					Error::<T>::MaxOwnershipReached
 				);
 				LastMintedBlockNumbers::<T>::insert(&player, current_block);
-				Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
+
+				let mythical_avatars = generated_avatars_ids
+					.clone()
+					.into_iter()
+					.filter_map(|(avatar_id, mythical, _)| mythical.then(|| avatar_id))
+					.collect::<Vec<_>>();
+
+				let legendary_avatars = generated_avatars_ids
+					.into_iter()
+					.filter_map(|(avatar_id, _, legendary)| legendary.then(|| avatar_id))
+					.collect::<Vec<_>>();
+
+				if mythical_avatars.len() > 0 || legendary_avatars.len() > 0 {
+					ActiveSeasonLegendaryOrMythicalMintCount::<T>::mutate(|value| {
+						*value += (mythical_avatars.len() + legendary_avatars.len()) as u16
+					});
+
+					if mythical_avatars.len() > 0 {
+						Self::deposit_event(Event::MythicalAvatarMinted {
+							avatar_ids: mythical_avatars,
+						});
+					}
+
+					if legendary_avatars.len() > 0 {
+						Self::deposit_event(Event::LegendaryAvatarMinted {
+							avatar_ids: legendary_avatars,
+						});
+					}
+				}
+
+				Self::deposit_event(Event::AvatarMinted { avatar_ids: all_avatar_ids });
+
 				Ok(())
 			})
 		}
