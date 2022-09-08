@@ -394,29 +394,31 @@ pub mod pallet {
 			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
-			let mut generated_avatars = Vec::new();
-			let mut generated_avatars_ids = Vec::new();
+			let generated_avatars = (0..how_many)
+				.map(|_| {
+					let dna = Self::random_dna(player, &active_season)?;
+					let avatar = Avatar { season: active_season_id, dna };
+					let avatar_id = T::Hashing::hash_of(&avatar);
+					Ok((avatar_id, avatar))
+				})
+				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
 
-			for _ in 0..how_many {
-				let dna = Self::random_dna(player, &active_season)?;
-				let avatar = Avatar { season: active_season_id, dna };
-				let avatar_id = T::Hashing::hash_of(&avatar);
-
-				generated_avatars.push(avatar.clone());
-				generated_avatars_ids.push(avatar_id);
-				Avatars::<T>::insert(avatar_id, (player, avatar));
-			}
-
-			let mut player_avatars = Owners::<T>::get(&player);
-			for avatar in &generated_avatars_ids {
-				ensure!(player_avatars.try_push(*avatar).is_ok(), Error::<T>::MaxOwnershipReached);
-			}
-			Owners::<T>::insert(&player, player_avatars);
-			LastMintedBlockNumbers::<T>::insert(&player, current_block);
-
-			Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
-
-			Ok(())
+			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
+				let generated_avatars_ids = generated_avatars
+					.into_iter()
+					.map(|(avatar_id, avatar)| {
+						Avatars::<T>::insert(avatar_id, (&player, avatar));
+						avatar_id
+					})
+					.collect::<Vec<_>>();
+				ensure!(
+					avatar_ids.try_extend(generated_avatars_ids.clone().into_iter()).is_ok(),
+					Error::<T>::MaxOwnershipReached
+				);
+				LastMintedBlockNumbers::<T>::insert(&player, current_block);
+				Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
+				Ok(())
+			})
 		}
 	}
 
