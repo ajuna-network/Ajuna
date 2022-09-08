@@ -67,5 +67,3 @@ pub enum MintCount {
 	Three = 3,
 	Six = 6,
 }
-
-pub const MAX_MINT_AVATARS_PER_BATCH: u32 = 6_u32;
