@@ -762,30 +762,6 @@ mod minting {
 	}
 
 	#[test]
-	fn batch_mint_should_return_error_when_cannot_mint_a_whole_batch() {
-		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
-			(0..MAX_AVATARS_PER_PLAYER - 2)
-				.map(|_| sp_core::H256::default())
-				.collect::<Vec<_>>(),
-		)
-		.unwrap();
-
-		ExtBuilder::default()
-			.organizer(ALICE)
-			.seasons(vec![Season::default()])
-			.mint_availability(true)
-			.build()
-			.execute_with(|| {
-				run_to_block(2);
-				Owners::<Test>::insert(ALICE, avatar_ids);
-				assert_noop!(
-					AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Three),
-					Error::<Test>::BatchSizeTooBig
-				);
-			});
-	}
-
-	#[test]
 	fn mint_should_wait_for_cooldown() {
 		let season = Season::default().early_start(1).start(3).end(20);
 		let mint_cooldown = 7;

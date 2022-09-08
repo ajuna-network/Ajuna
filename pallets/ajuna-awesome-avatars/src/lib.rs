@@ -185,8 +185,6 @@ pub mod pallet {
 		MaxOwnershipReached,
 		/// Incorrect DNA.
 		IncorrectDna,
-		/// Minting the batch would overflow the max ownership.
-		BatchSizeTooBig,
 		/// The player must wait cooldown period.
 		MintCooldown,
 	}
@@ -306,15 +304,6 @@ pub mod pallet {
 		pub fn mint(origin: OriginFor<T>, how_many: MintCount) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
-			let num_of_existing_avatars = Self::owners(&player).len();
-			ensure!(
-				num_of_existing_avatars < MAX_AVATARS_PER_PLAYER as usize,
-				Error::<T>::MaxOwnershipReached
-			);
-			ensure!(
-				(num_of_existing_avatars + how_many as usize) < MAX_AVATARS_PER_PLAYER as usize,
-				Error::<T>::BatchSizeTooBig
-			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
@@ -399,17 +388,20 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		pub(crate) fn do_mint(
-			player: &T::AccountId,
-			how_many: MintCount,
-		) -> Result<(), DispatchError> {
+		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
+			let how_many = how_many as usize;
+			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
+				.checked_sub(how_many)
+				.ok_or(ArithmeticError::Underflow)?;
+			ensure!(Self::owners(&player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
+
 			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
 			let mut generated_avatars = Vec::new();
 			let mut generated_avatars_ids = Vec::new();
 
-			for _ in 0..how_many as usize {
+			for _ in 0..how_many {
 				let dna = Self::random_dna(player, &active_season)?;
 				let avatar = Avatar { season: active_season_id, dna };
 				let avatar_id = T::Hashing::hash_of(&avatar);
