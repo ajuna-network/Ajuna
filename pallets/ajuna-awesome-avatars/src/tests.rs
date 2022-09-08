@@ -670,9 +670,11 @@ mod minting {
 		.unwrap();
 		assert!(avatar_ids.is_full());
 
+		let rarity_tiers = test_rarity_tiers(vec![(RarityTier::Common, 100)]);
+
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![Season::default()])
+			.seasons(vec![Season::default().rarity_tiers(rarity_tiers)])
 			.mint_availability(true)
 			.build()
 			.execute_with(|| {
@@ -757,7 +759,8 @@ mod minting {
 
 	#[test]
 	fn mint_should_wait_for_cooldown() {
-		let season = Season::default().early_start(1).start(3).end(20);
+		let rarity_tiers = test_rarity_tiers(vec![(RarityTier::Common, 100)]);
+		let season = Season::default().early_start(1).start(3).end(20).rarity_tiers(rarity_tiers);
 		let mint_cooldown = 7;
 
 		ExtBuilder::default()

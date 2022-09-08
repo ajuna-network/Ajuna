@@ -395,19 +395,38 @@ pub mod pallet {
 			Self::deposit_event(Event::SeasonEnded { season_id });
 		}
 
+		fn try_start_next_season(next_season_id: SeasonId, now: T::BlockNumber) -> Weight {
+			if let Some(season) = Self::seasons(next_season_id) {
+				let mut db_weight = T::DbWeight::get().reads(1);
+				if season.early_start <= now && now <= season.end {
+					ActiveSeasonId::<T>::put(next_season_id);
+					NextActiveSeasonId::<T>::put(next_season_id.saturating_add(1));
+
+					Self::deposit_event(Event::SeasonStarted { season_id: next_season_id });
+
+					db_weight += T::DbWeight::get().writes(2);
+				}
+				db_weight
+			} else {
+				T::DbWeight::get().reads(1)
+			}
+		}
+
 		pub(crate) fn random_dna(
 			who: &T::AccountId,
 			season: &SeasonOf<T>,
 		) -> Result<(Dna, MythicalMinted, LegendaryMinted), DispatchError> {
-			let mut dna_components =
-				(0..season.max_components).map(|_| Self::random_component(who, season));
+			let dna_components = (0..season.max_components)
+				.map(|_| Self::random_component(who, season))
+				.collect::<Vec<(u8, u8)>>();
 
 			let minted_mythical =
-				dna_components.all(|(tier, _)| tier == RarityTier::Mythical as u8);
+				dna_components.iter().all(|(tier, _)| *tier == RarityTier::Mythical as u8);
 			let minted_legendary = !minted_mythical &&
-				dna_components.all(|(tier, _)| tier >= RarityTier::Legendary as u8);
+				dna_components.iter().all(|(tier, _)| *tier >= RarityTier::Legendary as u8);
 
 			let dna = dna_components
+				.into_iter()
 				.map(|(tier, variation)| ((tier << 4) | variation) as u8)
 				.collect::<Vec<_>>();
 
@@ -482,12 +501,14 @@ pub mod pallet {
 				if let Some(active_season) = Self::seasons(season_id) {
 					db_weight += T::DbWeight::get().reads(1);
 
-					if active_season.max_high_tier_mints >=
-						ActiveSeasonLegendaryOrMythicalMintCount::<T>::get()
+					if ActiveSeasonLegendaryOrMythicalMintCount::<T>::get() >=
+						active_season.max_high_tier_mints ||
+						now > active_season.end
 					{
 						Self::finish_season(season_id);
-
-						db_weight += T::DbWeight::get().reads_writes(2, 1);
+						let next_season_id = Self::next_active_season_id();
+						db_weight += T::DbWeight::get().reads_writes(3, 2);
+						db_weight += Self::try_start_next_season(next_season_id, now);
 					}
 				}
 				db_weight
@@ -507,7 +528,7 @@ pub mod pallet {
 					} else {
 						Self::finish_season(season_id);
 
-						db_weight += T::DbWeight::get().writes(1);
+						db_weight += T::DbWeight::get().writes(2);
 					}
 				}
 				db_weight
