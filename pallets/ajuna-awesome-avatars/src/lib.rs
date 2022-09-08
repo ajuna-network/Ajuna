@@ -456,7 +456,7 @@ pub mod pallet {
 			let generated_avatars = (0..how_many)
 				.map(|_| {
 					let (dna, minted_mythical, minted_legendary) =
-						Self::random_dna(&player, &active_season)?;
+						Self::random_dna(player, &active_season)?;
 					let avatar = Avatar { season: active_season_id, dna };
 					let avatar_id = T::Hashing::hash_of(&avatar);
 
@@ -496,18 +496,18 @@ pub mod pallet {
 					.filter_map(|(avatar_id, _, legendary)| legendary.then(|| avatar_id))
 					.collect::<Vec<_>>();
 
-				if mythical_avatars.len() > 0 || legendary_avatars.len() > 0 {
+				if !mythical_avatars.is_empty() || !legendary_avatars.is_empty() {
 					ActiveSeasonLegendaryOrMythicalMintCount::<T>::mutate(|value| {
 						*value += (mythical_avatars.len() + legendary_avatars.len()) as u16
 					});
 
-					if mythical_avatars.len() > 0 {
+					if !mythical_avatars.is_empty() {
 						Self::deposit_event(Event::MythicalAvatarMinted {
 							avatar_ids: mythical_avatars,
 						});
 					}
 
-					if legendary_avatars.len() > 0 {
+					if !legendary_avatars.is_empty() {
 						Self::deposit_event(Event::LegendaryAvatarMinted {
 							avatar_ids: legendary_avatars,
 						});
