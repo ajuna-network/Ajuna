@@ -161,7 +161,7 @@ pub mod pallet {
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
-		AvatarMinted { avatar_ids: BoundedAvatarIdsOf<T> },
+		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 	}
 
 	#[pallet::error]
@@ -310,28 +310,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, how_many: MintCount) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
-			let num_of_existing_avatars = Self::owners(&player).len();
-			ensure!(
-				num_of_existing_avatars < MAX_AVATARS_PER_PLAYER as usize,
-				Error::<T>::MaxOwnershipReached
-			);
-			ensure!(
-				(num_of_existing_avatars + how_many as usize) < MAX_AVATARS_PER_PLAYER as usize,
-				Error::<T>::BatchSizeTooBig
-			);
-
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				let cooldown = Self::mint_cooldown();
-				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
-			}
-
-			Self::do_mint(&player, how_many)?;
-
-			LastMintedBlockNumbers::<T>::insert(&player, current_block);
-
-			Ok(())
+			Self::do_mint(&player, how_many)
 		}
 	}
 
@@ -404,31 +383,14 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		pub(crate) fn do_mint(
-			player: &T::AccountId,
-			how_many: MintCount,
-		) -> Result<(), DispatchError> {
-			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
-			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
+		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
+			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
 
-			let mut generated_avatars = Vec::new();
-			let mut generated_avatars_ids = Vec::new();
-
-			for _ in 0..how_many as usize {
-				let dna = Self::random_dna(player, &active_season)?;
-				let avatar = Avatar { season: active_season_id, dna };
-				let avatar_id = T::Hashing::hash_of(&avatar);
-
-				generated_avatars.push(avatar.clone());
-				generated_avatars_ids.push(avatar_id);
-				Avatars::<T>::insert(avatar_id, (player, avatar));
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
+				let cooldown = Self::mint_cooldown();
+				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
-
-			let mut player_avatars = Owners::<T>::get(&player);
-			for avatar in &generated_avatars_ids {
-				ensure!(player_avatars.try_push(*avatar).is_ok(), Error::<T>::MaxOwnershipReached);
-			}
-			Owners::<T>::insert(&player, player_avatars);
 
 			let fee = match how_many {
 				MintCount::One => Self::mint_fees().0,
@@ -436,18 +398,48 @@ pub mod pallet {
 				MintCount::Six => Self::mint_fees().2,
 			};
 
-			T::Currency::withdraw(
-				player,
-				fee,
-				WithdrawReasons::FEE,
-				ExistenceRequirement::KeepAlive,
-			)?;
+			let how_many = how_many as usize;
+			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
+				.checked_sub(how_many)
+				.ok_or(ArithmeticError::Underflow)?;
+			ensure!(Self::owners(&player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
 
-			Self::deposit_event(Event::AvatarMinted {
-				avatar_ids: BoundedVec::try_from(generated_avatars_ids).unwrap(),
-			});
+			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
+			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
-			Ok(())
+			let generated_avatars = (0..how_many)
+				.map(|_| {
+					let dna = Self::random_dna(player, &active_season)?;
+					let avatar = Avatar { season: active_season_id, dna };
+					let avatar_id = T::Hashing::hash_of(&avatar);
+					Ok((avatar_id, avatar))
+				})
+				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
+
+			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
+				let generated_avatars_ids = generated_avatars
+					.into_iter()
+					.map(|(avatar_id, avatar)| {
+						Avatars::<T>::insert(avatar_id, (&player, avatar));
+						avatar_id
+					})
+					.collect::<Vec<_>>();
+				ensure!(
+					avatar_ids.try_extend(generated_avatars_ids.clone().into_iter()).is_ok(),
+					Error::<T>::MaxOwnershipReached
+				);
+				LastMintedBlockNumbers::<T>::insert(&player, current_block);
+
+				T::Currency::withdraw(
+					player,
+					fee,
+					WithdrawReasons::FEE,
+					ExistenceRequirement::KeepAlive,
+				)?;
+
+				Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
+				Ok(())
+			})
 		}
 	}
 
