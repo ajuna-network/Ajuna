@@ -59,3 +59,11 @@ pub struct Avatar {
 	pub season: SeasonId,
 	pub dna: Dna,
 }
+
+/// Number of avatars to be minted.
+#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+pub enum MintCount {
+	One = 1,
+	Three = 3,
+	Six = 6,
+}
