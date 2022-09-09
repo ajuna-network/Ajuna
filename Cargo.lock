@@ -694,6 +694,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-membership",
+ "pallet-multisig",
  "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
