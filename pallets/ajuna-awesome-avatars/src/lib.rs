@@ -166,6 +166,10 @@ pub mod pallet {
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
 		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// A season has started.
+		SeasonStarted(SeasonId),
+		/// A season has finished.
+		SeasonFinished(SeasonId),
 	}
 
 	#[pallet::error]
@@ -460,14 +464,21 @@ pub mod pallet {
 			let mut db_weight = T::DbWeight::get().reads(2);
 
 			if let Some(season) = Self::seasons(season_id) {
-				db_weight += T::DbWeight::get().reads(1);
-				if season.early_start <= now && now <= season.end {
+				let current_high_tier_minted = Self::active_season_rare_mints();
+				db_weight += T::DbWeight::get().reads(2);
+				if (season.early_start <= now && now <= season.end) &&
+					(current_high_tier_minted < season.max_rare_mints)
+				{
 					ActiveSeasonId::<T>::put(season_id);
 					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
-					db_weight += T::DbWeight::get().writes(2);
+					Self::deposit_event(Event::SeasonStarted(season_id));
+					db_weight += T::DbWeight::get().writes(3);
 				} else {
-					ActiveSeasonId::<T>::kill();
-					db_weight += T::DbWeight::get().writes(1);
+					ActiveSeasonRareMints::<T>::kill();
+					if let Some(season_id) = ActiveSeasonId::<T>::take() {
+						Self::deposit_event(Event::SeasonFinished(season_id));
+					}
+					db_weight += T::DbWeight::get().writes(3);
 				}
 			}
 			db_weight

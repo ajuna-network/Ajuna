@@ -212,6 +212,10 @@ impl Season<MockBlockNumber> {
 		self.end = end;
 		self
 	}
+	pub fn max_rare_mints(mut self, max_rare_mints: u16) -> Self {
+		self.max_rare_mints = max_rare_mints;
+		self
+	}
 	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
 		self.rarity_tiers = rarity_tiers;
 		self

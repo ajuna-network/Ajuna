@@ -425,10 +425,18 @@ mod season {
 		let season_1 = Season::default().early_start(1).start(5).end(10);
 		let season_2 = Season::default().early_start(11).start(15).end(20);
 		let season_3 = Season::default().early_start(30).start(31).end(32);
+		let season_4 = Season::default()
+			.early_start(33)
+			.start(34)
+			.end(50)
+			.rarity_tiers(test_rarity_tiers(vec![(RarityTier::Legendary, 100)]))
+			.max_rare_mints(3);
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season_1.clone(), season_2.clone(), season_3.clone()])
+			.seasons(vec![season_1.clone(), season_2.clone(), season_3.clone(), season_4.clone()])
+			.mint_availability(true)
+			.mint_fees(MintFees { one: 0, three: 0, six: 0 })
 			.build()
 			.execute_with(|| {
 				for _ in 0..season_1.early_start {
@@ -438,26 +446,65 @@ mod season {
 
 				for block_number in season_1.early_start..season_1.end {
 					run_to_block(block_number + 1);
+					System::assert_last_event(mock::Event::AwesomeAvatars(
+						crate::Event::SeasonStarted(1),
+					));
 					assert_eq!(AwesomeAvatars::active_season_id(), Some(1));
 					assert_eq!(AwesomeAvatars::next_active_season_id(), 2);
 				}
 
 				for block_number in season_2.early_start..season_2.end {
 					run_to_block(block_number + 1);
+					System::assert_last_event(mock::Event::AwesomeAvatars(
+						crate::Event::SeasonStarted(2),
+					));
 					assert_eq!(AwesomeAvatars::active_season_id(), Some(2));
 					assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
 				}
 
 				for block_number in season_2.end..(season_3.early_start - 1) {
 					run_to_block(block_number + 1);
+					System::assert_last_event(mock::Event::AwesomeAvatars(
+						crate::Event::SeasonFinished(2),
+					));
 					assert_eq!(AwesomeAvatars::active_season_id(), None);
 					assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
 				}
 
 				for block_number in season_3.early_start..season_3.end {
 					run_to_block(block_number + 1);
+					System::assert_last_event(mock::Event::AwesomeAvatars(
+						crate::Event::SeasonStarted(3),
+					));
 					assert_eq!(AwesomeAvatars::active_season_id(), Some(3));
 					assert_eq!(AwesomeAvatars::next_active_season_id(), 4);
+				}
+
+				for block_number in season_3.end..(season_4.early_start - 1) {
+					run_to_block(block_number + 1);
+					System::assert_last_event(mock::Event::AwesomeAvatars(
+						crate::Event::SeasonFinished(3),
+					));
+					assert_eq!(AwesomeAvatars::active_season_id(), None);
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 3);
+				}
+
+				run_to_block(season_4.early_start + 1);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::SeasonStarted(4),
+				));
+				assert_eq!(AwesomeAvatars::active_season_id(), Some(4));
+				assert_eq!(AwesomeAvatars::next_active_season_id(), 5);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
+				assert_eq!(AwesomeAvatars::active_season_rare_mints(), 6);
+
+				for block_number in (season_4.early_start + 1)..season_4.end {
+					run_to_block(block_number + 1);
+					System::assert_last_event(mock::Event::AwesomeAvatars(
+						crate::Event::SeasonFinished(4),
+					));
+					assert_eq!(AwesomeAvatars::active_season_id(), None);
+					assert_eq!(AwesomeAvatars::next_active_season_id(), 5);
 				}
 			});
 	}
@@ -677,7 +724,6 @@ mod minting {
 			.mint_fees(MintFees { one: 0, three: 0, six: 0 })
 			.build()
 			.execute_with(|| {
-				let mut high_tier_mints = 0;
 				let count_high_tier = |season_id: SeasonId| -> u16 {
 					AwesomeAvatars::owners(ALICE)
 						.into_iter()
@@ -698,26 +744,23 @@ mod minting {
 				};
 
 				run_to_block(season_1.early_start + 1);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), high_tier_mints);
+				assert_eq!(AwesomeAvatars::active_season_rare_mints(), 0);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
-				let season_1_high_tier = count_high_tier(1);
-				high_tier_mints += season_1_high_tier;
-				assert_eq!(season_1_high_tier, 0);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), high_tier_mints);
+				let season_1_high_tiers = count_high_tier(1);
+				assert_eq!(season_1_high_tiers, 0);
+				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_1_high_tiers);
 
 				run_to_block(season_2.early_start + 1);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
-				let season_2_high_tier = count_high_tier(2);
-				high_tier_mints += season_2_high_tier;
-				assert_eq!(season_2_high_tier, 3);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), high_tier_mints);
+				let season_2_high_tiers = count_high_tier(2);
+				assert_eq!(season_2_high_tiers, 3);
+				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_2_high_tiers);
 
 				run_to_block(season_3.early_start + 1);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
-				let season_3_high_tier = count_high_tier(3);
-				high_tier_mints += season_3_high_tier;
-				assert_eq!(season_3_high_tier, 2);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), high_tier_mints);
+				let season_3_high_tiers = count_high_tier(3);
+				assert_eq!(season_3_high_tiers, 2);
+				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_3_high_tiers);
 			});
 	}
 
