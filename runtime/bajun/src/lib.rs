@@ -486,7 +486,6 @@ pub const fn deposit(items: u32, bytes: u32) -> Balance {
 
 parameter_types! {
 	/// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
-	/// See [pallet_multisig::Config::DepositBase] for details
 	pub const DepositBase: Balance = deposit(1, 88);
 	/// Additional storage item size of 32 bytes.
 	pub const DepositFactor: Balance = deposit(0, 32);
@@ -500,7 +499,7 @@ impl pallet_multisig::Config for Runtime {
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
 	type MaxSignatories = MaxSignatories;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
