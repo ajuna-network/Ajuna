@@ -38,7 +38,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, UniqueSaturatedInto},
+		traits::{Hash, Saturating, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::vec::Vec;
@@ -86,6 +86,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_id)]
 	pub type ActiveSeasonId<T: Config> = StorageValue<_, SeasonId, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn active_season_rare_mints)]
+	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, u16, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn next_active_season_id)]
@@ -376,14 +380,17 @@ pub mod pallet {
 		pub(crate) fn random_dna(
 			who: &T::AccountId,
 			season: &SeasonOf<T>,
-		) -> Result<Dna, DispatchError> {
+		) -> Result<(Dna, bool), DispatchError> {
 			let dna = (0..season.max_components)
 				.map(|_| {
 					let (random_tier, random_variation) = Self::random_component(who, season);
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
-			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
+			let is_rare = dna.iter().all(|each| (each >> 4) >= RarityTier::Legendary as u8);
+			Dna::try_from(dna)
+				.map(|x| (x, is_rare))
+				.map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
@@ -409,18 +416,21 @@ pub mod pallet {
 
 			let generated_avatars = (0..how_many)
 				.map(|_| {
-					let dna = Self::random_dna(player, &active_season)?;
+					let (dna, is_rare) = Self::random_dna(player, &active_season)?;
 					let avatar = Avatar { season: active_season_id, dna };
 					let avatar_id = T::Hashing::hash_of(&avatar);
-					Ok((avatar_id, avatar))
+					Ok((avatar_id, avatar, is_rare))
 				})
-				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
+				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
 
 			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
 				let generated_avatars_ids = generated_avatars
 					.into_iter()
-					.map(|(avatar_id, avatar)| {
+					.map(|(avatar_id, avatar, is_rare)| {
 						Avatars::<T>::insert(avatar_id, (&player, avatar));
+						if is_rare {
+							ActiveSeasonRareMints::<T>::mutate(|count| count.saturating_inc());
+						}
 						avatar_id
 					})
 					.collect::<Vec<_>>();

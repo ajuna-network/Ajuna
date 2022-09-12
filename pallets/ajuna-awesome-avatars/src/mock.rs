@@ -184,8 +184,7 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_mints: 1,
-			max_mythical_mints: 1,
+			max_rare_mints: 1,
 			rarity_tiers: test_rarity_tiers(vec![
 				(RarityTier::Common, 50),
 				(RarityTier::Uncommon, 30),
