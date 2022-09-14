@@ -11,7 +11,7 @@
     "tokenSymbol": "BAJU"
   },
   "relay_chain": "rococo",
-  "para_id": 3026,
+  "para_id": 2119,
   "codeSubstitutes": {},
   "genesis": {
     "runtime": {
@@ -20,7 +20,7 @@
       },
       "parachainSystem": null,
       "parachainInfo": {
-        "parachainId": 3026
+        "parachainId": 2119
       },
       "balances": {
         "balances": [
