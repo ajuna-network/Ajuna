@@ -190,10 +190,10 @@ pub mod pallet {
 		MaxOwnershipReached,
 		/// Incorrect DNA.
 		IncorrectDna,
-		/// Minting the batch would overflow the max ownership.
-		BatchSizeTooBig,
 		/// The player must wait cooldown period.
 		MintCooldown,
+		/// The player has not enough funds.
+		InsufficientFunds,
 	}
 
 	#[pallet::call]
@@ -396,6 +396,7 @@ pub mod pallet {
 			}
 
 			let fee = Self::mint_fees().fee_for(how_many);
+			ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
 
 			let how_many = how_many as usize;
 			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
