@@ -50,14 +50,15 @@ pub mod pallet {
 		pub mint_cooldown: BlockNumber,
 	}
 
-	pub type SeasonConfigsOf<T> = SeasonConfigs<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
+	pub type SeasonConfigsOf<T> =
+		SeasonConfigs<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
 	#[pallet::type_value]
 	pub fn DefaultConfigs<T: Config>() -> SeasonConfigsOf<T> {
 		SeasonConfigs {
 			mint_available: false,
 			mint_fees: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-			mint_cooldown: 5_u8.into()
+			mint_cooldown: 5_u8.into(),
 		}
 	}
 
@@ -121,7 +122,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn configs)]
-	pub type Configs<T: Config> = StorageValue<_, SeasonConfigsOf<T>, ValueQuery, DefaultConfigs<T>>;
+	pub type Configs<T: Config> =
+		StorageValue<_, SeasonConfigsOf<T>, ValueQuery, DefaultConfigs<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn avatars)]
