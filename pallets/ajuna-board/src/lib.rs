@@ -57,6 +57,7 @@ impl<BoardId, State, Players, Start> BoardGame<BoardId, State, Players, Start> {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::log;
 	use super::*;
 	use frame_system::{
 		ensure_signed,
@@ -173,6 +174,7 @@ pub mod pallet {
 			// account to a board and hence block them from playing in a legitimate game
 			// As this would be ran in L2 we may want to check that we are in L2??
 			let _ = ensure_signed(origin)?;
+			log::debug!("New game to be created with board id {:?} and players {:?}", board_id, players);
 
 			// Ensure we have players
 			ensure!(!players.is_empty(), Error::<T>::NotEnoughPlayers);
@@ -208,7 +210,9 @@ pub mod pallet {
 
 			BoardStates::<T>::insert(board_id, board_game);
 
-			Self::deposit_event(Event::GameCreated { board_id, players: players.into_inner() });
+			Self::deposit_event(Event::GameCreated { board_id, players: players.clone().into_inner() });
+
+			log::info!("New game created with board id {:?} and players {:?}", board_id, players.into_inner());
 
 			Ok(())
 		}
@@ -223,8 +227,10 @@ pub mod pallet {
 
 			BoardStates::<T>::mutate(board_id, |maybe_board_game| match maybe_board_game {
 				Some(board_game) => {
-					board_game.state = T::Game::play_turn(sender, board_game.state.clone(), turn)
+					board_game.state = T::Game::play_turn(sender.clone(), board_game.state.clone(), turn)
 						.ok_or(Error::<T>::InvalidTurn)?;
+
+					log::debug!("Turn played for board id {:?} by player {:?}", board_id, sender);
 
 					if let Finished::Winner::<T::AccountId>(winner) =
 						T::Game::is_finished(&board_game.state)
@@ -245,6 +251,9 @@ pub mod pallet {
 		pub fn finish_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
 			// TODO if this is L2 do we really need to check the origin?
 			let _ = ensure_signed(origin)?;
+
+			log::debug!("Finish game requested for board id {:?}", board_id);
+
 			// Free players to play another game
 			BoardStates::<T>::get(board_id)
 				.ok_or(Error::<T>::InvalidBoard)?
@@ -257,6 +266,12 @@ pub mod pallet {
 			BoardStates::<T>::remove(board_id);
 			// Clear winner
 			BoardWinners::<T>::remove(board_id);
+
+			log::debug!("Finish game completed for board id {:?}", board_id);
+			for (player, board_id) in PlayerBoards::<T>::iter() {
+				log::debug!("Remaining board {:?} for player {:?}", board_id, player);
+			}
+
 			Ok(())
 		}
 
@@ -268,7 +283,7 @@ pub mod pallet {
 			let board = BoardStates::<T>::get(board_id).ok_or(Error::<T>::InvalidBoard)?;
 			let timeout_block_number = board.started.saturating_add(T::IdleBoardTimeout::get());
 			let current_block_number = frame_system::Pallet::<T>::current_block_number();
-			//ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
+			ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
 
 			let winner = T::Game::get_last_player(&board.state);
 			Self::declare_winner(&board_id, &winner, &board.state);
@@ -295,5 +310,7 @@ impl<T: Config> Pallet<T> {
 		BoardWinners::<T>::insert(board_id, winner.clone());
 		Self::seed_for_next(board_state);
 		Self::deposit_event(Event::GameFinished { board_id: *board_id, winner: winner.clone() });
+
+		log::info!("Declared winner for board id {:?} as player {:?}", *board_id, winner);
 	}
 }
