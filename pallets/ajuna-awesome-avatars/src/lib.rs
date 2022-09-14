@@ -43,6 +43,24 @@ pub mod pallet {
 	};
 	use sp_std::vec::Vec;
 
+	#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+	pub struct SeasonConfigs<Balance, BlockNumber> {
+		pub mint_available: bool,
+		pub mint_fees: Balance,
+		pub mint_cooldown: BlockNumber,
+	}
+
+	pub type SeasonConfigsOf<T> = SeasonConfigs<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
+
+	#[pallet::type_value]
+	pub fn DefaultConfigs<T: Config>() -> SeasonConfigsOf<T> {
+		SeasonConfigs {
+			mint_available: false,
+			mint_fees: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+			mint_cooldown: 5_u8.into()
+		}
+	}
+
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -102,32 +120,8 @@ pub mod pallet {
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn mint_available)]
-	pub type MintAvailable<T: Config> = StorageValue<_, bool, ValueQuery>;
-
-	#[pallet::type_value]
-	pub fn DefaultMintFee<T: Config>() -> MintFees<BalanceOf<T>> {
-		MintFees {
-			one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-			three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-			six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
-		}
-	}
-
-	#[pallet::storage]
-	#[pallet::getter(fn mint_fees)]
-	pub type MintFee<T: Config> =
-		StorageValue<_, MintFees<BalanceOf<T>>, ValueQuery, DefaultMintFee<T>>;
-
-	#[pallet::type_value]
-	pub fn DefaultMintCooldown<T: Config>() -> T::BlockNumber {
-		5_u8.into()
-	}
-
-	#[pallet::storage]
-	#[pallet::getter(fn mint_cooldown)]
-	pub type MintCooldown<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery, DefaultMintCooldown<T>>;
+	#[pallet::getter(fn configs)]
+	pub type Configs<T: Config> = StorageValue<_, SeasonConfigsOf<T>, ValueQuery, DefaultConfigs<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn avatars)]
@@ -281,8 +275,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintFee::<T>::set(new_fees);
-			Self::deposit_event(Event::UpdatedMintFee { fee: new_fees });
+			Configs::<T>::mutate(|configs| {
+				configs.mint_fees = new_fee;
+			});
+
+			Self::deposit_event(Event::UpdatedMintFee { fee: new_fee });
 
 			Ok(())
 		}
@@ -294,7 +291,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintCooldown::<T>::set(new_cooldown);
+			Configs::<T>::mutate(|configs| {
+				configs.mint_cooldown = new_cooldown;
+			});
+
 			Self::deposit_event(Event::UpdatedMintCooldown { cooldown: new_cooldown });
 
 			Ok(())
@@ -304,7 +304,10 @@ pub mod pallet {
 		pub fn update_mint_available(origin: OriginFor<T>, availability: bool) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintAvailable::<T>::set(availability);
+			Configs::<T>::mutate(|configs| {
+				configs.mint_available = availability;
+			});
+
 			Self::deposit_event(Event::UpdatedMintAvailability { availability });
 
 			Ok(())
@@ -387,11 +390,12 @@ pub mod pallet {
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
-			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
+			let season_configs = Self::configs();
+			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				let cooldown = Self::mint_cooldown();
+				let cooldown = season_configs.mint_cooldown;
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
 
