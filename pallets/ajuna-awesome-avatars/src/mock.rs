@@ -148,12 +148,12 @@ impl ExtBuilder {
 				NextSeasonId::<Test>::put(season_id + 1);
 			}
 
-			Configs::<Test>::mutate(|configs| {
+			GlobalConfigs::<Test>::mutate(|configs| {
 				configs.mint_available = self.mint_availability;
 			});
 
 			if let Some(mint_cooldown) = self.mint_cooldown {
-				Configs::<Test>::mutate(|configs| {
+				GlobalConfigs::<Test>::mutate(|configs| {
 					configs.mint_cooldown = mint_cooldown;
 				});
 			}

@@ -44,18 +44,18 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 
 	#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
-	pub struct SeasonConfigs<Balance, BlockNumber> {
+	pub struct GlobalConfig<Balance, BlockNumber> {
 		pub mint_available: bool,
 		pub mint_fees: Balance,
 		pub mint_cooldown: BlockNumber,
 	}
 
-	pub type SeasonConfigsOf<T> =
-		SeasonConfigs<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
+	pub type GlobalConfigOf<T> =
+	GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
 	#[pallet::type_value]
-	pub fn DefaultConfigs<T: Config>() -> SeasonConfigsOf<T> {
-		SeasonConfigs {
+	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
+		GlobalConfig {
 			mint_available: false,
 			mint_fees: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
 			mint_cooldown: 5_u8.into(),
@@ -121,9 +121,9 @@ pub mod pallet {
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn configs)]
-	pub type Configs<T: Config> =
-		StorageValue<_, SeasonConfigsOf<T>, ValueQuery, DefaultConfigs<T>>;
+	#[pallet::getter(fn global_configs)]
+	pub type GlobalConfigs<T: Config> =
+		StorageValue<_, GlobalConfigOf<T>, ValueQuery, DefaultGlobalConfig<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn avatars)]
@@ -277,7 +277,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			Configs::<T>::mutate(|configs| {
+			GlobalConfigs::<T>::mutate(|configs| {
 				configs.mint_fees = new_fee;
 			});
 
@@ -293,7 +293,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			Configs::<T>::mutate(|configs| {
+			GlobalConfigs::<T>::mutate(|configs| {
 				configs.mint_cooldown = new_cooldown;
 			});
 
@@ -306,7 +306,7 @@ pub mod pallet {
 		pub fn update_mint_available(origin: OriginFor<T>, availability: bool) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			Configs::<T>::mutate(|configs| {
+			GlobalConfigs::<T>::mutate(|configs| {
 				configs.mint_available = availability;
 			});
 
@@ -392,7 +392,7 @@ pub mod pallet {
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
-			let season_configs = Self::configs();
+			let season_configs = Self::global_configs();
 			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
