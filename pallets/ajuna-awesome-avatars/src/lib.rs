@@ -51,7 +51,7 @@ pub mod pallet {
 	}
 
 	pub type GlobalConfigOf<T> =
-	GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
+		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
