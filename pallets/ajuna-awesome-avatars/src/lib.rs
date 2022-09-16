@@ -372,14 +372,9 @@ pub mod pallet {
 			random_hash
 		}
 
-		#[inline]
-		fn random_number_from_hash(hash: &[u8; 32], index: usize, until: u8) -> u8 {
-			hash[index] % until
-		}
-
 		fn random_component(season: &SeasonOf<T>, hash: &[u8; 32], index: usize) -> (u8, u8) {
 			let random_tier = {
-				let random_percent = Self::random_number_from_hash(hash, index, MAX_PERCENTAGE);
+				let random_percent = hash[index] % MAX_PERCENTAGE;
 				let mut cumulative_sum = 0;
 				let mut random_tier = season.rarity_tiers[0].0.clone() as u8;
 				for (tier, chance) in season.rarity_tiers.iter() {
@@ -392,7 +387,7 @@ pub mod pallet {
 				}
 				random_tier
 			};
-			let random_variation = Self::random_number_from_hash(hash, index + 1, MAX_PERCENTAGE);
+			let random_variation = hash[index + 1] % MAX_PERCENTAGE;
 			(random_tier, random_variation)
 		}
 
@@ -401,12 +396,10 @@ pub mod pallet {
 			season: &SeasonOf<T>,
 		) -> Result<(Dna, bool), DispatchError> {
 			let hash = Self::random_hash(who);
-			let mut index = 0;
 			let dna = (0..season.max_components)
-				.map(|_| {
+				.map(|base_index| {
 					let (random_tier, random_variation) =
-						Self::random_component(season, &hash, index);
-					index += 2;
+						Self::random_component(season, &hash, base_index as usize * 2);
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
