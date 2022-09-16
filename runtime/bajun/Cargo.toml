@@ -35,6 +35,7 @@ pallet-authorship                          = { git = "https://github.com/parityt
 pallet-balances                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-collective                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-membership                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
+pallet-multisig                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-session                             = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-sudo                                = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-timestamp                           = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
@@ -101,13 +102,14 @@ std = [
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
     "orml-vesting/std",
-	"pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-awesome-avatars/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-balances/std",
     "pallet-collective/std",
     "pallet-collator-selection/std",
     "pallet-membership/std",
+    "pallet-multisig/std",
     "pallet-session/std",
     "pallet-sudo/std",
     "pallet-timestamp/std",
@@ -145,6 +147,7 @@ runtime-benchmarks = [
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-membership/runtime-benchmarks",
+    "pallet-multisig/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-treasury/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
@@ -152,7 +155,7 @@ runtime-benchmarks = [
     "xcm-builder/runtime-benchmarks",
     "cumulus-pallet-session-benchmarking/runtime-benchmarks",
     "cumulus-pallet-xcmp-queue/runtime-benchmarks",
-	"pallet-ajuna-awesome-avatars/runtime-benchmarks",
+    "pallet-ajuna-awesome-avatars/runtime-benchmarks",
 ]
 
 try-runtime = [
