@@ -34,7 +34,7 @@ pub mod pallet {
 	use super::types::*;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, Hooks},
+		traits::{Currency, ExistenceRequirement, Hooks, WithdrawReasons},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
@@ -106,13 +106,18 @@ pub mod pallet {
 	pub type MintAvailable<T: Config> = StorageValue<_, bool, ValueQuery>;
 
 	#[pallet::type_value]
-	pub fn DefaultMintFee<T: Config>() -> BalanceOf<T> {
-		(1_000_000_000_000_u64 * 55 / 100).unique_saturated_into()
+	pub fn DefaultMintFee<T: Config>() -> MintFees<BalanceOf<T>> {
+		MintFees {
+			one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+			three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
+			six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+		}
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn mint_fee)]
-	pub type MintFee<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery, DefaultMintFee<T>>;
+	#[pallet::getter(fn mint_fees)]
+	pub type MintFee<T: Config> =
+		StorageValue<_, MintFees<BalanceOf<T>>, ValueQuery, DefaultMintFee<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultMintCooldown<T: Config>() -> T::BlockNumber {
@@ -152,7 +157,7 @@ pub mod pallet {
 		/// Mint availability updated.
 		UpdatedMintAvailability { availability: bool },
 		/// Mint fee updated.
-		UpdatedMintFee { fee: BalanceOf<T> },
+		UpdatedMintFee { fee: MintFees<BalanceOf<T>> },
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatar minted.
@@ -187,6 +192,8 @@ pub mod pallet {
 		IncorrectDna,
 		/// The player must wait cooldown period.
 		MintCooldown,
+		/// The player has not enough funds.
+		InsufficientFunds,
 	}
 
 	#[pallet::call]
@@ -268,11 +275,14 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn update_mint_fee(origin: OriginFor<T>, new_fee: BalanceOf<T>) -> DispatchResult {
+		pub fn update_mint_fees(
+			origin: OriginFor<T>,
+			new_fees: MintFees<BalanceOf<T>>,
+		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintFee::<T>::set(new_fee);
-			Self::deposit_event(Event::UpdatedMintFee { fee: new_fee });
+			MintFee::<T>::set(new_fees);
+			Self::deposit_event(Event::UpdatedMintFee { fee: new_fees });
 
 			Ok(())
 		}
@@ -385,6 +395,9 @@ pub mod pallet {
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
 
+			let fee = Self::mint_fees().fee_for(how_many);
+			ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
+
 			let how_many = how_many as usize;
 			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
 				.checked_sub(how_many)
@@ -416,6 +429,14 @@ pub mod pallet {
 					Error::<T>::MaxOwnershipReached
 				);
 				LastMintedBlockNumbers::<T>::insert(&player, current_block);
+
+				T::Currency::withdraw(
+					player,
+					fee,
+					WithdrawReasons::FEE,
+					ExistenceRequirement::KeepAlive,
+				)?;
+
 				Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
 				Ok(())
 			})
