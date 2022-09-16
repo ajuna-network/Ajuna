@@ -561,9 +561,8 @@ mod config {
 }
 
 mod minting {
-	use frame_support::traits::Currency;
-
 	use super::*;
+	use frame_support::traits::Currency;
 
 	#[test]
 	fn mint_should_work() {
@@ -713,11 +712,13 @@ mod minting {
 
 		let expected_nonce_increment = 2 * max_components as MockIndex;
 		let mut expected_nonce = 0;
-		let initial_balance = 1_234_567_890_123_456u64;
+		let mut initial_balance = 1_234_567_890_123_456u64;
+		let fees = MintFees { one: 12, three: 34, six: 56 };
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![season.clone()])
 			.mint_availability(true)
+			.mint_fees(fees)
 			.balances(vec![(ALICE, initial_balance)])
 			.build()
 			.execute_with(|| {
@@ -725,7 +726,8 @@ mod minting {
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Three));
-				assert_eq!(Balances::total_balance(&ALICE), 1_234_067_890_123_456u64);
+				initial_balance -= fees.fee_for(MintCount::Three);
+				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 				expected_nonce += expected_nonce_increment * 3;
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 3);
@@ -742,7 +744,8 @@ mod minting {
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				run_to_block(season.early_start + 7);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
-				assert_eq!(Balances::total_balance(&ALICE), 1_233_617_890_123_456u64);
+				initial_balance -= fees.fee_for(MintCount::Six);
+				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 				expected_nonce += expected_nonce_increment * 6;
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 9);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
