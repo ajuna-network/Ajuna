@@ -46,7 +46,7 @@ pub mod pallet {
 	#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 	pub struct GlobalConfig<Balance, BlockNumber> {
 		pub mint_available: bool,
-		pub mint_fees: Balance,
+		pub mint_fees: MintFees<Balance>,
 		pub mint_cooldown: BlockNumber,
 	}
 
@@ -57,7 +57,11 @@ pub mod pallet {
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
 		GlobalConfig {
 			mint_available: false,
-			mint_fees: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+			mint_fees: MintFees {
+				one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+				three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
+				six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+			},
 			mint_cooldown: 5_u8.into(),
 		}
 	}
@@ -278,10 +282,10 @@ pub mod pallet {
 			Self::ensure_organizer(origin)?;
 
 			GlobalConfigs::<T>::mutate(|configs| {
-				configs.mint_fees = new_fee;
+				configs.mint_fees = new_fees;
 			});
 
-			Self::deposit_event(Event::UpdatedMintFee { fee: new_fee });
+			Self::deposit_event(Event::UpdatedMintFee { fee: new_fees });
 
 			Ok(())
 		}
@@ -401,7 +405,7 @@ pub mod pallet {
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
 
-			let fee = Self::mint_fees().fee_for(how_many);
+			let fee = Self::global_configs().mint_fees.fee_for(how_many);
 			ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
 
 			let how_many = how_many as usize;

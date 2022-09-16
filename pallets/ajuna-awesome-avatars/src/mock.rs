@@ -159,7 +159,9 @@ impl ExtBuilder {
 			}
 
 			if let Some(mint_fees) = self.mint_fees {
-				MintFee::<Test>::set(mint_fees);
+				GlobalConfigs::<Test>::mutate(|configs| {
+					configs.mint_fees = mint_fees;
+				});
 			}
 		});
 		ext

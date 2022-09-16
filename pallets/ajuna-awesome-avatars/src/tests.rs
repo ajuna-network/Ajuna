@@ -512,9 +512,9 @@ mod config {
 			MintFees { one: 650_000_000_000, three: 600_000_000_000, six: 750_000_000_000 };
 
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_eq!(AwesomeAvatars::global_configs().mint_fees, original_fee);
-			assert_ok!(AwesomeAvatars::update_mint_fee(Origin::signed(ALICE), update_fee));
-			assert_eq!(AwesomeAvatars::global_configs().mint_fees, update_fee);
+			assert_eq!(AwesomeAvatars::global_configs().mint_fees, original_fees);
+			assert_ok!(AwesomeAvatars::update_mint_fees(Origin::signed(ALICE), update_fees));
+			assert_eq!(AwesomeAvatars::global_configs().mint_fees, update_fees);
 			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::UpdatedMintFee {
 				fee: update_fees,
 			}));
