@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-primitives",
  "ajuna-service",
@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-common"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -126,7 +126,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-node"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-cli",
  "ajuna-service",
@@ -134,7 +134,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-primitives"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "sp-core",
  "sp-runtime",
@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-rpc"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-primitives",
  "jsonrpc-core",
@@ -159,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-service"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-primitives",
  "ajuna-rpc",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-solo-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-common",
  "ajuna-primitives",
@@ -323,7 +323,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-test"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-common",
  "ajuna-primitives",
@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "bajun-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -5480,7 +5480,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-awesome-avatars"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajuna-common",
  "frame-benchmarking",
