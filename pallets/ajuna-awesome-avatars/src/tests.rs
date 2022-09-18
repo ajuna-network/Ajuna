@@ -686,7 +686,7 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_update_high_tier_count_when_rare_tier_minted() {
+	fn mint_should_work_when_rare_tier_avatars_are_minted() {
 		let season_1 =
 			Season::default()
 				.early_start(10)
@@ -755,12 +755,18 @@ mod minting {
 				let season_2_high_tiers = count_high_tier(2);
 				assert_eq!(season_2_high_tiers, 3);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_2_high_tiers);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::RareAvatarsMinted { count: count_high_tier(2) },
+				));
 
 				run_to_block(season_3.early_start + 1);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
 				let season_3_high_tiers = count_high_tier(3);
 				assert_eq!(season_3_high_tiers, 2);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_3_high_tiers);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::RareAvatarsMinted { count: count_high_tier(3) },
+				));
 			});
 	}
 

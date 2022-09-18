@@ -166,6 +166,8 @@ pub mod pallet {
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
 		/// Avatars minted.
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// Rare avatars minted.
+		RareAvatarsMinted { count: u16 },
 		/// A season has started.
 		SeasonStarted(SeasonId),
 		/// A season has finished.
@@ -427,6 +429,7 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
 
+			let mut rare_avatars = 0;
 			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
 				let generated_avatars_ids = generated_avatars
 					.into_iter()
@@ -434,6 +437,7 @@ pub mod pallet {
 						Avatars::<T>::insert(avatar_id, (&player, avatar));
 						if is_rare {
 							ActiveSeasonRareMints::<T>::mutate(|count| count.saturating_inc());
+							rare_avatars.saturating_inc();
 						}
 						avatar_id
 					})
@@ -452,6 +456,9 @@ pub mod pallet {
 				)?;
 
 				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
+				if rare_avatars > 0 {
+					Self::deposit_event(Event::RareAvatarsMinted { count: rare_avatars });
+				}
 				Ok(())
 			})
 		}
