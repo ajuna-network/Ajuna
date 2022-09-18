@@ -164,8 +164,8 @@ pub mod pallet {
 		UpdatedMintFee { fee: MintFees<BalanceOf<T>> },
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
-		/// Avatar minted.
-		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// Avatars minted.
+		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 		/// A season has started.
 		SeasonStarted(SeasonId),
 		/// A season has finished.
@@ -451,7 +451,7 @@ pub mod pallet {
 					ExistenceRequirement::KeepAlive,
 				)?;
 
-				Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
+				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
 				Ok(())
 			})
 		}

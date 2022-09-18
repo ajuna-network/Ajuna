@@ -644,7 +644,7 @@ mod minting {
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 1);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted {
+					crate::Event::AvatarsMinted {
 						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[0]],
 					},
 				));
@@ -659,7 +659,7 @@ mod minting {
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 2);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted {
+					crate::Event::AvatarsMinted {
 						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[1]],
 					},
 				));
@@ -858,7 +858,7 @@ mod minting {
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 3);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted {
+					crate::Event::AvatarsMinted {
 						avatar_ids: vec![
 							AwesomeAvatars::owners(ALICE)[0],
 							AwesomeAvatars::owners(ALICE)[1],
@@ -876,7 +876,7 @@ mod minting {
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 9);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarMinted {
+					crate::Event::AvatarsMinted {
 						avatar_ids: vec![
 							AwesomeAvatars::owners(ALICE)[3],
 							AwesomeAvatars::owners(ALICE)[4],
