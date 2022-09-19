@@ -190,8 +190,7 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_mints: 1,
-			max_mythical_mints: 1,
+			max_rare_mints: 1,
 			rarity_tiers: test_rarity_tiers(vec![
 				(RarityTier::Common, 50),
 				(RarityTier::Uncommon, 30),
@@ -217,6 +216,10 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn end(mut self, end: MockBlockNumber) -> Self {
 		self.end = end;
+		self
+	}
+	pub fn max_rare_mints(mut self, max_rare_mints: u16) -> Self {
+		self.max_rare_mints = max_rare_mints;
 		self
 	}
 	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
