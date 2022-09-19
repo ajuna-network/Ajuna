@@ -43,35 +43,14 @@ pub mod pallet {
 	};
 	use sp_std::vec::Vec;
 
-	#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
-	pub struct GlobalConfig<Balance, BlockNumber> {
-		pub mint_available: bool,
-		pub mint_fees: MintFees<Balance>,
-		pub mint_cooldown: BlockNumber,
-	}
-
-	pub type GlobalConfigOf<T> =
-		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
-
-	#[pallet::type_value]
-	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
-		GlobalConfig {
-			mint_available: false,
-			mint_fees: MintFees {
-				one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-				three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-				six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
-			},
-			mint_cooldown: 5_u8.into(),
-		}
-	}
-
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> =
 		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
+	pub(crate) type GlobalConfigOf<T> =
+		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
@@ -94,12 +73,6 @@ pub mod pallet {
 	pub fn DefaultNextSeasonId() -> SeasonId {
 		1
 	}
-
-	#[pallet::type_value]
-	pub fn DefaultNextActiveSeasonId() -> SeasonId {
-		1
-	}
-
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
@@ -110,6 +83,10 @@ pub mod pallet {
 	#[pallet::getter(fn active_season_id)]
 	pub type ActiveSeasonId<T: Config> = StorageValue<_, SeasonId, OptionQuery>;
 
+	#[pallet::type_value]
+	pub fn DefaultNextActiveSeasonId() -> SeasonId {
+		1
+	}
 	#[pallet::storage]
 	#[pallet::getter(fn next_active_season_id)]
 	pub type NextActiveSeasonId<T: Config> =
@@ -124,6 +101,18 @@ pub mod pallet {
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
 
+	#[pallet::type_value]
+	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
+		GlobalConfig {
+			mint_available: false,
+			mint_fees: MintFees {
+				one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+				three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
+				six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+			},
+			mint_cooldown: 5_u8.into(),
+		}
+	}
 	#[pallet::storage]
 	#[pallet::getter(fn global_configs)]
 	pub type GlobalConfigs<T: Config> =
