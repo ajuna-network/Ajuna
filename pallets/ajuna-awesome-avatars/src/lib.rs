@@ -89,7 +89,7 @@ pub mod pallet {
 	}
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_rare_mints)]
-	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, u16, ValueQuery>;
+	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, MintCount, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn next_active_season_id)]
@@ -156,7 +156,7 @@ pub mod pallet {
 		/// Avatars minted.
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 		/// Rare avatars minted.
-		RareAvatarsMinted { count: u16 },
+		RareAvatarsMinted { count: MintCount },
 		/// A season has started.
 		SeasonStarted(SeasonId),
 		/// A season has finished.
@@ -319,7 +319,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn mint(origin: OriginFor<T>, how_many: MintCount) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, how_many: MintCountOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			Self::do_mint(&player, how_many)
 		}
@@ -397,7 +397,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
+		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCountOption) -> DispatchResult {
 			let season_configs = Self::global_configs();
 			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
