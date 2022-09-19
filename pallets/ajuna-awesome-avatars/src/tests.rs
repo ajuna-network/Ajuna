@@ -524,7 +524,6 @@ mod config {
 	#[test]
 	fn update_mint_fees_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let original_mint_fee = AwesomeAvatars::global_configs().mint_fees;
 			assert_noop!(
 				AwesomeAvatars::update_mint_fees(
 					Origin::signed(BOB),
@@ -532,7 +531,6 @@ mod config {
 				),
 				DispatchError::BadOrigin
 			);
-			assert_eq!(AwesomeAvatars::global_configs().mint_fees, original_mint_fee);
 		});
 	}
 
