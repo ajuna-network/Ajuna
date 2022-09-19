@@ -54,6 +54,7 @@ pub mod pallet {
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
+	pub(crate) const MAX_RANDOM_BYTES: u8 = 32;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -193,6 +194,9 @@ pub mod pallet {
 		MintCooldown,
 		/// The player has not enough funds.
 		InsufficientFunds,
+		/// The season's variants + components exceed the maximum number of random bytes allowed
+		/// (32)
+		ExceededMaxRandomBytes,
 	}
 
 	#[pallet::call]
@@ -336,6 +340,10 @@ pub mod pallet {
 		pub(crate) fn ensure_season(mut season: SeasonOf<T>) -> Result<SeasonOf<T>, DispatchError> {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				season.max_variations + season.max_components <= MAX_RANDOM_BYTES,
+				Error::<T>::ExceededMaxRandomBytes
+			);
 
 			season.rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
 			let (tiers, chances) = {
@@ -354,17 +362,19 @@ pub mod pallet {
 			Ok(season)
 		}
 
-		fn random_number(who: &T::AccountId, until: u8) -> u8 {
+		#[inline]
+		fn random_hash(who: &T::AccountId) -> [u8; 32] {
 			let nonce = frame_system::Pallet::<T>::account_nonce(who);
 			let block_number = frame_system::Pallet::<T>::block_number();
-			let random_hash = (nonce, who, block_number).using_encoded(sp_io::hashing::twox_128);
+			let random_hash: [u8; 32] =
+				(nonce, who, block_number).using_encoded(sp_io::hashing::twox_256);
 			frame_system::Pallet::<T>::inc_account_nonce(who);
-			random_hash[0] % until
+			random_hash
 		}
 
-		fn random_component(who: &T::AccountId, season: &SeasonOf<T>) -> (u8, u8) {
+		fn random_component(season: &SeasonOf<T>, hash: &[u8; 32], index: usize) -> (u8, u8) {
 			let random_tier = {
-				let random_percent = Self::random_number(who, MAX_PERCENTAGE);
+				let random_percent = hash[index] % MAX_PERCENTAGE;
 				let mut cumulative_sum = 0;
 				let mut random_tier = season.rarity_tiers[0].0.clone() as u8;
 				for (tier, chance) in season.rarity_tiers.iter() {
@@ -377,7 +387,7 @@ pub mod pallet {
 				}
 				random_tier
 			};
-			let random_variation = Self::random_number(who, season.max_variations);
+			let random_variation = hash[index] % season.max_variations;
 			(random_tier, random_variation)
 		}
 
@@ -385,9 +395,11 @@ pub mod pallet {
 			who: &T::AccountId,
 			season: &SeasonOf<T>,
 		) -> Result<(Dna, bool), DispatchError> {
+			let hash = Self::random_hash(who);
 			let dna = (0..season.max_components)
-				.map(|_| {
-					let (random_tier, random_variation) = Self::random_component(who, season);
+				.map(|base_index| {
+					let (random_tier, random_variation) =
+						Self::random_component(season, &hash, base_index as usize * 2);
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();

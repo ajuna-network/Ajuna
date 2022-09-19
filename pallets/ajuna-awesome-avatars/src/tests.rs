@@ -616,7 +616,7 @@ mod minting {
 		let max_components = 7;
 		let season = Season::default().end(20).max_components(max_components);
 
-		let expected_nonce_increment = 2 * max_components as MockIndex;
+		let expected_nonce_increment = 1 as MockIndex;
 		let mut expected_nonce = 0;
 
 		let mint_cooldown = 5;
@@ -762,7 +762,7 @@ mod minting {
 				run_to_block(season_3.early_start + 1);
 				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::Six));
 				let season_3_high_tiers = count_high_tier(3);
-				assert_eq!(season_3_high_tiers, 2);
+				assert_eq!(season_3_high_tiers, 4);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_3_high_tiers);
 				System::assert_last_event(mock::Event::AwesomeAvatars(
 					crate::Event::RareAvatarsMinted { count: count_high_tier(3) },
@@ -842,7 +842,7 @@ mod minting {
 		let max_components = 7;
 		let season = Season::default().end(20).max_components(max_components);
 
-		let expected_nonce_increment = 2 * max_components as MockIndex;
+		let expected_nonce_increment = 1 as MockIndex;
 		let mut expected_nonce = 0;
 		let mut initial_balance = 1_234_567_890_123_456u64;
 		let fees = MintFees { one: 12, three: 34, six: 56 };
