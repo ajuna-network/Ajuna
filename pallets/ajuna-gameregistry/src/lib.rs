@@ -217,7 +217,11 @@ pub mod pallet {
 							T::Runner::accept(game_id, Some(game.encode().into())).map_err(|e| {
 								log::debug!("Accepting {:?} failed with error:{:?}", game_id, e);
 							});
+					} else {
+						log::error!("Failed to decoded state of game {:?} from state, this is unrecoverable for this game now", game_id);
 					}
+				} else {
+					log::warn!("Game {:?} is not queued!", game_id);
 				}
 			});
 
@@ -253,10 +257,12 @@ pub mod pallet {
 					Players::<T>::remove(player);
 				});
 
+				log::debug!("Finished game {:?}", game_id);
 				T::Runner::finished(&game_id, Some(game.encode().into()))?;
 
 				Ok(())
 			} else {
+				log::error!("Invalid game state for game {:?}", game_id);
 				Err(Error::<T>::InvalidGameState.into())
 			}
 		}
