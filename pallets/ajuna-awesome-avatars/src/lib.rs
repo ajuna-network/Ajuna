@@ -345,10 +345,17 @@ pub mod pallet {
 				Error::<T>::ExceededMaxRandomBytes
 			);
 
-			season.rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
+			Self::validate_rarity_tiers(&mut season.rarity_tiers)?;
+			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
+
+			Ok(season)
+		}
+
+		fn validate_rarity_tiers(rarity_tiers: &mut RarityTiers) -> DispatchResult {
+			rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
 			let (tiers, chances) = {
 				let (mut tiers, chances): (Vec<_>, Vec<_>) =
-					season.rarity_tiers.clone().into_iter().unzip();
+					rarity_tiers.clone().into_iter().unzip();
 				tiers.sort();
 				tiers.dedup();
 				(tiers, chances)
@@ -359,7 +366,7 @@ pub mod pallet {
 			);
 			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
 
-			Ok(season)
+			Ok(())
 		}
 
 		#[inline]
@@ -372,12 +379,22 @@ pub mod pallet {
 			random_hash
 		}
 
-		fn random_component(season: &SeasonOf<T>, hash: &[u8; 32], index: usize) -> (u8, u8) {
+		fn random_component(
+			season: &SeasonOf<T>,
+			hash: &[u8; 32],
+			index: usize,
+			batched_mint: bool,
+		) -> (u8, u8) {
 			let random_tier = {
 				let random_percent = hash[index] % MAX_PERCENTAGE;
+				let rarity_tiers = if batched_mint {
+					&season.rarity_tiers_batch_mint
+				} else {
+					&season.rarity_tiers
+				};
 				let mut cumulative_sum = 0;
-				let mut random_tier = season.rarity_tiers[0].0.clone() as u8;
-				for (tier, chance) in season.rarity_tiers.iter() {
+				let mut random_tier = rarity_tiers[0].0.clone() as u8;
+				for (tier, chance) in rarity_tiers.iter() {
 					let new_cumulative_sum = cumulative_sum + chance;
 					if random_percent >= cumulative_sum && random_percent < new_cumulative_sum {
 						random_tier = tier.clone() as u8;
@@ -394,12 +411,17 @@ pub mod pallet {
 		pub(crate) fn random_dna(
 			who: &T::AccountId,
 			season: &SeasonOf<T>,
+			batched_mint: bool,
 		) -> Result<(Dna, bool), DispatchError> {
 			let hash = Self::random_hash(who);
 			let dna = (0..season.max_components)
 				.map(|base_index| {
-					let (random_tier, random_variation) =
-						Self::random_component(season, &hash, base_index as usize * 2);
+					let (random_tier, random_variation) = Self::random_component(
+						season,
+						&hash,
+						base_index as usize * 2,
+						batched_mint,
+					);
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
@@ -433,7 +455,7 @@ pub mod pallet {
 
 			let generated_avatars = (0..how_many)
 				.map(|_| {
-					let (dna, is_rare) = Self::random_dna(player, &active_season)?;
+					let (dna, is_rare) = Self::random_dna(player, &active_season, how_many > 1)?;
 					let avatar = Avatar { season: active_season_id, dna };
 					let avatar_id = T::Hashing::hash_of(&avatar);
 					Ok((avatar_id, avatar, is_rare))

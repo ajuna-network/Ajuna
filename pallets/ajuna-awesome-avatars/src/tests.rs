@@ -429,7 +429,7 @@ mod season {
 			.early_start(33)
 			.start(34)
 			.end(50)
-			.rarity_tiers(test_rarity_tiers(vec![(RarityTier::Legendary, 100)]))
+			.rarity_tiers_batch_mint(test_rarity_tiers(vec![(RarityTier::Legendary, 100)]))
 			.max_rare_mints(3);
 
 		ExtBuilder::default()
