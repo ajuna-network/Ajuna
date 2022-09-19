@@ -22,12 +22,12 @@ use scale_info::TypeInfo;
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum RarityTier {
-	Common = 1,
-	Uncommon = 2,
-	Rare = 3,
-	Epic = 4,
-	Legendary = 5,
-	Mythical = 6,
+	Common = 0,
+	Uncommon = 1,
+	Rare = 2,
+	Epic = 3,
+	Legendary = 4,
+	Mythical = 5,
 }
 
 pub type RarityPercent = u8;
