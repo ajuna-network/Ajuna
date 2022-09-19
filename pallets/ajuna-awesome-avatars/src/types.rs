@@ -83,3 +83,10 @@ impl<Balance> MintFees<Balance> {
 		}
 	}
 }
+
+#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct GlobalConfig<Balance, BlockNumber> {
+	pub mint_available: bool,
+	pub mint_fees: MintFees<Balance>,
+	pub mint_cooldown: BlockNumber,
+}

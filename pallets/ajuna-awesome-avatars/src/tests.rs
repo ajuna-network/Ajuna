@@ -532,9 +532,9 @@ mod config {
 	#[test]
 	fn update_mint_available_should_work() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert!(!AwesomeAvatars::mint_available());
+			assert!(!AwesomeAvatars::global_configs().mint_available);
 			assert_ok!(AwesomeAvatars::update_mint_available(Origin::signed(ALICE), true));
-			assert!(AwesomeAvatars::mint_available());
+			assert!(AwesomeAvatars::global_configs().mint_available);
 			System::assert_last_event(mock::Event::AwesomeAvatars(
 				crate::Event::UpdatedMintAvailability { availability: true },
 			));
@@ -559,9 +559,9 @@ mod config {
 			MintFees { one: 650_000_000_000, three: 600_000_000_000, six: 750_000_000_000 };
 
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_eq!(AwesomeAvatars::mint_fees(), original_fees);
+			assert_eq!(AwesomeAvatars::global_configs().mint_fees, original_fees);
 			assert_ok!(AwesomeAvatars::update_mint_fees(Origin::signed(ALICE), update_fees));
-			assert_eq!(AwesomeAvatars::mint_fees(), update_fees);
+			assert_eq!(AwesomeAvatars::global_configs().mint_fees, update_fees);
 			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::UpdatedMintFee {
 				fee: update_fees,
 			}));
@@ -587,9 +587,9 @@ mod config {
 		let update_cd = 10;
 
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_eq!(AwesomeAvatars::mint_cooldown(), original_cd);
+			assert_eq!(AwesomeAvatars::global_configs().mint_cooldown, original_cd);
 			assert_ok!(AwesomeAvatars::update_mint_cooldown(Origin::signed(ALICE), update_cd));
-			assert_eq!(AwesomeAvatars::mint_cooldown(), update_cd);
+			assert_eq!(AwesomeAvatars::global_configs().mint_cooldown, update_cd);
 			System::assert_last_event(mock::Event::AwesomeAvatars(
 				crate::Event::UpdatedMintCooldown { cooldown: update_cd },
 			));
