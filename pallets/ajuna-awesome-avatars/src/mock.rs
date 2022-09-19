@@ -102,6 +102,7 @@ pub struct ExtBuilder {
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
 	balances: Vec<(MockAccountId, MockBalance)>,
+	free_mints: Vec<(MockAccountId, FreeMintsAmount)>,
 }
 
 impl ExtBuilder {
@@ -127,6 +128,10 @@ impl ExtBuilder {
 	}
 	pub fn mint_fees(mut self, mint_fees: MintFees<MockBalance>) -> Self {
 		self.mint_fees = Some(mint_fees);
+		self
+	}
+	pub fn free_mints(mut self, free_mints: Vec<(MockAccountId, FreeMintsAmount)>) -> Self {
+		self.free_mints = free_mints;
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -156,6 +161,10 @@ impl ExtBuilder {
 
 			if let Some(mint_fees) = self.mint_fees {
 				MintFee::<Test>::set(mint_fees);
+			}
+
+			for (account_id, mint_amount) in self.free_mints {
+				FreeMints::<Test>::insert(account_id, mint_amount);
 			}
 		});
 		ext

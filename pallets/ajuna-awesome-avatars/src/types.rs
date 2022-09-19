@@ -32,6 +32,7 @@ pub enum RarityTier {
 
 pub type RarityPercent = u8;
 pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
+pub type FreeMintsAmount = u16;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
@@ -83,4 +84,10 @@ impl<Balance> MintFees<Balance> {
 			MintCount::Six => self.six,
 		}
 	}
+}
+
+#[derive(Eq, PartialEq)]
+pub enum MintType {
+	Free,
+	Normal,
 }

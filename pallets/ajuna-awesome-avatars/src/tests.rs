@@ -640,12 +640,18 @@ mod minting {
 
 	#[test]
 	fn mint_should_return_error_when_minting_is_unavailable() {
-		ExtBuilder::default().mint_availability(false).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::One),
-				Error::<Test>::MintUnavailable
-			);
-		});
+		let initial_balance = 1_234_567_890_123_456u64;
+
+		ExtBuilder::default()
+			.mint_availability(false)
+			.balances(vec![(ALICE, initial_balance)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AwesomeAvatars::mint(Origin::signed(ALICE), MintCount::One),
+					Error::<Test>::MintUnavailable
+				);
+			});
 	}
 
 	#[test]
@@ -813,7 +819,7 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_return_error_on_insuficient_funds() {
+	fn mint_should_return_error_on_insufficient_funds() {
 		let season = Season::default().end(20);
 
 		ExtBuilder::default()
@@ -830,6 +836,346 @@ mod minting {
 						Error::<Test>::InsufficientFunds
 					);
 				}
+			});
+	}
+
+	#[test]
+	fn free_mint_should_raise_error_on_insufficient_free_mints() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.balances(vec![(ALICE, 1)])
+			.mint_availability(true)
+			.seasons(vec![Season::default().end(20)])
+			.build()
+			.execute_with(|| {
+				for mint_count in [MintCount::One, MintCount::Three, MintCount::Six] {
+					assert_noop!(
+						AwesomeAvatars::free_mint(Origin::signed(ALICE), mint_count),
+						Error::<Test>::InsufficientFreeMints
+					);
+				}
+			});
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.balances(vec![(ALICE, 1)])
+			.free_mints(vec![(ALICE, 1)])
+			.mint_availability(true)
+			.seasons(vec![Season::default().end(20)])
+			.build()
+			.execute_with(|| {
+				for mint_count in [MintCount::Three, MintCount::Six] {
+					assert_noop!(
+						AwesomeAvatars::free_mint(Origin::signed(ALICE), mint_count),
+						Error::<Test>::InsufficientFreeMints
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn free_mint_should_work() {
+		let max_components = 7;
+		let season = Season::default().start(10).end(20).max_components(max_components);
+
+		let expected_nonce_increment = 2 * max_components as MockIndex;
+		let mut expected_nonce = 0;
+		let initial_balance = 1_234_567_890_123_456u64;
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![season.clone()])
+			.mint_availability(true)
+			.free_mints(vec![(ALICE, 100)])
+			.balances(vec![(ALICE, initial_balance)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One));
+
+				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+				expected_nonce += expected_nonce_increment;
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 1);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarMinted {
+						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[0]],
+					},
+				));
+
+				run_to_block(season.start + 2);
+
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One));
+
+				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+				expected_nonce += expected_nonce_increment;
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 2);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarMinted {
+						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[1]],
+					},
+				));
+
+				let avatar_ids = AwesomeAvatars::owners(ALICE);
+				let (player_0, avatar_0) = AwesomeAvatars::avatars(avatar_ids[0]).unwrap();
+				let (player_1, avatar_1) = AwesomeAvatars::avatars(avatar_ids[1]).unwrap();
+
+				assert_eq!(player_0, player_1);
+				assert_eq!(player_0, ALICE);
+				assert_eq!(player_1, ALICE);
+
+				assert_eq!(avatar_0.season, avatar_1.season);
+				assert_eq!(avatar_0.season, AwesomeAvatars::next_season_id() - 1);
+				assert_eq!(avatar_1.season, AwesomeAvatars::next_season_id() - 1);
+
+				assert_ne!(avatar_0.dna, avatar_1.dna);
+				assert_eq!(avatar_0.dna.len(), (2 * max_components as usize) / 2);
+				assert_eq!(avatar_1.dna.len(), (2 * max_components as usize) / 2);
+
+				run_to_block(season.end + 2);
+
+				assert_noop!(
+					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One),
+					Error::<Test>::OutOfSeason
+				);
+			});
+	}
+
+	#[test]
+	fn free_mint_should_return_error_when_no_season_ever_created() {
+		let initial_balance = 1_234_567_890_123_456u64;
+
+		ExtBuilder::default()
+			.mint_availability(true)
+			.balances(vec![(ALICE, initial_balance)])
+			.free_mints(vec![(ALICE, 10)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One),
+					Error::<Test>::OutOfSeason
+				);
+			});
+	}
+
+	#[test]
+	fn free_mint_should_return_error_when_minting_is_unavailable() {
+		let initial_balance = 1_234_567_890_123_456u64;
+
+		ExtBuilder::default()
+			.mint_availability(false)
+			.balances(vec![(ALICE, initial_balance)])
+			.free_mints(vec![(ALICE, 10)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One),
+					Error::<Test>::MintUnavailable
+				);
+			});
+	}
+
+	#[test]
+	fn free_mint_should_reject_unsigned_caller() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AwesomeAvatars::free_mint(Origin::none(), MintCount::One),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn free_mint_should_return_error_when_max_ownership_has_reached() {
+		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
+			(0..MAX_AVATARS_PER_PLAYER)
+				.map(|_| sp_core::H256::default())
+				.collect::<Vec<_>>(),
+		)
+		.unwrap();
+		assert!(avatar_ids.is_full());
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![Season::default()])
+			.mint_availability(true)
+			.free_mints(vec![(ALICE, 10)])
+			.build()
+			.execute_with(|| {
+				run_to_block(2);
+				Owners::<Test>::insert(ALICE, avatar_ids);
+				for mint_count in [MintCount::One, MintCount::Three, MintCount::Six] {
+					assert_noop!(
+						AwesomeAvatars::free_mint(Origin::signed(ALICE), mint_count),
+						Error::<Test>::MaxOwnershipReached
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn free_mint_batch_should_work() {
+		let max_components = 7;
+		let season = Season::default().end(20).max_components(max_components);
+
+		let expected_nonce_increment = 2 * max_components as MockIndex;
+		let mut expected_nonce = 0;
+		let fees = MintFees { one: 12, three: 34, six: 56 };
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![season.clone()])
+			.mint_availability(true)
+			.mint_fees(fees)
+			.free_mints(vec![(ALICE, 100)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::Three));
+				expected_nonce += expected_nonce_increment * 3;
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 3);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarMinted {
+						avatar_ids: vec![
+							AwesomeAvatars::owners(ALICE)[0],
+							AwesomeAvatars::owners(ALICE)[1],
+							AwesomeAvatars::owners(ALICE)[2],
+						],
+					},
+				));
+
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				run_to_block(season.early_start + 7);
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::Six));
+				expected_nonce += expected_nonce_increment * 6;
+				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 9);
+				assert_eq!(System::account_nonce(ALICE), expected_nonce);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarMinted {
+						avatar_ids: vec![
+							AwesomeAvatars::owners(ALICE)[3],
+							AwesomeAvatars::owners(ALICE)[4],
+							AwesomeAvatars::owners(ALICE)[5],
+							AwesomeAvatars::owners(ALICE)[6],
+							AwesomeAvatars::owners(ALICE)[7],
+							AwesomeAvatars::owners(ALICE)[8],
+						],
+					},
+				));
+
+				let avatar_ids = AwesomeAvatars::owners(ALICE);
+				let (player_0, avatar_0) = AwesomeAvatars::avatars(avatar_ids[0]).unwrap();
+				let (player_1, avatar_1) = AwesomeAvatars::avatars(avatar_ids[1]).unwrap();
+
+				assert_eq!(player_0, player_1);
+				assert_eq!(player_0, ALICE);
+				assert_eq!(player_1, ALICE);
+
+				assert_eq!(avatar_0.season, avatar_1.season);
+				assert_eq!(avatar_0.season, AwesomeAvatars::active_season_id().unwrap());
+				assert_eq!(avatar_1.season, AwesomeAvatars::active_season_id().unwrap());
+
+				assert_ne!(avatar_0.dna, avatar_1.dna);
+				assert_eq!(avatar_0.dna.len(), (2 * max_components as usize) / 2);
+				assert_eq!(avatar_1.dna.len(), (2 * max_components as usize) / 2);
+			});
+	}
+
+	#[test]
+	fn free_mint_should_wait_for_cooldown() {
+		let season = Season::default().early_start(1).start(3).end(20);
+		let mint_cooldown = 7;
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![season.clone()])
+			.mint_availability(true)
+			.mint_cooldown(mint_cooldown)
+			.free_mints(vec![(ALICE, 10)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start + 1);
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One));
+
+				for _ in 0..mint_cooldown {
+					run_to_block(System::block_number() + 1);
+					assert_noop!(
+						AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One),
+						Error::<Test>::MintCooldown
+					);
+				}
+
+				run_to_block(System::block_number() + 1);
+				assert_eq!(System::block_number(), (season.start + 1) + (mint_cooldown + 1));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCount::One));
+			});
+	}
+
+	#[test]
+	fn transfer_free_mints_should_work() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.free_mints(vec![(ALICE, 17), (BOB, 4)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(AwesomeAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, 10));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::FreeMintsTransferred { from: ALICE, to: BOB, how_many: 10 },
+				));
+				assert_eq!(AwesomeAvatars::free_mints(ALICE), 6);
+				assert_eq!(AwesomeAvatars::free_mints(BOB), 14);
+
+				assert_ok!(AwesomeAvatars::transfer_free_mints(Origin::signed(ALICE), CHARLIE, 2));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::FreeMintsTransferred { from: ALICE, to: CHARLIE, how_many: 2 },
+				));
+
+				assert_eq!(AwesomeAvatars::free_mints(ALICE), 3);
+				assert_eq!(AwesomeAvatars::free_mints(CHARLIE), 2);
+			});
+	}
+
+	#[test]
+	fn transfer_free_mints_should_return_error_if_not_enough_funds_available() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.free_mints(vec![(ALICE, 7)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AwesomeAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, 10),
+					Error::<Test>::InsufficientFreeMints
+				);
+			});
+	}
+
+	#[test]
+	fn issue_funds_should_work() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.free_mints(vec![(ALICE, 7)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(AwesomeAvatars::free_mints(BOB), 0);
+
+				assert_ok!(AwesomeAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 7));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::FreeMintsIssued { to: BOB, how_many: 7 },
+				));
+
+				assert_eq!(AwesomeAvatars::free_mints(BOB), 7);
+
+				assert_ok!(AwesomeAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 3));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::FreeMintsIssued { to: BOB, how_many: 3 },
+				));
+
+				assert_eq!(AwesomeAvatars::free_mints(BOB), 10);
 			});
 	}
 }
