@@ -387,7 +387,7 @@ pub mod pallet {
 				}
 				random_tier
 			};
-			let random_variation = hash[index + 1] % MAX_PERCENTAGE;
+			let random_variation = hash[index] % season.max_variations;
 			(random_tier, random_variation)
 		}
 
