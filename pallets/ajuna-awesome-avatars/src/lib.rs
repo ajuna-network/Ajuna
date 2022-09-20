@@ -345,11 +345,6 @@ pub mod pallet {
 		pub fn free_mint(origin: OriginFor<T>, how_many: MintCountOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 
-			ensure!(
-				Self::free_mints(player.clone()) >= (how_many as MintCount),
-				Error::<T>::InsufficientFreeMints
-			);
-
 			Self::do_mint(&player, how_many, MintType::Free)
 		}
 
@@ -504,25 +499,20 @@ pub mod pallet {
 			mint_type: MintType,
 		) -> DispatchResult {
 			let season_configs = Self::global_configs();
+
 			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
-			if mint_type == MintType::Normal {
-				let fee = season_configs.mint_fees.fee_for(how_many);
-				ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
-			}
+			let avatars_to_mint = how_many as usize;
+			match mint_type {
+				MintType::Normal =>
+					Self::check_balance_is_enough(player, &how_many, &season_configs)?,
+				MintType::Free => Self::check_free_minting_funds(player, how_many as MintCount)?,
+			};
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				let cooldown = season_configs.mint_cooldown;
-				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
-			}
+			Self::check_cooldown(player, &current_block, &season_configs)?;
 
-			let avatars_to_mint = how_many as usize;
-
-			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
-				.checked_sub(avatars_to_mint)
-				.ok_or(ArithmeticError::Underflow)?;
-			ensure!(Self::owners(&player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
+			Self::check_max_ownership(player, &avatars_to_mint)?;
 
 			let active_season_id = match Self::active_season_id() {
 				Some(season_id) => season_id,
@@ -591,10 +581,46 @@ pub mod pallet {
 			})
 		}
 
+		fn check_balance_is_enough(
+			player: &T::AccountId,
+			how_many: &MintCountOption,
+			season_configs: &GlobalConfigOf<T>,
+		) -> DispatchResult {
+			let fee = season_configs.mint_fees.fee_for(*how_many);
+			ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
+			Ok(())
+		}
+
 		fn is_season_premature_closed(season: SeasonOf<T>, now: T::BlockNumber) -> bool {
 			let current_high_tier_minted = Self::active_season_rare_mints();
 			(season.early_start <= now && now <= season.end) &&
 				(current_high_tier_minted < season.max_rare_mints)
+		}
+
+		fn check_cooldown(
+			player: &T::AccountId,
+			current_block: &T::BlockNumber,
+			season_configs: &GlobalConfigOf<T>,
+		) -> DispatchResult {
+			if let Some(last_block) = Self::last_minted_block_numbers(player) {
+				let cooldown = season_configs.mint_cooldown;
+				ensure!(*current_block > last_block + cooldown, Error::<T>::MintCooldown);
+			}
+
+			Ok(())
+		}
+
+		fn check_max_ownership(player: &T::AccountId, avatars_to_mint: &usize) -> DispatchResult {
+			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
+				.checked_sub(*avatars_to_mint)
+				.ok_or(ArithmeticError::Underflow)?;
+			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
+			Ok(())
+		}
+
+		fn check_free_minting_funds(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
+			ensure!(Self::free_mints(player) >= how_many, Error::<T>::InsufficientFreeMints);
+			Ok(())
 		}
 	}
 
