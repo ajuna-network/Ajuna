@@ -335,17 +335,17 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn mint(origin: OriginFor<T>, how_many: MintCountOption) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, how_many: MintPackSize) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 
-			Self::do_mint(&player, how_many, MintType::Normal)
+			Self::do_mint(&player, MintingConfig { count: how_many, mint_type: MintType::Normal })
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn free_mint(origin: OriginFor<T>, how_many: MintCountOption) -> DispatchResult {
+		pub fn free_mint(origin: OriginFor<T>, how_many: MintPackSize) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 
-			Self::do_mint(&player, how_many, MintType::Free)
+			Self::do_mint(&player, MintingConfig { count: how_many, mint_type: MintType::Free })
 		}
 
 		#[pallet::weight(10_000)]
@@ -495,18 +495,18 @@ pub mod pallet {
 
 		pub(crate) fn do_mint(
 			player: &T::AccountId,
-			how_many: MintCountOption,
-			mint_type: MintType,
+			minting_config: MintingConfig,
 		) -> DispatchResult {
 			let season_configs = Self::global_configs();
 
 			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
-			let avatars_to_mint = how_many as usize;
-			match mint_type {
+			let avatars_to_mint = minting_config.count as usize;
+			match minting_config.mint_type {
 				MintType::Normal =>
-					Self::check_balance_is_enough(player, &how_many, &season_configs)?,
-				MintType::Free => Self::check_free_minting_funds(player, how_many as MintCount)?,
+					Self::check_balance_is_enough(player, &minting_config.count, &season_configs)?,
+				MintType::Free =>
+					Self::check_free_minting_funds(player, minting_config.count as MintCount)?,
 			};
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -564,10 +564,10 @@ pub mod pallet {
 				);
 				LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
-				if mint_type == MintType::Normal {
+				if minting_config.mint_type == MintType::Normal {
 					T::Currency::withdraw(
 						player,
-						season_configs.mint_fees.fee_for(how_many),
+						season_configs.mint_fees.fee_for(minting_config.count),
 						WithdrawReasons::FEE,
 						ExistenceRequirement::KeepAlive,
 					)?;
@@ -583,7 +583,7 @@ pub mod pallet {
 
 		fn check_balance_is_enough(
 			player: &T::AccountId,
-			how_many: &MintCountOption,
+			how_many: &MintPackSize,
 			season_configs: &GlobalConfigOf<T>,
 		) -> DispatchResult {
 			let fee = season_configs.mint_fees.fee_for(*how_many);

@@ -63,7 +63,7 @@ pub struct Avatar {
 
 /// Number of avatars to be minted.
 #[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
-pub enum MintCountOption {
+pub enum MintPackSize {
 	One = 1,
 	Three = 3,
 	Six = 6,
@@ -77,11 +77,11 @@ pub struct MintFees<Balance> {
 }
 
 impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: MintCountOption) -> Balance {
+	pub fn fee_for(self, mint_count: MintPackSize) -> Balance {
 		match mint_count {
-			MintCountOption::One => self.one,
-			MintCountOption::Three => self.three,
-			MintCountOption::Six => self.six,
+			MintPackSize::One => self.one,
+			MintPackSize::Three => self.three,
+			MintPackSize::Six => self.six,
 		}
 	}
 }
@@ -90,6 +90,11 @@ impl<Balance> MintFees<Balance> {
 pub enum MintType {
 	Free,
 	Normal,
+}
+
+pub struct MintingConfig {
+	pub mint_type: MintType,
+	pub count: MintPackSize,
 }
 
 #[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]

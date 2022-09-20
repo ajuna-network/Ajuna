@@ -495,7 +495,7 @@ mod season {
 				));
 				assert_eq!(AwesomeAvatars::active_season_id(), Some(4));
 				assert_eq!(AwesomeAvatars::next_active_season_id(), 5);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::Six));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::Six));
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), 6);
 
 				for block_number in (season_4.early_start + 1)..season_4.end {
@@ -638,7 +638,7 @@ mod minting {
 				assert_eq!(Balances::total_balance(&ALICE), balance);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::One));
 
 				expected_nonce += expected_nonce_increment;
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
@@ -649,12 +649,12 @@ mod minting {
 					},
 				));
 
-				balance -= mint_fees.fee_for(MintCountOption::One);
+				balance -= mint_fees.fee_for(MintPackSize::One);
 				assert_eq!(Balances::total_balance(&ALICE), balance);
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				run_to_block(System::block_number() + 1 + mint_cooldown);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::One));
 				expected_nonce += expected_nonce_increment;
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 2);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
@@ -664,7 +664,7 @@ mod minting {
 					},
 				));
 
-				balance -= mint_fees.fee_for(MintCountOption::One);
+				balance -= mint_fees.fee_for(MintPackSize::One);
 				assert_eq!(Balances::total_balance(&ALICE), balance);
 
 				let avatar_ids = AwesomeAvatars::owners(ALICE);
@@ -727,13 +727,13 @@ mod minting {
 
 				run_to_block(season_1.early_start + 1);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), 0);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::Six));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::Six));
 				let season_1_high_tiers = count_high_tier(1);
 				assert_eq!(season_1_high_tiers, 0);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_1_high_tiers);
 
 				run_to_block(season_2.early_start + 1);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::Six));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::Six));
 				let season_2_high_tiers = count_high_tier(2);
 				assert_eq!(season_2_high_tiers, 4);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_2_high_tiers);
@@ -742,7 +742,7 @@ mod minting {
 				));
 
 				run_to_block(season_3.early_start + 1);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::Six));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::Six));
 				let season_3_high_tiers = count_high_tier(3);
 				assert_eq!(season_3_high_tiers, 2);
 				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_3_high_tiers);
@@ -756,7 +756,7 @@ mod minting {
 	fn mint_should_return_error_when_minting_is_unavailable() {
 		ExtBuilder::default().mint_availability(false).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::One),
+				AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::One),
 				Error::<Test>::MintUnavailable
 			);
 		});
@@ -766,7 +766,7 @@ mod minting {
 	fn mint_should_reject_unsigned_caller() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::mint(Origin::none(), MintCountOption::One),
+				AwesomeAvatars::mint(Origin::none(), MintPackSize::One),
 				DispatchError::BadOrigin
 			);
 		});
@@ -781,9 +781,7 @@ mod minting {
 			.balances(vec![(ALICE, initial_balance)])
 			.build()
 			.execute_with(|| {
-				for mint_count in
-					[MintCountOption::One, MintCountOption::Three, MintCountOption::Six]
-				{
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AwesomeAvatars::mint(Origin::signed(ALICE), mint_count),
 						Error::<Test>::OutOfSeason
@@ -812,9 +810,7 @@ mod minting {
 			.execute_with(|| {
 				run_to_block(2);
 				Owners::<Test>::insert(ALICE, avatar_ids);
-				for mint_count in
-					[MintCountOption::One, MintCountOption::Three, MintCountOption::Six]
-				{
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AwesomeAvatars::mint(Origin::signed(ALICE), mint_count),
 						Error::<Test>::MaxOwnershipReached
@@ -843,8 +839,8 @@ mod minting {
 				run_to_block(season.early_start + 1);
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::Three));
-				initial_balance -= fees.fee_for(MintCountOption::Three);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::Three));
+				initial_balance -= fees.fee_for(MintPackSize::Three);
 				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 				expected_nonce += expected_nonce_increment * 3;
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
@@ -861,8 +857,8 @@ mod minting {
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				run_to_block(season.early_start + 7);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::Six));
-				initial_balance -= fees.fee_for(MintCountOption::Six);
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::Six));
+				initial_balance -= fees.fee_for(MintPackSize::Six);
 				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 				expected_nonce += expected_nonce_increment * 6;
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 9);
@@ -914,19 +910,19 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start + 1);
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::One));
 
 				for _ in 0..mint_cooldown {
 					run_to_block(System::block_number() + 1);
 					assert_noop!(
-						AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::One),
+						AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::One),
 						Error::<Test>::MintCooldown
 					);
 				}
 
 				run_to_block(System::block_number() + 1);
 				assert_eq!(System::block_number(), (season.start + 1) + (mint_cooldown + 1));
-				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::mint(Origin::signed(ALICE), MintPackSize::One));
 			});
 	}
 
@@ -942,9 +938,7 @@ mod minting {
 			.seasons(vec![season])
 			.build()
 			.execute_with(|| {
-				for mint_count in
-					[MintCountOption::One, MintCountOption::Three, MintCountOption::Six]
-				{
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AwesomeAvatars::mint(Origin::signed(ALICE), mint_count),
 						Error::<Test>::InsufficientFunds
@@ -962,9 +956,7 @@ mod minting {
 			.seasons(vec![Season::default().end(20)])
 			.build()
 			.execute_with(|| {
-				for mint_count in
-					[MintCountOption::One, MintCountOption::Three, MintCountOption::Six]
-				{
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AwesomeAvatars::free_mint(Origin::signed(ALICE), mint_count),
 						Error::<Test>::InsufficientFreeMints
@@ -980,7 +972,7 @@ mod minting {
 			.seasons(vec![Season::default().end(20)])
 			.build()
 			.execute_with(|| {
-				for mint_count in [MintCountOption::Three, MintCountOption::Six] {
+				for mint_count in [MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AwesomeAvatars::free_mint(Origin::signed(ALICE), mint_count),
 						Error::<Test>::InsufficientFreeMints
@@ -1009,7 +1001,7 @@ mod minting {
 				run_to_block(season.early_start + 1);
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One));
 
 				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 				expected_nonce += expected_nonce_increment;
@@ -1023,7 +1015,7 @@ mod minting {
 
 				run_to_block(season.start + 2);
 
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One));
 
 				assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 				expected_nonce += expected_nonce_increment;
@@ -1054,7 +1046,7 @@ mod minting {
 				run_to_block(season.end + 2);
 
 				assert_noop!(
-					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One),
+					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One),
 					Error::<Test>::OutOfSeason
 				);
 			});
@@ -1076,7 +1068,7 @@ mod minting {
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
 				assert_eq!(AwesomeAvatars::active_season_id(), Some(1));
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One));
 				System::assert_has_event(mock::Event::AwesomeAvatars(
 					crate::Event::AvatarsMinted {
 						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[0]],
@@ -1088,7 +1080,7 @@ mod minting {
 
 				run_to_block(season.start + 10);
 				assert!(AwesomeAvatars::active_season_id().is_none());
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One));
 
 				System::assert_has_event(mock::Event::AwesomeAvatars(
 					crate::Event::AvatarsMinted {
@@ -1112,7 +1104,7 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One),
+					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One),
 					Error::<Test>::OutOfSeason
 				);
 			});
@@ -1129,7 +1121,7 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One),
+					AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One),
 					Error::<Test>::MintUnavailable
 				);
 			});
@@ -1139,7 +1131,7 @@ mod minting {
 	fn free_mint_should_reject_unsigned_caller() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::free_mint(Origin::none(), MintCountOption::One),
+				AwesomeAvatars::free_mint(Origin::none(), MintPackSize::One),
 				DispatchError::BadOrigin
 			);
 		});
@@ -1164,9 +1156,7 @@ mod minting {
 			.execute_with(|| {
 				run_to_block(2);
 				Owners::<Test>::insert(ALICE, avatar_ids);
-				for mint_count in
-					[MintCountOption::One, MintCountOption::Three, MintCountOption::Six]
-				{
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AwesomeAvatars::free_mint(Origin::signed(ALICE), mint_count),
 						Error::<Test>::MaxOwnershipReached
@@ -1194,10 +1184,7 @@ mod minting {
 				run_to_block(season.early_start + 1);
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
-				assert_ok!(AwesomeAvatars::free_mint(
-					Origin::signed(ALICE),
-					MintCountOption::Three
-				));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::Three));
 				expected_nonce += expected_nonce_increment * 3;
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 3);
@@ -1213,7 +1200,7 @@ mod minting {
 
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
 				run_to_block(season.early_start + 7);
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::Six));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::Six));
 				expected_nonce += expected_nonce_increment * 6;
 				assert_eq!(AwesomeAvatars::owners(ALICE).len(), 9);
 				assert_eq!(System::account_nonce(ALICE), expected_nonce);
@@ -1262,19 +1249,19 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start + 1);
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One));
 
 				for _ in 0..mint_cooldown {
 					run_to_block(System::block_number() + 1);
 					assert_noop!(
-						AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One),
+						AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One),
 						Error::<Test>::MintCooldown
 					);
 				}
 
 				run_to_block(System::block_number() + 1);
 				assert_eq!(System::block_number(), (season.start + 1) + (mint_cooldown + 1));
-				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintPackSize::One));
 			});
 	}
 
