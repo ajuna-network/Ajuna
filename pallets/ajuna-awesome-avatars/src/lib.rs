@@ -524,7 +524,24 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Underflow)?;
 			ensure!(Self::owners(&player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
 
-			let active_season_id = Self::active_season_id().ok_or(Error::<T>::OutOfSeason)?;
+			let active_season_id = match Self::active_season_id() {
+				Some(season_id) => season_id,
+				None => {
+					let last_season_id = Self::next_active_season_id()
+						.checked_sub(1)
+						.ok_or(ArithmeticError::Underflow)?;
+					let last_season =
+						Self::seasons(last_season_id).ok_or(Error::<T>::OutOfSeason)?;
+					ensure!(
+						Self::is_season_premature_closed(
+							last_season,
+							<frame_system::Pallet<T>>::block_number()
+						),
+						Error::<T>::OutOfSeason
+					);
+					last_season_id
+				},
+			};
 
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
@@ -573,6 +590,12 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		fn is_season_premature_closed(season: SeasonOf<T>, now: T::BlockNumber) -> bool {
+			let current_high_tier_minted = Self::active_season_rare_mints();
+			(season.early_start <= now && now <= season.end) &&
+				(current_high_tier_minted < season.max_rare_mints)
+		}
 	}
 
 	#[pallet::hooks]
@@ -582,11 +605,8 @@ pub mod pallet {
 			let mut db_weight = T::DbWeight::get().reads(2);
 
 			if let Some(season) = Self::seasons(season_id) {
-				let current_high_tier_minted = Self::active_season_rare_mints();
 				db_weight += T::DbWeight::get().reads(2);
-				if (season.early_start <= now && now <= season.end) &&
-					(current_high_tier_minted < season.max_rare_mints)
-				{
+				if Self::is_season_premature_closed(season, now) {
 					ActiveSeasonId::<T>::put(season_id);
 					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
 					Self::deposit_event(Event::SeasonStarted(season_id));

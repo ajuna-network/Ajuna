@@ -1061,6 +1061,47 @@ mod minting {
 	}
 
 	#[test]
+	fn free_mint_is_still_possible_on_premature_season_end() {
+		let season = Season::default()
+			.start(1)
+			.end(20)
+			.rarity_tiers(test_rarity_tiers(vec![(RarityTier::Mythical, 100)]));
+
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![season.clone()])
+			.mint_availability(true)
+			.free_mints(vec![(ALICE, 100)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_eq!(AwesomeAvatars::active_season_id(), Some(1));
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+				System::assert_has_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarsMinted {
+						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[0]],
+					},
+				));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::RareAvatarsMinted { count: 1 },
+				));
+
+				run_to_block(season.start + 10);
+				assert!(AwesomeAvatars::active_season_id().is_none());
+				assert_ok!(AwesomeAvatars::free_mint(Origin::signed(ALICE), MintCountOption::One));
+
+				System::assert_has_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarsMinted {
+						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[1]],
+					},
+				));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::RareAvatarsMinted { count: 1 },
+				));
+			});
+	}
+
+	#[test]
 	fn free_mint_should_return_error_when_no_season_ever_created() {
 		let initial_balance = 1_234_567_890_123_456u64;
 
