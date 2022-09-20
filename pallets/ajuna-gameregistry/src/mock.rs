@@ -18,7 +18,7 @@ use super::*;
 use crate as pallet_ajuna_gameregistry;
 
 use frame_support::{
-	construct_runtime, parameter_types, traits::EqualPrivilegeOnly, weights::Weight,
+	construct_runtime, parameter_types, traits::EqualPrivilegeOnly, weights::Weight, BoundedVec,
 };
 
 use frame_system::{EnsureRoot, EnsureSigned};
@@ -142,7 +142,7 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let t = GenesisConfig {
 		system: Default::default(),
 		observers: pallet_membership::GenesisConfig::<Test> {
-			members: vec![TEE_ID],
+			members: BoundedVec::try_from(vec![TEE_ID]).expect("vec is bounded"),
 			..Default::default()
 		},
 	}

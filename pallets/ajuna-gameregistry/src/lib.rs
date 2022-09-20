@@ -204,13 +204,18 @@ pub mod pallet {
 			// At the moment we will clear the locally stored queue or `Queued`
 			// They should be the same `game_ids` but we won't check that right now until we
 			// finalise on a multishard design
-			Queued::<T>::kill();
+			// Queued::<T>::kill();
 
 			// Run through batch and accept those that are in valid state `Queued`
 			// Those that fail, fail silently
 			game_ids.iter().for_each(|game_id| {
 				if let Some(RunnerState::Queued(mut state)) = T::Runner::get_state(game_id) {
 					if let Ok(mut game) = Game::decode(&mut state) {
+						// Remove the queued item, hack to test
+						if let Some(mut queued) = Queued::<T>::get() {
+							queued.retain(|x| x != game_id);
+							Queued::<T>::put(queued);
+						}
 						game.tee_id = Some(who.clone());
 						// Accept this game, log if we failed to accept this game
 						let _ =
