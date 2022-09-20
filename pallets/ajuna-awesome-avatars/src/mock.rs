@@ -46,6 +46,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
+		Randomness: pallet_randomness_collective_flip,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
@@ -89,9 +90,12 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = [u8; 8];
 }
 
+impl pallet_randomness_collective_flip::Config for Test {}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
+	type Randomness = Randomness;
 }
 
 #[derive(Default)]

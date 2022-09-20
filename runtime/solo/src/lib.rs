@@ -458,9 +458,11 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
+impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type Randomness = Randomness;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -486,6 +488,7 @@ construct_runtime!(
 		Sudo: pallet_sudo = 13,
 		Scheduler: pallet_scheduler = 14,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
+		Randomness: pallet_randomness_collective_flip = 23,
 	}
 );
 
