@@ -34,11 +34,11 @@ pub mod pallet {
 	use super::types::*;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Hooks, WithdrawReasons},
+		traits::{Currency, ExistenceRequirement, Hooks, Randomness, WithdrawReasons},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, Saturating, UniqueSaturatedInto},
+		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::vec::Vec;
@@ -64,6 +64,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: Currency<Self::AccountId>;
+		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
 	#[pallet::storage]
@@ -370,21 +371,23 @@ pub mod pallet {
 		}
 
 		#[inline]
-		fn random_hash(who: &T::AccountId) -> [u8; 32] {
+		fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
+			let (seed, _) = T::Randomness::random(phrase);
+			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
+				.expect("input is padded with zeroes; qed");
 			let nonce = frame_system::Pallet::<T>::account_nonce(who);
-			let block_number = frame_system::Pallet::<T>::block_number();
-			let random_hash: [u8; 32] =
-				(nonce, who, block_number).using_encoded(sp_io::hashing::twox_256);
 			frame_system::Pallet::<T>::inc_account_nonce(who);
-			random_hash
+			(seed, &who, nonce.encode()).using_encoded(T::Hashing::hash)
 		}
 
+		#[inline]
 		fn random_component(
 			season: &SeasonOf<T>,
-			hash: &[u8; 32],
+			hash: &T::Hash,
 			index: usize,
 			batched_mint: bool,
 		) -> (u8, u8) {
+			let hash = hash.as_ref();
 			let random_tier = {
 				let random_percent = hash[index] % MAX_PERCENTAGE;
 				let rarity_tiers = if batched_mint {
@@ -409,19 +412,14 @@ pub mod pallet {
 		}
 
 		pub(crate) fn random_dna(
-			who: &T::AccountId,
+			hash: &T::Hash,
 			season: &SeasonOf<T>,
 			batched_mint: bool,
 		) -> Result<(Dna, bool), DispatchError> {
-			let hash = Self::random_hash(who);
 			let dna = (0..season.max_components)
-				.map(|base_index| {
-					let (random_tier, random_variation) = Self::random_component(
-						season,
-						&hash,
-						base_index as usize * 2,
-						batched_mint,
-					);
+				.map(|i| {
+					let (random_tier, random_variation) =
+						Self::random_component(season, hash, i as usize * 2, batched_mint);
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
@@ -455,9 +453,10 @@ pub mod pallet {
 
 			let generated_avatars = (0..how_many)
 				.map(|_| {
-					let (dna, is_rare) = Self::random_dna(player, &active_season, how_many > 1)?;
+					let avatar_id = Self::random_hash(b"create_avatar", player);
+					let (dna, is_rare) =
+						Self::random_dna(&avatar_id, &active_season, how_many > 1)?;
 					let avatar = Avatar { season: active_season_id, dna };
-					let avatar_id = T::Hashing::hash_of(&avatar);
 					Ok((avatar_id, avatar, is_rare))
 				})
 				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
