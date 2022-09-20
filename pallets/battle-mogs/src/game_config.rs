@@ -11,7 +11,6 @@
 // GNU Affero General Public License for more details.
 
 use frame_support::{codec::{Encode, Decode}};
-use sp_std::vec::{Vec};
 
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub enum GameConfigType {
@@ -34,10 +33,10 @@ impl GameConfig {
 	pub const PARAM_COUNT: usize = 10;
 
 	pub fn new() -> Self {
-		let mut v = [0; GameConfig::PARAM_COUNT];
+		let parameters = [0; GameConfig::PARAM_COUNT];
 
 		return GameConfig {
-			parameters: v,
+			parameters: parameters,
 		};
 	}
 	pub fn config_value(index: u8, value: u8) -> u32 {

@@ -26,6 +26,7 @@ sp-io              = { default-features = false, git = "https://github.com/parit
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-core         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-support-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 [features]
 default = [ "std" ]

@@ -11,8 +11,6 @@
 // GNU Affero General Public License for more details.
 
 use frame_support::{codec::{Encode, Decode}};
-//use node_primitives::Balance;
-use sp_std::vec::{Vec};
 use scale_info::TypeInfo;
 use codec::MaxEncodedLen;
 
@@ -26,27 +24,42 @@ pub enum BreedType {
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 pub enum RarityType {
-	Minor = 0,
-	Normal = 1,
-	Rare = 2,
-	Epic = 3,
+	Common    = 0,
+	Uncommon  = 1,
+	Rare      = 2,
+	Epic      = 3,
     Legendary = 4,
+    Mythical  = 5,
 }
 
-impl Default for RarityType { fn default() -> Self { Self::Minor }}
+impl Default for RarityType { fn default() -> Self { Self::Common }}
 
 impl RarityType { 
     pub fn from_u32(value: u32) -> RarityType {
         match value {
-            0 => RarityType::Minor,
-            1 => RarityType::Normal,
+            0 => RarityType::Common,
+            1 => RarityType::Uncommon,
 			2 => RarityType::Rare,
 			3 => RarityType::Epic,
             4 => RarityType::Legendary,
-            _ => RarityType::Minor,
+            5 => RarityType::Mythical,
+            _ => RarityType::Common,
         }
     }
 }
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+pub enum PhaseType {
+    None     = 0,
+	Breeded  = 1,
+	Hatched  = 2,
+	Matured  = 3,
+	Mastered = 4,
+    Exalted  = 5,
+}
+
+impl Default for PhaseType { fn default() -> Self { Self::None }}
+
 pub type Balance = u128;
 pub const MILLIMOGS: Balance = 1_000_000_000_000;
 pub const DMOGS: Balance = 1_000 * MILLIMOGS;
@@ -89,20 +102,18 @@ impl Pricing {
 
         price
     }
-    pub fn intrinsic_return(phase_length: usize) -> Balance {
+    pub fn intrinsic_return(phase: PhaseType) -> Balance {
         let price:Balance;
-        if phase_length == 0 {
-            price = 10;
-        } else if phase_length == 1 {
-            price = 4;
-        } else if phase_length == 2 {
-            price = 2;
-        } else if phase_length == 3 {
-            price = 1;
-        } else {
-            price = 10;
+
+        match phase {
+            PhaseType::None     => price =    0 * MILLIMOGS,
+            PhaseType::Breeded  => price =   20 * MILLIMOGS,
+            PhaseType::Hatched  => price =    5 * MILLIMOGS,
+            PhaseType::Matured  => price =    3 * MILLIMOGS,
+            PhaseType::Mastered => price =    2 * MILLIMOGS,
+            PhaseType::Exalted  => price =    1 * MILLIMOGS,
         }
-        
+
         price
     }
     pub fn pairing(rarity1: RarityType, rarity2: RarityType) -> Balance {
