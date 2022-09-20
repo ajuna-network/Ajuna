@@ -502,6 +502,8 @@ impl pallet_multisig::Config for Runtime {
 	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
 }
 
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
@@ -580,6 +582,12 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Currency = Balances;
 }
 
+impl pallet_battle_mogs::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type Randomness = RandomnessCollectiveFlip;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -595,6 +603,7 @@ construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
 		MultiSig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip = 5,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
@@ -622,6 +631,7 @@ construct_runtime!(
 
 		// Indexes 50-59 should be reserved for our games.
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 50,
+		BattleMogs: pallet_battle_mogs = 51,
 	}
 );
 

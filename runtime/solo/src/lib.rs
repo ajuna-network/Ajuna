@@ -458,9 +458,17 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+}
+
+impl pallet_battle_mogs::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type Randomness = RandomnessCollectiveFlip;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -485,7 +493,9 @@ construct_runtime!(
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
 		Scheduler: pallet_scheduler = 14,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip = 15,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
+		BattleMogs: pallet_battle_mogs = 23,
 	}
 );
 

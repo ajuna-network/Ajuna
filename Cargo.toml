@@ -11,6 +11,7 @@ members = [
     "runtime/bajun",
     "runtime/ajuna",
     "pallets/ajuna-awesome-avatars",
+    "pallets/battle-mogs",
     "primitives",
     "ajuna-common",
     "ajuna-test",

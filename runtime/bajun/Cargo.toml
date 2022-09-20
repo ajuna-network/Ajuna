@@ -36,6 +36,7 @@ pallet-balances                            = { git = "https://github.com/parityt
 pallet-collective                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-membership                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-multisig                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
+pallet-randomness-collective-flip          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-session                             = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-sudo                                = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-timestamp                           = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
@@ -78,6 +79,7 @@ parachain-info                      = { git = "https://github.com/paritytech/cum
 
 # Ajuna pallets
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+pallet-battle-mogs           = { default-features = false, path = "../../pallets/battle-mogs" }
 
 [features]
 default = [

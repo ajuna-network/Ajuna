@@ -1,0 +1,44 @@
+[package]
+authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
+description = "Ajuna Network pallet battle mogs"
+edition     = "2021"
+homepage    = "https://ajuna.io"
+license     = "Apache-2.0"
+name        = "pallet-battle-mogs"
+repository  = "https://github.com/ajuna-network/Ajuna"
+version     = "0.1.0"
+
+[package.metadata.docs.rs]
+targets = [ "x86_64-unknown-linux-gnu" ]
+
+[dependencies]
+ajuna-common = { default-features = false, path = "../../ajuna-common" }
+codec        = { default-features = false, features = [ "derive", "max-encoded-len" ], package = "parity-scale-codec", version = "3.0.0" }
+scale-info   = { default-features = false, features = [ "derive" ], version = "2.1" }
+
+frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", optional = true }
+frame-support      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+frame-system       = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-runtime         = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-std             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-io              = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+
+[dev-dependencies]
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-core         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+
+[features]
+default = [ "std" ]
+runtime-benchmarks = [ "frame-benchmarking" ]
+std = [
+    "ajuna-common/std",
+    "codec/std",
+    "sp-runtime/std",
+    "scale-info/std",
+    "frame-benchmarking/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-std/std",
+	"sp-io/std",
+]
+try-runtime = [ "frame-support/try-runtime" ]
