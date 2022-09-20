@@ -46,6 +46,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
+		Randomness: pallet_randomness_collective_flip,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
@@ -89,9 +90,12 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = [u8; 8];
 }
 
+impl pallet_randomness_collective_flip::Config for Test {}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
+	type Randomness = Randomness;
 }
 
 #[derive(Default)]
@@ -186,19 +190,22 @@ pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityPercent)>) -> Rari
 
 impl Default for Season<MockBlockNumber> {
 	fn default() -> Self {
+		let tiers = test_rarity_tiers(vec![
+			(RarityTier::Common, 50),
+			(RarityTier::Uncommon, 30),
+			(RarityTier::Rare, 12),
+			(RarityTier::Epic, 5),
+			(RarityTier::Legendary, 2),
+			(RarityTier::Mythical, 1),
+		]);
+
 		Self {
 			early_start: 1,
 			start: 2,
 			end: 3,
 			max_rare_mints: 1,
-			rarity_tiers: test_rarity_tiers(vec![
-				(RarityTier::Common, 50),
-				(RarityTier::Uncommon, 30),
-				(RarityTier::Rare, 12),
-				(RarityTier::Epic, 5),
-				(RarityTier::Legendary, 2),
-				(RarityTier::Mythical, 1),
-			]),
+			rarity_tiers: tiers.clone(),
+			rarity_tiers_batch_mint: tiers,
 			max_variations: 1,
 			max_components: 1,
 		}
@@ -218,12 +225,16 @@ impl Season<MockBlockNumber> {
 		self.end = end;
 		self
 	}
-	pub fn max_rare_mints(mut self, max_rare_mints: u16) -> Self {
+	pub fn max_rare_mints(mut self, max_rare_mints: MintCount) -> Self {
 		self.max_rare_mints = max_rare_mints;
 		self
 	}
 	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
 		self.rarity_tiers = rarity_tiers;
+		self
+	}
+	pub fn rarity_tiers_batch_mint(mut self, rarity_tiers: RarityTiers) -> Self {
+		self.rarity_tiers_batch_mint = rarity_tiers;
 		self
 	}
 	pub fn max_components(mut self, max_components: u8) -> Self {

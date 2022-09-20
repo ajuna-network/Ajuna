@@ -22,24 +22,26 @@ use scale_info::TypeInfo;
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum RarityTier {
-	Common = 1,
-	Uncommon = 2,
-	Rare = 3,
-	Epic = 4,
-	Legendary = 5,
-	Mythical = 6,
+	Common = 0,
+	Uncommon = 1,
+	Rare = 2,
+	Epic = 3,
+	Legendary = 4,
+	Mythical = 5,
 }
 
 pub type RarityPercent = u8;
 pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
+pub type MintCount = u16;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
-	pub max_rare_mints: u16,
+	pub max_rare_mints: MintCount,
 	pub rarity_tiers: RarityTiers,
+	pub rarity_tiers_batch_mint: RarityTiers,
 	pub max_variations: u8,
 	pub max_components: u8,
 }
@@ -61,7 +63,7 @@ pub struct Avatar {
 
 /// Number of avatars to be minted.
 #[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
-pub enum MintCount {
+pub enum MintCountOption {
 	One = 1,
 	Three = 3,
 	Six = 6,
@@ -75,11 +77,11 @@ pub struct MintFees<Balance> {
 }
 
 impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: MintCount) -> Balance {
+	pub fn fee_for(self, mint_count: MintCountOption) -> Balance {
 		match mint_count {
-			MintCount::One => self.one,
-			MintCount::Three => self.three,
-			MintCount::Six => self.six,
+			MintCountOption::One => self.one,
+			MintCountOption::Three => self.three,
+			MintCountOption::Six => self.six,
 		}
 	}
 }
