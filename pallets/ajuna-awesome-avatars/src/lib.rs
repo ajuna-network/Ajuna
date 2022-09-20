@@ -34,11 +34,11 @@ pub mod pallet {
 	use super::types::*;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Hooks, WithdrawReasons},
+		traits::{Currency, ExistenceRequirement, Hooks, Randomness, WithdrawReasons},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, UniqueSaturatedInto},
+		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::vec::Vec;
@@ -50,9 +50,12 @@ pub mod pallet {
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> =
 		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
+	pub(crate) type GlobalConfigOf<T> =
+		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
+	pub(crate) const MAX_RANDOM_BYTES: u8 = 32;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -62,6 +65,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: Currency<Self::AccountId>;
+		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
 	#[pallet::storage]
@@ -72,12 +76,6 @@ pub mod pallet {
 	pub fn DefaultNextSeasonId() -> SeasonId {
 		1
 	}
-
-	#[pallet::type_value]
-	pub fn DefaultNextActiveSeasonId() -> SeasonId {
-		1
-	}
-
 	/// Season number. Storage value to keep track of the id.
 	#[pallet::storage]
 	#[pallet::getter(fn next_season_id)]
@@ -87,6 +85,14 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_id)]
 	pub type ActiveSeasonId<T: Config> = StorageValue<_, SeasonId, OptionQuery>;
+
+	#[pallet::type_value]
+	pub fn DefaultNextActiveSeasonId() -> SeasonId {
+		1
+	}
+	#[pallet::storage]
+	#[pallet::getter(fn active_season_rare_mints)]
+	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, MintCount, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn next_active_season_id)]
@@ -102,33 +108,22 @@ pub mod pallet {
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn mint_available)]
-	pub type MintAvailable<T: Config> = StorageValue<_, bool, ValueQuery>;
-
 	#[pallet::type_value]
-	pub fn DefaultMintFee<T: Config>() -> MintFees<BalanceOf<T>> {
-		MintFees {
-			one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-			three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-			six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
+		GlobalConfig {
+			mint_available: false,
+			mint_fees: MintFees {
+				one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+				three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
+				six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+			},
+			mint_cooldown: 5_u8.into(),
 		}
 	}
-
 	#[pallet::storage]
-	#[pallet::getter(fn mint_fees)]
-	pub type MintFee<T: Config> =
-		StorageValue<_, MintFees<BalanceOf<T>>, ValueQuery, DefaultMintFee<T>>;
-
-	#[pallet::type_value]
-	pub fn DefaultMintCooldown<T: Config>() -> T::BlockNumber {
-		5_u8.into()
-	}
-
-	#[pallet::storage]
-	#[pallet::getter(fn mint_cooldown)]
-	pub type MintCooldown<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery, DefaultMintCooldown<T>>;
+	#[pallet::getter(fn global_configs)]
+	pub type GlobalConfigs<T: Config> =
+		StorageValue<_, GlobalConfigOf<T>, ValueQuery, DefaultGlobalConfig<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn avatars)]
@@ -146,8 +141,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn free_mints)]
-	pub type FreeMints<T: Config> =
-		StorageMap<_, Identity, T::AccountId, FreeMintsAmount, ValueQuery>;
+	pub type FreeMints<T: Config> = StorageMap<_, Identity, T::AccountId, MintCount, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -166,12 +160,18 @@ pub mod pallet {
 		UpdatedMintFee { fee: MintFees<BalanceOf<T>> },
 		/// Mint cooldown updated.
 		UpdatedMintCooldown { cooldown: T::BlockNumber },
-		/// Avatar minted.
-		AvatarMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// Avatars minted.
+		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
+		/// Rare avatars minted.
+		RareAvatarsMinted { count: MintCount },
+		/// A season has started.
+		SeasonStarted(SeasonId),
+		/// A season has finished.
+		SeasonFinished(SeasonId),
 		/// Free mints transfered between accounts.
-		FreeMintsTransferred { from: T::AccountId, to: T::AccountId, how_many: FreeMintsAmount },
+		FreeMintsTransferred { from: T::AccountId, to: T::AccountId, how_many: MintCount },
 		/// Free mints issued to account.
-		FreeMintsIssued { to: T::AccountId, how_many: FreeMintsAmount },
+		FreeMintsIssued { to: T::AccountId, how_many: MintCount },
 	}
 
 	#[pallet::error]
@@ -204,6 +204,9 @@ pub mod pallet {
 		MintCooldown,
 		/// The player has not enough funds.
 		InsufficientFunds,
+		/// The season's variants + components exceed the maximum number of random bytes allowed
+		/// (32)
+		ExceededMaxRandomBytes,
 		/// The player has not free mints available.
 		InsufficientFreeMints,
 	}
@@ -293,7 +296,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintFee::<T>::set(new_fees);
+			GlobalConfigs::<T>::mutate(|configs| {
+				configs.mint_fees = new_fees;
+			});
+
 			Self::deposit_event(Event::UpdatedMintFee { fee: new_fees });
 
 			Ok(())
@@ -306,7 +312,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintCooldown::<T>::set(new_cooldown);
+			GlobalConfigs::<T>::mutate(|configs| {
+				configs.mint_cooldown = new_cooldown;
+			});
+
 			Self::deposit_event(Event::UpdatedMintCooldown { cooldown: new_cooldown });
 
 			Ok(())
@@ -316,25 +325,28 @@ pub mod pallet {
 		pub fn update_mint_available(origin: OriginFor<T>, availability: bool) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			MintAvailable::<T>::set(availability);
+			GlobalConfigs::<T>::mutate(|configs| {
+				configs.mint_available = availability;
+			});
+
 			Self::deposit_event(Event::UpdatedMintAvailability { availability });
 
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn mint(origin: OriginFor<T>, how_many: MintCount) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, how_many: MintCountOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 
 			Self::do_mint(&player, how_many, MintType::Normal)
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn free_mint(origin: OriginFor<T>, how_many: MintCount) -> DispatchResult {
+		pub fn free_mint(origin: OriginFor<T>, how_many: MintCountOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 
 			ensure!(
-				Self::free_mints(player.clone()) >= (how_many as FreeMintsAmount),
+				Self::free_mints(player.clone()) >= (how_many as MintCount),
 				Error::<T>::InsufficientFreeMints
 			);
 
@@ -345,7 +357,7 @@ pub mod pallet {
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
 			dest: T::AccountId,
-			how_many: FreeMintsAmount,
+			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin.clone())?;
 			let player = ensure_signed(origin)?;
@@ -371,7 +383,7 @@ pub mod pallet {
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
 			dest: T::AccountId,
-			how_many: FreeMintsAmount,
+			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
@@ -398,11 +410,22 @@ pub mod pallet {
 		pub(crate) fn ensure_season(mut season: SeasonOf<T>) -> Result<SeasonOf<T>, DispatchError> {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
+			ensure!(
+				season.max_variations + season.max_components <= MAX_RANDOM_BYTES,
+				Error::<T>::ExceededMaxRandomBytes
+			);
 
-			season.rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
+			Self::validate_rarity_tiers(&mut season.rarity_tiers)?;
+			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
+
+			Ok(season)
+		}
+
+		fn validate_rarity_tiers(rarity_tiers: &mut RarityTiers) -> DispatchResult {
+			rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
 			let (tiers, chances) = {
 				let (mut tiers, chances): (Vec<_>, Vec<_>) =
-					season.rarity_tiers.clone().into_iter().unzip();
+					rarity_tiers.clone().into_iter().unzip();
 				tiers.sort();
 				tiers.dedup();
 				(tiers, chances)
@@ -413,23 +436,37 @@ pub mod pallet {
 			);
 			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
 
-			Ok(season)
+			Ok(())
 		}
 
-		fn random_number(who: &T::AccountId, until: u8) -> u8 {
+		#[inline]
+		fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
+			let (seed, _) = T::Randomness::random(phrase);
+			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
+				.expect("input is padded with zeroes; qed");
 			let nonce = frame_system::Pallet::<T>::account_nonce(who);
-			let block_number = frame_system::Pallet::<T>::block_number();
-			let random_hash = (nonce, who, block_number).using_encoded(sp_io::hashing::twox_128);
 			frame_system::Pallet::<T>::inc_account_nonce(who);
-			random_hash[0] % until
+			(seed, &who, nonce.encode()).using_encoded(T::Hashing::hash)
 		}
 
-		fn random_component(who: &T::AccountId, season: &SeasonOf<T>) -> (u8, u8) {
+		#[inline]
+		fn random_component(
+			season: &SeasonOf<T>,
+			hash: &T::Hash,
+			index: usize,
+			batched_mint: bool,
+		) -> (u8, u8) {
+			let hash = hash.as_ref();
 			let random_tier = {
-				let random_percent = Self::random_number(who, MAX_PERCENTAGE);
+				let random_percent = hash[index] % MAX_PERCENTAGE;
+				let rarity_tiers = if batched_mint {
+					&season.rarity_tiers_batch_mint
+				} else {
+					&season.rarity_tiers
+				};
 				let mut cumulative_sum = 0;
-				let mut random_tier = season.rarity_tiers[0].0.clone() as u8;
-				for (tier, chance) in season.rarity_tiers.iter() {
+				let mut random_tier = rarity_tiers[0].0.clone() as u8;
+				for (tier, chance) in rarity_tiers.iter() {
 					let new_cumulative_sum = cumulative_sum + chance;
 					if random_percent >= cumulative_sum && random_percent < new_cumulative_sum {
 						random_tier = tier.clone() as u8;
@@ -439,42 +476,49 @@ pub mod pallet {
 				}
 				random_tier
 			};
-			let random_variation = Self::random_number(who, season.max_variations);
+			let random_variation = hash[index] % season.max_variations;
 			(random_tier, random_variation)
 		}
 
 		pub(crate) fn random_dna(
-			who: &T::AccountId,
+			hash: &T::Hash,
 			season: &SeasonOf<T>,
-		) -> Result<Dna, DispatchError> {
+			batched_mint: bool,
+		) -> Result<(Dna, bool), DispatchError> {
 			let dna = (0..season.max_components)
-				.map(|_| {
-					let (random_tier, random_variation) = Self::random_component(who, season);
+				.map(|i| {
+					let (random_tier, random_variation) =
+						Self::random_component(season, hash, i as usize * 2, batched_mint);
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
-			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
+			let is_rare = dna.iter().all(|each| (each >> 4) >= RarityTier::Legendary as u8);
+			Dna::try_from(dna)
+				.map(|x| (x, is_rare))
+				.map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
 		pub(crate) fn do_mint(
 			player: &T::AccountId,
-			how_many: MintCount,
+			how_many: MintCountOption,
 			mint_type: MintType,
 		) -> DispatchResult {
-			ensure!(Self::mint_available(), Error::<T>::MintUnavailable);
+			let season_configs = Self::global_configs();
+			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
 			if mint_type == MintType::Normal {
-				let fee = Self::mint_fees().fee_for(how_many);
+				let fee = season_configs.mint_fees.fee_for(how_many);
 				ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
 			}
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				let cooldown = Self::mint_cooldown();
+				let cooldown = season_configs.mint_cooldown;
 				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
 			}
 
 			let avatars_to_mint = how_many as usize;
+
 			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
 				.checked_sub(avatars_to_mint)
 				.ok_or(ArithmeticError::Underflow)?;
@@ -486,18 +530,24 @@ pub mod pallet {
 
 			let generated_avatars = (0..avatars_to_mint)
 				.map(|_| {
-					let dna = Self::random_dna(player, &active_season)?;
+					let avatar_id = Self::random_hash(b"create_avatar", player);
+					let (dna, is_rare) =
+						Self::random_dna(&avatar_id, &active_season, avatars_to_mint > 1)?;
 					let avatar = Avatar { season: active_season_id, dna };
-					let avatar_id = T::Hashing::hash_of(&avatar);
-					Ok((avatar_id, avatar))
+					Ok((avatar_id, avatar, is_rare))
 				})
-				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
+				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
 
+			let mut rare_avatars = 0;
 			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
 				let generated_avatars_ids = generated_avatars
 					.into_iter()
-					.map(|(avatar_id, avatar)| {
+					.map(|(avatar_id, avatar, is_rare)| {
 						Avatars::<T>::insert(avatar_id, (&player, avatar));
+						if is_rare {
+							ActiveSeasonRareMints::<T>::mutate(|count| count.saturating_inc());
+							rare_avatars.saturating_inc();
+						}
 						avatar_id
 					})
 					.collect::<Vec<_>>();
@@ -510,12 +560,16 @@ pub mod pallet {
 				if mint_type == MintType::Normal {
 					T::Currency::withdraw(
 						player,
-						Self::mint_fees().fee_for(how_many),
+						season_configs.mint_fees.fee_for(how_many),
 						WithdrawReasons::FEE,
 						ExistenceRequirement::KeepAlive,
 					)?;
 				}
-				Self::deposit_event(Event::AvatarMinted { avatar_ids: generated_avatars_ids });
+
+				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
+				if rare_avatars > 0 {
+					Self::deposit_event(Event::RareAvatarsMinted { count: rare_avatars });
+				}
 				Ok(())
 			})
 		}
@@ -528,14 +582,21 @@ pub mod pallet {
 			let mut db_weight = T::DbWeight::get().reads(2);
 
 			if let Some(season) = Self::seasons(season_id) {
-				db_weight += T::DbWeight::get().reads(1);
-				if season.early_start <= now && now <= season.end {
+				let current_high_tier_minted = Self::active_season_rare_mints();
+				db_weight += T::DbWeight::get().reads(2);
+				if (season.early_start <= now && now <= season.end) &&
+					(current_high_tier_minted < season.max_rare_mints)
+				{
 					ActiveSeasonId::<T>::put(season_id);
 					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
-					db_weight += T::DbWeight::get().writes(2);
+					Self::deposit_event(Event::SeasonStarted(season_id));
+					db_weight += T::DbWeight::get().writes(3);
 				} else {
-					ActiveSeasonId::<T>::kill();
-					db_weight += T::DbWeight::get().writes(1);
+					ActiveSeasonRareMints::<T>::kill();
+					if let Some(season_id) = ActiveSeasonId::<T>::take() {
+						Self::deposit_event(Event::SeasonFinished(season_id));
+					}
+					db_weight += T::DbWeight::get().writes(3);
 				}
 			}
 			db_weight

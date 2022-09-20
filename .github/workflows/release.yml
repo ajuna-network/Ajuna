@@ -1,4 +1,4 @@
-name: Build & Release
+name: Release
 
 on:
   push:
@@ -8,32 +8,39 @@ on:
       - v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
-  check:
-    if: startsWith(github.ref, 'refs/heads/release/')
+  release-check:
+    if: startsWith(github.ref, 'refs/heads/release')
+    name: Check for release
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [bajun]
     steps:
       - uses: actions/checkout@v3
-      - name: Get crate versions
+        with:
+          fetch-depth: 0
+
+      - name: Get crate and release versions
         run: |
-          echo "CRATE_VERSIONS=$(
-            cargo tree --depth=0 --workspace \
-              | egrep -o '[0-9]+\.[0-9]+\.[0-9]' \
-              | uniq
-          )" >> $GITHUB_ENV
+          echo "CRATE_VERSIONS=$(cargo tree --depth=0 --workspace | egrep -o '[0-9]+\.[0-9]+\.[0-9]' | uniq)" >> $GITHUB_ENV
           echo "RELEASE_VERSION=${GITHUB_REF_NAME#release/}" >> $GITHUB_ENV
-          echo "RELEASE_VERSION=0.1.0" >> $GITHUB_ENV
+
       - name: Check release version is bumped
         run: |
           [ -z "$(git tag --list)" ] && {
             echo "skipping as there are no tags yet"
             exit 0
           }
-          TAG=$(git describe --tags --abbrev=0) && {
-            [ ${TAG#v} -eq ${{ env.RELEASE_VERSION }} ] && {
-              echo "release version must be bumped"
-              exit 1
-            }
+
+          TAG=$(git describe --tags --abbrev=0 | tr -d v)
+          echo "previous release version: $TAG"
+          echo "current release version: ${{ env.RELEASE_VERSION }}"
+          [ $TAG -eq ${{ env.RELEASE_VERSION }} ] && {
+            echo "release version must be bumped"
+            exit 1
           }
+          exit 0
+
       - name: Check crate and release versions match
         run: |
           [ $(echo ${{ env.CRATE_VERSIONS }} | wc -w | xargs) -ne 1 ] && {
@@ -41,25 +48,33 @@ jobs:
             exit 1
           }
           [ "${{ env.CRATE_VERSIONS }}" != "${{ env.RELEASE_VERSION }}" ] && {
-            echo "release version is not equal to crate versions"
+            echo "release version (${{ env.CRATE_VERSIONS }}) is not equal to crate versions (${{ env.CRATE_VERSIONS }})"
             exit 1
           }
+          echo "crate version: ${{ env.CRATE_VERSIONS }}"
+          echo "release version: ${{ env.RELEASE_VERSION }}"
           exit 0
+
       - name: Check spec version match
         run: |
-          SPEC_VERSION=$(grep "spec_version" runtime/**/lib.rs | egrep -o "[0-9]+")
-          CRATE_VERSIONS=${{ env.CRATE_VERSIONS }}
-          ZERO_PADDED_VERSION=$(echo "${CRATE_VERSIONS#0.}0" | sed "s/\.//g")
-          [ "$SPEC_VERSION" != "$ZERO_PADDED_VERSION" ] && {
+          RELEASE_VERSION=$(echo ${{ env.RELEASE_VERSION }} | tr -d .)
+          RELEASE_VERSION_INTEGER=$((10#$RELEASE_VERSION))
+          SPEC_VERSION=$(grep "spec_version" runtime/${{ matrix.runtime }}/**/lib.rs | egrep -o "[0-9]+")
+
+          echo "release version as integer: $RELEASE_VERSION_INTEGER"
+          echo "spec version: $SPEC_VERSION"
+
+          [ "$RELEASE_VERSION_INTEGER" != "$SPEC_VERSION" ] && {
             echo "spec version doesn't match release version"
             exit 1
           }
           exit 0
+
       - name: Check wasm build
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --release -p ajuna-runtime
+          args: --all-features --all-targets --release -p ${{ matrix.runtime }}-runtime
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -67,18 +82,18 @@ jobs:
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu]
+        runtime: [bajun]
     steps:
       - uses: actions/checkout@v3
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target=${{ matrix.target }}
+          args: --release -p ${{ matrix.runtime }}-runtime --target=${{ matrix.target }}
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
           files: |
-            node/res/*.json
-            target/${{ matrix.target }}/release/ajuna
-            target/${{ matrix.target }}/release/wbuild/ajuna-runtime/ajuna_runtime.compact.wasm
+            target/${{ matrix.target }}/release/${{ matrix.runtime }}
+            target/${{ matrix.target }}/release/wbuild/${{ matrix.runtime}}-runtime/${{ matrix.runtime}}_runtime.compact.wasm

@@ -46,6 +46,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
+		Randomness: pallet_randomness_collective_flip,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
@@ -89,9 +90,12 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = [u8; 8];
 }
 
+impl pallet_randomness_collective_flip::Config for Test {}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
+	type Randomness = Randomness;
 }
 
 #[derive(Default)]
@@ -102,7 +106,7 @@ pub struct ExtBuilder {
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
 	balances: Vec<(MockAccountId, MockBalance)>,
-	free_mints: Vec<(MockAccountId, FreeMintsAmount)>,
+	free_mints: Vec<(MockAccountId, MintCount)>,
 }
 
 impl ExtBuilder {
@@ -130,7 +134,7 @@ impl ExtBuilder {
 		self.mint_fees = Some(mint_fees);
 		self
 	}
-	pub fn free_mints(mut self, free_mints: Vec<(MockAccountId, FreeMintsAmount)>) -> Self {
+	pub fn free_mints(mut self, free_mints: Vec<(MockAccountId, MintCount)>) -> Self {
 		self.free_mints = free_mints;
 		self
 	}
@@ -153,14 +157,20 @@ impl ExtBuilder {
 				NextSeasonId::<Test>::put(season_id + 1);
 			}
 
-			MintAvailable::<Test>::set(self.mint_availability);
+			GlobalConfigs::<Test>::mutate(|configs| {
+				configs.mint_available = self.mint_availability;
+			});
 
 			if let Some(mint_cooldown) = self.mint_cooldown {
-				MintCooldown::<Test>::set(mint_cooldown);
+				GlobalConfigs::<Test>::mutate(|configs| {
+					configs.mint_cooldown = mint_cooldown;
+				});
 			}
 
 			if let Some(mint_fees) = self.mint_fees {
-				MintFee::<Test>::set(mint_fees);
+				GlobalConfigs::<Test>::mutate(|configs| {
+					configs.mint_fees = mint_fees;
+				});
 			}
 
 			for (account_id, mint_amount) in self.free_mints {
@@ -189,20 +199,22 @@ pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityPercent)>) -> Rari
 
 impl Default for Season<MockBlockNumber> {
 	fn default() -> Self {
+		let tiers = test_rarity_tiers(vec![
+			(RarityTier::Common, 50),
+			(RarityTier::Uncommon, 30),
+			(RarityTier::Rare, 12),
+			(RarityTier::Epic, 5),
+			(RarityTier::Legendary, 2),
+			(RarityTier::Mythical, 1),
+		]);
+
 		Self {
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_mints: 1,
-			max_mythical_mints: 1,
-			rarity_tiers: test_rarity_tiers(vec![
-				(RarityTier::Common, 50),
-				(RarityTier::Uncommon, 30),
-				(RarityTier::Rare, 12),
-				(RarityTier::Epic, 5),
-				(RarityTier::Legendary, 2),
-				(RarityTier::Mythical, 1),
-			]),
+			max_rare_mints: 1,
+			rarity_tiers: tiers.clone(),
+			rarity_tiers_batch_mint: tiers,
 			max_variations: 1,
 			max_components: 1,
 		}
@@ -222,8 +234,16 @@ impl Season<MockBlockNumber> {
 		self.end = end;
 		self
 	}
+	pub fn max_rare_mints(mut self, max_rare_mints: MintCount) -> Self {
+		self.max_rare_mints = max_rare_mints;
+		self
+	}
 	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
 		self.rarity_tiers = rarity_tiers;
+		self
+	}
+	pub fn rarity_tiers_batch_mint(mut self, rarity_tiers: RarityTiers) -> Self {
+		self.rarity_tiers_batch_mint = rarity_tiers;
 		self
 	}
 	pub fn max_components(mut self, max_components: u8) -> Self {

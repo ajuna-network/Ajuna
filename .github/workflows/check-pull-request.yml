@@ -24,6 +24,7 @@ env:
 
 jobs:
   fmt:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: Rustfmt
     runs-on: ubuntu-latest
     continue-on-error: false
@@ -37,6 +38,7 @@ jobs:
           args: --all -- --check
 
   check:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: Clippy and Check
     runs-on: ubuntu-latest
     continue-on-error: false
@@ -63,6 +65,7 @@ jobs:
           args: --all-features --all-targets ${{ env.CARGO_ARGS }}
 
   test:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: Test
     runs-on: ubuntu-latest
     continue-on-error: false
@@ -85,6 +88,7 @@ jobs:
           args: --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   notify:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: Notify on Slack
     runs-on: ubuntu-latest
     needs: [test]

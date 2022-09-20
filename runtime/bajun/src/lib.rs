@@ -164,7 +164,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("bajun"),
 	impl_name: create_runtime_str!("bajun"),
 	authoring_version: 1,
-	spec_version: 1,
+	spec_version: 11,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -575,9 +575,11 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Runtime>;
 }
 
+impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type Randomness = Randomness;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -595,6 +597,7 @@ construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
 		MultiSig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
+		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 5,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
