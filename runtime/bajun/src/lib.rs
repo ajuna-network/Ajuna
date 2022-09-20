@@ -272,7 +272,8 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Council(_) |
 			Call::CouncilMembership(_) |
 			// ajuna pallets
-			Call::AwesomeAvatars(_	) => true
+			Call::AwesomeAvatars(_	) |
+			Call::BattleMogs(_	) => true
 		}
 	}
 }

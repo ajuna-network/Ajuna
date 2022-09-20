@@ -128,7 +128,7 @@ pub struct Breeding;
 
 impl Breeding {
 
-    pub fn sacrifice(gen1: u32, rar1: u32, metaxy1: Vec<[u8;16]>, gen2: u32, rar2: u32, metaxy2: Vec<[u8;16]>) -> u32 {
+    pub fn sacrifice(gen1: u32, rar1: u32, metaxy1: [[u8;16];2], gen2: u32, rar2: u32, metaxy2: [[u8;16];2]) -> u32 {
         
         let mut result_gen:u32 = 0;
 

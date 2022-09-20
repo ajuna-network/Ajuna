@@ -105,6 +105,7 @@ std = [
     "frame-system/std",
     "orml-vesting/std",
     "pallet-ajuna-awesome-avatars/std",
+    "pallet-battle-mogs/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-balances/std",
