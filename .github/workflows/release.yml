@@ -95,5 +95,4 @@ jobs:
         with:
           draft: true
           files: |
-            target/${{ matrix.target }}/release/${{ matrix.runtime }}
             target/${{ matrix.target }}/release/wbuild/${{ matrix.runtime}}-runtime/${{ matrix.runtime}}_runtime.compact.wasm
