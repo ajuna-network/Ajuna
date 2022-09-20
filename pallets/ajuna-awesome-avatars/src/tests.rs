@@ -429,7 +429,7 @@ mod season {
 			.early_start(33)
 			.start(34)
 			.end(50)
-			.rarity_tiers(test_rarity_tiers(vec![(RarityTier::Legendary, 100)]))
+			.rarity_tiers_batch_mint(test_rarity_tiers(vec![(RarityTier::Legendary, 100)]))
 			.max_rare_mints(3);
 
 		ExtBuilder::default()
@@ -687,33 +687,15 @@ mod minting {
 
 	#[test]
 	fn mint_should_work_when_rare_tier_avatars_are_minted() {
-		let season_1 =
-			Season::default()
-				.early_start(10)
-				.start(11)
-				.end(12)
-				.rarity_tiers(test_rarity_tiers(vec![
-					(RarityTier::Common, 99),
-					(RarityTier::Legendary, 1),
-				]));
-		let season_2 =
-			Season::default()
-				.early_start(13)
-				.start(14)
-				.end(15)
-				.rarity_tiers(test_rarity_tiers(vec![
-					(RarityTier::Common, 50),
-					(RarityTier::Legendary, 50),
-				]));
-		let season_3 =
-			Season::default()
-				.early_start(16)
-				.start(17)
-				.end(18)
-				.rarity_tiers(test_rarity_tiers(vec![
-					(RarityTier::Common, 50),
-					(RarityTier::Mythical, 50),
-				]));
+		let season_1 = Season::default().early_start(10).start(11).end(12).rarity_tiers_batch_mint(
+			test_rarity_tiers(vec![(RarityTier::Common, 99), (RarityTier::Legendary, 1)]),
+		);
+		let season_2 = Season::default().early_start(13).start(14).end(15).rarity_tiers_batch_mint(
+			test_rarity_tiers(vec![(RarityTier::Common, 50), (RarityTier::Legendary, 50)]),
+		);
+		let season_3 = Season::default().early_start(16).start(17).end(18).rarity_tiers_batch_mint(
+			test_rarity_tiers(vec![(RarityTier::Common, 50), (RarityTier::Mythical, 50)]),
+		);
 		let seasons = vec![season_1.clone(), season_2.clone(), season_3.clone()];
 
 		ExtBuilder::default()
