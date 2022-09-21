@@ -119,7 +119,7 @@ fn should_create_new_game() {
 			players: vec![BOB, CHARLIE],
 		}));
 		assert!(BoardStates::<Test>::contains_key(BOARD_ID));
-		assert!(Seed::<Test>::get().is_none());
+		assert!(Seed::<Test>::get().is_some());
 
 		let tests_for_errors = vec![
 			(BTreeSet::from([BOB, CHARLIE]), BOARD_ID, Error::<Test>::BoardExists),
