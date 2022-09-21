@@ -14,6 +14,7 @@ PALLETS=(
   "pallet-membership"
   "pallet-treasury"
   "pallet-collator-selection"
+  "pallet-utility"
 )
 
 cd $(git rev-parse --show-toplevel)
