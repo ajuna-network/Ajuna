@@ -254,7 +254,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::System(_) |
 			Call::ParachainSystem(_) |
 			Call::Timestamp(_) |
-			Call::MultiSig(_) |
+			Call::Multisig(_) |
 			// monetary
 			Call::Balances(_) |
 			Call::Vesting(_) |
@@ -596,8 +596,7 @@ construct_runtime!(
 		} = 1,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
-		MultiSig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 5,
+		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
@@ -639,7 +638,7 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
-		[pallet_multisig, MultiSig]
+		[pallet_multisig, Multisig]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_treasury, Treasury]
