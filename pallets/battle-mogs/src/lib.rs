@@ -47,7 +47,6 @@ pub struct MogwaiStruct<Hash, BlockNumber, Balance, RarityType, PhaseType> {
 //	state: u32,
 //  level: u32,
 	genesis: BlockNumber,
-	price: Balance,
 	intrinsic: Balance,
 	gen: u32,
 	rarity: RarityType,
@@ -104,13 +103,17 @@ pub mod pallet {
 	/// A map of mogwais accessible by the mogwai hash.
 	pub type Mogwais<T: Config> = StorageMap<_, Identity, T::Hash, MogwaiStruct<T::Hash, T::BlockNumber, BalanceOf<T>, RarityType, PhaseType>, ValueQuery>;
 	#[pallet::storage]
+	#[pallet::getter(fn mogwai_prices)]
+	/// A map of mogwais that are up for sale.
+	pub type MogwaiPrices<T: Config> = StorageMap<_, Identity, T::Hash, BalanceOf<T>, OptionQuery>;
+	#[pallet::storage]
 	#[pallet::getter(fn owner_of)]
 	/// A map of mogwai owners accessible by the mogwai hash.
 	pub type MogwaiOwner<T: Config> = StorageMap<_, Identity, T::Hash, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn mogwai_by_index)]
-	/// A map of all existing mogwais accessible by the index. 
+	/// A map of all existing mogwais accessible by the index.
 	pub type AllMogwaisArray<T: Config> = StorageMap<_, Blake2_128Concat, u64, T::Hash, ValueQuery>;
 	#[pallet::storage]
 	#[pallet::getter(fn all_mogwais_count)]
@@ -154,7 +157,10 @@ pub mod pallet {
 		AccountConfigChanged(T::AccountId, [u8; GameConfig::PARAM_COUNT]),
 
 		/// A price has been set for a mogwai.
-		PriceSet(T::AccountId, T::Hash, BalanceOf<T>),
+		ForSale(T::AccountId, T::Hash, BalanceOf<T>),
+
+		/// A price has been unset for a mogwai.
+		NotForSale(T::AccountId, T::Hash),
 
 		/// A mogwai has been created.
 		MogwaiCreated(T::AccountId, T::Hash),
@@ -181,7 +187,7 @@ pub mod pallet {
 
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
-		
+
 		/// The submitted index is out of range.
 		ConfigIndexOutOfRange,
 
@@ -190,6 +196,9 @@ pub mod pallet {
 
 		/// Founder action only.
 		FounderAction,
+
+		/// Mogwai is not for sale
+		MogwaiNotForSale,
 
 		/// The mogwais hash doesn't exist.
 		MogwaiDoesntExists,
@@ -276,7 +285,7 @@ pub mod pallet {
 			if price > 0 {
 				Self::pay_founder(sender.clone(), price.saturated_into())?;
 			}
-			
+
 			game_config.parameters[usize::from(index)] = update_value;
 
 			// updating to the new configuration
@@ -284,7 +293,7 @@ pub mod pallet {
 
 			// Emit an event.
 			Self::deposit_event(Event::AccountConfigChanged(sender, game_config.parameters));
-			
+
 			// Return a successful DispatchResult
 			Ok(())
 		}
@@ -292,39 +301,46 @@ pub mod pallet {
 		/// Set price of mogwai.
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn set_price(origin: OriginFor<T>, mogwai_id: T::Hash, new_price: BalanceOf<T>) -> DispatchResult {
-	
+
 			let sender = ensure_signed(origin)?;
-		
-			ensure!(Mogwais::<T>::contains_key(mogwai_id), Error::<T>::MogwaiDoesntExists);
-	
 			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiNotOwned)?;
-					
 			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
-		
-			let mut mogwai = Self::mogwai(mogwai_id);
-			mogwai.price = new_price;
-		
-			<Mogwais<T>>::insert(mogwai_id, mogwai);
-	
-			Self::deposit_event(Event::PriceSet(sender, mogwai_id, new_price));
-					
+
+			<MogwaiPrices<T>>::insert(mogwai_id, new_price);
+			Self::deposit_event(Event::ForSale(sender, mogwai_id, new_price));
+
+			Ok(())
+		}
+
+		/// unset price of mogwai.
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		pub fn remove_price(origin: OriginFor<T>, mogwai_id: T::Hash) -> DispatchResult {
+
+			let sender = ensure_signed(origin)?;
+			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiNotOwned)?;
+			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
+			ensure!(MogwaiPrices::<T>::contains_key(mogwai_id), Error::<T>::MogwaiNotForSale);
+
+			<MogwaiPrices<T>>::remove(mogwai_id);
+			Self::deposit_event(Event::NotForSale(sender, mogwai_id));
+
 			Ok(())
 		}
 
 		/// Create a new mogwai.
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn create_mogwai(origin: OriginFor<T>) -> DispatchResult {
-					
+
 			let sender = ensure_signed(origin)?;
-		
+
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
-						
+
 			let random_hash = Self::generate_random_hash(b"create_mogwai", sender.clone());
-		
+
 			let (rarity, next_gen) = Generation::next_gen(1, RarityType::Common, 1, RarityType::Common, random_hash.as_ref());
 
-			let block_number = <frame_system::Pallet<T>>::block_number();			
+			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type : BreedType = Self::calculate_breedtype(block_number);
 
 			let mut dx: [u8;16] = Default::default();
@@ -345,13 +361,12 @@ pub mod pallet {
 				dna: final_dna_hash,
 				metaxy: [[0u8;16];2],
 				genesis: block_number,
-				price: Zero::zero(),
 				intrinsic: Zero::zero(),
 				gen: next_gen,
 				rarity: rarity,
 				phase: PhaseType::Breeded,
 			};
-		
+
 			Self::mint(sender, random_hash, new_mogwai)?;
 
 			Ok(())
@@ -362,13 +377,11 @@ pub mod pallet {
 		pub fn remove_mogwai(origin: OriginFor<T>, mogwai_id: T::Hash) -> DispatchResult {
 
 			let sender = ensure_signed(origin)?;
-
 			ensure!(sender == Self::founder_key().unwrap(), Error::<T>::FounderAction);
 
 			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiNotOwned)?;
-			
 			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
-		
+
 			Self::remove(sender, mogwai_id)?;
 
 			Ok(())
@@ -377,30 +390,29 @@ pub mod pallet {
 		/// Transfer mogwai to a new account.
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, mogwai_id: T::Hash) -> DispatchResult {
-		
-			let sender = ensure_signed(origin)?;
 
+			let sender = ensure_signed(origin)?;
 			ensure!(sender == Self::founder_key().unwrap(), Error::<T>::FounderAction);
 
 			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
-		
+
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(to.clone()), Error::<T>::MaxMogwaisInAccount);
-		
+
 			Self::transfer_from(sender, to, mogwai_id)?;
-		
+
 			Ok(())
 		}
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn hatch_mogwai(origin: OriginFor<T>, mogwai_id: T::Hash) -> DispatchResult {
-					
+
 			let sender = ensure_signed(origin)?;
-			
+
 			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
-				
+
 			let mut mogwai = Self::mogwai(mogwai_id);
 
 			let block_number = <frame_system::Pallet<T>>::block_number();
@@ -430,7 +442,7 @@ pub mod pallet {
 
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
 			let mogwai_1 = Self::mogwai(mogwai_id_1);
-			
+
 			let intrinsic = mogwai_1.intrinsic / Pricing::intrinsic_return(mogwai_1.phase).saturated_into();
 			Self::remove(sender.clone(), mogwai_id_1)?;
 			let _ = T::Currency::deposit_into_existing(&sender, intrinsic)?;
@@ -475,20 +487,16 @@ pub mod pallet {
 		/// Buy a mogwai.
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn buy_mogwai(origin: OriginFor<T>, mogwai_id: T::Hash, max_price: BalanceOf<T>) -> DispatchResult {
-			
+
 			let sender = ensure_signed(origin)?;
 
-			ensure!(Mogwais::<T>::contains_key(mogwai_id), Error::<T>::MogwaiDoesntExists);
+			ensure!(MogwaiPrices::<T>::contains_key(mogwai_id), Error::<T>::MogwaiNotForSale);
 
 			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 			ensure!(owner != sender, "You already own this mogwai");
-			
-			let mut mogwai = Self::mogwai(mogwai_id);
-		
-			let mogwai_price = mogwai.price;
 
-			ensure!(!mogwai_price.is_zero(), "You can't buy this mogwai, there is no price");
-		
+			let mogwai_price = Self::mogwai_prices(mogwai_id).unwrap();
+
 			ensure!(mogwai_price <= max_price, "You can't buy this mogwai, price exceeds your max price limit");
 
 			// ensure that we have enough space
@@ -504,14 +512,9 @@ pub mod pallet {
 				and minting ensure there won't ever be more than `max()` mogwais, \
 				which means transfer cannot cause an overflow; \
 				qed");
-			
-			// Reset mogwai price back to zero, and update the storage
-			mogwai.price = Zero::zero();
-
-			<Mogwais<T>>::insert(mogwai_id, mogwai);
 
 			Self::deposit_event(Event::MogwaiBought(sender, owner, mogwai_id, mogwai_price));
-			
+
 			Ok(())
 		}
 
@@ -525,7 +528,7 @@ pub mod pallet {
             ensure!(Mogwais::<T>::contains_key(mogwai_id), Error::<T>::MogwaiDoesntExists);
 
 			// check that the mogwai has an owner and that it is the one calling this extrinsic
-			let owner = Self::owner_of(mogwai_id).ok_or("No owner for this mogwai")?;		
+			let owner = Self::owner_of(mogwai_id).ok_or("No owner for this mogwai")?;
 			ensure!(owner == sender, "You don't own this mogwai");
 
 			let mut mogwai = Self::mogwai(mogwai_id);
@@ -537,13 +540,13 @@ pub mod pallet {
 			// get blocknumber to calculate moon phase for morphing
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type : BreedType = Self::calculate_breedtype(block_number);
-			  
+
 			let mut dx: [u8;8] = Default::default();
 			let mut dy: [u8;8] = Default::default();
 			dx.copy_from_slice(&mogwai.dna.as_ref()[0..8]);
 			dy.copy_from_slice(&mogwai.dna.as_ref()[8..16]);
-	
-			mogwai.metaxy[0] = Breeding::morph(breed_type, dx, dy);	
+
+			mogwai.metaxy[0] = Breeding::morph(breed_type, dx, dy);
 
             <Mogwais<T>>::insert(mogwai_id, mogwai);
 
@@ -555,13 +558,13 @@ pub mod pallet {
 		/// Breed a mogwai.
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn breed_mogwai(origin: OriginFor<T>, mogwai_id_1: T::Hash, mogwai_id_2: T::Hash) -> DispatchResult {
-			
+
 			let sender = ensure_signed(origin)?;
 
 			ensure!(Mogwais::<T>::contains_key(mogwai_id_1), Error::<T>::MogwaiDoesntExists);
 			ensure!(Mogwais::<T>::contains_key(mogwai_id_2), Error::<T>::MogwaiDoesntExists);
 
-			let owner = Self::owner_of(mogwai_id_1).ok_or(Error::<T>::MogwaiNotOwned)?;	
+			let owner = Self::owner_of(mogwai_id_1).ok_or(Error::<T>::MogwaiNotOwned)?;
 			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
 
 			// breeding into the same mogwai isn't allowed
@@ -579,9 +582,9 @@ pub mod pallet {
 
 			let (rarity, next_gen) = Generation::next_gen(parents[0].gen, parents[0].rarity, parents[1].gen, parents[1].rarity, mogwai_id.as_ref());
 
-			let block_number = <frame_system::Pallet<T>>::block_number();			
+			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type : BreedType = Self::calculate_breedtype(block_number);
-						
+
 			let dx = mogwai_1.metaxy[0];
 			let dy = mogwai_2.metaxy[0];
 
@@ -589,8 +592,8 @@ pub mod pallet {
 			let pairing_price:BalanceOf<T> = Pricing::pairing(parents[0].rarity, parents[1].rarity).saturated_into();
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, mogwai_2)?;
 
-			let final_dna : [u8;32] = Breeding::pairing(breed_type, dx, dy);	
-			
+			let final_dna : [u8;32] = Breeding::pairing(breed_type, dx, dy);
+
 			// don't know a better way, then using a clone.
 			let mut final_dna_hash = mogwai_id.clone();
 			for i in 0..32 {
@@ -602,7 +605,6 @@ pub mod pallet {
 				dna: final_dna_hash,
 				metaxy: [[0u8;16];2],
 				genesis: block_number,
-				price: Zero::zero(),
 				intrinsic: Zero::zero(),
 				gen: next_gen,
 				rarity: rarity,
@@ -619,9 +621,9 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 
-	/// Update nonce once used. 
+	/// Update nonce once used.
 	fn encode_and_update_nonce() -> Vec<u8> {
-		
+
 		let nonce = <Nonce<T>>::get();
 		<Nonce<T>>::put(nonce.wrapping_add(1));
 		nonce.encode()
@@ -629,7 +631,7 @@ impl<T: Config> Pallet<T> {
 
 	///
 	fn generate_random_hash(phrase: &[u8], sender: T::AccountId) -> T::Hash {
-		
+
 		let (seed, _) = T::Randomness::random(phrase);
 		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref()))
 			 .expect("input is padded with zeroes; qed");
@@ -638,11 +640,11 @@ impl<T: Config> Pallet<T> {
 
 	/// pay fee
 	fn pay_fee(who: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
-		
+
 		let _ =  T::Currency::withdraw(
 			&who,
 			amount,
-			WithdrawReasons::FEE, 
+			WithdrawReasons::FEE,
 			ExistenceRequirement::KeepAlive,
 		)?;
 
@@ -666,9 +668,9 @@ impl<T: Config> Pallet<T> {
 
 	/// tiping mogwai
 	fn tip_mogwai(who: T::AccountId, amount: BalanceOf<T>, mogwai_id: T::Hash, mut mogwai:  MogwaiStruct<T::Hash, T::BlockNumber, BalanceOf<T>, RarityType, PhaseType> ) -> DispatchResult {
-		
+
 		Self::pay_fee(who, amount)?;
-	  
+
 		mogwai.intrinsic += amount; // check for overflow
 		<Mogwais<T>>::insert(mogwai_id, mogwai);
 
@@ -677,7 +679,7 @@ impl<T: Config> Pallet<T> {
 
 	///
 	fn config_value(who: T::AccountId, index: u8) -> u32 {
-		
+
 		let config_opt = <AccountConfig<T>>::get(&who);
 		let result:u32;
 		if config_opt.is_some() {
@@ -710,11 +712,11 @@ impl<T: Config> Pallet<T> {
 		// Update maps.
 		<Mogwais<T>>::insert(mogwai_id, new_mogwai);
 		<MogwaiOwner<T>>::insert(mogwai_id, &to);
-			
+
 		<AllMogwaisArray<T>>::insert(all_mogwais_count, mogwai_id);
         <AllMogwaisCount<T>>::put(new_all_mogwais_count);
         <AllMogwaisIndex<T>>::insert(mogwai_id, all_mogwais_count);
-			
+
 		<OwnedMogwaisArray<T>>::insert((to.clone(), owned_mogwais_count), mogwai_id);
         <OwnedMogwaisCount<T>>::insert(&to, new_owned_mogwais_count);
         <OwnedMogwaisIndex<T>>::insert(mogwai_id, owned_mogwais_count);
@@ -729,7 +731,7 @@ impl<T: Config> Pallet<T> {
 	fn remove(from: T::AccountId, mogwai_id: T::Hash) -> DispatchResult {
 
 		ensure!(MogwaiOwner::<T>::contains_key(&mogwai_id), Error::<T>::MogwaiDoesntExists);
-		
+
 		let owned_mogwais_count = Self::owned_mogwais_count(&from);
 		let new_owned_mogwai_count = owned_mogwais_count.checked_sub(1)
 			.ok_or("Overflow removing an old mogwai from account balance")?;
@@ -741,7 +743,12 @@ impl<T: Config> Pallet<T> {
 		// Update maps.
 		<Mogwais<T>>::remove(mogwai_id);
 		<MogwaiOwner<T>>::remove(mogwai_id);
-				
+
+		// remove storage entries
+		if MogwaiPrices::<T>::contains_key(mogwai_id) {
+			MogwaiPrices::<T>::remove(mogwai_id);
+		}
+
         let all_mogwai_index = <AllMogwaisIndex<T>>::get(mogwai_id);
         if all_mogwai_index != new_all_mogwais_count {
             let all_last_mogwai_id = <AllMogwaisArray<T>>::get(new_all_mogwais_count);
@@ -801,10 +808,15 @@ impl<T: Config> Pallet<T> {
 
 		<OwnedMogwaisArray<T>>::remove((from.clone(), new_owned_mogwai_count_from));
 		<OwnedMogwaisArray<T>>::insert((to.clone(), owned_mogwai_count_to), mogwai_id);
-		
+
 		// Update the OwnedMogwaisCount for `from` and `to`
 		<OwnedMogwaisCount<T>>::insert(&from, new_owned_mogwai_count_from);
 		<OwnedMogwaisCount<T>>::insert(&to, new_owned_mogwai_count_to);
+
+		// remove storage entries
+		if MogwaiPrices::<T>::contains_key(mogwai_id) {
+			MogwaiPrices::<T>::remove(mogwai_id);
+		}
 
 		// Emit an event.
 		Self::deposit_event(Event::MogwaiTransfered(from, to, mogwai_id));
@@ -814,7 +826,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Calculate breed type
 	fn calculate_breedtype(block_number: T::BlockNumber) -> BreedType {
-		
+
 		let mod_value : u32 = 80;
 		let modulo80 = (block_number % mod_value.into()).saturated_into::<u32>();
 		if modulo80 < 20 {
@@ -828,9 +840,9 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// do the segmentation 
+	/// do the segmentation
 	fn segment(mogwai_struct: MogwaiStruct<T::Hash, T::BlockNumber, BalanceOf<T>, RarityType, PhaseType>, block_hash: T::Hash) -> [[u8;16];2] {
-		
+
 		let mut dna: [u8; 32] = Default::default();
 		let mut blk: [u8; 32] = Default::default();
 
