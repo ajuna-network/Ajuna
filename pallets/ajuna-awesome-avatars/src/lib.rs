@@ -335,17 +335,10 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn mint(origin: OriginFor<T>, how_many: MintPackSize) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 
-			Self::do_mint(&player, MintingConfig { count: how_many, mint_type: MintType::Normal })
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn free_mint(origin: OriginFor<T>, how_many: MintPackSize) -> DispatchResult {
-			let player = ensure_signed(origin)?;
-
-			Self::do_mint(&player, MintingConfig { count: how_many, mint_type: MintType::Free })
+			Self::do_mint(&player, &mint_option)
 		}
 
 		#[pallet::weight(10_000)]
@@ -354,24 +347,32 @@ pub mod pallet {
 			dest: T::AccountId,
 			how_many: MintCount,
 		) -> DispatchResult {
-			Self::ensure_organizer(origin.clone())?;
 			let player = ensure_signed(origin)?;
 
 			let required_free_mints = how_many.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-			let player_free_mints = Self::free_mints(player.clone());
+			let player_free_mints = Self::free_mints(&player);
 			ensure!(player_free_mints >= required_free_mints, Error::<T>::InsufficientFreeMints);
 
-			FreeMints::<T>::insert(player.clone(), player_free_mints - required_free_mints);
-
-			let dest_player_free_mints = FreeMints::<T>::get(dest.clone());
 			FreeMints::<T>::insert(
-				dest.clone(),
-				how_many.checked_add(dest_player_free_mints).ok_or(ArithmeticError::Overflow)?,
+				player.clone(),
+				player_free_mints
+					.checked_sub(required_free_mints)
+					.ok_or(ArithmeticError::Underflow)?,
 			);
 
-			Self::deposit_event(Event::FreeMintsTransferred { from: player, to: dest, how_many });
+			FreeMints::<T>::try_mutate(dest.clone(), |dest_player_free_mints| -> DispatchResult {
+				*dest_player_free_mints = dest_player_free_mints
+					.checked_add(how_many)
+					.ok_or(ArithmeticError::Overflow)?;
 
-			Ok(())
+				Self::deposit_event(Event::FreeMintsTransferred {
+					from: player,
+					to: dest,
+					how_many,
+				});
+
+				Ok(())
+			})
 		}
 
 		#[pallet::weight(10_000)]
@@ -382,11 +383,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 
-			let dest_player_free_mints = FreeMints::<T>::get(dest.clone());
-			FreeMints::<T>::insert(
-				dest.clone(),
-				how_many.checked_add(dest_player_free_mints).ok_or(ArithmeticError::Overflow)?,
-			);
+			FreeMints::<T>::try_mutate(dest.clone(), |free_mints| -> DispatchResult {
+				*free_mints = how_many.checked_add(*free_mints).ok_or(ArithmeticError::Overflow)?;
+				Ok(())
+			})?;
 
 			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
 
@@ -493,20 +493,24 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		pub(crate) fn do_mint(
-			player: &T::AccountId,
-			minting_config: MintingConfig,
-		) -> DispatchResult {
+		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			let season_configs = Self::global_configs();
 
 			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
-			let avatars_to_mint = minting_config.count as usize;
-			match minting_config.mint_type {
-				MintType::Normal =>
-					Self::check_balance_is_enough(player, &minting_config.count, &season_configs)?,
-				MintType::Free =>
-					Self::check_free_minting_funds(player, minting_config.count as MintCount)?,
+			let avatars_to_mint = mint_option.count as usize;
+			match mint_option.mint_type {
+				MintType::Normal => {
+					let fee = season_configs.mint_fees.fee_for(mint_option.count);
+					ensure!(
+						T::Currency::free_balance(player) >= fee,
+						Error::<T>::InsufficientFunds
+					);
+				},
+				MintType::Free => ensure!(
+					Self::free_mints(player) >= mint_option.count as MintCount,
+					Error::<T>::InsufficientFreeMints
+				),
 			};
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -564,14 +568,27 @@ pub mod pallet {
 				);
 				LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
-				if minting_config.mint_type == MintType::Normal {
-					T::Currency::withdraw(
-						player,
-						season_configs.mint_fees.fee_for(minting_config.count),
-						WithdrawReasons::FEE,
-						ExistenceRequirement::KeepAlive,
-					)?;
-				}
+				match mint_option.mint_type {
+					MintType::Normal => {
+						T::Currency::withdraw(
+							player,
+							season_configs.mint_fees.fee_for(mint_option.count),
+							WithdrawReasons::FEE,
+							ExistenceRequirement::KeepAlive,
+						)?;
+					},
+					MintType::Free => {
+						let _ = FreeMints::<T>::try_mutate(
+							player,
+							|dest_player_free_mints| -> DispatchResult {
+								*dest_player_free_mints = dest_player_free_mints
+									.checked_sub(mint_option.count as MintCount)
+									.ok_or(ArithmeticError::Overflow)?;
+								Ok(())
+							},
+						);
+					},
+				};
 
 				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
 				if rare_avatars > 0 {
@@ -579,16 +596,6 @@ pub mod pallet {
 				}
 				Ok(())
 			})
-		}
-
-		fn check_balance_is_enough(
-			player: &T::AccountId,
-			how_many: &MintPackSize,
-			season_configs: &GlobalConfigOf<T>,
-		) -> DispatchResult {
-			let fee = season_configs.mint_fees.fee_for(*how_many);
-			ensure!(T::Currency::free_balance(player) >= fee, Error::<T>::InsufficientFunds);
-			Ok(())
 		}
 
 		fn is_season_premature_closed(season: SeasonOf<T>, now: T::BlockNumber) -> bool {
@@ -615,11 +622,6 @@ pub mod pallet {
 				.checked_sub(*avatars_to_mint)
 				.ok_or(ArithmeticError::Underflow)?;
 			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
-			Ok(())
-		}
-
-		fn check_free_minting_funds(player: &T::AccountId, how_many: MintCount) -> DispatchResult {
-			ensure!(Self::free_mints(player) >= how_many, Error::<T>::InsufficientFreeMints);
 			Ok(())
 		}
 	}
