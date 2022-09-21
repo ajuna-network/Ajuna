@@ -14,6 +14,7 @@ PALLETS=(
   "pallet-membership"
   "pallet-treasury"
   "pallet-collator-selection"
+  "pallet-multisig"
   "pallet-utility"
 )
 
