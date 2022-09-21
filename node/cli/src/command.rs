@@ -22,16 +22,16 @@ use ajuna_service::{
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
-    bajun,
-    bajun::BajunRuntimeExecutor,
-    bajun_runtime::{Block as ParaBajunBlock, RuntimeApi as BajunRuntimeApi},
+	bajun,
+	bajun::BajunRuntimeExecutor,
+	bajun_runtime::{Block as ParaBajunBlock, RuntimeApi as BajunRuntimeApi},
 };
 #[cfg(any(feature = "bajun", feature = "ajuna"))]
 use {
-    crate::cli::RelayChainCli, codec::Encode,
-    cumulus_client_service::genesis::generate_genesis_block, cumulus_primitives_core::ParaId,
-    log::info, polkadot_parachain::primitives::AccountIdConversion, sc_cli::Result,
-    sp_core::hexdisplay::HexDisplay, sp_runtime::traits::Block as BlockT, std::io::Write,
+	crate::cli::RelayChainCli, codec::Encode,
+	cumulus_client_service::genesis::generate_genesis_block, cumulus_primitives_core::ParaId,
+	log::info, polkadot_parachain::primitives::AccountIdConversion, sc_cli::Result,
+	sp_core::hexdisplay::HexDisplay, sp_runtime::traits::Block as BlockT, std::io::Write,
 };
 
 use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
@@ -41,16 +41,16 @@ use sp_keyring::Sr25519Keyring;
 use std::{path::PathBuf, sync::Arc};
 #[cfg(feature = "solo")]
 use {
-    crate::{
-        benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},
-        cli::{Cli, Subcommand},
-    },
-    ajuna_service::{
-        ajuna_solo_runtime::Block as SoloBlock,
-        ajuna_solo_runtime::ExistentialDeposit,
-        chain_spec,
-        solo::{self, new_full, new_partial, ExecutorDispatch},
-    },
+	crate::{
+		benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},
+		cli::{Cli, Subcommand},
+	},
+	ajuna_service::{
+		ajuna_solo_runtime::Block as SoloBlock,
+		ajuna_solo_runtime::ExistentialDeposit,
+		chain_spec,
+		solo::{self, new_full, new_partial, ExecutorDispatch},
+	},
 };
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
@@ -533,44 +533,44 @@ macro_rules! construct_sync_run {
 // }
 /// Parse and run command line arguments
 pub fn run() -> sc_cli::Result<()> {
-    let cli = Cli::from_args();
+	let cli = Cli::from_args();
 
-    match &cli.subcommand {
-        Some(Subcommand::Key(cmd)) => cmd.run(&cli),
-        Some(Subcommand::BuildSpec(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
-        },
-        Some(Subcommand::CheckBlock(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.async_run(|config| {
-                let PartialComponents { client, task_manager, import_queue, .. } =
-                    new_partial(&config)?;
-                Ok((cmd.run(client, import_queue), task_manager))
-            })
-        },
+	match &cli.subcommand {
+		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
+		Some(Subcommand::BuildSpec(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
+		},
+		Some(Subcommand::CheckBlock(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|config| {
+				let PartialComponents { client, task_manager, import_queue, .. } =
+					new_partial(&config)?;
+				Ok((cmd.run(client, import_queue), task_manager))
+			})
+		},
 		Some(Subcommand::ExportBlocks(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.async_run(|config| {
-                let PartialComponents { client, task_manager, .. } = new_partial(&config)?;
-                Ok((cmd.run(client, config.database), task_manager))
-            })
-        },
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|config| {
+				let PartialComponents { client, task_manager, .. } = new_partial(&config)?;
+				Ok((cmd.run(client, config.database), task_manager))
+			})
+		},
 		Some(Subcommand::ExportState(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.async_run(|config| {
-                let PartialComponents { client, task_manager, .. } = new_partial(&config)?;
-                Ok((cmd.run(client, config.chain_spec), task_manager))
-            })
-        },
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|config| {
+				let PartialComponents { client, task_manager, .. } = new_partial(&config)?;
+				Ok((cmd.run(client, config.chain_spec), task_manager))
+			})
+		},
 		Some(Subcommand::ImportBlocks(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.async_run(|config| {
-                let PartialComponents { client, task_manager, import_queue, .. } =
-                    new_partial(&config)?;
-                Ok((cmd.run(client, import_queue), task_manager))
-            })
-        },
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|config| {
+				let PartialComponents { client, task_manager, import_queue, .. } =
+					new_partial(&config)?;
+				Ok((cmd.run(client, import_queue), task_manager))
+			})
+		},
 		#[cfg(feature = "solo")]
 		Some(Subcommand::PurgeChainSolo(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
@@ -586,12 +586,12 @@ pub fn run() -> sc_cli::Result<()> {
 					[RelayChainCli::executable_name()].iter().chain(cli.relay_chain_args.iter()),
 				);
 
-                let polkadot_config = SubstrateCli::create_configuration(
-                    &polkadot_cli,
-                    &polkadot_cli,
-                    config.tokio_handle.clone(),
-                )
-                    .map_err(|err| format!("Relay chain argument error: {:?}", err))?;
+				let polkadot_config = SubstrateCli::create_configuration(
+					&polkadot_cli,
+					&polkadot_cli,
+					config.tokio_handle.clone(),
+				)
+				.map_err(|err| format!("Relay chain argument error: {:?}", err))?;
 
 				cmd.run(config, polkadot_config)
 			})
@@ -608,89 +608,89 @@ pub fn run() -> sc_cli::Result<()> {
 			})
 		},
 		Some(Subcommand::Benchmark(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
+			let runner = cli.create_runner(cmd)?;
 
-            runner.sync_run(|config| {
-                // This switch needs to be in the client, since the client decides
-                // which sub-commands it wants to support.
-                match cmd {
-                    BenchmarkCmd::Pallet(cmd) => {
-                        if !cfg!(feature = "runtime-benchmarks") {
-                            return Err(
-                                "Runtime benchmarking wasn't enabled when building the node. \
+			runner.sync_run(|config| {
+				// This switch needs to be in the client, since the client decides
+				// which sub-commands it wants to support.
+				match cmd {
+					BenchmarkCmd::Pallet(cmd) => {
+						if !cfg!(feature = "runtime-benchmarks") {
+							return Err(
+								"Runtime benchmarking wasn't enabled when building the node. \
 							You can enable it with `--features runtime-benchmarks`."
-                                    .into(),
-                            )
-                        }
+									.into(),
+							)
+						}
 
-                        cmd.run::<SoloBlock, ExecutorDispatch>(config)
-                    },
-                    BenchmarkCmd::Block(cmd) => {
-                        let PartialComponents { client, .. } = new_partial(&config)?;
-                        cmd.run(client)
-                    },
-                    BenchmarkCmd::Storage(cmd) => {
-                        let PartialComponents { client, backend, .. } = new_partial(&config)?;
-                        let db = backend.expose_db();
-                        let storage = backend.expose_storage();
+						cmd.run::<SoloBlock, ExecutorDispatch>(config)
+					},
+					BenchmarkCmd::Block(cmd) => {
+						let PartialComponents { client, .. } = new_partial(&config)?;
+						cmd.run(client)
+					},
+					BenchmarkCmd::Storage(cmd) => {
+						let PartialComponents { client, backend, .. } = new_partial(&config)?;
+						let db = backend.expose_db();
+						let storage = backend.expose_storage();
 
-                        cmd.run(config, client, db, storage)
-                    },
-                    BenchmarkCmd::Overhead(cmd) => {
-                        let PartialComponents { client, .. } = new_partial(&config)?;
-                        let ext_builder = RemarkBuilder::new(client.clone());
+						cmd.run(config, client, db, storage)
+					},
+					BenchmarkCmd::Overhead(cmd) => {
+						let PartialComponents { client, .. } = new_partial(&config)?;
+						let ext_builder = RemarkBuilder::new(client.clone());
 
-                        cmd.run(config, client, inherent_benchmark_data()?, &ext_builder)
-                    },
-                    BenchmarkCmd::Extrinsic(cmd) => {
-                        let PartialComponents { client, .. } = new_partial(&config)?;
-                        // Register the *Remark* and *TKA* builders.
-                        let ext_factory = ExtrinsicFactory(vec![
-                            Box::new(RemarkBuilder::new(client.clone())),
-                            Box::new(TransferKeepAliveBuilder::new(
-                                client.clone(),
-                                Sr25519Keyring::Alice.to_account_id(),
-                                ExistentialDeposit::get(),
-                            )),
-                        ]);
+						cmd.run(config, client, inherent_benchmark_data()?, &ext_builder)
+					},
+					BenchmarkCmd::Extrinsic(cmd) => {
+						let PartialComponents { client, .. } = new_partial(&config)?;
+						// Register the *Remark* and *TKA* builders.
+						let ext_factory = ExtrinsicFactory(vec![
+							Box::new(RemarkBuilder::new(client.clone())),
+							Box::new(TransferKeepAliveBuilder::new(
+								client.clone(),
+								Sr25519Keyring::Alice.to_account_id(),
+								ExistentialDeposit::get(),
+							)),
+						]);
 
-                        cmd.run(client, inherent_benchmark_data()?, &ext_factory)
-                    },
-                    BenchmarkCmd::Machine(cmd) =>
-                        cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
-                }
-            })
-        },
-        #[cfg(feature = "try-runtime")]
-        Some(Subcommand::TryRuntime(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.async_run(|config| {
-                // we don't need any of the components of new_partial, just a runtime, or a task
-                // manager to do `async_run`.
-                let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-                let task_manager =
-                    sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
-                        .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
-                Ok((cmd.run::<SoloBlock, ExecutorDispatch>(config), task_manager))
-            })
-        },
-        #[cfg(not(feature = "try-runtime"))]
-        Some(Subcommand::TryRuntime) => Err("TryRuntime wasn't enabled when building the node. \
+						cmd.run(client, inherent_benchmark_data()?, &ext_factory)
+					},
+					BenchmarkCmd::Machine(cmd) =>
+						cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
+				}
+			})
+		},
+		#[cfg(feature = "try-runtime")]
+		Some(Subcommand::TryRuntime(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|config| {
+				// we don't need any of the components of new_partial, just a runtime, or a task
+				// manager to do `async_run`.
+				let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+				let task_manager =
+					sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+				Ok((cmd.run::<SoloBlock, ExecutorDispatch>(config), task_manager))
+			})
+		},
+		#[cfg(not(feature = "try-runtime"))]
+		Some(Subcommand::TryRuntime) => Err("TryRuntime wasn't enabled when building the node. \
 				You can enable it with `--features try-runtime`."
-            .into()),
-        Some(Subcommand::ChainInfo(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            runner.sync_run(|config| cmd.run::<SoloBlock>(&config))
-        },
-        None => {
-            #[cfg(feature = "bajun")]
-            if cfg!(feature = "bajun") {
-                let runner = cli.create_runner(&cli.run_para.normalize())?;
-                let collator_options = cli.run_para.collator_options();
+			.into()),
+		Some(Subcommand::ChainInfo(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|config| cmd.run::<SoloBlock>(&config))
+		},
+		None => {
+			#[cfg(feature = "bajun")]
+			if cfg!(feature = "bajun") {
+				let runner = cli.create_runner(&cli.run_para.normalize())?;
+				let collator_options = cli.run_para.collator_options();
 
-                return runner.run_node_until_exit(|config| async move {
-                    let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
-                        .map(|e| e.para_id)
+				return runner.run_node_until_exit(|config| async move {
+					let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+						.map(|e| e.para_id)
 						.ok_or("Could not find parachain ID in chain-spec.")?;
 
 					let polkadot_cli = RelayChainCli::new(
@@ -768,13 +768,13 @@ pub fn run() -> sc_cli::Result<()> {
 					let genesis_state =
 						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-                    let tokio_handle = config.tokio_handle.clone();
-                    let polkadot_config = SubstrateCli::create_configuration(
-                        &polkadot_cli,
-                        &polkadot_cli,
-                        tokio_handle,
-                    )
-                        .map_err(|err| format!("Relay chain argument error: {:?}", err))?;
+					let tokio_handle = config.tokio_handle.clone();
+					let polkadot_config = SubstrateCli::create_configuration(
+						&polkadot_cli,
+						&polkadot_cli,
+						tokio_handle,
+					)
+					.map_err(|err| format!("Relay chain argument error: {:?}", err))?;
 
 					info!("Parachain id: {:?}", id);
 					info!("Parachain Account: {}", parachain_account);

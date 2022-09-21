@@ -201,17 +201,12 @@ pub mod pallet {
 				Error::<T>::AcknowledgeBatchTooLarge
 			);
 
-			// At the moment we will clear the locally stored queue or `Queued`
-			// They should be the same `game_ids` but we won't check that right now until we
-			// finalise on a multishard design
-			// Queued::<T>::kill();
-
 			// Run through batch and accept those that are in valid state `Queued`
 			// Those that fail, fail silently
 			game_ids.iter().for_each(|game_id| {
 				if let Some(RunnerState::Queued(mut state)) = T::Runner::get_state(game_id) {
 					if let Ok(mut game) = Game::decode(&mut state) {
-						// Remove the queued item, hack to test
+						// Remove the queued item
 						if let Some(mut queued) = Queued::<T>::get() {
 							queued.retain(|x| x != game_id);
 							Queued::<T>::put(queued);
@@ -226,7 +221,7 @@ pub mod pallet {
 						log::error!("Failed to decoded state of game {:?} from state, this is unrecoverable for this game now", game_id);
 					}
 				} else {
-					log::warn!("Game {:?} is not queued!", game_id);
+					log::warn!("Game {:?} is not queued, this shouldn't be possible!", game_id);
 				}
 			});
 

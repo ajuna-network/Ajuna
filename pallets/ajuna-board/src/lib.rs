@@ -57,8 +57,8 @@ impl<BoardId, State, Players, Start> BoardGame<BoardId, State, Players, Start> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::log;
 	use super::*;
+	use frame_support::log;
 	use frame_system::{
 		ensure_signed,
 		pallet_prelude::{BlockNumberFor, OriginFor},
@@ -174,7 +174,11 @@ pub mod pallet {
 			// account to a board and hence block them from playing in a legitimate game
 			// As this would be ran in L2 we may want to check that we are in L2??
 			let _ = ensure_signed(origin)?;
-			log::debug!("New game to be created with board id {:?} and players {:?}", board_id, players);
+			log::debug!(
+				"New game to be created with board id {:?} and players {:?}",
+				board_id,
+				players
+			);
 
 			// Ensure we have players
 			ensure!(!players.is_empty(), Error::<T>::NotEnoughPlayers);
@@ -210,9 +214,16 @@ pub mod pallet {
 
 			BoardStates::<T>::insert(board_id, board_game);
 
-			Self::deposit_event(Event::GameCreated { board_id, players: players.clone().into_inner() });
+			Self::deposit_event(Event::GameCreated {
+				board_id,
+				players: players.clone().into_inner(),
+			});
 
-			log::info!("New game created with board id {:?} and players {:?}", board_id, players.into_inner());
+			log::info!(
+				"New game created with board id {:?} and players {:?}",
+				board_id,
+				players.into_inner()
+			);
 
 			Ok(())
 		}
@@ -227,8 +238,9 @@ pub mod pallet {
 
 			BoardStates::<T>::mutate(board_id, |maybe_board_game| match maybe_board_game {
 				Some(board_game) => {
-					board_game.state = T::Game::play_turn(sender.clone(), board_game.state.clone(), turn)
-						.ok_or(Error::<T>::InvalidTurn)?;
+					board_game.state =
+						T::Game::play_turn(sender.clone(), board_game.state.clone(), turn)
+							.ok_or(Error::<T>::InvalidTurn)?;
 
 					log::debug!("Turn played for board id {:?} by player {:?}", board_id, sender);
 

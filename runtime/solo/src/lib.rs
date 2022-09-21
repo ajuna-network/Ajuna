@@ -69,9 +69,9 @@ use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
 use types::governance::*;
 
 // Some public reexports..
+pub use frame_system::Call as SystemCall;
 pub use pallet_ajuna_gameregistry;
 pub use pallet_ajuna_matchmaker;
-pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_sidechain;
 pub use pallet_teerex;
@@ -187,7 +187,7 @@ impl pallet_grandpa::Config for Runtime {
 	type KeyOwnerProofSystem = ();
 
 	type KeyOwnerProof =
-	<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
 
 	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
 		KeyTypeId,
@@ -402,8 +402,8 @@ impl pallet_democracy::Config for Runtime {
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
-	where
-		Call: From<LocalCall>,
+where
+	Call: From<LocalCall>,
 {
 	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
 		call: Call,
@@ -449,8 +449,8 @@ impl frame_system::offchain::SigningTypes for Runtime {
 }
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
-	where
-		Call: From<C>,
+where
+	Call: From<C>,
 {
 	type OverarchingCall = Call;
 	type Extrinsic = UncheckedExtrinsic;

@@ -62,7 +62,7 @@ impl frame_benchmarking_cli::ExtrinsicBuilder for RemarkBuilder {
 			SystemCall::remark { remark: vec![] }.into(),
 			nonce,
 		)
-			.into();
+		.into();
 
 		Ok(extrinsic)
 	}
@@ -102,7 +102,7 @@ impl frame_benchmarking_cli::ExtrinsicBuilder for TransferKeepAliveBuilder {
 				dest: self.dest.clone().into(),
 				value: self.value.into(),
 			}
-				.into(),
+			.into(),
 			nonce,
 		)
 		.into();
