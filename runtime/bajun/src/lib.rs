@@ -254,7 +254,8 @@ impl Contains<Call> for BaseCallFilter {
 			Call::System(_) |
 			Call::ParachainSystem(_) |
 			Call::Timestamp(_) |
-			Call::MultiSig(_) |
+			Call::Multisig(_) |
+			Call::Utility(_) |
 			// monetary
 			Call::Balances(_) |
 			Call::Vesting(_) |
@@ -502,6 +503,13 @@ impl pallet_multisig::Config for Runtime {
 	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
 }
 
+impl pallet_utility::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
@@ -596,8 +604,9 @@ construct_runtime!(
 		} = 1,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
-		MultiSig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 5,
+		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
+		Utility: pallet_utility = 5,
+		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 6,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
@@ -639,7 +648,8 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
-		[pallet_multisig, MultiSig]
+		[pallet_multisig, Multisig]
+		[pallet_utility, Utility]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_treasury, Treasury]
