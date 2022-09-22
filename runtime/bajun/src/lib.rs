@@ -22,6 +22,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+mod proxy_type;
 mod weights;
 pub mod xcm_config;
 
@@ -256,6 +257,9 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Timestamp(_) |
 			Call::Multisig(_) |
 			Call::Utility(_) |
+			Call::Identity(_) |
+			Call::Proxy(_) |
+			Call::Scheduler(_) |
 			// monetary
 			Call::Balances(_) |
 			Call::Vesting(_) |
@@ -590,6 +594,74 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Randomness = Randomness;
 }
 
+parameter_types! {
+	pub const BasicDeposit: Balance = BAJUN;
+	pub const FieldDeposit: Balance = 100 * MILLI_BAJUN;
+	pub const SubAccountDeposit: Balance = 300 * MILLI_BAJUN;
+	pub const MaxSubAccounts: u32 = 5;
+	pub const MaxAdditionalFields: u32 = 3;
+	pub const MaxRegistrars: u32 = 3;
+}
+
+impl pallet_identity::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type BasicDeposit = BasicDeposit;
+	type FieldDeposit = FieldDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = MaxSubAccounts;
+	type MaxAdditionalFields = MaxAdditionalFields;
+	type MaxRegistrars = MaxRegistrars;
+	type Slashed = Treasury;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type RegistrarOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ProxyDepositBase: Balance = BAJUN;
+	pub const ProxyDepositFactor: Balance = 500 * MILLI_BAJUN;
+	pub const MaxProxies: u32 = 5;
+	pub const MaxPending: u32 = 10;
+	pub const AnnouncementDepositBase: Balance = 200 * MILLI_BAJUN;
+	pub const AnnouncementDepositFactor: Balance = 100 * MILLI_BAJUN;
+}
+
+impl pallet_proxy::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type ProxyType = proxy_type::ProxyType;
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type MaxProxies = MaxProxies;
+	type WeightInfo = ();
+	type MaxPending = MaxPending;
+	type CallHasher = BlakeTwo256;
+	type AnnouncementDepositBase = AnnouncementDepositBase;
+	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
+
+parameter_types! {
+	pub const MaxScheduledPerBlock: u32 = 50;
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
+	pub const NoPreimagePostponement: Option<u32> = Some(2);
+}
+
+impl pallet_scheduler::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type PalletsOrigin = OriginCaller;
+	type Call = Call;
+	type MaximumWeight = MaximumSchedulerWeight;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type WeightInfo = ();
+	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
+	type PreimageProvider = ();
+	type NoPreimagePostponement = NoPreimagePostponement;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -607,6 +679,9 @@ construct_runtime!(
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
 		Utility: pallet_utility = 5,
 		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 6,
+		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 7,
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 8,
+		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 9,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
