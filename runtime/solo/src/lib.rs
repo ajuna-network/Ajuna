@@ -65,7 +65,7 @@ pub use ajuna_primitives::{
 };
 pub use consts::{ajuna, currency, time};
 use consts::{currency::*, time::*};
-use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
+use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion, ProxyType};
 use types::governance::*;
 
 // Some public reexports..
@@ -458,6 +458,54 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
+parameter_types! {
+	pub const BasicDeposit: Balance = 1_000 * NANO_AJUNS;
+	pub const FieldDeposit: Balance = 100 * NANO_AJUNS;
+	pub const SubAccountDeposit: Balance = 300 * NANO_AJUNS;
+	pub const MaxSubAccounts: u32 = 5;
+	pub const MaxAdditionalFields: u32 = 3;
+	pub const MaxRegistrars: u32 = 3;
+}
+
+impl pallet_identity::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type BasicDeposit = BasicDeposit;
+	type FieldDeposit = FieldDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = MaxSubAccounts;
+	type MaxAdditionalFields = MaxAdditionalFields;
+	type MaxRegistrars = MaxRegistrars;
+	type Slashed = Treasury;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type RegistrarOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ProxyDepositBase: Balance = 1_000 * NANO_AJUNS;
+	pub const ProxyDepositFactor: Balance = 500 * NANO_AJUNS;
+	pub const MaxProxies: u32 = 5;
+	pub const MaxPending: u32 = 10;
+	pub const AnnouncementDepositBase: Balance = 200 * NANO_AJUNS;
+	pub const AnnouncementDepositFactor: Balance = 100 * NANO_AJUNS;
+}
+
+impl pallet_proxy::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type ProxyType = ProxyType;
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type MaxProxies = MaxProxies;
+	type WeightInfo = ();
+	type MaxPending = MaxPending;
+	type CallHasher = BlakeTwo256;
+	type AnnouncementDepositBase = AnnouncementDepositBase;
+	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
+
 impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
@@ -487,6 +535,8 @@ construct_runtime!(
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
 		Scheduler: pallet_scheduler = 14,
+		Identity: pallet_identity = 15,
+		Proxy: pallet_proxy = 16,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 		Randomness: pallet_randomness_collective_flip = 23,
 	}
