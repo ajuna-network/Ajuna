@@ -99,19 +99,39 @@ impl pallet_battle_mogs::Config for Test {
 	type Randomness = TestRandomness<Self>;
 }
 
-// This function basically just builds a genesis storage key/value store according to
-// our desired mockup.
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let t = GenesisConfig {
-		//	// We use default for brevity, but you can configure as desired if needed.
-		system: Default::default(),
-		balances: Default::default(),
-		//battleMogs: Default::default(),
+pub const ALICE: MockAccountId = 1;
+pub const BOB: MockAccountId = 2;
+
+pub struct ExtBuilder {
+	founder_key: Option<MockAccountId>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self { founder_key: Some(ALICE) }
 	}
-	.build_storage()
-	.unwrap();
-	t.into()
-	//frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+}
+
+impl ExtBuilder {
+	pub fn new(founder_key: Option<MockAccountId>) -> Self {
+		Self { founder_key }
+	}
+
+	pub fn build(self) -> sp_io::TestExternalities {
+		let config = GenesisConfig {
+			system: Default::default(),
+			balances: Default::default(),
+			//battleMogs: Default::default(),
+		};
+
+		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| {
+			FounderKey::<Test>::set(self.founder_key);
+		});
+
+		ext
+	}
 }
 
 /// Run until a particular block.
