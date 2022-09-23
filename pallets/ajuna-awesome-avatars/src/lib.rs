@@ -414,7 +414,7 @@ pub mod pallet {
 
 		#[inline]
 		fn calculate_soul_points_from_dna(dna: &Dna, season: &SeasonOf<T>) -> SoulPoints {
-			// We meed to calculate the maximum possible value for a single DNA strand based on
+			// We need to calculate the maximum possible value for a single DNA strand based on
 			// the formula in Self::random_dna
 			let max_dna_value = (((Mythical as u8) << 4) | season.max_variations) as u32;
 			let value_scale = 100_u32;
