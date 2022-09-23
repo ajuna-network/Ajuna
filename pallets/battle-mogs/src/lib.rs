@@ -1,9 +1,21 @@
+/*
+  _______ __                       _______         __      
+ |   _   |__|.--.--.-----.---.-.  |    |  |.-----.|  |_.
+ |       |  ||  |  |     |  _  |  |       ||  -__||   _|.--.
+ |___|___|  ||_____|__|__|___._|  |__|____||_____||____||__|
+        |___|                             
+  .............<-::]] Ajuna Network (ajuna.io) [[::->.............             
+ +-----------------------------------------------------------------
+ | This file is part of the BattleMogs project from Ajuna Network.
+ ¦-----------------------------------------------------------------
+ | Copyright (c) 2022 BloGa Tech AG
+ | Copyright (c) 2020 DOT Mog Team (darkfriend77 & metastar77)
+ ¦-----------------------------------------------------------------
+ | Authors: darkfriend77
+ | License: GNU Affero General Public License v3.0
+ +-----------------------------------------------------------------
+ */
 #![cfg_attr(not(feature = "std"), no_std)]
-
-use codec::MaxEncodedLen;
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/v3/runtime/frame>
 pub use pallet::*;
 
 use frame_support::{
@@ -17,7 +29,6 @@ use frame_support::{
 use sp_runtime::{DispatchResult, SaturatedConversion, traits::{Hash, TrailingZeroInput, Zero}};
 use sp_std::vec::{Vec};
 use sp_std::prelude::*;
-use scale_info::TypeInfo;
 
 #[cfg(test)]
 mod mock;
@@ -29,29 +40,8 @@ mod tests;
 mod benchmarking;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
-pub mod general;
-use general::{Pricing, Breeding, BreedType, Generation, RarityType, PhaseType, FeeType};
-
-pub mod game_event;
-use game_event::{GameEventType};
-
-pub mod game_config;
-use game_config::{GameConfig};
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct MogwaiStruct<Hash, BlockNumber, Balance, RarityType, PhaseType> {
-	id: Hash,
-	dna: Hash,
-	metaxy: [[u8;16];2],
-//	state: u32,
-//  level: u32,
-	genesis: BlockNumber,
-	intrinsic: Balance,
-	gen: u32,
-	rarity: RarityType,
-	phase: PhaseType,
-}
+mod types;
+pub use types::*;
 
 type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 

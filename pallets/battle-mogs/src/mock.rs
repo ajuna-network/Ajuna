@@ -1,19 +1,20 @@
-// Ajuna Node
-// Copyright (C) 2022 BlogaTech AG
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+/*
+  _______ __                       _______         __      
+ |   _   |__|.--.--.-----.---.-.  |    |  |.-----.|  |_.
+ |       |  ||  |  |     |  _  |  |       ||  -__||   _|.--.
+ |___|___|  ||_____|__|__|___._|  |__|____||_____||____||__|
+        |___|                             
+  .............<-::]] Ajuna Network (ajuna.io) [[::->.............             
+ +-----------------------------------------------------------------
+ | This file is part of the BattleMogs project from Ajuna Network.
+ ¦-----------------------------------------------------------------
+ | Copyright (c) 2022 BloGa Tech AG
+ | Copyright (c) 2020 DOT Mog Team (darkfriend77 & metastar77)
+ ¦-----------------------------------------------------------------
+ | Authors: darkfriend77
+ | License: GNU Affero General Public License v3.0
+ +-----------------------------------------------------------------
+ */
 use crate::{self as pallet_battle_mogs};
 use frame_support::{
 	parameter_types,
