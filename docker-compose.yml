@@ -1,13 +1,13 @@
 version: "3.7"
 
 services:
-  ajuna-node:
+  ajuna-solo:
     image: backend-devel.azurecr.io/node
     build:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        - features=solo,skip-ias-check
+        - features=solo
         - bin=ajuna-solo
     command: --dev --tmp --unsafe-ws-external --unsafe-rpc-external
     ports:
