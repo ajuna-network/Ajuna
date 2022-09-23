@@ -615,7 +615,7 @@ impl pallet_identity::Config for Runtime {
 	type Slashed = Treasury;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type RegistrarOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -635,7 +635,7 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = MaxProxies;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Runtime>;
 	type MaxPending = MaxPending;
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
@@ -655,9 +655,9 @@ impl pallet_scheduler::Config for Runtime {
 	type Call = Call;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
 	type PreimageProvider = ();
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
@@ -730,6 +730,9 @@ mod benches {
 		[pallet_treasury, Treasury]
 		[pallet_collective, Council]
 		[pallet_membership, CouncilMembership]
+		[pallet_identity, Identity]
+		[pallet_proxy, Proxy]
+		[pallet_scheduler, Scheduler]
 	);
 }
 
