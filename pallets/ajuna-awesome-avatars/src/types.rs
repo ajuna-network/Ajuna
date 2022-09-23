@@ -30,6 +30,20 @@ pub enum RarityTier {
 	Mythical = 5,
 }
 
+impl From<u8> for RarityTier {
+	fn from(rarity_tier: u8) -> Self {
+		match rarity_tier {
+			0 => RarityTier::Common,
+			1 => RarityTier::Uncommon,
+			2 => RarityTier::Rare,
+			3 => RarityTier::Epic,
+			4 => RarityTier::Legendary,
+			5 => RarityTier::Mythical,
+			_ => panic!("Unknown rarity tier"),
+		}
+	}
+}
+
 pub type RarityPercent = u8;
 pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
 pub type MintCount = u16;

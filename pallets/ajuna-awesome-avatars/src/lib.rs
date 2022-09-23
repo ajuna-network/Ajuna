@@ -32,6 +32,7 @@ pub mod types;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::types::*;
+	use core::cmp::{max, min};
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, ExistenceRequirement, Hooks, Randomness, WithdrawReasons},
@@ -420,13 +421,64 @@ pub mod pallet {
 				.map(|i| {
 					let (random_tier, random_variation) =
 						Self::random_component(season, hash, i as usize * 2, batched_mint);
-					((random_tier << 4) | random_variation) as u8
+					Self::pack_component(random_tier, random_variation)
 				})
 				.collect::<Vec<_>>();
 			let is_rare = dna.iter().all(|each| (each >> 4) >= RarityTier::Legendary as u8);
 			Dna::try_from(dna)
 				.map(|x| (x, is_rare))
 				.map_err(|_| Error::<T>::IncorrectDna.into())
+		}
+
+		pub(crate) fn pack_component(rarity_tier: u8, variation: u8) -> u8 {
+			// Pack rarity tier and variation in a single byte.
+			// It uses the 4 less significant bytes for variation and
+			// the 4 more significant for rarity tier.
+			((rarity_tier << 4) | variation) as u8
+		}
+
+		pub(crate) fn unpack_component(component: u8) -> (RarityTier, u8) {
+			// Unpack rarity tier and variation from a byte value.
+			let variation = (component << 4) >> 4;
+			let rarity_tier = component >> 4;
+
+			(RarityTier::try_from(rarity_tier).unwrap(), variation)
+		}
+
+		pub(crate) fn calculate_matching_score(
+			first: &Dna,
+			second: &Dna,
+			max_variations: u8,
+		) -> u32 {
+			let rarities_equal_score = 1;
+			let variation_matching_score = 1;
+			let mirroring_score = 2;
+
+			let mut rarities = 0;
+			let mut matches = 0;
+			let mut mirrored = 0;
+
+			for it in first.iter().zip(second.iter()) {
+				let (rarity1, variation1) = Self::unpack_component(*it.0);
+				let (rarity2, variation2) = Self::unpack_component(*it.1);
+				if rarity1 == rarity2 {
+					rarities += 1;
+				}
+				if variation1 == variation2 {
+					mirrored += 1;
+				} else {
+					let var1 = variation1 % max_variations;
+					let var2 = variation2 % max_variations;
+
+					if max(var1, var2) - min(var1, var2) == 1 {
+						matches += 1;
+					}
+				}
+			}
+
+			rarities * rarities_equal_score +
+				matches * variation_matching_score +
+				mirrored * mirroring_score
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, how_many: MintCountOption) -> DispatchResult {

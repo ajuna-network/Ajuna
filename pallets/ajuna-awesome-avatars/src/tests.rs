@@ -524,6 +524,17 @@ mod season {
 			assert_eq!(AwesomeAvatars::next_active_season_id(), 1);
 		});
 	}
+
+	#[test]
+	fn pack_and_unpack_component_should_work() {
+		let packed_component = AwesomeAvatars::pack_component(RarityTier::Legendary as u8, 3);
+		assert_eq!(packed_component, 67);
+		assert_eq!((RarityTier::Legendary, 3), AwesomeAvatars::unpack_component(packed_component));
+
+		let packed_component = AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 8);
+		assert_eq!(packed_component, 88);
+		assert_eq!((RarityTier::Mythical, 8), AwesomeAvatars::unpack_component(packed_component));
+	}
 }
 
 mod config {
@@ -951,5 +962,107 @@ mod minting {
 					);
 				}
 			});
+	}
+}
+
+mod matching {
+	use frame_support::{traits::ConstU32, BoundedVec};
+
+	use super::*;
+
+	const MAX_VARIATIONS: u8 = 6;
+
+	#[test]
+	fn calculate_matching_score_when_full_coincidence() {
+		ExtBuilder::default().build().execute_with(|| {
+			let dna1 = BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+				AwesomeAvatars::pack_component(RarityTier::Common as u8, 3),
+				AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 1),
+				AwesomeAvatars::pack_component(RarityTier::Legendary as u8, 4),
+			])
+			.unwrap();
+
+			assert_eq!(AwesomeAvatars::calculate_matching_score(&dna1, &dna1, MAX_VARIATIONS), 9);
+		});
+	}
+
+	#[test]
+	fn calculate_matching_score_when_variations_mirrored() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mirrored_variations =
+				(
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 3),
+					])
+					.unwrap(),
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Common as u8, 3),
+					])
+					.unwrap(),
+				);
+			let dna1 = mirrored_variations.0;
+			let dna2 = mirrored_variations.1;
+			assert_eq!(AwesomeAvatars::calculate_matching_score(&dna1, &dna2, MAX_VARIATIONS), 2);
+		});
+	}
+
+	#[test]
+	fn calculate_matching_score_when_rarities_are_equal() {
+		ExtBuilder::default().build().execute_with(|| {
+			let match_only_rarity =
+				(
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 3),
+					])
+					.unwrap(),
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 5),
+					])
+					.unwrap(),
+				);
+			let dna1 = match_only_rarity.0;
+			let dna2 = match_only_rarity.1;
+			assert_eq!(AwesomeAvatars::calculate_matching_score(&dna1, &dna2, MAX_VARIATIONS), 1);
+		});
+	}
+
+	#[test]
+	fn calculate_matching_score_when_only_rarity_matches() {
+		ExtBuilder::default().build().execute_with(|| {
+			let match_variations =
+				(
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 1),
+					])
+					.unwrap(),
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Common as u8, 6),
+					])
+					.unwrap(),
+				);
+			let dna1 = match_variations.0;
+			let dna2 = match_variations.1;
+			assert_eq!(AwesomeAvatars::calculate_matching_score(&dna1, &dna2, MAX_VARIATIONS), 1);
+		});
+	}
+
+	#[test]
+	fn calculate_matching_score_when_not_matching() {
+		ExtBuilder::default().build().execute_with(|| {
+			let not_matching =
+				(
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Mythical as u8, 1),
+					])
+					.unwrap(),
+					BoundedVec::<u8, ConstU32<100>>::try_from(vec![
+						AwesomeAvatars::pack_component(RarityTier::Common as u8, 4),
+					])
+					.unwrap(),
+				);
+			let dna1 = not_matching.0;
+			let dna2 = not_matching.1;
+			assert_eq!(AwesomeAvatars::calculate_matching_score(&dna1, &dna2, MAX_VARIATIONS), 0);
+		});
 	}
 }
