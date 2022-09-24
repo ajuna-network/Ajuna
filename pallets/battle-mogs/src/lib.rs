@@ -164,6 +164,12 @@ pub mod pallet {
 		/// A mogwai has been was bought.
 		MogwaiBought(T::AccountId, T::AccountId, T::Hash, BalanceOf<T>),
 
+		/// A mogwai has hatched out of his egg.
+		MogwaiHatched(T::AccountId, T::Hash),
+
+		/// A mogwai has been sacrificed.
+		MogwaiSacrificed(T::AccountId, T::Hash),
+
 		/// A mogwai has been morphed.
 		MogwaiMorphed(T::Hash),
 	}
@@ -201,6 +207,9 @@ pub mod pallet {
 
 		/// The mogwai isn't owned by the sender.
 		MogwaiNotOwned,
+
+		/// The mogwai hasn't the necessary rarity.
+		MogwaiBadRarity,
 
 		/// Same mogwai choosen for extrinsic.
 		MogwaiSame,
@@ -326,30 +335,25 @@ pub mod pallet {
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
 
-			let random_hash = Self::generate_random_hash(b"create_mogwai", sender.clone());
+			let random_hash_1 = Self::generate_random_hash(b"create_mogwai", sender.clone());
+			let random_hash_2 = Self::generate_random_hash(b"extend_mogwai", sender.clone());
 
-			let (rarity, next_gen) = Generation::next_gen(1, RarityType::Common, 1, RarityType::Common, random_hash.as_ref());
+			let (rarity, next_gen) = Generation::next_gen(1, RarityType::Common, 1, RarityType::Common, random_hash_1.as_ref());
 
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type : BreedType = Self::calculate_breedtype(block_number);
 
-			let mut dx: [u8;16] = Default::default();
-			let mut dy: [u8;16] = Default::default();
+			let mut dx: [u8;32] = Default::default();
+			let mut dy: [u8;32] = Default::default();
 
-			dx.copy_from_slice(&random_hash.as_ref()[0..16]);
-			dy.copy_from_slice(&random_hash.as_ref()[16..32]);
+			dx.copy_from_slice(&random_hash_1.as_ref()[0..32]);
+			dy.copy_from_slice(&random_hash_2.as_ref()[0..32]);
 
-			let final_dna : [u8;32] = Breeding::pairing(breed_type, dx, dy);
-			// don't know a better way, then using a clone.
-			let mut final_dna_hash = random_hash.clone();
-			for i in 0..32 {
-				final_dna_hash.as_mut()[i] = final_dna[i];
-			}
+			let final_dna = Breeding::pairing(breed_type, dx, dy);
 
 			let new_mogwai = MogwaiStruct {
-				id: random_hash,
-				dna: final_dna_hash,
-				metaxy: [[0u8;16];2],
+				id: random_hash_1,
+				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				gen: next_gen,
@@ -357,7 +361,7 @@ pub mod pallet {
 				phase: PhaseType::Breeded,
 			};
 
-			Self::mint(sender, random_hash, new_mogwai)?;
+			Self::mint(sender, random_hash_1, new_mogwai)?;
 
 			Ok(())
 		}
@@ -411,12 +415,14 @@ pub mod pallet {
 
 			let block_hash = <frame_system::Pallet<T>>::block_hash(block_number);
 
-			let metaxy = Self::segment(mogwai.clone(), block_hash);
+			let dna = Self::segment(mogwai.clone(), block_hash);
 
 			mogwai.phase = PhaseType::Hatched;
-			mogwai.metaxy = metaxy;
+			mogwai.dna = dna;
 
 			<Mogwais<T>>::insert(mogwai_id, mogwai);
+
+			Self::deposit_event(Event::MogwaiHatched(sender, mogwai_id));
 
 			Ok(())
 		}
@@ -435,7 +441,11 @@ pub mod pallet {
 
 			let intrinsic = mogwai_1.intrinsic / Pricing::intrinsic_return(mogwai_1.phase).saturated_into();
 			Self::remove(sender.clone(), mogwai_id_1)?;
+
+			// TODO check this function on return value
 			let _ = T::Currency::deposit_into_existing(&sender, intrinsic)?;
+
+			Self::deposit_event(Event::MogwaiSacrificed(sender, mogwai_id_1));
 
             Ok(())
 		}
@@ -458,9 +468,9 @@ pub mod pallet {
 			let mogwai_1 = Self::mogwai(mogwai_id_1);
 			let mut mogwai_2 = Self::mogwai(mogwai_id_2);
 
-			ensure!((mogwai_1.rarity as u8 * mogwai_2.rarity as u8) > 0, "Sacrifice into is only available for normal and higher rarity!");
+			ensure!((mogwai_1.rarity as u8 * mogwai_2.rarity as u8) > 0, Error::<T>::MogwaiBadRarity);
 
-			let gen_jump = Breeding::sacrifice(mogwai_1.gen, mogwai_1.rarity as u32, mogwai_1.metaxy.clone(), mogwai_2.gen, mogwai_2.rarity as u32, mogwai_2.metaxy.clone());
+			let gen_jump = Breeding::sacrifice(mogwai_1.gen, mogwai_1.rarity as u32, mogwai_1.dna.clone(), mogwai_2.gen, mogwai_2.rarity as u32, mogwai_2.dna.clone());
 			if gen_jump > 0 && (mogwai_2.gen + gen_jump) <= 16 {
 				if mogwai_1.intrinsic > Zero::zero() {
 					mogwai_2.intrinsic += mogwai_1.intrinsic; // TODO check overflow
@@ -470,6 +480,8 @@ pub mod pallet {
 			}
 
 			Self::remove(sender.clone(), mogwai_id_1)?;
+
+			Self::deposit_event(Event::MogwaiSacrificed(sender, mogwai_id_1));
 
             Ok(())
 		}
@@ -531,12 +543,12 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type : BreedType = Self::calculate_breedtype(block_number);
 
-			let mut dx: [u8;8] = Default::default();
-			let mut dy: [u8;8] = Default::default();
-			dx.copy_from_slice(&mogwai.dna.as_ref()[0..8]);
-			dy.copy_from_slice(&mogwai.dna.as_ref()[8..16]);
+			let mut dx: [u8;16] = Default::default();
+			let mut dy: [u8;16] = Default::default();
+			dx.copy_from_slice(&mogwai.dna[0].as_ref()[0..16]);
+			dy.copy_from_slice(&mogwai.dna[0].as_ref()[16..32]);
 
-			mogwai.metaxy[0] = Breeding::morph(breed_type, dx, dy);
+			mogwai.dna[0] = Breeding::morph(breed_type, dx, dy);
 
             <Mogwais<T>>::insert(mogwai_id, mogwai);
 
@@ -575,25 +587,18 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type : BreedType = Self::calculate_breedtype(block_number);
 
-			let dx = mogwai_1.metaxy[0];
-			let dy = mogwai_2.metaxy[0];
+			let dx = mogwai_1.dna[0];
+			let dy = mogwai_2.dna[0];
 
 			// add pairing price to mogwai intrinsic value TODO
 			let pairing_price:BalanceOf<T> = Pricing::pairing(parents[0].rarity, parents[1].rarity).saturated_into();
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, mogwai_2)?;
 
-			let final_dna : [u8;32] = Breeding::pairing(breed_type, dx, dy);
-
-			// don't know a better way, then using a clone.
-			let mut final_dna_hash = mogwai_id.clone();
-			for i in 0..32 {
-				final_dna_hash.as_mut()[i] = final_dna[i];
-			}
+			let final_dna = Breeding::pairing(breed_type, dx, dy);
 
 			let mogwai_struct = MogwaiStruct {
 				id: mogwai_id,
-				dna: final_dna_hash,
-				metaxy: [[0u8;16];2],
+				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				gen: next_gen,
@@ -831,22 +836,16 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// do the segmentation
-	fn segment(mogwai_struct: MogwaiStruct<T::Hash, T::BlockNumber, BalanceOf<T>, RarityType, PhaseType>, block_hash: T::Hash) -> [[u8;16];2] {
+	fn segment(mogwai_struct: MogwaiStruct<T::Hash, T::BlockNumber, BalanceOf<T>, RarityType, PhaseType>, block_hash: T::Hash) -> [[u8;32];2] {
 
-		let mut dna: [u8; 32] = Default::default();
-		let mut blk: [u8; 32] = Default::default();
+		let mut blk: [u8; 32] = [0u8;32];
 
-		dna.copy_from_slice(&mogwai_struct.dna.as_ref()[0..32]);
 		blk.copy_from_slice(&block_hash.as_ref()[0..32]);
 
 		// segmenting the hatched mogwai
-		let (dna,evo) = Breeding::segmenting(dna,blk);
+		let dna = Breeding::segmenting(mogwai_struct.dna.clone(),blk);
 
-		let mut metaxy = [[0u8;16];2];
-		metaxy[0] = dna;
-		metaxy[1] = evo;
-
-		metaxy
+		dna
 	}
 
 }

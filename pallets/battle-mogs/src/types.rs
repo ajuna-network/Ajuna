@@ -22,8 +22,7 @@ use codec::MaxEncodedLen;
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 pub struct MogwaiStruct<Hash, BlockNumber, Balance, RarityType, PhaseType> {
 	pub id: Hash,
-	pub dna: Hash,
-	pub metaxy: [[u8;16];2],
+	pub dna: [[u8;32];2],
 //	pub state: u32,
 //  pub level: u32,
     pub genesis: BlockNumber,
@@ -80,7 +79,7 @@ pub enum PhaseType {
 impl Default for PhaseType { fn default() -> Self { Self::None }}
 
 pub type Balance = u128;
-pub const MILLIMOGS: Balance = 1_000_000_000_000;
+pub const MILLIMOGS: Balance = 1_000_000_000;
 pub const DMOGS: Balance = 1_000 * MILLIMOGS;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
@@ -158,7 +157,7 @@ pub struct Breeding;
 
 impl Breeding {
 
-    pub fn sacrifice(gen1: u32, rar1: u32, metaxy1: [[u8;16];2], gen2: u32, rar2: u32, metaxy2: [[u8;16];2]) -> u32 {
+    pub fn sacrifice(gen1: u32, rar1: u32, dna1: [[u8;32];2], gen2: u32, rar2: u32, dna2: [[u8;32];2]) -> u32 {
         
         let mut result_gen:u32 = 0;
 
@@ -199,11 +198,11 @@ impl Breeding {
             }
 
             let gen_add = gen1 + gen2;
-            let pos1:u8 = metaxy1[0][((gen_add + rar2) % 16) as usize];
-            let pos2:u8 = metaxy2[0][((gen_add + rar1) % 16) as usize];
+            let pos1:u8 = dna1[0][((gen_add + rar2) % 32) as usize];
+            let pos2:u8 = dna2[0][((gen_add + rar1) % 32) as usize];
 
-            let val1:u8 = metaxy1[0][(pos2 % 16) as usize];
-            let val2:u8 = metaxy2[0][(pos1 % 16) as usize];
+            let val1:u8 = dna1[0][(pos2 % 32) as usize];
+            let val2:u8 = dna2[0][(pos1 % 32) as usize];
         
             if val1 < final_prob && val2 < final_prob {
                 result_gen = (val1 as u32 + val2 as u32) % max_gen + 1;  
@@ -213,45 +212,7 @@ impl Breeding {
         result_gen
     }
 
-	pub fn morph(breed_type: BreedType, gen1: [u8;8], gen2: [u8;8]) -> [u8;16] {
-
-		let mut final_dna : [u8;16] = [0;16];      
-			
-		let (ll, rr) = final_dna.split_at_mut(8);
-		let (l1, l2) = ll.split_at_mut(4);
-		let (r1, r2) = rr.split_at_mut(4);
-
-		match breed_type {
-			BreedType::DomDom => {
-				l1.copy_from_slice(&gen1[..4]);
-				l2.copy_from_slice(&gen1[4..8]);
-				r1.copy_from_slice(&gen2[..4]);
-				r2.copy_from_slice(&gen2[4..8]);
-			}
-			,
-			BreedType::DomRez => {
-				l1.copy_from_slice(&gen1[..4]);
-				l2.copy_from_slice(&gen1[4..8]);
-				r1.copy_from_slice(&gen2[4..8]);
-				r2.copy_from_slice(&gen2[..4]);
-			},
-			BreedType::RezDom => {
-				l1.copy_from_slice(&gen1[4..8]);
-				l2.copy_from_slice(&gen1[..4]);
-				r1.copy_from_slice(&gen2[4..8]);
-				r2.copy_from_slice(&gen2[..4]);
-			},
-			BreedType::RezRez => {					
-				l1.copy_from_slice(&gen1[4..8]);
-				l2.copy_from_slice(&gen1[..4]);
-				r1.copy_from_slice(&gen2[..4]);
-				r2.copy_from_slice(&gen2[4..8]);
-			},
-		}
-		return final_dna;
-	}
-
-	pub fn pairing(breed_type: BreedType, gen1: [u8;16], gen2: [u8;16]) -> [u8;32] {
+	pub fn morph(breed_type: BreedType, gen1: [u8;16], gen2: [u8;16]) -> [u8;32] {
 
 		let mut final_dna : [u8;32] = [0;32];      
 			
@@ -289,32 +250,75 @@ impl Breeding {
 		return final_dna;
 	}
 
-    pub fn segmenting(gen: [u8;32], blk: [u8;32]) -> ([u8;16],[u8;16]) {
+	pub fn pairing(breed_type: BreedType, gen1: [u8;32], gen2: [u8;32]) -> [[u8;32];2] {
+			
+		let mut ll : [u8;32] = [0u8;32];  
+        let mut rr : [u8;32] = [0u8;32];
+
+		let (l1, l2) = ll.split_at_mut(16);
+		let (r1, r2) = rr.split_at_mut(16);
+
+		match breed_type {
+			BreedType::DomDom => {
+				l1.copy_from_slice(&gen1[..16]);
+				l2.copy_from_slice(&gen1[16..32]);
+				r1.copy_from_slice(&gen2[..16]);
+				r2.copy_from_slice(&gen2[16..32]);
+			}
+			,
+			BreedType::DomRez => {
+				l1.copy_from_slice(&gen1[..16]);
+				l2.copy_from_slice(&gen1[16..32]);
+				r1.copy_from_slice(&gen2[16..32]);
+				r2.copy_from_slice(&gen2[..16]);
+			},
+			BreedType::RezDom => {
+				l1.copy_from_slice(&gen1[16..32]);
+				l2.copy_from_slice(&gen1[..16]);
+				r1.copy_from_slice(&gen2[16..32]);
+				r2.copy_from_slice(&gen2[..16]);
+			},
+			BreedType::RezRez => {					
+				l1.copy_from_slice(&gen1[16..32]);
+				l2.copy_from_slice(&gen1[..16]);
+				r1.copy_from_slice(&gen2[..16]);
+				r2.copy_from_slice(&gen2[16..32]);
+			},
+		}
+
+        let mut result : [[u8;32];2] = [[0u8;32];2];     
+        result[0] = ll;
+        result[1] = rr;
         
-		let a_sec = &gen[0 .. 16];
-		let b_sec = &gen[16 .. 32];
+		return result;
+	}
+
+    pub fn segmenting(gen: [[u8;32];2], blk: [u8;32]) -> [[u8;32];2] {
+        
+		let a_sec = &gen[0][0 .. 32];
+		let b_sec = &gen[1][0 .. 32];
 		
 		//let a_x = &gen[0 ..  8];
-		let a_y = &gen[8 .. 16];
-		let b_x = &gen[16 .. 24];
+		let a_y = &gen[0][16 .. 32];
+		let b_x = &gen[1][0 .. 16];
 		//let b_y = &gen[24 .. 32];  
 		
-		let a_c = &a_y[0 .. 4];
-		let b_c = &b_x[0 .. 4];
+		let a_c = &a_y[0 .. 8];
+		let b_c = &b_x[0 .. 8];
 	
-		let mut dna: [u8;16] = Default::default();
-		let mut evo: [u8;16] = Default::default();
+		let mut dna: [u8;32] = Default::default();
+		let mut evo: [u8;32] = Default::default();
 
         let mut full: u8 = 0;
         let mut mark: u8 = 0;
 
-        for i in 0..32 {
+        for i in 0..64 {
         
             let bit_a = Binary::get_bit_at(a_c[i / 8], i as u8 % 8);
             let bit_b = Binary::get_bit_at(b_c[i / 8], i as u8 % 8);
     
-            let p1:usize = i*2;
-            let p2:usize = i+1;
+            let p1:usize = i;
+            let p2:usize = 63-i;
             let blk_a = Binary::get_bit_at(blk[p1/8], p1 as u8 % 8);
             let blk_b = Binary::get_bit_at(blk[p2/8], p2 as u8 % 8);
     
@@ -372,7 +376,7 @@ impl Breeding {
                         half_byte = Binary::sub_one(half_byte, side);
                     }
                 } else if blk_a && blk_b {
-                    half_byte = Binary::copy_bits(half_byte, !blk[i], side); // !blk as E
+                    half_byte = Binary::copy_bits(half_byte, !blk[i%32], side); // !blk as E
                     mark_byte = Binary::copy_bits(mark_byte, 0xEE, side);
                 } else {
                     if blk_a {
@@ -392,7 +396,7 @@ impl Breeding {
                     mark_byte = Binary::copy_bits(mark_byte, 0xCC, side);
                 } else 
                 if !blk_a && !blk_b {
-                    half_byte = Binary::copy_bits(half_byte, blk[i], side); // blk as F
+                    half_byte = Binary::copy_bits(half_byte, blk[i%32], side); // blk as F
                     mark_byte = Binary::copy_bits(mark_byte, 0xFF, side);
                 } else {
                     if blk_a {
@@ -411,7 +415,7 @@ impl Breeding {
             // recombination
             if side == 1 {
                 if full == 0xFF || full == 0x00 {
-                    full &= blk[i];
+                    full &= blk[i%32];
                     mark = 0x33;
                 }
                 dna[i/2] = full;
@@ -419,7 +423,11 @@ impl Breeding {
             }
         }
 
-        (dna,evo)
+        let mut result = [[0u8;32];2];
+        result[0] = dna;
+        result[1] = evo;
+
+        result
     }
 }
 
