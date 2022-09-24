@@ -2,24 +2,6 @@ use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
-fn it_works_for_default_value() {
-	new_test_ext().execute_with(|| {
-		// Dispatch a signed extrinsic.
-		assert_ok!(BattleMogs::do_something(Origin::signed(1), 42));
-		// Read pallet storage and assert an expected result.
-		assert_eq!(BattleMogs::something(), Some(42));
-	});
-}
-
-#[test]
-fn correct_error_for_none_value() {
-	new_test_ext().execute_with(|| {
-		// Ensure the expected error is thrown when no value is present.
-		assert_noop!(BattleMogs::cause_error(Origin::signed(1)), Error::<Test>::NoneValue);
-	});
-}
-
-#[test]
 fn test_dotmog_breeding() {
 	new_test_ext().execute_with(|| {
 		
@@ -37,8 +19,8 @@ fn test_dotmog_breeding() {
 		let mogwai_1 = BattleMogs::mogwai(mogwai_hash_1);
 		let mogwai_2 = BattleMogs::mogwai(mogwai_hash_2);
 
-		assert_eq!(mogwai_1.gen, 1);
-		assert_eq!(mogwai_2.gen, 2);
+		assert_ne!(mogwai_1.gen, 0);
+		assert_ne!(mogwai_2.gen, 0);
 
 		assert_eq!(System::block_number(), 0);
 		run_to_block(101);

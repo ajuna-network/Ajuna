@@ -43,7 +43,8 @@ mod benchmarking;
 mod types;
 pub use types::*;
 
-type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> = 
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -52,6 +53,12 @@ pub mod pallet {
 
 	// important to use outside structs and consts
 	use super::*;
+
+	pub(crate) type MogwaiIdOf<T> = <T as frame_system::Config>::Hash;
+	pub(crate) type BoundedMogwaiIdsOf<T> =
+		BoundedVec<MogwaiIdOf<T>, ConstU32<MAX_MOGWAIS_PER_PLAYER>>;
+
+	pub(crate) const MAX_MOGWAIS_PER_PLAYER: u32 = 24;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -70,18 +77,9 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	// The pallet's runtime storage items.
-	// https://docs.substrate.io/v3/runtime/storage
 	#[pallet::storage]
-	#[pallet::getter(fn something)]
-	// Learn more about declaring storage items:
-	// https://docs.substrate.io/v3/runtime/storage#declaring-storage-items
-	pub type Something<T> = StorageValue<_, u32>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn founder_key)]
-	/// The `AccountId` of the dot mog founder.
-	pub type FounderKey<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+	#[pallet::getter(fn organizer)]
+	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn account_config)]
@@ -115,6 +113,10 @@ pub mod pallet {
 	pub type AllMogwaisIndex<T: Config> = StorageMap<_, Identity, T::Hash, u64, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn owners)]
+	pub type Owners<T: Config> = StorageMap<_, Identity, T::AccountId, BoundedMogwaiIdsOf<T>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn mogwai_of_owner_by_index)]
 	/// A map of all mogwai hashes associated with an account.
 	pub type OwnedMogwaisArray<T: Config> = StorageMap<_, Blake2_128Concat, (T::AccountId, u64), T::Hash, ValueQuery>;
@@ -142,7 +144,10 @@ pub mod pallet {
 		/// Event documentation should end with an array that provides descriptive names for event
 		/// parameters. [something, who]
 		SomethingStored(u32, T::AccountId),
-
+		
+		/// A new organizer has been set.
+		OrganizerSet(T::AccountId),
+		
 		// A account configuration has been changed.
 		AccountConfigChanged(T::AccountId, [u8; GameConfig::PARAM_COUNT]),
 
@@ -150,28 +155,34 @@ pub mod pallet {
 		ForSale(T::AccountId, T::Hash, BalanceOf<T>),
 
 		/// A price has been unset for a mogwai.
-		NotForSale(T::AccountId, T::Hash),
+		RemovedFromSale(T::AccountId, T::Hash),
 
-		/// A mogwai has been created.
+		/// A mogwai was created, by the Emperor himself!.
 		MogwaiCreated(T::AccountId, T::Hash),
 
-		/// A mogwai changed his owner.
-		MogwaiTransfered(T::AccountId, T::AccountId, T::Hash),
-
-		/// A mogwai has been removed. (R.I.P.)
+		/// A mogwai was removed, by the Emperor himself!
 		MogwaiRemoved(T::AccountId, T::Hash),
 
-		/// A mogwai has been was bought.
+		/// A mogwai was transfered, by the Emperor himself!
+		MogwaiTransfered(T::AccountId, T::AccountId, T::Hash),
+
+		/// A mogwai has been bought.
 		MogwaiBought(T::AccountId, T::AccountId, T::Hash, BalanceOf<T>),
 
-		/// A mogwai has hatched out of his egg.
+		/// A mogwai has been hatched.
 		MogwaiHatched(T::AccountId, T::Hash),
 
 		/// A mogwai has been sacrificed.
 		MogwaiSacrificed(T::AccountId, T::Hash),
 
+		/// A mogwai has been sacrificed for an other one.
+		MogwaiSacrificedInto(T::AccountId, T::Hash, T::Hash),
+
 		/// A mogwai has been morphed.
 		MogwaiMorphed(T::Hash),
+
+		/// A mogwai has been breeded.
+		MogwaiBreeded(T::Hash),
 	}
 
 	// Errors inform users that something went wrong.
@@ -189,6 +200,9 @@ pub mod pallet {
 
 		/// Invalid or unimplemented config update.
 		ConfigUpdateInvalid,
+
+		/// Price for config updated not set.
+		PriceInvalid,
 
 		/// Founder action only.
 		FounderAction,
@@ -219,46 +233,21 @@ pub mod pallet {
 
 	}
 
-	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	// These functions materialize as "extrinsics", which are often compared to transactions.
-	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a singles value as a parameter, writes the value to
-		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://docs.substrate.io/v3/runtime/origins
-			let who = ensure_signed(origin)?;
 
-			// Update storage.
-			<Something<T>>::put(something);
+		/// Set organizer, this is a sudo call.
+		#[pallet::weight(10_000)]
+		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+			
+			ensure_root(origin)?;
 
-			// Emit an event.
-			Self::deposit_event(Event::SomethingStored(something, who));
-			// Return a successful DispatchResultWithPostInfo
+			Organizer::<T>::put(&organizer);
+
+    		// Emit an event.
+			Self::deposit_event(Event::OrganizerSet(organizer));
+
 			Ok(())
-		}
-
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
-
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => return Err(Error::<T>::NoneValue.into()),
-				Some(old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(new);
-					Ok(())
-				},
-			}
 		}
 
 		/// Update configuration of this sender
@@ -277,13 +266,12 @@ pub mod pallet {
 
 			// TODO: add rules (min, max) for different configurations
 			let update_value:u8 = GameConfig::verify_update(index, game_config.parameters[usize::from(index)], value_opt);
-
 			ensure!(update_value > 0, Error::<T>::ConfigUpdateInvalid);
 
 			let price = Pricing::config_update_price(index, update_value);
-			if price > 0 {
-				Self::pay_founder(sender.clone(), price.saturated_into())?;
-			}
+			ensure!(price > 0, Error::<T>::PriceInvalid);
+
+			Self::pay_founder(sender.clone(), price.saturated_into())?;
 
 			game_config.parameters[usize::from(index)] = update_value;
 
@@ -293,7 +281,6 @@ pub mod pallet {
 			// Emit an event.
 			Self::deposit_event(Event::AccountConfigChanged(sender, game_config.parameters));
 
-			// Return a successful DispatchResult
 			Ok(())
 		}
 
@@ -321,7 +308,7 @@ pub mod pallet {
 			ensure!(MogwaiPrices::<T>::contains_key(mogwai_id), Error::<T>::MogwaiNotForSale);
 
 			<MogwaiPrices<T>>::remove(mogwai_id);
-			Self::deposit_event(Event::NotForSale(sender, mogwai_id));
+			Self::deposit_event(Event::RemovedFromSale(sender, mogwai_id));
 
 			Ok(())
 		}
@@ -331,6 +318,10 @@ pub mod pallet {
 		pub fn create_mogwai(origin: OriginFor<T>) -> DispatchResult {
 
 			let sender = ensure_signed(origin)?;
+
+			// TODO Add for production!
+			//let sender = ensure_signed(origin)?;
+			//ensure!(sender == Self::founder_key().unwrap(), Error::<T>::FounderAction);
 
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
@@ -352,7 +343,7 @@ pub mod pallet {
 			let final_dna = Breeding::pairing(breed_type, dx, dy);
 
 			let new_mogwai = MogwaiStruct {
-				id: random_hash_1,
+				id: random_hash_1.clone(),
 				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
@@ -361,7 +352,10 @@ pub mod pallet {
 				phase: PhaseType::Breeded,
 			};
 
-			Self::mint(sender, random_hash_1, new_mogwai)?;
+			Self::mint(sender.clone(), random_hash_1, new_mogwai)?;
+
+			// Emit an event.
+			Self::deposit_event(Event::MogwaiCreated(sender, random_hash_1));
 
 			Ok(())
 		}
@@ -371,12 +365,12 @@ pub mod pallet {
 		pub fn remove_mogwai(origin: OriginFor<T>, mogwai_id: T::Hash) -> DispatchResult {
 
 			let sender = ensure_signed(origin)?;
-			ensure!(sender == Self::founder_key().unwrap(), Error::<T>::FounderAction);
+			ensure!(sender == Self::organizer().unwrap(), Error::<T>::FounderAction);
 
-			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiNotOwned)?;
-			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
+			Self::remove(sender.clone(), mogwai_id)?;
 
-			Self::remove(sender, mogwai_id)?;
+			// Emit an event.
+			Self::deposit_event(Event::MogwaiRemoved(sender, mogwai_id));
 
 			Ok(())
 		}
@@ -386,15 +380,15 @@ pub mod pallet {
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, mogwai_id: T::Hash) -> DispatchResult {
 
 			let sender = ensure_signed(origin)?;
-			ensure!(sender == Self::founder_key().unwrap(), Error::<T>::FounderAction);
-
-			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
+			ensure!(sender == Self::organizer().unwrap(), Error::<T>::FounderAction);
 
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(to.clone()), Error::<T>::MaxMogwaisInAccount);
 
-			Self::transfer_from(sender, to, mogwai_id)?;
+			Self::transfer_from(sender.clone(), to.clone(), mogwai_id)?;
+
+			// Emit an event.
+			Self::deposit_event(Event::MogwaiTransfered(sender, to, mogwai_id));
 
 			Ok(())
 		}
@@ -422,6 +416,7 @@ pub mod pallet {
 
 			<Mogwais<T>>::insert(mogwai_id, mogwai);
 
+			// Emit an event.
 			Self::deposit_event(Event::MogwaiHatched(sender, mogwai_id));
 
 			Ok(())
@@ -445,9 +440,10 @@ pub mod pallet {
 			// TODO check this function on return value
 			let _ = T::Currency::deposit_into_existing(&sender, intrinsic)?;
 
+			// Emit an event.
 			Self::deposit_event(Event::MogwaiSacrificed(sender, mogwai_id_1));
 
-            Ok(())
+			Ok(())
 		}
 
 		/// Sacrifice mogwai to an other mogwai.
@@ -481,7 +477,8 @@ pub mod pallet {
 
 			Self::remove(sender.clone(), mogwai_id_1)?;
 
-			Self::deposit_event(Event::MogwaiSacrificed(sender, mogwai_id_1));
+			// Emit an event.
+			Self::deposit_event(Event::MogwaiSacrificedInto(sender, mogwai_id_1, mogwai_id_2));
 
             Ok(())
 		}
@@ -515,6 +512,7 @@ pub mod pallet {
 				which means transfer cannot cause an overflow; \
 				qed");
 
+			// Emit an event.
 			Self::deposit_event(Event::MogwaiBought(sender, owner, mogwai_id, mogwai_price));
 
 			Ok(())
@@ -552,6 +550,7 @@ pub mod pallet {
 
             <Mogwais<T>>::insert(mogwai_id, mogwai);
 
+			// Emit an event.
 			Self::deposit_event(Event::MogwaiMorphed(mogwai_id));
 
 			Ok(())
@@ -609,6 +608,9 @@ pub mod pallet {
 			// mint mogwai
 			Self::mint(sender, mogwai_id, mogwai_struct)?;
 
+			// Emit an event.
+			Self::deposit_event(Event::MogwaiBreeded(mogwai_id));
+
 			Ok(())
 		}
 	}
@@ -649,7 +651,7 @@ impl<T: Config> Pallet<T> {
 	/// pay founder
 	fn pay_founder(who: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 
-		let founder: T::AccountId = Self::founder_key().unwrap();
+		let founder: T::AccountId = Self::organizer().unwrap();
 
 		let _ =  T::Currency::transfer(
 			&who,
@@ -716,9 +718,6 @@ impl<T: Config> Pallet<T> {
         <OwnedMogwaisCount<T>>::insert(&to, new_owned_mogwais_count);
         <OwnedMogwaisIndex<T>>::insert(mogwai_id, owned_mogwais_count);
 
-		// Emit an event.
-		Self::deposit_event(Event::MogwaiCreated(to, mogwai_id));
-
 		Ok(())
 	}
 
@@ -766,9 +765,6 @@ impl<T: Config> Pallet<T> {
 		<OwnedMogwaisCount<T>>::insert(&from, new_owned_mogwai_count);
 		<OwnedMogwaisIndex<T>>::remove(mogwai_id);
 
-		// Emit an event.
-		Self::deposit_event(Event::MogwaiRemoved(from, mogwai_id));
-
 		Ok(())
 	}
 
@@ -812,9 +808,6 @@ impl<T: Config> Pallet<T> {
 		if MogwaiPrices::<T>::contains_key(mogwai_id) {
 			MogwaiPrices::<T>::remove(mogwai_id);
 		}
-
-		// Emit an event.
-		Self::deposit_event(Event::MogwaiTransfered(from, to, mogwai_id));
 
         Ok(())
 	}
