@@ -195,6 +195,9 @@ pub mod pallet {
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
 
+		/// No organizer set.
+		NoOrganizer,
+
 		/// The submitted index is out of range.
 		ConfigIndexOutOfRange,
 
@@ -271,7 +274,10 @@ pub mod pallet {
 			let price = Pricing::config_update_price(index, update_value);
 			ensure!(price > 0, Error::<T>::PriceInvalid);
 
-			Self::pay_founder(sender.clone(), price.saturated_into())?;
+			let organizer_opt = Self::organizer();
+			ensure!(organizer_opt.is_some(), Error::<T>::NoOrganizer);
+
+			Self::pay_founder(sender.clone(), organizer_opt.unwrap(), price.saturated_into())?;
 
 			game_config.parameters[usize::from(index)] = update_value;
 
@@ -649,13 +655,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// pay founder
-	fn pay_founder(who: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
-
-		let founder: T::AccountId = Self::organizer().unwrap();
+	fn pay_founder(who: T::AccountId, organizer: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 
 		let _ =  T::Currency::transfer(
 			&who,
-			&founder,
+			&organizer,
 			amount,
 			ExistenceRequirement::KeepAlive,
 		)?;
