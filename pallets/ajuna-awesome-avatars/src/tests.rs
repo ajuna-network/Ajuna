@@ -102,14 +102,14 @@ mod season {
 			let first_season = Season::default().early_start(1).start(5).end(10);
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(1), Some(first_season.clone()));
-			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::CreatedSeason(
 				first_season,
 			)));
 
 			let second_season = Season::default().early_start(11).start(12).end(13);
 			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
 			assert_eq!(AwesomeAvatars::seasons(2), Some(second_season.clone()));
-			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::NewSeasonCreated(
+			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::CreatedSeason(
 				second_season,
 			)));
 		});

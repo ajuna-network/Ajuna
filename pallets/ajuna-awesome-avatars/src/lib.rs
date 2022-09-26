@@ -145,7 +145,7 @@ pub mod pallet {
 		/// A new organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
 		/// A new season has been created.
-		NewSeasonCreated(SeasonOf<T>),
+		CreatedSeason(SeasonOf<T>),
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -229,7 +229,7 @@ pub mod pallet {
 			Seasons::<T>::insert(season_id, &new_season);
 			NextSeasonId::<T>::put(next_season_id);
 
-			Self::deposit_event(Event::NewSeasonCreated(new_season));
+			Self::deposit_event(Event::CreatedSeason(new_season));
 			Ok(())
 		}
 
