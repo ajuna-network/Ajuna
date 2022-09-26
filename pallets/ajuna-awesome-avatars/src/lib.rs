@@ -213,7 +213,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(10_000)]
 		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 			let new_season = Self::ensure_season(new_season)?;
@@ -233,7 +233,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(10_000)]
 		pub fn update_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
