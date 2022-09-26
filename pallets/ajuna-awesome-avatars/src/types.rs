@@ -36,6 +36,8 @@ pub type MintCount = u16;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
+	pub name: BoundedVec<u8, ConstU32<100>>,
+	pub description: BoundedVec<u8, ConstU32<1_000>>,
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
@@ -44,12 +46,6 @@ pub struct Season<BlockNumber> {
 	pub rarity_tiers_batch_mint: RarityTiers,
 	pub max_variations: u8,
 	pub max_components: u8,
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
-pub struct SeasonMetadata {
-	pub name: BoundedVec<u8, ConstU32<100>>,
-	pub description: BoundedVec<u8, ConstU32<1000>>,
 }
 
 pub type SeasonId = u16;

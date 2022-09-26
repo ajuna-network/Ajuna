@@ -86,8 +86,6 @@ mod organizer {
 mod season {
 	use super::*;
 
-	const SEASON_ID: SeasonId = 1;
-
 	#[test]
 	fn new_season_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
@@ -236,7 +234,7 @@ mod season {
 					first_season_update.clone()
 				));
 				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::SeasonUpdated(first_season_update, 1),
+					crate::Event::UpdatedSeason { season_id: 1, season: first_season_update },
 				));
 			});
 	}
@@ -362,60 +360,6 @@ mod season {
 					Season::default()
 				),
 				ArithmeticError::Overflow
-			);
-		});
-	}
-
-	#[test]
-	fn update_season_metadata_should_work() {
-		ExtBuilder::default()
-			.organizer(ALICE)
-			.seasons(vec![Season::default()])
-			.build()
-			.execute_with(|| {
-				let metadata = SeasonMetadata::default();
-
-				assert_ok!(AwesomeAvatars::update_season_metadata(
-					Origin::signed(ALICE),
-					SEASON_ID,
-					metadata.clone()
-				));
-
-				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::UpdatedSeasonMetadata {
-						season_id: SEASON_ID,
-						season_metadata: metadata.clone(),
-					},
-				));
-
-				assert_eq!(AwesomeAvatars::seasons_metadata(SEASON_ID), Some(metadata));
-			});
-	}
-
-	#[test]
-	fn update_season_metadata_should_fail_if_caller_is_not_organizer() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::update_season_metadata(
-					Origin::signed(BOB),
-					SEASON_ID,
-					SeasonMetadata::default()
-				),
-				DispatchError::BadOrigin
-			);
-		});
-	}
-
-	#[test]
-	fn update_season_metadata_should_fail_with_invalid_season_id() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::update_season_metadata(
-					Origin::signed(ALICE),
-					SEASON_ID + 10,
-					SeasonMetadata::default()
-				),
-				Error::<Test>::UnknownSeason
 			);
 		});
 	}
