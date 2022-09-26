@@ -154,12 +154,8 @@ pub mod pallet {
 		SeasonUpdated(SeasonOf<T>, SeasonId),
 		/// The metadata for {season_id} has been updated
 		UpdatedSeasonMetadata { season_id: SeasonId, season_metadata: SeasonMetadata },
-		/// Mint availability updated.
-		UpdatedMintAvailability { availability: bool },
-		/// Mint fee updated.
-		UpdatedMintFee { fee: MintFees<BalanceOf<T>> },
-		/// Mint cooldown updated.
-		UpdatedMintCooldown { cooldown: T::BlockNumber },
+		/// Global configuration updated.
+		UpdatedGlobalConfig(GlobalConfigOf<T>),
 		/// Avatars minted.
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 		/// Rare avatars minted.
@@ -290,51 +286,6 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn update_mint_fees(
-			origin: OriginFor<T>,
-			new_fees: MintFees<BalanceOf<T>>,
-		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-
-			GlobalConfigs::<T>::mutate(|configs| {
-				configs.mint_fees = new_fees;
-			});
-
-			Self::deposit_event(Event::UpdatedMintFee { fee: new_fees });
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn update_mint_cooldown(
-			origin: OriginFor<T>,
-			new_cooldown: T::BlockNumber,
-		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-
-			GlobalConfigs::<T>::mutate(|configs| {
-				configs.mint_cooldown = new_cooldown;
-			});
-
-			Self::deposit_event(Event::UpdatedMintCooldown { cooldown: new_cooldown });
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn update_mint_available(origin: OriginFor<T>, availability: bool) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-
-			GlobalConfigs::<T>::mutate(|configs| {
-				configs.mint_available = availability;
-			});
-
-			Self::deposit_event(Event::UpdatedMintAvailability { availability });
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			Self::do_mint(&player, &mint_option)
@@ -374,6 +325,17 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow)?;
 			FreeMints::<T>::insert(&dest, dest_free_mints);
 			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn update_global_config(
+			origin: OriginFor<T>,
+			new_global_config: GlobalConfigOf<T>,
+		) -> DispatchResult {
+			Self::ensure_organizer(origin)?;
+			GlobalConfigs::<T>::put(&new_global_config);
+			Self::deposit_event(Event::UpdatedGlobalConfig(new_global_config));
 			Ok(())
 		}
 	}
