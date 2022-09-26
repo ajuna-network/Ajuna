@@ -42,7 +42,6 @@ pub mod pallet {
 		ArithmeticError,
 	};
 	use sp_std::vec::Vec;
-	use MintFees;
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type BalanceOf<T> =
@@ -337,7 +336,6 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-
 			Self::do_mint(&player, &mint_option)
 		}
 
@@ -347,32 +345,20 @@ pub mod pallet {
 			dest: T::AccountId,
 			how_many: MintCount,
 		) -> DispatchResult {
-			let player = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
 
-			let required_free_mints = how_many.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-			let player_free_mints = Self::free_mints(&player);
-			ensure!(player_free_mints >= required_free_mints, Error::<T>::InsufficientFreeMints);
+			let sender_free_mints = FreeMints::<T>::get(&sender)
+				.checked_sub(how_many.checked_add(1).ok_or(ArithmeticError::Overflow)?)
+				.ok_or(Error::<T>::InsufficientFreeMints)?;
+			let dest_free_mints = FreeMints::<T>::get(&dest)
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
 
-			FreeMints::<T>::insert(
-				player.clone(),
-				player_free_mints
-					.checked_sub(required_free_mints)
-					.ok_or(ArithmeticError::Underflow)?,
-			);
+			FreeMints::<T>::insert(&sender, sender_free_mints);
+			FreeMints::<T>::insert(&dest, dest_free_mints);
 
-			FreeMints::<T>::try_mutate(dest.clone(), |dest_player_free_mints| -> DispatchResult {
-				*dest_player_free_mints = dest_player_free_mints
-					.checked_add(how_many)
-					.ok_or(ArithmeticError::Overflow)?;
-
-				Self::deposit_event(Event::FreeMintsTransferred {
-					from: player,
-					to: dest,
-					how_many,
-				});
-
-				Ok(())
-			})
+			Self::deposit_event(Event::FreeMintsTransferred { from: sender, to: dest, how_many });
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
@@ -382,14 +368,11 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-
-			FreeMints::<T>::try_mutate(dest.clone(), |free_mints| -> DispatchResult {
-				*free_mints = how_many.checked_add(*free_mints).ok_or(ArithmeticError::Overflow)?;
-				Ok(())
-			})?;
-
+			let dest_free_mints = FreeMints::<T>::get(&dest)
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
+			FreeMints::<T>::insert(&dest, dest_free_mints);
 			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
-
 			Ok(())
 		}
 	}
@@ -495,10 +478,14 @@ pub mod pallet {
 
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			let season_configs = Self::global_configs();
-
 			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
 
-			let avatars_to_mint = mint_option.count as usize;
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
+				let cooldown = season_configs.mint_cooldown;
+				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
+			}
+
 			match mint_option.mint_type {
 				MintType::Normal => {
 					let fee = season_configs.mint_fees.fee_for(mint_option.count);
@@ -513,10 +500,11 @@ pub mod pallet {
 				),
 			};
 
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			Self::check_cooldown(player, &current_block, &season_configs)?;
-
-			Self::check_max_ownership(player, &avatars_to_mint)?;
+			let how_many = mint_option.count as usize;
+			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
+				.checked_sub(how_many)
+				.ok_or(ArithmeticError::Underflow)?;
+			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
 
 			let active_season_id = match Self::active_season_id() {
 				Some(season_id) => season_id,
@@ -539,11 +527,11 @@ pub mod pallet {
 
 			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
 
-			let generated_avatars = (0..avatars_to_mint)
+			let generated_avatars = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let (dna, is_rare) =
-						Self::random_dna(&avatar_id, &active_season, avatars_to_mint > 1)?;
+						Self::random_dna(&avatar_id, &active_season, how_many > 1)?;
 					let avatar = Avatar { season: active_season_id, dna };
 					Ok((avatar_id, avatar, is_rare))
 				})
@@ -602,27 +590,6 @@ pub mod pallet {
 			let current_high_tier_minted = Self::active_season_rare_mints();
 			(season.early_start <= now && now <= season.end) &&
 				(current_high_tier_minted < season.max_rare_mints)
-		}
-
-		fn check_cooldown(
-			player: &T::AccountId,
-			current_block: &T::BlockNumber,
-			season_configs: &GlobalConfigOf<T>,
-		) -> DispatchResult {
-			if let Some(last_block) = Self::last_minted_block_numbers(player) {
-				let cooldown = season_configs.mint_cooldown;
-				ensure!(*current_block > last_block + cooldown, Error::<T>::MintCooldown);
-			}
-
-			Ok(())
-		}
-
-		fn check_max_ownership(player: &T::AccountId, avatars_to_mint: &usize) -> DispatchResult {
-			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
-				.checked_sub(*avatars_to_mint)
-				.ok_or(ArithmeticError::Underflow)?;
-			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
-			Ok(())
 		}
 	}
 
