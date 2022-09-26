@@ -212,3 +212,102 @@ mod remove_price {
 		});
 	}
 }
+
+#[cfg(test)]
+mod create_mogwai {
+	use super::*;
+
+	#[test]
+	fn create_mogwai_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let owner = ALICE;
+			assert_ok!(BattleMogs::create_mogwai(Origin::signed(owner)));
+			let mogwai_id = BattleMogs::mogwai_of_owner_by_index((owner, 0));
+
+			assert_eq!(BattleMogs::mogwai(mogwai_id).id, mogwai_id);
+			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(owner));
+
+			assert_eq!(BattleMogs::mogwai_by_index(0), mogwai_id);
+			assert_eq!(BattleMogs::all_mogwais_count(), 1);
+			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id), 0);
+
+			assert_eq!(BattleMogs::mogwai_of_owner_by_index((owner, 0)), mogwai_id);
+			assert_eq!(BattleMogs::owned_mogwais_count(owner), 1);
+			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id), 0);
+
+			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiCreated(
+				owner, mogwai_id,
+			)));
+		});
+	}
+
+	#[test]
+	fn create_mogwai_cannot_go_over_limit() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = ALICE;
+			let mogwai_limit = BattleMogs::config_value(ALICE, 1);
+
+			for _ in 0..mogwai_limit {
+				assert_ok!(BattleMogs::create_mogwai(Origin::signed(account)));
+			}
+
+			assert_noop!(
+				BattleMogs::create_mogwai(Origin::signed(account)),
+				Error::<Test>::MaxMogwaisInAccount
+			);
+
+			assert_ok!(BattleMogs::update_config(Origin::signed(ALICE), 1, Some(1)));
+
+			let new_mogwai_limit = BattleMogs::config_value(ALICE, 1);
+
+			for _ in mogwai_limit..new_mogwai_limit {
+				assert_ok!(BattleMogs::create_mogwai(Origin::signed(account)));
+			}
+
+			assert_noop!(
+				BattleMogs::create_mogwai(Origin::signed(account)),
+				Error::<Test>::MaxMogwaisInAccount
+			);
+		});
+	}
+}
+
+#[cfg(test)]
+mod remove_mogwai {
+	use super::*;
+}
+
+#[cfg(test)]
+mod transfer {
+	use super::*;
+}
+
+#[cfg(test)]
+mod hatch_mogwai {
+	use super::*;
+}
+
+#[cfg(test)]
+mod sacrifice {
+	use super::*;
+}
+
+#[cfg(test)]
+mod sacrifice_into {
+	use super::*;
+}
+
+#[cfg(test)]
+mod buy_mogwai {
+	use super::*;
+}
+
+#[cfg(test)]
+mod morph_mogwai {
+	use super::*;
+}
+
+#[cfg(test)]
+mod breed_mogwai {
+	use super::*;
+}
