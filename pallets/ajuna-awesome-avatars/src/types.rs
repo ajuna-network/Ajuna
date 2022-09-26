@@ -77,7 +77,7 @@ impl Default for MintPackSize {
 	}
 }
 
-#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintFees<Balance> {
 	pub one: Balance,
 	pub three: Balance,
@@ -112,7 +112,7 @@ pub struct MintOption {
 	pub count: MintPackSize,
 }
 
-#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint_available: bool,
 	pub mint_fees: MintFees<Balance>,

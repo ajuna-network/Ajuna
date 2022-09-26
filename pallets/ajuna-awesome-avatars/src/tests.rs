@@ -533,77 +533,24 @@ mod config {
 	use super::*;
 
 	#[test]
-	fn update_mint_available_should_work() {
+	fn update_global_config_should_work() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert!(!AwesomeAvatars::global_configs().mint_available);
-			assert_ok!(AwesomeAvatars::update_mint_available(Origin::signed(ALICE), true));
-			assert!(AwesomeAvatars::global_configs().mint_available);
+			let config = GlobalConfigOf::<Test>::default();
+			assert_ok!(AwesomeAvatars::update_global_config(Origin::signed(ALICE), config.clone()));
 			System::assert_last_event(mock::Event::AwesomeAvatars(
-				crate::Event::UpdatedMintAvailability { availability: true },
+				crate::Event::UpdatedGlobalConfig(config),
 			));
 		});
 	}
 
 	#[test]
-	fn update_mint_available_should_reject_non_organizer_as_caller() {
+	fn update_global_config_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::update_mint_available(Origin::signed(BOB), true),
-				DispatchError::BadOrigin
-			);
-		});
-	}
-
-	#[test]
-	fn update_mint_fees_should_work() {
-		let original_fees =
-			MintFees { one: 550_000_000_000, three: 500_000_000_000, six: 450_000_000_000 };
-		let update_fees =
-			MintFees { one: 650_000_000_000, three: 600_000_000_000, six: 750_000_000_000 };
-
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_eq!(AwesomeAvatars::global_configs().mint_fees, original_fees);
-			assert_ok!(AwesomeAvatars::update_mint_fees(Origin::signed(ALICE), update_fees));
-			assert_eq!(AwesomeAvatars::global_configs().mint_fees, update_fees);
-			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::UpdatedMintFee {
-				fee: update_fees,
-			}));
-		});
-	}
-
-	#[test]
-	fn update_mint_fees_should_reject_non_organizer_as_caller() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::update_mint_fees(
+				AwesomeAvatars::update_global_config(
 					Origin::signed(BOB),
-					MintFees { one: 550_000_000_000, three: 500_000_000_000, six: 450_000_000_000 }
+					GlobalConfigOf::<Test>::default()
 				),
-				DispatchError::BadOrigin
-			);
-		});
-	}
-
-	#[test]
-	fn update_mint_cooldown_should_update_work() {
-		let original_cd = 5;
-		let update_cd = 10;
-
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_eq!(AwesomeAvatars::global_configs().mint_cooldown, original_cd);
-			assert_ok!(AwesomeAvatars::update_mint_cooldown(Origin::signed(ALICE), update_cd));
-			assert_eq!(AwesomeAvatars::global_configs().mint_cooldown, update_cd);
-			System::assert_last_event(mock::Event::AwesomeAvatars(
-				crate::Event::UpdatedMintCooldown { cooldown: update_cd },
-			));
-		});
-	}
-
-	#[test]
-	fn update_mint_cooldown_should_fail_for_not_organizer_account() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::update_mint_cooldown(Origin::signed(BOB), 120_934),
 				DispatchError::BadOrigin
 			);
 		});
