@@ -108,7 +108,7 @@ pub struct ExtBuilder {
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self { founder_key: Some(ALICE) }
+		ExtBuilder::new(Some(ALICE))
 	}
 }
 
