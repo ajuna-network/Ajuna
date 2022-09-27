@@ -209,6 +209,8 @@ impl Default for Season<MockBlockNumber> {
 		]);
 
 		Self {
+			name: b"cool season".to_vec().try_into().unwrap(),
+			description: b"this is a really cool season".to_vec().try_into().unwrap(),
 			early_start: 1,
 			start: 2,
 			end: 3,

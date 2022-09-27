@@ -99,10 +99,6 @@ pub mod pallet {
 	pub type NextActiveSeasonId<T: Config> =
 		StorageValue<_, SeasonId, ValueQuery, DefaultNextActiveSeasonId>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn seasons_metadata)]
-	pub type SeasonsMetadata<T: Config> = StorageMap<_, Identity, SeasonId, SeasonMetadata>;
-
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -149,11 +145,9 @@ pub mod pallet {
 		/// A new organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
 		/// A new season has been created.
-		NewSeasonCreated(SeasonOf<T>),
-		/// An existing season has been updated.
-		SeasonUpdated(SeasonOf<T>, SeasonId),
-		/// The metadata for {season_id} has been updated
-		UpdatedSeasonMetadata { season_id: SeasonId, season_metadata: SeasonMetadata },
+		CreatedSeason(SeasonOf<T>),
+		/// The season configuration for {season_id} has been updated.
+		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
 		UpdatedGlobalConfig(GlobalConfigOf<T>),
 		/// Avatars minted.
@@ -219,7 +213,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(10_000)]
 		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
 			let new_season = Self::ensure_season(new_season)?;
@@ -235,11 +229,11 @@ pub mod pallet {
 			Seasons::<T>::insert(season_id, &new_season);
 			NextSeasonId::<T>::put(next_season_id);
 
-			Self::deposit_event(Event::NewSeasonCreated(new_season));
+			Self::deposit_event(Event::CreatedSeason(new_season));
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(10_000)]
 		pub fn update_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
@@ -260,29 +254,9 @@ pub mod pallet {
 				}
 				let existing_season = maybe_season.as_mut().ok_or(Error::<T>::UnknownSeason)?;
 				*existing_season = season.clone();
-				Self::deposit_event(Event::SeasonUpdated(season, season_id));
+				Self::deposit_event(Event::UpdatedSeason { season_id, season });
 				Ok(())
 			})
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn update_season_metadata(
-			origin: OriginFor<T>,
-			season_id: SeasonId,
-			metadata: SeasonMetadata,
-		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-
-			ensure!(Self::seasons(season_id).is_some(), Error::<T>::UnknownSeason);
-
-			SeasonsMetadata::<T>::insert(season_id, &metadata);
-
-			Self::deposit_event(Event::UpdatedSeasonMetadata {
-				season_id,
-				season_metadata: metadata,
-			});
-
-			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
