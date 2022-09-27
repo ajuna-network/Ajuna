@@ -35,7 +35,7 @@ pub mod pallet {
 	use crate::types::RarityTier::Mythical;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Hooks, Randomness, WithdrawReasons},
+		traits::{Currency, ExistenceRequirement, Randomness, WithdrawReasons},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
@@ -73,36 +73,26 @@ pub mod pallet {
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::type_value]
-	pub fn DefaultNextSeasonId() -> SeasonId {
+	pub fn DefaultSeasonId() -> SeasonId {
 		1
 	}
-	/// Season number. Storage value to keep track of the id.
-	#[pallet::storage]
-	#[pallet::getter(fn next_season_id)]
-	pub type NextSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultNextSeasonId>;
 
-	/// Season id currently active.
 	#[pallet::storage]
-	#[pallet::getter(fn active_season_id)]
-	pub type ActiveSeasonId<T: Config> = StorageValue<_, SeasonId, OptionQuery>;
+	#[pallet::getter(fn current_season_id)]
+	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultSeasonId>;
 
-	#[pallet::type_value]
-	pub fn DefaultNextActiveSeasonId() -> SeasonId {
-		1
-	}
+	#[pallet::storage]
+	#[pallet::getter(fn is_season_active)]
+	pub type IsSeasonActive<T: Config> = StorageValue<_, bool, ValueQuery>;
+
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_rare_mints)]
 	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, MintCount, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn next_active_season_id)]
-	pub type NextActiveSeasonId<T: Config> =
-		StorageValue<_, SeasonId, ValueQuery, DefaultNextActiveSeasonId>;
-
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
-	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>>;
+	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
 
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
@@ -144,8 +134,6 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A new organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
-		/// A new season has been created.
-		CreatedSeason(SeasonOf<T>),
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -178,6 +166,8 @@ pub mod pallet {
 		SeasonEndTooLate,
 		/// The season doesn't exist.
 		UnknownSeason,
+		/// The season ID of a season to create is not sequential.
+		NonSequentialSeasonId,
 		/// The combination of all tiers rarity percentages doesn't add up to 100
 		IncorrectRarityPercentages,
 		/// Some rarity tier are duplicated.
@@ -204,65 +194,31 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
+		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			Self::toggle_season();
+			Self::do_mint(&player, &mint_option)
+		}
+
+		#[pallet::weight(10_000)]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
-
 			Organizer::<T>::put(&organizer);
 			Self::deposit_event(Event::OrganizerSet { organizer });
-
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-			let new_season = Self::ensure_season(new_season)?;
-
-			let season_id = Self::next_season_id();
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-
-			if let Some(prev_season) = Self::seasons(prev_season_id) {
-				ensure!(prev_season.end < new_season.early_start, Error::<T>::EarlyStartTooEarly);
-			}
-
-			Seasons::<T>::insert(season_id, &new_season);
-			NextSeasonId::<T>::put(next_season_id);
-
-			Self::deposit_event(Event::CreatedSeason(new_season));
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn update_season(
+		pub fn upsert_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
 			season: SeasonOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let season = Self::ensure_season(season)?;
-
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-
-			Seasons::<T>::try_mutate(season_id, |maybe_season| {
-				if let Some(prev_season) = Self::seasons(prev_season_id) {
-					ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
-				}
-				if let Some(next_season) = Self::seasons(next_season_id) {
-					ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
-				}
-				let existing_season = maybe_season.as_mut().ok_or(Error::<T>::UnknownSeason)?;
-				*existing_season = season.clone();
-				Self::deposit_event(Event::UpdatedSeason { season_id, season });
-				Ok(())
-			})
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
-			let player = ensure_signed(origin)?;
-			Self::do_mint(&player, &mint_option)
+			let season = Self::ensure_season(&season_id, season)?;
+			Seasons::<T>::insert(season_id, &season);
+			Self::deposit_event(Event::UpdatedSeason { season_id, season });
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
@@ -322,15 +278,34 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(crate) fn ensure_season(mut season: SeasonOf<T>) -> Result<SeasonOf<T>, DispatchError> {
+		pub(crate) fn ensure_season(
+			season_id: &SeasonId,
+			mut season: SeasonOf<T>,
+		) -> Result<SeasonOf<T>, DispatchError> {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 			ensure!(
-				season.max_variations + season.max_components <= MAX_RANDOM_BYTES,
+				season
+					.max_variations
+					.checked_add(season.max_components)
+					.ok_or(ArithmeticError::Overflow)? <=
+					MAX_RANDOM_BYTES,
 				Error::<T>::ExceededMaxRandomBytes
 			);
 
-			Self::validate_rarity_tiers(&mut season.rarity_tiers)?;
+			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
+			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
+			if prev_season_id > 0 {
+				let prev_season =
+					Self::seasons(prev_season_id).ok_or(Error::<T>::NonSequentialSeasonId)?;
+				ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
+			}
+			if let Some(next_season) = Self::seasons(next_season_id) {
+				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
+			}
+
+			Self::validate_rarity_tiers(&mut season.rarity_tiers_single_mint)?;
 			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
 
 			Ok(season)
@@ -377,7 +352,7 @@ pub mod pallet {
 				let rarity_tiers = if batched_mint {
 					&season.rarity_tiers_batch_mint
 				} else {
-					&season.rarity_tiers
+					&season.rarity_tiers_single_mint
 				};
 				let mut cumulative_sum = 0;
 				let mut random_tier = rarity_tiers[0].0.clone() as u8;
@@ -456,34 +431,16 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Underflow)?;
 			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
 
-			let active_season_id = match Self::active_season_id() {
-				Some(season_id) => season_id,
-				None => {
-					let last_season_id = Self::next_active_season_id()
-						.checked_sub(1)
-						.ok_or(ArithmeticError::Underflow)?;
-					let last_season =
-						Self::seasons(last_season_id).ok_or(Error::<T>::OutOfSeason)?;
-					ensure!(
-						Self::is_season_premature_closed(
-							last_season,
-							<frame_system::Pallet<T>>::block_number()
-						),
-						Error::<T>::OutOfSeason
-					);
-					last_season_id
-				},
-			};
-
-			let active_season = Self::seasons(active_season_id).ok_or(Error::<T>::UnknownSeason)?;
+			ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
+			let season_id = Self::current_season_id();
+			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 
 			let generated_avatars = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
-					let (dna, is_rare) =
-						Self::random_dna(&avatar_id, &active_season, how_many > 1)?;
-					let soul_points = Self::calculate_soul_points_from_dna(&dna, &active_season);
-					let avatar = Avatar { season: active_season_id, dna, souls: soul_points };
+					let (dna, is_rare) = Self::random_dna(&avatar_id, &season, how_many > 1)?;
+					let soul_points = Self::calculate_soul_points_from_dna(&dna, &season);
+					let avatar = Avatar { season: season_id, dna, souls: soul_points };
 					Ok((avatar_id, avatar, is_rare))
 				})
 				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
@@ -537,35 +494,42 @@ pub mod pallet {
 			})
 		}
 
-		fn is_season_premature_closed(season: SeasonOf<T>, now: T::BlockNumber) -> bool {
-			let current_high_tier_minted = Self::active_season_rare_mints();
-			(season.early_start <= now && now <= season.end) &&
-				(current_high_tier_minted < season.max_rare_mints)
-		}
-	}
+		fn toggle_season() {
+			let mut current_season_id = Self::current_season_id();
+			if let Some(season) = Self::seasons(&current_season_id) {
+				let now = <frame_system::Pallet<T>>::block_number();
+				let is_active = now >= season.early_start && now <= season.end;
+				let is_currently_active = Self::is_season_active();
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(now: T::BlockNumber) -> Weight {
-			let season_id = Self::active_season_id().unwrap_or_else(Self::next_active_season_id);
-			let mut db_weight = T::DbWeight::get().reads(2);
+				// activate season
+				if !is_currently_active && is_active {
+					Self::activate_season(current_season_id);
+				}
 
-			if let Some(season) = Self::seasons(season_id) {
-				db_weight += T::DbWeight::get().reads(2);
-				if Self::is_season_premature_closed(season, now) {
-					ActiveSeasonId::<T>::put(season_id);
-					NextActiveSeasonId::<T>::put(season_id.saturating_add(1));
-					Self::deposit_event(Event::SeasonStarted(season_id));
-					db_weight += T::DbWeight::get().writes(3);
-				} else {
-					ActiveSeasonRareMints::<T>::kill();
-					if let Some(season_id) = ActiveSeasonId::<T>::take() {
-						Self::deposit_event(Event::SeasonFinished(season_id));
+				// deactivate season (and active if condition met)
+				if now > season.end {
+					Self::deactivate_season();
+					current_season_id.saturating_inc();
+					if let Some(next_season) = Self::seasons(current_season_id) {
+						if now >= next_season.early_start {
+							Self::activate_season(current_season_id);
+						}
 					}
-					db_weight += T::DbWeight::get().writes(3);
 				}
 			}
-			db_weight
+		}
+
+		fn activate_season(season_id: SeasonId) {
+			IsSeasonActive::<T>::put(true);
+			Self::deposit_event(Event::SeasonStarted(season_id));
+		}
+
+		fn deactivate_season() {
+			IsSeasonActive::<T>::put(false);
+			CurrentSeasonId::<T>::mutate(|season_id| {
+				Self::deposit_event(Event::SeasonFinished(*season_id));
+				season_id.saturating_inc()
+			});
 		}
 	}
 }

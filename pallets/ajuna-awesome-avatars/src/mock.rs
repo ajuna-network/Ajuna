@@ -101,7 +101,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 #[derive(Default)]
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
-	seasons: Vec<Season<MockBlockNumber>>,
+	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
 	mint_availability: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
@@ -114,7 +114,7 @@ impl ExtBuilder {
 		self.organizer = Some(organizer);
 		self
 	}
-	pub fn seasons(mut self, seasons: Vec<Season<MockBlockNumber>>) -> Self {
+	pub fn seasons(mut self, seasons: Vec<(SeasonId, Season<MockBlockNumber>)>) -> Self {
 		self.seasons = seasons;
 		self
 	}
@@ -151,10 +151,8 @@ impl ExtBuilder {
 				Organizer::<Test>::put(organizer);
 			}
 
-			for season in self.seasons {
-				let season_id = AwesomeAvatars::next_season_id();
+			for (season_id, season) in self.seasons {
 				Seasons::<Test>::insert(season_id, season);
-				NextSeasonId::<Test>::put(season_id + 1);
 			}
 
 			GlobalConfigs::<Test>::mutate(|configs| {
@@ -215,7 +213,7 @@ impl Default for Season<MockBlockNumber> {
 			start: 2,
 			end: 3,
 			max_rare_mints: 1,
-			rarity_tiers: tiers.clone(),
+			rarity_tiers_single_mint: tiers.clone(),
 			rarity_tiers_batch_mint: tiers,
 			max_variations: 1,
 			max_components: 1,
@@ -240,8 +238,8 @@ impl Season<MockBlockNumber> {
 		self.max_rare_mints = max_rare_mints;
 		self
 	}
-	pub fn rarity_tiers(mut self, rarity_tiers: RarityTiers) -> Self {
-		self.rarity_tiers = rarity_tiers;
+	pub fn rarity_tiers_single_mint(mut self, rarity_tiers: RarityTiers) -> Self {
+		self.rarity_tiers_single_mint = rarity_tiers;
 		self
 	}
 	pub fn rarity_tiers_batch_mint(mut self, rarity_tiers: RarityTiers) -> Self {
