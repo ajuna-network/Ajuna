@@ -15,19 +15,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{Assets, Balances, Treasury};
-
 use ajuna_primitives::{AccountId, Balance};
-use codec::{Decode, Encode};
-use frame_support::{
-	pallet_prelude::MaxEncodedLen,
-	traits::{
-		fungibles::{CreditOf, Inspect},
-		Currency, Imbalance, InstanceFilter, OnUnbalanced,
-	},
-	RuntimeDebug,
+use frame_support::traits::{
+	fungibles::{CreditOf, Inspect},
+	Currency, Imbalance, OnUnbalanced,
 };
 use pallet_asset_tx_payment::HandleCredit;
-use scale_info::TypeInfo;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
@@ -66,37 +59,5 @@ impl HandleCredit<AccountId, Assets> for CreditToTreasury {
 			.saturating_mul_int(credit.peek());
 		let amount = NegativeImbalance::new(amount);
 		Treasury::on_unbalanced(amount);
-	}
-}
-
-#[derive(
-	Copy,
-	Clone,
-	Eq,
-	PartialEq,
-	Ord,
-	PartialOrd,
-	MaxEncodedLen,
-	Decode,
-	Encode,
-	RuntimeDebug,
-	TypeInfo,
-)]
-pub enum ProxyType {
-	Any,
-}
-impl Default for ProxyType {
-	fn default() -> Self {
-		Self::Any
-	}
-}
-impl<Call> InstanceFilter<Call> for ProxyType {
-	fn filter(&self, _c: &Call) -> bool {
-		match self {
-			ProxyType::Any => true,
-		}
-	}
-	fn is_superset(&self, o: &Self) -> bool {
-		self == &ProxyType::Any || self == o
 	}
 }
