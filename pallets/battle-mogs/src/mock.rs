@@ -37,6 +37,10 @@ use frame_support_test::TestRandomness;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
+pub const ALICE: MockAccountId = 1;
+pub const BOB: MockAccountId = 2;
+pub const CHARLIE: MockAccountId = 3;
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -98,9 +102,6 @@ impl pallet_battle_mogs::Config for Test {
 	type Currency = pallet_balances::Pallet<Self>;
 	type Randomness = TestRandomness<Self>;
 }
-
-pub const ALICE: MockAccountId = 1;
-pub const BOB: MockAccountId = 2;
 
 pub struct ExtBuilder {
 	founder_key: Option<MockAccountId>,

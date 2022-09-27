@@ -334,6 +334,64 @@ mod remove_mogwai {
 #[cfg(test)]
 mod transfer {
 	use super::*;
+
+	#[test]
+	fn transfer_successfully() {
+		let founder = ALICE;
+		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+			let target = BOB;
+			let mogwai_id = create_mogwai(founder);
+			let default_hash = <Test as frame_system::Config>::Hash::default();
+
+			assert_ok!(BattleMogs::transfer(Origin::signed(founder), target, mogwai_id));
+
+			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(target));
+
+			assert_eq!(BattleMogs::mogwai_of_owner_by_index((target, 0)), mogwai_id);
+			assert_eq!(BattleMogs::mogwai_of_owner_by_index((founder, 0)), default_hash);
+			assert_eq!(BattleMogs::owned_mogwais_count(target), 1);
+			assert_eq!(BattleMogs::owned_mogwais_count(founder), 0);
+
+			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiTransfered(
+				founder, target, mogwai_id,
+			)));
+		});
+	}
+
+	#[test]
+	fn transfer_only_founder_can_transfer() {
+		let founder = BOB;
+		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+			let target = ALICE;
+			let sender = CHARLIE;
+			let mogwai_id = create_mogwai(sender);
+
+			assert_noop!(
+				BattleMogs::transfer(Origin::signed(sender), target, mogwai_id),
+				Error::<Test>::FounderAction
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_cannot_transfer_above_limit() {
+		let founder = ALICE;
+		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+			let target = BOB;
+			let mogwai_limit = BattleMogs::config_value(target, 1);
+
+			for _ in 0..mogwai_limit {
+				let _ = create_mogwai(target);
+			}
+
+			let mogwai_id = create_mogwai(founder);
+
+			assert_noop!(
+				BattleMogs::transfer(Origin::signed(founder), target, mogwai_id),
+				Error::<Test>::MaxMogwaisInAccount
+			);
+		});
+	}
 }
 
 #[cfg(test)]
