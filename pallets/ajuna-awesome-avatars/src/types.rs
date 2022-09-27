@@ -50,6 +50,8 @@ pub type MintCount = u16;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
+	pub name: BoundedVec<u8, ConstU32<100>>,
+	pub description: BoundedVec<u8, ConstU32<1_000>>,
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
@@ -60,30 +62,32 @@ pub struct Season<BlockNumber> {
 	pub max_components: u8,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
-pub struct SeasonMetadata {
-	pub name: BoundedVec<u8, ConstU32<100>>,
-	pub description: BoundedVec<u8, ConstU32<1000>>,
-}
-
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
+pub type SoulPoints = u32;
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct Avatar {
 	pub season: SeasonId,
 	pub dna: Dna,
+	pub souls: SoulPoints,
 }
 
 /// Number of avatars to be minted.
-#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
-pub enum MintCountOption {
+#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
+pub enum MintPackSize {
 	One = 1,
 	Three = 3,
 	Six = 6,
 }
 
-#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+impl Default for MintPackSize {
+	fn default() -> Self {
+		MintPackSize::One
+	}
+}
+
+#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintFees<Balance> {
 	pub one: Balance,
 	pub three: Balance,
@@ -91,16 +95,34 @@ pub struct MintFees<Balance> {
 }
 
 impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: MintCountOption) -> Balance {
+	pub fn fee_for(self, mint_count: MintPackSize) -> Balance {
 		match mint_count {
-			MintCountOption::One => self.one,
-			MintCountOption::Three => self.three,
-			MintCountOption::Six => self.six,
+			MintPackSize::One => self.one,
+			MintPackSize::Three => self.three,
+			MintPackSize::Six => self.six,
 		}
 	}
 }
 
-#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
+pub enum MintType {
+	Free,
+	Normal,
+}
+
+impl Default for MintType {
+	fn default() -> Self {
+		MintType::Free
+	}
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
+pub struct MintOption {
+	pub mint_type: MintType,
+	pub count: MintPackSize,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint_available: bool,
 	pub mint_fees: MintFees<Balance>,

@@ -106,6 +106,7 @@ pub struct ExtBuilder {
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
 	balances: Vec<(MockAccountId, MockBalance)>,
+	free_mints: Vec<(MockAccountId, MintCount)>,
 }
 
 impl ExtBuilder {
@@ -131,6 +132,10 @@ impl ExtBuilder {
 	}
 	pub fn mint_fees(mut self, mint_fees: MintFees<MockBalance>) -> Self {
 		self.mint_fees = Some(mint_fees);
+		self
+	}
+	pub fn free_mints(mut self, free_mints: Vec<(MockAccountId, MintCount)>) -> Self {
+		self.free_mints = free_mints;
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -167,6 +172,10 @@ impl ExtBuilder {
 					configs.mint_fees = mint_fees;
 				});
 			}
+
+			for (account_id, mint_amount) in self.free_mints {
+				FreeMints::<Test>::insert(account_id, mint_amount);
+			}
 		});
 		ext
 	}
@@ -200,6 +209,8 @@ impl Default for Season<MockBlockNumber> {
 		]);
 
 		Self {
+			name: b"cool season".to_vec().try_into().unwrap(),
+			description: b"this is a really cool season".to_vec().try_into().unwrap(),
 			early_start: 1,
 			start: 2,
 			end: 3,
