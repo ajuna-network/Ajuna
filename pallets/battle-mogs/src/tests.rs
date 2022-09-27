@@ -653,6 +653,29 @@ mod buy_mogwai {
 #[cfg(test)]
 mod morph_mogwai {
 	use super::*;
+
+	#[test]
+	fn morph_mogwai_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id = create_mogwai(account, 0);
+
+			assert_ok!(BattleMogs::morph_mogwai(Origin::signed(account), mogwai_id));
+
+			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiMorphed(mogwai_id)));
+		});
+	}
+
+	#[test]
+	fn morph_mogwai_fails_morphing_non_owned_mogwai() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let other = ALICE;
+			let mogwai_id = create_mogwai(account, 0);
+
+			assert!(BattleMogs::morph_mogwai(Origin::signed(other), mogwai_id).is_err());
+		});
+	}
 }
 
 #[cfg(test)]
