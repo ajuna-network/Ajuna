@@ -275,6 +275,60 @@ mod create_mogwai {
 #[cfg(test)]
 mod remove_mogwai {
 	use super::*;
+
+	#[test]
+	fn remove_mogwai_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = ALICE;
+			let mogwai_id = create_mogwai(account);
+			let default_hash = <Test as frame_system::Config>::Hash::default();
+
+			assert_ok!(BattleMogs::remove_mogwai(Origin::signed(account), mogwai_id));
+
+			assert_eq!(BattleMogs::mogwai(mogwai_id).id, default_hash);
+			assert_eq!(BattleMogs::owner_of(mogwai_id), None);
+
+			assert_eq!(BattleMogs::mogwai_by_index(0), default_hash);
+			assert_eq!(BattleMogs::all_mogwais_count(), 0);
+			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id), 0);
+
+			assert_eq!(BattleMogs::mogwai_of_owner_by_index((account, 0)), default_hash);
+			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
+			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id), 0);
+
+			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiRemoved(
+				account, mogwai_id,
+			)));
+		});
+	}
+
+	#[test]
+	fn remove_mogwai_only_founder_can_remove() {
+		let founder = BOB;
+		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+			let account = ALICE;
+			let mogwai_id = create_mogwai(account);
+
+			assert_noop!(
+				BattleMogs::remove_mogwai(Origin::signed(account), mogwai_id),
+				Error::<Test>::FounderAction
+			);
+		});
+	}
+
+	#[test]
+	fn remove_mogwai_only_owner_can_remove() {
+		let founder = BOB;
+		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+			let account = ALICE;
+			let mogwai_id = create_mogwai(account);
+
+			assert_noop!(
+				BattleMogs::remove_mogwai(Origin::signed(founder), mogwai_id),
+				Error::<Test>::MogwaiNotOwned
+			);
+		});
+	}
 }
 
 #[cfg(test)]
