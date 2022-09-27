@@ -445,7 +445,7 @@ pub mod pallet {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let (dna, is_rare) = Self::random_dna(&avatar_id, &season, how_many > 1)?;
 					let soul_points = Self::calculate_soul_points_from_dna(&dna, &season);
-					let avatar = Avatar { season: season_id, dna, souls: soul_points };
+					let avatar = Avatar { season_id, dna, souls: soul_points };
 					Ok((avatar_id, avatar, is_rare))
 				})
 				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;

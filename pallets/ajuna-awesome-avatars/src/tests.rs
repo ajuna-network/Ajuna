@@ -487,7 +487,7 @@ mod minting {
 						.into_iter()
 						.map(|avatar_id| {
 							let (_player, avatar) = AwesomeAvatars::avatars(avatar_id).unwrap();
-							if avatar.season == season_id &&
+							if avatar.season_id == season_id &&
 								avatar
 									.dna
 									.into_iter()

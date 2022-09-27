@@ -54,7 +54,7 @@ pub type SoulPoints = u32;
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct Avatar {
-	pub season: SeasonId,
+	pub season_id: SeasonId,
 	pub dna: Dna,
 	pub souls: SoulPoints,
 }
