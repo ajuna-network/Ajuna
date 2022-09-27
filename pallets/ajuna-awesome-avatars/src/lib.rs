@@ -202,27 +202,6 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
-			ensure_root(origin)?;
-			Organizer::<T>::put(&organizer);
-			Self::deposit_event(Event::OrganizerSet { organizer });
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn upsert_season(
-			origin: OriginFor<T>,
-			season_id: SeasonId,
-			season: SeasonOf<T>,
-		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-			let season = Self::ensure_season(&season_id, season)?;
-			Seasons::<T>::insert(season_id, &season);
-			Self::deposit_event(Event::UpdatedSeason { season_id, season });
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
 			dest: T::AccountId,
@@ -249,17 +228,23 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn issue_free_mints(
+		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+			Organizer::<T>::put(&organizer);
+			Self::deposit_event(Event::OrganizerSet { organizer });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn upsert_season(
 			origin: OriginFor<T>,
-			dest: T::AccountId,
-			how_many: MintCount,
+			season_id: SeasonId,
+			season: SeasonOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let dest_free_mints = FreeMints::<T>::get(&dest)
-				.checked_add(how_many)
-				.ok_or(ArithmeticError::Overflow)?;
-			FreeMints::<T>::insert(&dest, dest_free_mints);
-			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
+			let season = Self::ensure_season(&season_id, season)?;
+			Seasons::<T>::insert(season_id, &season);
+			Self::deposit_event(Event::UpdatedSeason { season_id, season });
 			Ok(())
 		}
 
@@ -271,6 +256,21 @@ pub mod pallet {
 			Self::ensure_organizer(origin)?;
 			GlobalConfigs::<T>::put(&new_global_config);
 			Self::deposit_event(Event::UpdatedGlobalConfig(new_global_config));
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn issue_free_mints(
+			origin: OriginFor<T>,
+			dest: T::AccountId,
+			how_many: MintCount,
+		) -> DispatchResult {
+			Self::ensure_organizer(origin)?;
+			let dest_free_mints = FreeMints::<T>::get(&dest)
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
+			FreeMints::<T>::insert(&dest, dest_free_mints);
+			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
 			Ok(())
 		}
 	}
