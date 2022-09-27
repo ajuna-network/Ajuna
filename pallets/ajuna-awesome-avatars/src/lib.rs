@@ -56,6 +56,7 @@ pub mod pallet {
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 	pub(crate) const MAX_RANDOM_BYTES: u8 = 32;
+	pub(crate) const FREE_MINT_TRANSFER_FEE: MintCount = 1;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -230,7 +231,11 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			let sender_free_mints = FreeMints::<T>::get(&sender)
-				.checked_sub(how_many.checked_add(1).ok_or(ArithmeticError::Overflow)?)
+				.checked_sub(
+					how_many
+						.checked_add(FREE_MINT_TRANSFER_FEE)
+						.ok_or(ArithmeticError::Overflow)?,
+				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
 			let dest_free_mints = FreeMints::<T>::get(&dest)
 				.checked_add(how_many)
