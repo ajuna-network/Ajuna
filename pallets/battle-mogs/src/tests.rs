@@ -584,6 +584,70 @@ mod sacrifice_into {
 #[cfg(test)]
 mod buy_mogwai {
 	use super::*;
+
+	#[test]
+	fn buy_mogwai_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let buyer = ALICE;
+			let mogwai_id = create_mogwai(account, 0);
+			let sell_price = 1;
+
+			assert_ok!(BattleMogs::set_price(Origin::signed(account), mogwai_id, sell_price));
+
+			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(account));
+			assert_eq!(BattleMogs::owned_mogwais_count(account), 1);
+			assert_eq!(BattleMogs::owned_mogwais_count(buyer), 0);
+			assert_eq!(BattleMogs::all_mogwais_count(), 1);
+
+			assert_ok!(BattleMogs::buy_mogwai(Origin::signed(buyer), mogwai_id, sell_price));
+
+			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiBought(
+				buyer, account, mogwai_id, sell_price,
+			)));
+
+			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(buyer));
+			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
+			assert_eq!(BattleMogs::owned_mogwais_count(buyer), 1);
+			assert_eq!(BattleMogs::all_mogwais_count(), 1);
+		});
+	}
+
+	#[test]
+	fn buy_mogwai_cannot_buy_mogwai_not_on_sale() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let buyer = ALICE;
+			let mogwai_id = create_mogwai(account, 0);
+
+			assert_noop!(
+				BattleMogs::buy_mogwai(Origin::signed(buyer), mogwai_id, 1_000),
+				Error::<Test>::MogwaiNotForSale
+			);
+		});
+	}
+
+	#[test]
+	fn buy_mogwai_cannot_buy_mogwai_if_account_has_reached_mogwai_limit() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let buyer = ALICE;
+			let mogwai_limit = BattleMogs::config_value(buyer, 1);
+			let mogwai_id = create_mogwai(account, 0);
+			let sell_price = 1;
+
+			assert_ok!(BattleMogs::set_price(Origin::signed(account), mogwai_id, sell_price));
+
+			for _ in 0..mogwai_limit {
+				let _ = create_mogwai(buyer, 0);
+			}
+
+			assert_noop!(
+				BattleMogs::buy_mogwai(Origin::signed(buyer), mogwai_id, sell_price),
+				Error::<Test>::MaxMogwaisInAccount
+			);
+		});
+	}
 }
 
 #[cfg(test)]

@@ -121,7 +121,9 @@ impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
 			system: Default::default(),
-			balances: Default::default(),
+			balances: BalancesConfig {
+				balances: [(ALICE, 1_000_000), (BOB, 1_000_000), (CHARLIE, 1_000_000)].to_vec(),
+			},
 			//battleMogs: Default::default(),
 		};
 
