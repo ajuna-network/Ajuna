@@ -101,7 +101,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 #[derive(Default)]
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
-	seasons: Vec<Season<MockBlockNumber>>,
+	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
 	mint_availability: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
@@ -114,7 +114,7 @@ impl ExtBuilder {
 		self.organizer = Some(organizer);
 		self
 	}
-	pub fn seasons(mut self, seasons: Vec<Season<MockBlockNumber>>) -> Self {
+	pub fn seasons(mut self, seasons: Vec<(SeasonId, Season<MockBlockNumber>)>) -> Self {
 		self.seasons = seasons;
 		self
 	}
@@ -151,10 +151,8 @@ impl ExtBuilder {
 				Organizer::<Test>::put(organizer);
 			}
 
-			for season in self.seasons {
-				let season_id = AwesomeAvatars::next_season_id();
+			for (season_id, season) in self.seasons {
 				Seasons::<Test>::insert(season_id, season);
-				NextSeasonId::<Test>::put(season_id + 1);
 			}
 
 			GlobalConfigs::<Test>::mutate(|configs| {

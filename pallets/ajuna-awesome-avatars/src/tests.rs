@@ -87,76 +87,93 @@ mod season {
 	use super::*;
 
 	#[test]
-	fn new_season_should_reject_non_organizer_as_caller() {
+	fn upsert_season_should_reject_non_organizer_as_caller() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(BOB), Season::default(),),
+				AwesomeAvatars::upsert_season(Origin::signed(BOB), 7357, Season::default()),
 				DispatchError::BadOrigin
 			);
 		});
 	}
 
 	#[test]
-	fn new_season_should_work() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let first_season = Season::default().early_start(1).start(5).end(10);
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), first_season.clone()));
-			assert_eq!(AwesomeAvatars::seasons(1), Some(first_season.clone()));
-			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::CreatedSeason(
-				first_season,
-			)));
-
-			let second_season = Season::default().early_start(11).start(12).end(13);
-			assert_ok!(AwesomeAvatars::new_season(Origin::signed(ALICE), second_season.clone()));
-			assert_eq!(AwesomeAvatars::seasons(2), Some(second_season.clone()));
-			System::assert_last_event(mock::Event::AwesomeAvatars(crate::Event::CreatedSeason(
-				second_season,
-			)));
-		});
-	}
-
-	#[test]
-	fn new_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
+	fn upsert_season_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![Season::default().early_start(1).start(5).end(10)])
+			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
-				let second_season = Season::default().early_start(3).start(7).end(10);
-				assert!(second_season.early_start < second_season.start);
-				assert_noop!(
-					AwesomeAvatars::new_season(Origin::signed(ALICE), second_season),
-					Error::<Test>::EarlyStartTooEarly
-				);
+				let season_1 = Season::default().early_start(1).start(5).end(10);
+				assert_ok!(AwesomeAvatars::upsert_season(
+					Origin::signed(ALICE),
+					1,
+					season_1.clone()
+				));
+				assert_eq!(AwesomeAvatars::seasons(1), Some(season_1.clone()));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::UpdatedSeason { season_id: 1, season: season_1 },
+				));
+
+				let season_2 = Season::default().early_start(11).start(12).end(13);
+				assert_ok!(AwesomeAvatars::upsert_season(
+					Origin::signed(ALICE),
+					2,
+					season_2.clone()
+				));
+				assert_eq!(AwesomeAvatars::seasons(2), Some(season_2.clone()));
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::UpdatedSeason { season_id: 2, season: season_2 },
+				));
 			});
 	}
 
 	#[test]
-	fn new_season_should_return_error_when_early_start_is_later_than_start() {
+	fn upsert_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
+		let season_1 = Season::default();
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.seasons(vec![(1, season_1.clone())])
+			.build()
+			.execute_with(|| {
+				for i in 0..season_1.end {
+					let season_2 = Season::default().early_start(i).start(i + 1).end(i + 2);
+					assert!(season_2.early_start <= season_1.end);
+					assert_noop!(
+						AwesomeAvatars::upsert_season(Origin::signed(ALICE), 2, season_2),
+						Error::<Test>::EarlyStartTooEarly
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn update_season_should_return_error_when_early_start_is_earlier_than_or_equal_to_start() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let new_season = Season::default().early_start(6).start(3).end(10);
-			assert!(new_season.early_start > new_season.start);
-			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season,),
-				Error::<Test>::EarlyStartTooLate
-			);
+			for i in 3..6 {
+				let new_season = Season::default().early_start(i).start(3).end(10);
+				assert!(new_season.early_start >= new_season.start);
+				assert_noop!(
+					AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, new_season),
+					Error::<Test>::EarlyStartTooLate
+				);
+			}
 		});
 	}
 
 	#[test]
-	fn new_season_should_return_error_when_start_is_later_than_end() {
+	fn upsert_season_should_return_error_when_start_is_later_than_end() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			let new_season = Season::default().early_start(11).start(12).end(10);
 			assert!(new_season.early_start < new_season.start);
 			assert_noop!(
-				AwesomeAvatars::new_season(Origin::signed(ALICE), new_season),
+				AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, new_season),
 				Error::<Test>::SeasonStartTooLate
 			);
 		});
 	}
 
 	#[test]
-	fn new_season_should_return_error_when_rarity_tier_is_duplicated() {
+	fn upsert_season_should_return_error_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for duplicated_rarity_tiers in [
 				test_rarity_tiers(vec![(RarityTier::Common, 1), (RarityTier::Common, 99)]),
@@ -167,8 +184,9 @@ mod season {
 				]),
 			] {
 				assert_noop!(
-					AwesomeAvatars::new_season(
+					AwesomeAvatars::upsert_season(
 						Origin::signed(ALICE),
+						1,
 						Season::default().rarity_tiers(duplicated_rarity_tiers)
 					),
 					Error::<Test>::DuplicatedRarityTier
@@ -178,7 +196,7 @@ mod season {
 	}
 
 	#[test]
-	fn new_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
+	fn upsert_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for incorrect_rarity_tiers in [
 				test_rarity_tiers(vec![]),
@@ -196,8 +214,9 @@ mod season {
 				]),
 			] {
 				assert_noop!(
-					AwesomeAvatars::new_season(
+					AwesomeAvatars::upsert_season(
 						Origin::signed(ALICE),
+						1,
 						Season::default().rarity_tiers(incorrect_rarity_tiers)
 					),
 					Error::<Test>::IncorrectRarityPercentages
@@ -207,140 +226,29 @@ mod season {
 	}
 
 	#[test]
-	fn update_season_should_reject_non_organizer_as_caller() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(BOB), 7357, Season::default()),
-				DispatchError::BadOrigin
-			);
-		});
-	}
-
-	#[test]
-	fn update_season_should_work() {
-		let first_season = Season::default().early_start(1).start(5).end(10);
-		let second_season = Season::default().early_start(11).start(11).end(20);
+	fn upsert_season_should_return_error_when_season_to_update_ends_after_next_season_start() {
+		let season_1 = Season::default().early_start(1).start(5).end(10);
+		let season_2 = Season::default().early_start(11).start(15).end(20);
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![first_season, second_season.clone()])
+			.seasons(vec![(1, season_1), (2, season_2.clone())])
 			.build()
 			.execute_with(|| {
-				let first_season_update = Season::default().early_start(1).start(5).end(8);
-				assert!(first_season_update.end < second_season.early_start);
-				assert_ok!(AwesomeAvatars::update_season(
-					Origin::signed(ALICE),
-					1,
-					first_season_update.clone()
-				));
-				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::UpdatedSeason { season_id: 1, season: first_season_update },
-				));
-			});
-	}
-
-	#[test]
-	fn update_season_should_return_error_when_season_not_found() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::update_season(
-					Origin::signed(ALICE),
-					10,
-					Season::default().early_start(1).start(12).end(30)
-				),
-				Error::<Test>::UnknownSeason
-			);
-		});
-	}
-
-	#[test]
-	fn update_season_should_return_error_when_season_to_update_ends_after_next_season_start() {
-		let first_season = Season::default().early_start(1).start(5).end(10);
-		let second_season = Season::default().early_start(11).start(15).end(20);
-
-		ExtBuilder::default()
-			.organizer(ALICE)
-			.seasons(vec![first_season, second_season.clone()])
-			.build()
-			.execute_with(|| {
-				let first_season_update = Season::default().early_start(1).start(5).end(14);
-				assert!(first_season_update.end > second_season.early_start);
+				let season_1_update = Season::default().early_start(1).start(5).end(14);
+				assert!(season_1_update.end > season_2.early_start);
 				assert_noop!(
-					AwesomeAvatars::update_season(Origin::signed(ALICE), 1, first_season_update),
+					AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season_1_update),
 					Error::<Test>::SeasonEndTooLate
 				);
 			});
 	}
 
 	#[test]
-	fn update_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
-		let first_season = Season::default().early_start(1).start(5).end(10);
-		let second_season = Season::default().early_start(11).start(15).end(20);
-
-		ExtBuilder::default()
-			.organizer(ALICE)
-			.seasons(vec![first_season.clone(), second_season])
-			.build()
-			.execute_with(|| {
-				let second_season_update = Season::default().early_start(8).start(15).end(20);
-				assert!(second_season_update.early_start < first_season.end);
-				assert_noop!(
-					AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
-					Error::<Test>::EarlyStartTooEarly
-				);
-
-				let second_season_update = Season::default().early_start(9).start(15).end(20);
-				assert!(second_season_update.early_start < first_season.end);
-				assert_noop!(
-					AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
-					Error::<Test>::EarlyStartTooEarly
-				);
-
-				let second_season_update = Season::default().early_start(10).start(15).end(20);
-				assert!(second_season_update.early_start == first_season.end);
-				assert_noop!(
-					AwesomeAvatars::update_season(Origin::signed(ALICE), 2, second_season_update),
-					Error::<Test>::EarlyStartTooEarly
-				);
-			});
-	}
-
-	#[test]
-	fn update_season_should_return_error_when_early_start_is_earlier_than_or_equal_to_start() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let season_update = Season::default().early_start(5).start(1).end(10);
-			assert!(season_update.early_start > season_update.start);
-			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), 111, season_update),
-				Error::<Test>::EarlyStartTooLate
-			);
-
-			let season_update = Season::default().early_start(5).start(5).end(10);
-			assert!(season_update.early_start == season_update.start);
-			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), 222, season_update),
-				Error::<Test>::EarlyStartTooLate
-			);
-		});
-	}
-
-	#[test]
-	fn update_season_should_return_error_when_start_is_later_than_end() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let season_update = Season::default().early_start(1).start(15).end(10);
-			assert!(season_update.start > season_update.end);
-			assert_noop!(
-				AwesomeAvatars::update_season(Origin::signed(ALICE), 123, season_update),
-				Error::<Test>::SeasonStartTooLate
-			);
-		});
-	}
-
-	#[test]
-	fn update_season_should_handle_underflow() {
+	fn upsert_season_should_handle_underflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::update_season(
+				AwesomeAvatars::upsert_season(
 					Origin::signed(ALICE),
 					SeasonId::MIN,
 					Season::default()
@@ -351,10 +259,10 @@ mod season {
 	}
 
 	#[test]
-	fn update_season_should_handle_overflow() {
+	fn upsert_season_should_handle_overflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AwesomeAvatars::update_season(
+				AwesomeAvatars::upsert_season(
 					Origin::signed(ALICE),
 					SeasonId::MAX,
 					Season::default()
@@ -378,7 +286,12 @@ mod season {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season_1.clone(), season_2.clone(), season_3.clone(), season_4.clone()])
+			.seasons(vec![
+				(1, season_1.clone()),
+				(2, season_2.clone()),
+				(3, season_3.clone()),
+				(4, season_4.clone()),
+			])
 			.mint_availability(true)
 			.mint_fees(MintFees { one: 0, three: 0, six: 0 })
 			.build()
@@ -520,7 +433,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, balance)])
@@ -596,7 +509,7 @@ mod minting {
 		let season_3 = Season::default().early_start(16).start(17).end(18).rarity_tiers_batch_mint(
 			test_rarity_tiers(vec![(RarityTier::Common, 50), (RarityTier::Mythical, 50)]),
 		);
-		let seasons = vec![season_1.clone(), season_2.clone(), season_3.clone()];
+		let seasons = vec![(1, season_1.clone()), (2, season_2.clone()), (3, season_3.clone())];
 
 		ExtBuilder::default()
 			.organizer(ALICE)
@@ -721,7 +634,7 @@ mod minting {
 		let initial_balance = 1_234_567_890_123_456u64;
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![Season::default()])
+			.seasons(vec![(SeasonId::default(), Season::default())])
 			.mint_availability(true)
 			.balances(vec![(ALICE, initial_balance)])
 			.build()
@@ -751,7 +664,7 @@ mod minting {
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.mint_fees(fees)
 			.balances(vec![(ALICE, initial_balance)])
@@ -830,7 +743,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, initial_balance)])
@@ -871,7 +784,7 @@ mod minting {
 			.balances(vec![(ALICE, 1)])
 			.mint_fees(MintFees { one: 11, three: 22, six: 33 })
 			.mint_availability(true)
-			.seasons(vec![season])
+			.seasons(vec![(1, season)])
 			.build()
 			.execute_with(|| {
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
@@ -892,7 +805,7 @@ mod minting {
 			.organizer(ALICE)
 			.balances(vec![(ALICE, 1)])
 			.mint_availability(true)
-			.seasons(vec![Season::default().end(20)])
+			.seasons(vec![(1, Season::default().end(20))])
 			.build()
 			.execute_with(|| {
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
@@ -911,7 +824,7 @@ mod minting {
 			.balances(vec![(ALICE, 1)])
 			.free_mints(vec![(ALICE, 1)])
 			.mint_availability(true)
-			.seasons(vec![Season::default().end(20)])
+			.seasons(vec![(1, Season::default().end(20))])
 			.build()
 			.execute_with(|| {
 				for mint_count in [MintPackSize::Three, MintPackSize::Six] {
@@ -937,7 +850,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.free_mints(vec![(ALICE, 100)])
 			.balances(vec![(ALICE, initial_balance)])
@@ -988,8 +901,6 @@ mod minting {
 				assert_eq!(player_1, ALICE);
 
 				assert_eq!(avatar_0.season, avatar_1.season);
-				assert_eq!(avatar_0.season, AwesomeAvatars::next_season_id() - 1);
-				assert_eq!(avatar_1.season, AwesomeAvatars::next_season_id() - 1);
 
 				assert_ne!(avatar_0.dna, avatar_1.dna);
 				assert_eq!(avatar_0.dna.len(), (2 * max_components as usize) / 2);
@@ -1016,7 +927,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.free_mints(vec![(ALICE, 100)])
 			.build()
@@ -1119,7 +1030,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![Season::default()])
+			.seasons(vec![(SeasonId::default(), Season::default())])
 			.mint_availability(true)
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -1148,7 +1059,7 @@ mod minting {
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.mint_fees(fees)
 			.free_mints(vec![(ALICE, 100)])
@@ -1225,7 +1136,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![season.clone()])
+			.seasons(vec![(1, season.clone())])
 			.mint_availability(true)
 			.mint_cooldown(mint_cooldown)
 			.free_mints(vec![(ALICE, 10)])

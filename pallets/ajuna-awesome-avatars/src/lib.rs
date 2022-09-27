@@ -72,15 +72,6 @@ pub mod pallet {
 	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
-	#[pallet::type_value]
-	pub fn DefaultNextSeasonId() -> SeasonId {
-		1
-	}
-	/// Season number. Storage value to keep track of the id.
-	#[pallet::storage]
-	#[pallet::getter(fn next_season_id)]
-	pub type NextSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultNextSeasonId>;
-
 	/// Season id currently active.
 	#[pallet::storage]
 	#[pallet::getter(fn active_season_id)]
@@ -144,8 +135,6 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A new organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
-		/// A new season has been created.
-		CreatedSeason(SeasonOf<T>),
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -214,49 +203,16 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn new_season(origin: OriginFor<T>, new_season: SeasonOf<T>) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-			let new_season = Self::ensure_season(new_season)?;
-
-			let season_id = Self::next_season_id();
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-
-			if let Some(prev_season) = Self::seasons(prev_season_id) {
-				ensure!(prev_season.end < new_season.early_start, Error::<T>::EarlyStartTooEarly);
-			}
-
-			Seasons::<T>::insert(season_id, &new_season);
-			NextSeasonId::<T>::put(next_season_id);
-
-			Self::deposit_event(Event::CreatedSeason(new_season));
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn update_season(
+		pub fn upsert_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
 			season: SeasonOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let season = Self::ensure_season(season)?;
-
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-
-			Seasons::<T>::try_mutate(season_id, |maybe_season| {
-				if let Some(prev_season) = Self::seasons(prev_season_id) {
-					ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
-				}
-				if let Some(next_season) = Self::seasons(next_season_id) {
-					ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
-				}
-				let existing_season = maybe_season.as_mut().ok_or(Error::<T>::UnknownSeason)?;
-				*existing_season = season.clone();
-				Self::deposit_event(Event::UpdatedSeason { season_id, season });
-				Ok(())
-			})
+			let season = Self::ensure_season(&season_id, season)?;
+			Seasons::<T>::insert(season_id, &season);
+			Self::deposit_event(Event::UpdatedSeason { season_id, season });
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
@@ -322,13 +278,26 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(crate) fn ensure_season(mut season: SeasonOf<T>) -> Result<SeasonOf<T>, DispatchError> {
+		pub(crate) fn ensure_season(
+			season_id: &SeasonId,
+			mut season: SeasonOf<T>,
+		) -> Result<SeasonOf<T>, DispatchError> {
 			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
 			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
 			ensure!(
 				season.max_variations + season.max_components <= MAX_RANDOM_BYTES,
 				Error::<T>::ExceededMaxRandomBytes
 			);
+
+			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
+			if let Some(prev_season) = Self::seasons(prev_season_id) {
+				ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
+			}
+
+			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			if let Some(next_season) = Self::seasons(next_season_id) {
+				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
+			}
 
 			Self::validate_rarity_tiers(&mut season.rarity_tiers)?;
 			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
