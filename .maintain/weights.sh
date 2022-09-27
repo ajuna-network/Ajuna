@@ -2,7 +2,7 @@
 
 RUNTIME=${1?Either bajun or ajuna must be passed}
 
-cargo build-${RUNTIME}-benchmarks
+cargo build-"${RUNTIME}"-benchmarks
 
 PALLETS=(
   "cumulus-pallet-xcmp-queue"
@@ -18,9 +18,9 @@ PALLETS=(
   "pallet-utility"
 )
 
-cd $(git rev-parse --show-toplevel)
-for PALLET in ${PALLETS[@]}; do
-  ./target/release/${RUNTIME}-para benchmark pallet \
+cd "$(git rev-parse --show-toplevel)" || exit
+for PALLET in "${PALLETS[@]}"; do
+  ./target/release/"${RUNTIME}"-para benchmark pallet \
     --chain=dev \
     --steps=50 \
     --repeat=20 \

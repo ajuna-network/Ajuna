@@ -260,6 +260,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Identity(_) |
 			Call::Proxy(_) |
 			Call::Scheduler(_) |
+			Call::PreImage(_) |
 			// monetary
 			Call::Balances(_) |
 			Call::Vesting(_) |
@@ -657,9 +658,25 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
-	type WeightInfo = ();
-	type PreimageProvider = ();
+	type WeightInfo = weights::pallet_scheduler::WeightInfo<Runtime>;
+	type PreimageProvider = PreImage;
 	type NoPreimagePostponement = NoPreimagePostponement;
+}
+
+parameter_types! {
+	pub MaxSize: u32 = 50;
+	pub BaseDeposit: Balance = 100 * MILLI_BAJUN;
+	pub ByteDeposit: Balance = 10 * MILLI_BAJUN;
+}
+
+impl pallet_preimage::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::pallet_preimage::WeightInfo<Runtime>;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = MaxSize;
+	type BaseDeposit = BaseDeposit;
+	type ByteDeposit = ByteDeposit;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -682,11 +699,12 @@ construct_runtime!(
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 7,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 8,
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 9,
+		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 10,
 
 		// Monetary stuff.
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 11,
-		Vesting: orml_vesting = 12,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 16,
+		Vesting: orml_vesting = 17,
 
 		// Collator support. The order of these 4 are important and shall not change.
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 20,
@@ -731,6 +749,7 @@ mod benches {
 		[pallet_collective, Council]
 		[pallet_membership, CouncilMembership]
 		[pallet_identity, Identity]
+		[pallet_preimage, PreImage]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
 	);
