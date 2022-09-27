@@ -70,7 +70,7 @@ impl RarityType {
 	}
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 pub enum PhaseType {
 	None = 0,
 	Breeded = 1,

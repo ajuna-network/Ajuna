@@ -397,6 +397,64 @@ mod transfer {
 #[cfg(test)]
 mod hatch_mogwai {
 	use super::*;
+	use crate::{GameEventType, PhaseType};
+
+	#[test]
+	fn hatch_mogwai_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id = create_mogwai(account);
+
+			let mogwai = BattleMogs::mogwai(mogwai_id);
+			assert_eq!(mogwai.phase, PhaseType::Breeded);
+
+			run_to_block(
+				System::block_number() + GameEventType::time_till(GameEventType::Hatch) as u64,
+			);
+
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id));
+
+			let mogwai = BattleMogs::mogwai(mogwai_id);
+			assert_eq!(mogwai.phase, PhaseType::Hatched);
+		});
+	}
+
+	#[test]
+	fn hatch_mogwai_cannot_hatch_non_owned_mogwai() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let other = CHARLIE;
+			let mogwai_id = create_mogwai(account);
+
+			run_to_block(
+				System::block_number() + GameEventType::time_till(GameEventType::Hatch) as u64,
+			);
+
+			assert_noop!(
+				BattleMogs::hatch_mogwai(Origin::signed(other), mogwai_id),
+				Error::<Test>::MogwaiNotOwned
+			);
+		});
+	}
+
+	#[test]
+	fn hatch_mogwai_cannot_hatch_until_enough_time_has_passed() {
+		ExtBuilder::default().build().execute_with(|| {
+			ExtBuilder::default().build().execute_with(|| {
+				let account = BOB;
+				let mogwai_id = create_mogwai(account);
+
+				let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+				run_to_block(System::block_number() + time_till_hatch / 2);
+
+				assert_noop!(
+					BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id),
+					Error::<Test>::MogwaiNoHatch
+				);
+			});
+		});
+	}
 }
 
 #[cfg(test)]
