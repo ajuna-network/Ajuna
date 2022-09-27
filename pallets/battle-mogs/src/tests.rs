@@ -2,24 +2,6 @@ use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
-fn it_works_for_default_value() {
-	ExtBuilder::default().build().execute_with(|| {
-		// Dispatch a signed extrinsic.
-		assert_ok!(BattleMogs::do_something(Origin::signed(1), 42));
-		// Read pallet storage and assert an expected result.
-		assert_eq!(BattleMogs::something(), Some(42));
-	});
-}
-
-#[test]
-fn correct_error_for_none_value() {
-	ExtBuilder::default().build().execute_with(|| {
-		// Ensure the expected error is thrown when no value is present.
-		assert_noop!(BattleMogs::cause_error(Origin::signed(1)), Error::<Test>::NoneValue);
-	});
-}
-
-#[test]
 fn test_dotmog_breeding() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(BattleMogs::all_mogwais_count(), 0);
@@ -37,7 +19,7 @@ fn test_dotmog_breeding() {
 		let mogwai_2 = BattleMogs::mogwai(mogwai_hash_2);
 
 		assert_eq!(mogwai_1.gen, 1);
-		assert_eq!(mogwai_2.gen, 2);
+		assert_eq!(mogwai_2.gen, 1);
 
 		assert_eq!(System::block_number(), 1);
 		run_to_block(101);
@@ -114,19 +96,6 @@ mod update_config {
 			);
 		});
 	}
-
-	#[test]
-	fn config_update_fails_with_no_founder() {
-		ExtBuilder::new(None).build().execute_with(|| {
-			assert_eq!(BattleMogs::account_config(ALICE), None);
-
-			let result = std::panic::catch_unwind(|| {
-				let _ = BattleMogs::update_config(Origin::signed(ALICE), 1, Some(1));
-			});
-
-			assert!(result.is_err());
-		});
-	}
 }
 
 fn create_mogwai(owner: MockAccountId, index: u64) -> <Test as frame_system::Config>::Hash {
@@ -180,7 +149,9 @@ mod remove_price {
 
 			assert_ok!(BattleMogs::remove_price(Origin::signed(BOB), mogwai_id));
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::NotForSale(BOB, mogwai_id)));
+			System::assert_last_event(Event::BattleMogs(crate::Event::RemovedFromSale(
+				BOB, mogwai_id,
+			)));
 		});
 	}
 
@@ -303,29 +274,15 @@ mod remove_mogwai {
 	}
 
 	#[test]
-	fn remove_mogwai_only_founder_can_remove() {
-		let founder = BOB;
-		ExtBuilder::new(Some(founder)).build().execute_with(|| {
-			let account = ALICE;
-			let mogwai_id = create_mogwai(account, 0);
-
-			assert_noop!(
-				BattleMogs::remove_mogwai(Origin::signed(account), mogwai_id),
-				Error::<Test>::FounderAction
-			);
-		});
-	}
-
-	#[test]
 	fn remove_mogwai_only_owner_can_remove() {
-		let founder = BOB;
-		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
+			let other = CHARLIE;
 			let mogwai_id = create_mogwai(account, 0);
 
 			assert_noop!(
-				BattleMogs::remove_mogwai(Origin::signed(founder), mogwai_id),
-				Error::<Test>::MogwaiNotOwned
+				BattleMogs::remove_mogwai(Origin::signed(other), mogwai_id),
+				Error::<Test>::FounderAction
 			);
 		});
 	}
@@ -338,7 +295,7 @@ mod transfer {
 	#[test]
 	fn transfer_successfully() {
 		let founder = ALICE;
-		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			let target = BOB;
 			let mogwai_id = create_mogwai(founder, 0);
 			let default_hash = <Test as frame_system::Config>::Hash::default();
@@ -360,8 +317,7 @@ mod transfer {
 
 	#[test]
 	fn transfer_only_founder_can_transfer() {
-		let founder = BOB;
-		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			let target = ALICE;
 			let sender = CHARLIE;
 			let mogwai_id = create_mogwai(sender, 0);
@@ -376,7 +332,7 @@ mod transfer {
 	#[test]
 	fn transfer_cannot_transfer_above_limit() {
 		let founder = ALICE;
-		ExtBuilder::new(Some(founder)).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			let target = BOB;
 			let mogwai_limit = BattleMogs::config_value(target, 1);
 

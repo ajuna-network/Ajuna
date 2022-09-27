@@ -103,21 +103,10 @@ impl pallet_battle_mogs::Config for Test {
 	type Randomness = TestRandomness<Self>;
 }
 
-pub struct ExtBuilder {
-	founder_key: Option<MockAccountId>,
-}
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		ExtBuilder::new(Some(ALICE))
-	}
-}
+#[derive(Default)]
+pub struct ExtBuilder;
 
 impl ExtBuilder {
-	pub fn new(founder_key: Option<MockAccountId>) -> Self {
-		Self { founder_key }
-	}
-
 	pub fn build(self) -> sp_io::TestExternalities {
 		let balance = 1_000_000_000_000_000_000_u64;
 		let config = GenesisConfig {
@@ -131,7 +120,7 @@ impl ExtBuilder {
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));
 		ext.execute_with(|| {
-			FounderKey::<Test>::set(self.founder_key);
+			let _ = BattleMogs::set_organizer(Origin::root(), ALICE);
 		});
 
 		ext
