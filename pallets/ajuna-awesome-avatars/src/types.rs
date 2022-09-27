@@ -50,13 +50,13 @@ pub struct Season<BlockNumber> {
 
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
-pub type SoulPoints = u32;
+pub type SoulCount = u32;
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct Avatar {
 	pub season_id: SeasonId,
 	pub dna: Dna,
-	pub souls: SoulPoints,
+	pub souls: SoulCount,
 }
 
 /// Number of avatars to be minted.

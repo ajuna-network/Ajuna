@@ -330,7 +330,7 @@ mod minting {
 		let mut expected_nonce = 0;
 		let mut initial_balance = 1_234_567_890_123_456;
 		let mut initial_free_mints = 11;
-		let mut owned_avatars = 0;
+		let mut owned_avatar_count = 0;
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
 		ExtBuilder::default()
@@ -352,7 +352,7 @@ mod minting {
 							assert_eq!(AwesomeAvatars::free_mints(ALICE), initial_free_mints),
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatars);
+					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatar_count);
 					assert!(!AwesomeAvatars::is_season_active());
 
 					// single mint
@@ -372,9 +372,9 @@ mod minting {
 						},
 					}
 					expected_nonce += expected_nonce_increment;
-					owned_avatars += 1;
+					owned_avatar_count += 1;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatars);
+					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatar_count);
 					assert!(AwesomeAvatars::is_season_active());
 					System::assert_has_event(mock::Event::AwesomeAvatars(
 						crate::Event::SeasonStarted(1),
@@ -402,9 +402,9 @@ mod minting {
 						},
 					}
 					expected_nonce += expected_nonce_increment * 3;
-					owned_avatars += 3;
+					owned_avatar_count += 3;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatars);
+					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatar_count);
 					assert!(AwesomeAvatars::is_season_active());
 					System::assert_last_event(mock::Event::AwesomeAvatars(
 						crate::Event::AvatarsMinted {
@@ -430,9 +430,9 @@ mod minting {
 						},
 					}
 					expected_nonce += expected_nonce_increment * 6;
-					owned_avatars += 6;
+					owned_avatar_count += 6;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatars);
+					assert_eq!(AwesomeAvatars::owners(ALICE).len(), owned_avatar_count);
 					assert!(AwesomeAvatars::is_season_active());
 					System::assert_last_event(mock::Event::AwesomeAvatars(
 						crate::Event::AvatarsMinted {
@@ -450,13 +450,24 @@ mod minting {
 						Error::<Test>::OutOfSeason
 					);
 
+					// check for minted avatars
+					let minted = AwesomeAvatars::owners(ALICE)
+						.into_iter()
+						.map(|avatar_id| AwesomeAvatars::avatars(avatar_id).unwrap())
+						.collect::<Vec<_>>();
+					assert!(minted.iter().all(|(owner, _)| owner == &ALICE));
+					assert!(minted.iter().all(|(_, avatar)| avatar.season_id == 1));
+					assert!(minted
+						.iter()
+						.all(|(_, avatar)| avatar.souls >= 1 && avatar.souls <= 100));
+
 					// reset for next iteration
 					System::set_block_number(0);
 					LastMintedBlockNumbers::<Test>::remove(ALICE);
 					Owners::<Test>::remove(ALICE);
 					IsSeasonActive::<Test>::set(false);
 					CurrentSeasonId::<Test>::set(1);
-					owned_avatars = 0;
+					owned_avatar_count = 0;
 				}
 			});
 	}

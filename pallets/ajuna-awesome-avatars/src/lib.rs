@@ -32,7 +32,6 @@ pub mod types;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::types::*;
-	use crate::types::RarityTier::Mythical;
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, ExistenceRequirement, Randomness, WithdrawReasons},
@@ -375,19 +374,6 @@ pub mod pallet {
 			(random_tier, random_variation)
 		}
 
-		#[inline]
-		fn calculate_soul_points_from_dna(dna: &Dna, season: &SeasonOf<T>) -> SoulPoints {
-			// We need to calculate the maximum possible value for a single DNA strand based on
-			// the formula in Self::random_dna
-			let max_dna_value = (((Mythical as u8) << 4) | season.max_variations) as u32;
-			let value_scale = 100_u32;
-			// We scale the total sum of the DNA strands to value_scale, we set the maximum
-			// possible value of the sum to the max value of a single strand multiplied
-			// by the amount of components the strand has
-			(dna.iter().map(|i| *i as u32).sum::<u32>() * value_scale) /
-				(max_dna_value * dna.len() as u32)
-		}
-
 		pub(crate) fn random_dna(
 			hash: &T::Hash,
 			season: &SeasonOf<T>,
@@ -444,8 +430,8 @@ pub mod pallet {
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let (dna, is_rare) = Self::random_dna(&avatar_id, &season, how_many > 1)?;
-					let soul_points = Self::calculate_soul_points_from_dna(&dna, &season);
-					let avatar = Avatar { season_id, dna, souls: soul_points };
+					let souls = (dna.iter().sum::<u8>() as SoulCount % 100) + 1;
+					let avatar = Avatar { season_id, dna, souls };
 					Ok((avatar_id, avatar, is_rare))
 				})
 				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
