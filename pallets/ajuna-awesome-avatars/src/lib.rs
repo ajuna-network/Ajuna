@@ -305,7 +305,7 @@ pub mod pallet {
 				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
 			}
 
-			Self::validate_rarity_tiers(&mut season.rarity_tiers)?;
+			Self::validate_rarity_tiers(&mut season.rarity_tiers_single_mint)?;
 			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
 
 			Ok(season)
@@ -352,7 +352,7 @@ pub mod pallet {
 				let rarity_tiers = if batched_mint {
 					&season.rarity_tiers_batch_mint
 				} else {
-					&season.rarity_tiers
+					&season.rarity_tiers_single_mint
 				};
 				let mut cumulative_sum = 0;
 				let mut random_tier = rarity_tiers[0].0.clone() as u8;

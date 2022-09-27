@@ -183,14 +183,15 @@ mod season {
 					(RarityTier::Legendary, 80),
 				]),
 			] {
-				assert_noop!(
-					AwesomeAvatars::upsert_season(
-						Origin::signed(ALICE),
-						1,
-						Season::default().rarity_tiers(duplicated_rarity_tiers)
-					),
-					Error::<Test>::DuplicatedRarityTier
-				);
+				for season in [
+					Season::default().rarity_tiers_single_mint(duplicated_rarity_tiers.clone()),
+					Season::default().rarity_tiers_batch_mint(duplicated_rarity_tiers),
+				] {
+					assert_noop!(
+						AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season),
+						Error::<Test>::DuplicatedRarityTier
+					);
+				}
 			}
 		});
 	}
@@ -213,14 +214,15 @@ mod season {
 					(RarityTier::Mythical, 11),
 				]),
 			] {
-				assert_noop!(
-					AwesomeAvatars::upsert_season(
-						Origin::signed(ALICE),
-						1,
-						Season::default().rarity_tiers(incorrect_rarity_tiers)
-					),
-					Error::<Test>::IncorrectRarityPercentages
-				);
+				for season in [
+					Season::default().rarity_tiers_single_mint(incorrect_rarity_tiers.clone()),
+					Season::default().rarity_tiers_batch_mint(incorrect_rarity_tiers),
+				] {
+					assert_noop!(
+						AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season,),
+						Error::<Test>::IncorrectRarityPercentages
+					);
+				}
 			}
 		});
 	}
@@ -704,7 +706,7 @@ mod minting {
 		let season = Season::default()
 			.start(1)
 			.end(20)
-			.rarity_tiers(test_rarity_tiers(vec![(RarityTier::Mythical, 100)]));
+			.rarity_tiers_single_mint(test_rarity_tiers(vec![(RarityTier::Mythical, 100)]));
 
 		ExtBuilder::default()
 			.organizer(ALICE)
