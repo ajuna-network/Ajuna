@@ -4,12 +4,11 @@ use frame_support::{assert_noop, assert_ok};
 #[test]
 fn test_dotmog_breeding() {
 	new_test_ext().execute_with(|| {
-		
 		assert_eq!(BattleMogs::all_mogwais_count(), 0);
-		
+
 		assert_ok!(BattleMogs::create_mogwai(Origin::signed(1)));
 		assert_eq!(BattleMogs::all_mogwais_count(), 1);
-		
+
 		// test create
 		assert_ok!(BattleMogs::create_mogwai(Origin::signed(1)));
 		assert_eq!(BattleMogs::all_mogwais_count(), 2);
@@ -32,7 +31,7 @@ fn test_dotmog_breeding() {
 
 		// test morph
 		//assert_ok!(BattleMogs::morph_mogwai(Origin::signed(1), mogwai_hash_1));
-		
+
 		// test breed
 		//assert_ok!(BattleMogs::breed_mogwai(Origin::signed(1), mogwai_hash_1, mogwai_hash_2));
 		//assert_eq!(BattleMogs::all_mogwais_count(), 3);
@@ -46,6 +45,5 @@ fn test_dotmog_breeding() {
 		//assert_eq!(System::block_number(), 0);
 		//run_to_block(101);
 		//assert_eq!(System::block_number(), 101);
-
 	});
 }

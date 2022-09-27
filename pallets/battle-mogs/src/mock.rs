@@ -1,31 +1,30 @@
 /*
-  _______ __                       _______         __      
- |   _   |__|.--.--.-----.---.-.  |    |  |.-----.|  |_.
- |       |  ||  |  |     |  _  |  |       ||  -__||   _|.--.
- |___|___|  ||_____|__|__|___._|  |__|____||_____||____||__|
-        |___|                             
-  .............<-::]] Ajuna Network (ajuna.io) [[::->.............             
- +-----------------------------------------------------------------
- | This file is part of the BattleMogs project from Ajuna Network.
- ¦-----------------------------------------------------------------
- | Copyright (c) 2022 BloGa Tech AG
- | Copyright (c) 2020 DOT Mog Team (darkfriend77 & metastar77)
- ¦-----------------------------------------------------------------
- | Authors: darkfriend77
- | License: GNU Affero General Public License v3.0
- +-----------------------------------------------------------------
- */
+ _______ __                       _______         __
+|   _   |__|.--.--.-----.---.-.  |    |  |.-----.|  |_.
+|       |  ||  |  |     |  _  |  |       ||  -__||   _|.--.
+|___|___|  ||_____|__|__|___._|  |__|____||_____||____||__|
+	   |___|
+ .............<-::]] Ajuna Network (ajuna.io) [[::->.............
++-----------------------------------------------------------------
+| This file is part of the BattleMogs project from Ajuna Network.
+¦-----------------------------------------------------------------
+| Copyright (c) 2022 BloGa Tech AG
+| Copyright (c) 2020 DOT Mog Team (darkfriend77 & metastar77)
+¦-----------------------------------------------------------------
+| Authors: darkfriend77
+| License: GNU Affero General Public License v3.0
++-----------------------------------------------------------------
+*/
 use crate::{self as pallet_battle_mogs};
 use frame_support::{
 	parameter_types,
-	traits::{OnInitialize, OnFinalize, ConstU16, ConstU64},
-//	weights::Weight,
+	traits::{ConstU16, ConstU64, OnFinalize, OnInitialize},
 };
 use sp_core::H256;
 use sp_runtime::{
-	BuildStorage,
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
 pub type MockAccountId = u32;
@@ -104,11 +103,13 @@ impl pallet_battle_mogs::Config for Test {
 // our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let t = GenesisConfig {
-	//	// We use default for brevity, but you can configure as desired if needed.
+		//	// We use default for brevity, but you can configure as desired if needed.
 		system: Default::default(),
 		balances: Default::default(),
 		//battleMogs: Default::default(),
-	}.build_storage().unwrap();
+	}
+	.build_storage()
+	.unwrap();
 	t.into()
 	//frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
