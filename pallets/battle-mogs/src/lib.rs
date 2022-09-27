@@ -737,7 +737,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	///
-	fn config_value(who: T::AccountId, index: u8) -> u32 {
+	pub(crate) fn config_value(who: T::AccountId, index: u8) -> u32 {
 		let config_opt = <AccountConfig<T>>::get(&who);
 		let result: u32;
 		if config_opt.is_some() {

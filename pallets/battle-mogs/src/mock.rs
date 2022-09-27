@@ -37,6 +37,10 @@ use frame_support_test::TestRandomness;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
+pub const ALICE: MockAccountId = 1;
+pub const BOB: MockAccountId = 2;
+pub const CHARLIE: MockAccountId = 3;
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -99,19 +103,28 @@ impl pallet_battle_mogs::Config for Test {
 	type Randomness = TestRandomness<Self>;
 }
 
-// This function basically just builds a genesis storage key/value store according to
-// our desired mockup.
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let t = GenesisConfig {
-		//	// We use default for brevity, but you can configure as desired if needed.
-		system: Default::default(),
-		balances: Default::default(),
-		//battleMogs: Default::default(),
+#[derive(Default)]
+pub struct ExtBuilder;
+
+impl ExtBuilder {
+	pub fn build(self) -> sp_io::TestExternalities {
+		let balance = 1_000_000_000_000_000_000_u64;
+		let config = GenesisConfig {
+			system: Default::default(),
+			balances: BalancesConfig {
+				balances: [(ALICE, balance), (BOB, balance), (CHARLIE, balance)].to_vec(),
+			},
+			//battleMogs: Default::default(),
+		};
+
+		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| {
+			let _ = BattleMogs::set_organizer(Origin::root(), ALICE);
+		});
+
+		ext
 	}
-	.build_storage()
-	.unwrap();
-	t.into()
-	//frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
 
 /// Run until a particular block.
