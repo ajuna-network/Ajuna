@@ -1,5 +1,5 @@
 use crate::{mock::*, Error};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::Currency};
 
 #[test]
 fn it_works_for_default_value() {
@@ -460,6 +460,42 @@ mod hatch_mogwai {
 #[cfg(test)]
 mod sacrifice {
 	use super::*;
+
+	#[test]
+	fn sacrifice_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = CHARLIE;
+			let mogwai_id = create_mogwai(account);
+			let default_hash = <Test as frame_system::Config>::Hash::default();
+
+			assert_ok!(BattleMogs::sacrifice(Origin::signed(account), mogwai_id));
+
+			assert_eq!(BattleMogs::mogwai(mogwai_id).id, default_hash);
+			assert_eq!(BattleMogs::owner_of(mogwai_id), None);
+
+			assert_eq!(BattleMogs::mogwai_by_index(0), default_hash);
+			assert_eq!(BattleMogs::all_mogwais_count(), 0);
+			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id), 0);
+
+			assert_eq!(BattleMogs::mogwai_of_owner_by_index((account, 0)), default_hash);
+			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
+			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id), 0);
+		});
+	}
+
+	#[test]
+	fn sacrifice_can_only_be_done_by_owner() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = CHARLIE;
+			let other = BOB;
+			let mogwai_id = create_mogwai(account);
+
+			assert_noop!(
+				BattleMogs::sacrifice(Origin::signed(other), mogwai_id),
+				Error::<Test>::MogwaiNotOwned
+			);
+		});
+	}
 }
 
 #[cfg(test)]
