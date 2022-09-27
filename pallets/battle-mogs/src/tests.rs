@@ -1,5 +1,5 @@
 use crate::{mock::*, Error};
-use frame_support::{assert_noop, assert_ok, traits::Currency};
+use frame_support::{assert_noop, assert_ok};
 
 #[test]
 fn it_works_for_default_value() {
@@ -681,4 +681,63 @@ mod morph_mogwai {
 #[cfg(test)]
 mod breed_mogwai {
 	use super::*;
+
+	#[test]
+	fn breed_mogwai_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id_1 = create_mogwai(account, 0);
+			let mogwai_id_2 = create_mogwai(account, 1);
+
+			assert_ok!(BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_1, mogwai_id_2));
+		});
+	}
+
+	#[test]
+	fn breed_mogwai_not_allowed_if_mogwai_is_not_owned() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let other = ALICE;
+			let mogwai_id_1 = create_mogwai(account, 0);
+			let mogwai_id_2 = create_mogwai(other, 0);
+
+			assert_noop!(
+				BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_2, mogwai_id_1),
+				Error::<Test>::MogwaiNotOwned
+			);
+		});
+	}
+
+	#[test]
+	fn breed_mogwai_not_allowed_if_mogwais_are_the_same() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id = create_mogwai(account, 0);
+
+			assert_noop!(
+				BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id, mogwai_id),
+				Error::<Test>::MogwaiSame
+			);
+		});
+	}
+
+	#[test]
+	fn breed_mogwai_not_allowed_if_account_reached_mogwai_limit() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_limit = BattleMogs::config_value(account, 1);
+			let other = CHARLIE;
+			let mogwai_id_1 = create_mogwai(account, 0);
+			let mogwai_id_2 = create_mogwai(other, 0);
+
+			for _ in 0..(mogwai_limit - 1) {
+				let _ = create_mogwai(account, 0);
+			}
+
+			assert_noop!(
+				BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_1, mogwai_id_2),
+				Error::<Test>::MaxMogwaisInAccount
+			);
+		});
+	}
 }
