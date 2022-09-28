@@ -34,9 +34,13 @@ pallet-aura                                = { git = "https://github.com/parityt
 pallet-authorship                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-balances                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-collective                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
+pallet-identity                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-membership                          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-multisig                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
+pallet-preimage                            = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
+pallet-proxy                               = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-randomness-collective-flip          = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
+pallet-scheduler                           = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-session                             = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-sudo                                = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
 pallet-timestamp                           = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.20" }
@@ -110,9 +114,13 @@ std = [
     "pallet-balances/std",
     "pallet-collective/std",
     "pallet-collator-selection/std",
+    "pallet-identity/std",
     "pallet-membership/std",
     "pallet-multisig/std",
+    "pallet-preimage/std",
+    "pallet-proxy/std",
     "pallet-randomness-collective-flip/std",
+    "pallet-scheduler/std",
     "pallet-session/std",
     "pallet-sudo/std",
     "pallet-timestamp/std",
@@ -150,8 +158,12 @@ runtime-benchmarks = [
     "pallet-balances/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
+    "pallet-identity/runtime-benchmarks",
     "pallet-membership/runtime-benchmarks",
     "pallet-multisig/runtime-benchmarks",
+    "pallet-preimage/runtime-benchmarks",
+    "pallet-proxy/runtime-benchmarks",
+    "pallet-scheduler/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-treasury/runtime-benchmarks",
     "pallet-utility/runtime-benchmarks",
