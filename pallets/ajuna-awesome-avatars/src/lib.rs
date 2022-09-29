@@ -162,8 +162,11 @@ pub mod pallet {
 		UnknownSeason,
 		/// The season ID of a season to create is not sequential.
 		NonSequentialSeasonId,
-		/// The combination of all tiers rarity percentages doesn't add up to 100
+		/// Rarity percentages don't add up to 100
 		IncorrectRarityPercentages,
+		/// Max tier is achievable through forging only. Therefore the number of rarity percentages
+		/// must be less than that of tiers for a season.
+		TooManyRarityPercentages,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
 		/// Minting is not available at the moment.
@@ -280,16 +283,7 @@ pub mod pallet {
 			season_id: &SeasonId,
 			mut season: SeasonOf<T>,
 		) -> Result<SeasonOf<T>, DispatchError> {
-			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
-			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
-			ensure!(
-				season
-					.max_variations
-					.checked_add(season.max_components)
-					.ok_or(ArithmeticError::Overflow)? <=
-					MAX_RANDOM_BYTES,
-				Error::<T>::ExceededMaxRandomBytes
-			);
+			season.validate::<T>()?;
 
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -302,29 +296,7 @@ pub mod pallet {
 			if let Some(next_season) = Self::seasons(next_season_id) {
 				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
 			}
-
-			Self::validate_rarity_tiers(&mut season.rarity_tiers_single_mint)?;
-			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
-
 			Ok(season)
-		}
-
-		fn validate_rarity_tiers(rarity_tiers: &mut RarityTiers) -> DispatchResult {
-			rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
-			let (tiers, chances) = {
-				let (mut tiers, chances): (Vec<_>, Vec<_>) =
-					rarity_tiers.clone().into_iter().unzip();
-				tiers.sort();
-				tiers.dedup();
-				(tiers, chances)
-			};
-			ensure!(
-				chances.iter().sum::<RarityPercent>() == MAX_PERCENTAGE,
-				Error::<T>::IncorrectRarityPercentages
-			);
-			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
-
-			Ok(())
 		}
 
 		#[inline]
@@ -346,18 +318,14 @@ pub mod pallet {
 		) -> (u8, u8) {
 			let hash = hash.as_ref();
 			let random_tier = {
-				let random_percent = hash[index] % MAX_PERCENTAGE;
-				let rarity_tiers = if batched_mint {
-					&season.rarity_tiers_batch_mint
-				} else {
-					&season.rarity_tiers_single_mint
-				};
+				let random_p = hash[index] % MAX_PERCENTAGE;
+				let p = if batched_mint { &season.p_batch_mint } else { &season.p_single_mint };
 				let mut cumulative_sum = 0;
-				let mut random_tier = rarity_tiers[0].0.clone() as u8;
-				for (tier, chance) in rarity_tiers.iter() {
-					let new_cumulative_sum = cumulative_sum + chance;
-					if random_percent >= cumulative_sum && random_percent < new_cumulative_sum {
-						random_tier = tier.clone() as u8;
+				let mut random_tier = season.tiers[0].clone() as u8;
+				for i in 0..p.len() {
+					let new_cumulative_sum = cumulative_sum + p[i];
+					if random_p >= cumulative_sum && random_p < new_cumulative_sum {
+						random_tier = season.tiers[i].clone() as u8;
 						break
 					}
 					cumulative_sum = new_cumulative_sum;
@@ -421,7 +389,7 @@ pub mod pallet {
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let dna = Self::random_dna(&avatar_id, &season, how_many > 1)?;
-					let souls = (dna.iter().sum::<u8>() as SoulCount % 100) + 1;
+					let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
 					let avatar = Avatar { season_id, dna, souls };
 					Ok((avatar_id, avatar))
 				})

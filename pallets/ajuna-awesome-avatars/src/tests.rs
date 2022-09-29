@@ -176,50 +176,34 @@ mod season {
 	fn upsert_season_should_return_error_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for duplicated_rarity_tiers in [
-				test_rarity_tiers(vec![(RarityTier::Common, 1), (RarityTier::Common, 99)]),
-				test_rarity_tiers(vec![
-					(RarityTier::Common, 10),
-					(RarityTier::Common, 10),
-					(RarityTier::Legendary, 80),
-				]),
+				vec![RarityTier::Common, RarityTier::Common],
+				vec![RarityTier::Common, RarityTier::Common, RarityTier::Legendary],
 			] {
-				for season in [
-					Season::default().rarity_tiers_single_mint(duplicated_rarity_tiers.clone()),
-					Season::default().rarity_tiers_batch_mint(duplicated_rarity_tiers),
-				] {
-					assert_noop!(
-						AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season),
-						Error::<Test>::DuplicatedRarityTier
-					);
-				}
+				assert_noop!(
+					AwesomeAvatars::upsert_season(
+						Origin::signed(ALICE),
+						1,
+						Season::default().tiers(duplicated_rarity_tiers)
+					),
+					Error::<Test>::DuplicatedRarityTier
+				);
 			}
 		});
 	}
 
 	#[test]
 	fn upsert_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
+		let tiers = vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary];
+		let season_0 = Season::default().tiers(tiers.clone());
+		let season_1 = Season::default().tiers(tiers);
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			for incorrect_rarity_tiers in [
-				test_rarity_tiers(vec![]),
-				test_rarity_tiers(vec![(RarityTier::Common, 10), (RarityTier::Common, 10)]),
-				test_rarity_tiers(vec![(RarityTier::Common, 100), (RarityTier::Common, 100)]),
-				test_rarity_tiers(vec![
-					(RarityTier::Common, 70),
-					(RarityTier::Uncommon, 20),
-					(RarityTier::Rare, 9),
-				]),
-				test_rarity_tiers(vec![
-					(RarityTier::Epic, 70),
-					(RarityTier::Legendary, 20),
-					(RarityTier::Mythical, 11),
-				]),
-			] {
+			for incorrect_percentages in [vec![12, 39], vec![123, 10], vec![83, 1, 43]] {
 				for season in [
-					Season::default().rarity_tiers_single_mint(incorrect_rarity_tiers.clone()),
-					Season::default().rarity_tiers_batch_mint(incorrect_rarity_tiers),
+					season_0.clone().p_single_mint(incorrect_percentages.clone()),
+					season_1.clone().p_single_mint(incorrect_percentages),
 				] {
 					assert_noop!(
-						AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season,),
+						AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season),
 						Error::<Test>::IncorrectRarityPercentages
 					);
 				}
@@ -636,13 +620,11 @@ mod minting {
 			});
 	}
 
+	// TODO: refine free mint
+	#[ignore]
 	#[test]
-	fn free_mint_is_still_possible_on_premature_season_end() {
-		let season = Season::default()
-			.start(1)
-			.end(20)
-			.rarity_tiers_single_mint(test_rarity_tiers(vec![(RarityTier::Mythical, 100)]));
-
+	fn free_mint_is_still_possible_outside_season() {
+		let season = Season::default().start(1).end(20);
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
@@ -650,11 +632,8 @@ mod minting {
 			.free_mints(vec![(ALICE, 100)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
-				assert_eq!(
-					AwesomeAvatars::seasons(AwesomeAvatars::current_season_id()),
-					Some(season.clone())
-				);
+				run_to_block(season.end + 1);
+				assert!(!AwesomeAvatars::is_season_active());
 				assert_ok!(AwesomeAvatars::mint(
 					Origin::signed(ALICE),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }

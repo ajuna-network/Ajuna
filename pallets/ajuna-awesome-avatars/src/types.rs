@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
+use sp_runtime::ArithmeticError;
+use sp_std::vec::Vec;
 
 #[derive(
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
@@ -31,7 +34,6 @@ pub enum RarityTier {
 }
 
 pub type RarityPercent = u8;
-pub type RarityTiers = BoundedVec<(RarityTier, RarityPercent), ConstU32<6>>;
 pub type MintCount = u16;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
@@ -43,8 +45,61 @@ pub struct Season<BlockNumber> {
 	pub end: BlockNumber,
 	pub max_variations: u8,
 	pub max_components: u8,
-	pub rarity_tiers_single_mint: RarityTiers,
-	pub rarity_tiers_batch_mint: RarityTiers,
+	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
+	pub p_single_mint: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub p_batch_mint: BoundedVec<RarityPercent, ConstU32<5>>,
+}
+
+impl<BlockNumber: PartialOrd> Season<BlockNumber> {
+	pub(crate) fn validate<T: Config>(&mut self) -> DispatchResult {
+		self.sort();
+		self.validate_block_numbers::<T>()?;
+		self.validate_dna_components::<T>()?;
+		self.validate_tiers::<T>()?;
+		self.validate_percentages::<T>()?;
+		Ok(())
+	}
+
+	fn sort(&mut self) {
+		self.tiers.sort_by(|a, b| b.cmp(a));
+		self.p_single_mint.sort_by(|a, b| b.cmp(a));
+		self.p_batch_mint.sort_by(|a, b| b.cmp(a));
+	}
+
+	fn validate_block_numbers<T: Config>(&self) -> DispatchResult {
+		ensure!(self.early_start < self.start, Error::<T>::EarlyStartTooLate);
+		ensure!(self.start < self.end, Error::<T>::SeasonStartTooLate);
+		Ok(())
+	}
+
+	fn validate_dna_components<T: Config>(&self) -> DispatchResult {
+		ensure!(
+			self.max_variations
+				.checked_add(self.max_components)
+				.ok_or(ArithmeticError::Overflow)? <=
+				MAX_RANDOM_BYTES,
+			Error::<T>::ExceededMaxRandomBytes
+		);
+		Ok(())
+	}
+
+	fn validate_tiers<T: Config>(&self) -> DispatchResult {
+		let l = self.tiers.len();
+		let mut tiers = Vec::from(self.tiers.clone());
+		tiers.dedup();
+		ensure!(l == tiers.len(), Error::<T>::DuplicatedRarityTier);
+		Ok(())
+	}
+
+	fn validate_percentages<T: Config>(&self) -> DispatchResult {
+		let p_1 = self.p_single_mint.iter().sum::<RarityPercent>();
+		let p_2 = self.p_batch_mint.iter().sum::<RarityPercent>();
+		ensure!(p_1 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
+		ensure!(p_2 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
+		ensure!(self.p_single_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
+		ensure!(self.p_batch_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
+		Ok(())
+	}
 }
 
 pub type SeasonId = u16;
