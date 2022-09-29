@@ -1,52 +1,5 @@
-use crate::{mock::*, Error};
+use crate::{mock, mock::*, Error, Event};
 use frame_support::{assert_noop, assert_ok};
-
-#[test]
-fn test_dotmog_breeding() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(BattleMogs::all_mogwais_count(), 0);
-
-		assert_ok!(BattleMogs::create_mogwai(Origin::signed(1)));
-		assert_eq!(BattleMogs::all_mogwais_count(), 1);
-
-		// test create
-		assert_ok!(BattleMogs::create_mogwai(Origin::signed(1)));
-		assert_eq!(BattleMogs::all_mogwais_count(), 2);
-
-		let mogwai_hash_1 = BattleMogs::mogwai_by_index(0);
-		let mogwai_hash_2 = BattleMogs::mogwai_by_index(1);
-		let mogwai_1 = BattleMogs::mogwai(mogwai_hash_1);
-		let mogwai_2 = BattleMogs::mogwai(mogwai_hash_2);
-
-		assert_eq!(mogwai_1.gen, 1);
-		assert_eq!(mogwai_2.gen, 1);
-
-		assert_eq!(System::block_number(), 1);
-		run_to_block(101);
-		assert_eq!(System::block_number(), 101);
-
-		// test morph
-		assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(1), mogwai_hash_1));
-		assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(1), mogwai_hash_2));
-
-		// test morph
-		//assert_ok!(BattleMogs::morph_mogwai(Origin::signed(1), mogwai_hash_1));
-
-		// test breed
-		//assert_ok!(BattleMogs::breed_mogwai(Origin::signed(1), mogwai_hash_1, mogwai_hash_2));
-		//assert_eq!(BattleMogs::all_mogwais_count(), 3);
-
-		// create real mogwai by breeding
-		//let mogwai_hash_3 = BattleMogs::mogwai_by_index(2);
-		//let mogwai_3 = BattleMogs::mogwai(mogwai_hash_3);
-		//assert_eq!(mogwai_3.gen, 1);
-
-		// run forward 100 blocks to make the egg hatch
-		//assert_eq!(System::block_number(), 0);
-		//run_to_block(101);
-		//assert_eq!(System::block_number(), 101);
-	});
-}
 
 #[cfg(test)]
 mod update_config {
@@ -58,17 +11,17 @@ mod update_config {
 			assert_eq!(BattleMogs::account_config(ALICE), None);
 
 			assert_ok!(BattleMogs::update_config(Origin::signed(ALICE), 1, Some(1)));
-			System::assert_last_event(Event::BattleMogs(crate::Event::AccountConfigChanged(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::AccountConfigChanged(
 				ALICE,
 				[0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
 			)));
 			assert_ok!(BattleMogs::update_config(Origin::signed(ALICE), 1, Some(2)));
-			System::assert_last_event(Event::BattleMogs(crate::Event::AccountConfigChanged(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::AccountConfigChanged(
 				ALICE,
 				[0, 2, 0, 0, 0, 0, 0, 0, 0, 0],
 			)));
 			assert_ok!(BattleMogs::update_config(Origin::signed(ALICE), 1, Some(3)));
-			System::assert_last_event(Event::BattleMogs(crate::Event::AccountConfigChanged(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::AccountConfigChanged(
 				ALICE,
 				[0, 3, 0, 0, 0, 0, 0, 0, 0, 0],
 			)));
@@ -98,9 +51,14 @@ mod update_config {
 	}
 }
 
-fn create_mogwai(owner: MockAccountId, index: u64) -> <Test as frame_system::Config>::Hash {
+fn create_mogwai(owner: MockAccountId) -> <Test as frame_system::Config>::Hash {
 	BattleMogs::create_mogwai(Origin::signed(owner)).expect("Failed mogwai creation!");
-	BattleMogs::mogwai_of_owner_by_index((owner, index))
+	if let crate::mock::Event::BattleMogs(Event::<Test>::MogwaiCreated(_, mogwai_id)) = last_event()
+	{
+		return mogwai_id
+	}
+
+	panic!("Expected MogwaiCreated event");
 }
 
 #[cfg(test)]
@@ -110,12 +68,12 @@ mod set_price {
 	#[test]
 	fn set_price_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
-			let mogwai_id = create_mogwai(BOB, 0);
+			let mogwai_id = create_mogwai(BOB);
 			let sell_price = 1_000;
 
 			assert_ok!(BattleMogs::set_price(Origin::signed(BOB), mogwai_id, sell_price));
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::ForSale(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::ForSale(
 				BOB, mogwai_id, sell_price,
 			)));
 		});
@@ -124,7 +82,7 @@ mod set_price {
 	#[test]
 	fn set_price_should_fail_for_non_owned_mogwai() {
 		ExtBuilder::default().build().execute_with(|| {
-			let mogwai_id = create_mogwai(BOB, 0);
+			let mogwai_id = create_mogwai(BOB);
 
 			assert_noop!(
 				BattleMogs::set_price(Origin::signed(ALICE), mogwai_id, 1_000),
@@ -141,7 +99,7 @@ mod remove_price {
 	#[test]
 	fn remove_price_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
-			let mogwai_id = create_mogwai(BOB, 0);
+			let mogwai_id = create_mogwai(BOB);
 			let sell_price = 1_000;
 
 			BattleMogs::set_price(Origin::signed(BOB), mogwai_id, sell_price)
@@ -149,7 +107,7 @@ mod remove_price {
 
 			assert_ok!(BattleMogs::remove_price(Origin::signed(BOB), mogwai_id));
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::RemovedFromSale(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::RemovedFromSale(
 				BOB, mogwai_id,
 			)));
 		});
@@ -158,7 +116,7 @@ mod remove_price {
 	#[test]
 	fn remove_price_should_fail_for_non_owned_mogwai() {
 		ExtBuilder::default().build().execute_with(|| {
-			let mogwai_id = create_mogwai(BOB, 0);
+			let mogwai_id = create_mogwai(BOB);
 			let sell_price = 1_000;
 
 			BattleMogs::set_price(Origin::signed(BOB), mogwai_id, sell_price)
@@ -174,7 +132,7 @@ mod remove_price {
 	#[test]
 	fn remove_price_should_fail_for_mogwai_not_on_sale() {
 		ExtBuilder::default().build().execute_with(|| {
-			let mogwai_id = create_mogwai(BOB, 0);
+			let mogwai_id = create_mogwai(BOB);
 
 			assert_noop!(
 				BattleMogs::remove_price(Origin::signed(BOB), mogwai_id),
@@ -193,20 +151,17 @@ mod create_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let owner = ALICE;
 			assert_ok!(BattleMogs::create_mogwai(Origin::signed(owner)));
-			let mogwai_id = BattleMogs::mogwai_of_owner_by_index((owner, 0));
+			let mogwai_id =
+				BattleMogs::owners(owner).into_iter().next().expect("Should get mogwai id");
 
-			assert_eq!(BattleMogs::mogwai(mogwai_id).id, mogwai_id);
+			assert_eq!(BattleMogs::mogwai(mogwai_id).unwrap().id, mogwai_id);
 			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(owner));
 
-			assert_eq!(BattleMogs::mogwai_by_index(0), mogwai_id);
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
-			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id), 0);
 
-			assert_eq!(BattleMogs::mogwai_of_owner_by_index((owner, 0)), mogwai_id);
 			assert_eq!(BattleMogs::owned_mogwais_count(owner), 1);
-			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id), 0);
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiCreated(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::MogwaiCreated(
 				owner, mogwai_id,
 			)));
 		});
@@ -251,23 +206,18 @@ mod remove_mogwai {
 	fn remove_mogwai_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
-			let mogwai_id = create_mogwai(account, 0);
-			let default_hash = <Test as frame_system::Config>::Hash::default();
+			let mogwai_id = create_mogwai(account);
 
 			assert_ok!(BattleMogs::remove_mogwai(Origin::signed(account), mogwai_id));
 
-			assert_eq!(BattleMogs::mogwai(mogwai_id).id, default_hash);
+			assert_eq!(BattleMogs::mogwai(mogwai_id), None);
 			assert_eq!(BattleMogs::owner_of(mogwai_id), None);
 
-			assert_eq!(BattleMogs::mogwai_by_index(0), default_hash);
 			assert_eq!(BattleMogs::all_mogwais_count(), 0);
-			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id), 0);
 
-			assert_eq!(BattleMogs::mogwai_of_owner_by_index((account, 0)), default_hash);
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
-			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id), 0);
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiRemoved(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::MogwaiRemoved(
 				account, mogwai_id,
 			)));
 		});
@@ -278,7 +228,7 @@ mod remove_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let other = CHARLIE;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			assert_noop!(
 				BattleMogs::remove_mogwai(Origin::signed(other), mogwai_id),
@@ -297,19 +247,16 @@ mod transfer {
 		let founder = ALICE;
 		ExtBuilder::default().build().execute_with(|| {
 			let target = BOB;
-			let mogwai_id = create_mogwai(founder, 0);
-			let default_hash = <Test as frame_system::Config>::Hash::default();
+			let mogwai_id = create_mogwai(founder);
 
 			assert_ok!(BattleMogs::transfer(Origin::signed(founder), target, mogwai_id));
 
 			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(target));
 
-			assert_eq!(BattleMogs::mogwai_of_owner_by_index((target, 0)), mogwai_id);
-			assert_eq!(BattleMogs::mogwai_of_owner_by_index((founder, 0)), default_hash);
 			assert_eq!(BattleMogs::owned_mogwais_count(target), 1);
 			assert_eq!(BattleMogs::owned_mogwais_count(founder), 0);
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiTransfered(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::MogwaiTransfered(
 				founder, target, mogwai_id,
 			)));
 		});
@@ -320,7 +267,7 @@ mod transfer {
 		ExtBuilder::default().build().execute_with(|| {
 			let target = ALICE;
 			let sender = CHARLIE;
-			let mogwai_id = create_mogwai(sender, 0);
+			let mogwai_id = create_mogwai(sender);
 
 			assert_noop!(
 				BattleMogs::transfer(Origin::signed(sender), target, mogwai_id),
@@ -337,10 +284,10 @@ mod transfer {
 			let mogwai_limit = BattleMogs::config_value(target, 1);
 
 			for _ in 0..mogwai_limit {
-				let _ = create_mogwai(target, 0);
+				let _ = create_mogwai(target);
 			}
 
-			let mogwai_id = create_mogwai(founder, 0);
+			let mogwai_id = create_mogwai(founder);
 
 			assert_noop!(
 				BattleMogs::transfer(Origin::signed(founder), target, mogwai_id),
@@ -359,9 +306,9 @@ mod hatch_mogwai {
 	fn hatch_mogwai_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
-			let mogwai = BattleMogs::mogwai(mogwai_id);
+			let mogwai = BattleMogs::mogwai(mogwai_id).expect("Should have found mogwai");
 			assert_eq!(mogwai.phase, PhaseType::Breeded);
 
 			run_to_block(
@@ -370,7 +317,7 @@ mod hatch_mogwai {
 
 			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id));
 
-			let mogwai = BattleMogs::mogwai(mogwai_id);
+			let mogwai = BattleMogs::mogwai(mogwai_id).expect("Should have found mogwai");
 			assert_eq!(mogwai.phase, PhaseType::Hatched);
 		});
 	}
@@ -380,7 +327,7 @@ mod hatch_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
 			let other = CHARLIE;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			run_to_block(
 				System::block_number() + GameEventType::time_till(GameEventType::Hatch) as u64,
@@ -398,7 +345,7 @@ mod hatch_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			ExtBuilder::default().build().execute_with(|| {
 				let account = BOB;
-				let mogwai_id = create_mogwai(account, 0);
+				let mogwai_id = create_mogwai(account);
 
 				let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
 
@@ -421,21 +368,16 @@ mod sacrifice {
 	fn sacrifice_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = CHARLIE;
-			let mogwai_id = create_mogwai(account, 0);
-			let default_hash = <Test as frame_system::Config>::Hash::default();
+			let mogwai_id = create_mogwai(account);
 
 			assert_ok!(BattleMogs::sacrifice(Origin::signed(account), mogwai_id));
 
-			assert_eq!(BattleMogs::mogwai(mogwai_id).id, default_hash);
+			assert_eq!(BattleMogs::mogwai(mogwai_id), None);
 			assert_eq!(BattleMogs::owner_of(mogwai_id), None);
 
-			assert_eq!(BattleMogs::mogwai_by_index(0), default_hash);
 			assert_eq!(BattleMogs::all_mogwais_count(), 0);
-			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id), 0);
 
-			assert_eq!(BattleMogs::mogwai_of_owner_by_index((account, 0)), default_hash);
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
-			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id), 0);
 		});
 	}
 
@@ -444,7 +386,7 @@ mod sacrifice {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = CHARLIE;
 			let other = BOB;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			assert_noop!(
 				BattleMogs::sacrifice(Origin::signed(other), mogwai_id),
@@ -463,16 +405,19 @@ mod sacrifice_into {
 	fn sacrifice_into_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = CHARLIE;
-			let mogwai_id_1 = create_mogwai(account, 0);
-			let mogwai_id_2 = create_mogwai(account, 1);
-			let default_hash = <Test as frame_system::Config>::Hash::default();
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(account);
 
-			Mogwais::<Test>::mutate(mogwai_id_1, |mogwai| {
-				mogwai.rarity = RarityType::Epic;
+			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic;
+				}
 			});
 
-			Mogwais::<Test>::mutate(mogwai_id_2, |mogwai| {
-				mogwai.rarity = RarityType::Epic;
+			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic;
+				}
 			});
 
 			assert_ok!(BattleMogs::sacrifice_into(
@@ -481,18 +426,12 @@ mod sacrifice_into {
 				mogwai_id_2
 			));
 
-			assert_eq!(BattleMogs::mogwai(mogwai_id_1).id, default_hash);
+			assert_eq!(BattleMogs::mogwai(mogwai_id_1), None);
 			assert_eq!(BattleMogs::owner_of(mogwai_id_1), None);
 
-			assert_eq!(BattleMogs::mogwai_by_index(0), mogwai_id_2);
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
-			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id_1), 0);
-			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id_2), 0);
 
-			assert_eq!(BattleMogs::mogwai_of_owner_by_index((account, 0)), mogwai_id_2);
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 1);
-			assert_eq!(BattleMogs::owned_mogwais_hash(mogwai_id_1), 0);
-			assert_eq!(BattleMogs::all_mogwais_hash(mogwai_id_2), 0);
 		});
 	}
 
@@ -501,15 +440,19 @@ mod sacrifice_into {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = CHARLIE;
 			let other = BOB;
-			let mogwai_id_1 = create_mogwai(account, 0);
-			let mogwai_id_2 = create_mogwai(other, 0);
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(other);
 
-			Mogwais::<Test>::mutate(mogwai_id_1, |mogwai| {
-				mogwai.rarity = RarityType::Epic;
+			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic;
+				}
 			});
 
-			Mogwais::<Test>::mutate(mogwai_id_2, |mogwai| {
-				mogwai.rarity = RarityType::Epic;
+			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic;
+				}
 			});
 
 			assert_noop!(
@@ -523,10 +466,12 @@ mod sacrifice_into {
 	fn sacrifice_into_sacrifice_mogwai_into_self_not_allowed() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = CHARLIE;
-			let mogwai_id_1 = create_mogwai(account, 0);
+			let mogwai_id_1 = create_mogwai(account);
 
-			Mogwais::<Test>::mutate(mogwai_id_1, |mogwai| {
-				mogwai.rarity = RarityType::Epic;
+			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic;
+				}
 			});
 
 			assert_noop!(
@@ -546,7 +491,7 @@ mod buy_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
 			let buyer = ALICE;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 			let sell_price = 1;
 
 			assert_ok!(BattleMogs::set_price(Origin::signed(account), mogwai_id, sell_price));
@@ -558,7 +503,7 @@ mod buy_mogwai {
 
 			assert_ok!(BattleMogs::buy_mogwai(Origin::signed(buyer), mogwai_id, sell_price));
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiBought(
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::MogwaiBought(
 				buyer, account, mogwai_id, sell_price,
 			)));
 
@@ -574,7 +519,7 @@ mod buy_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
 			let buyer = ALICE;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			assert_noop!(
 				BattleMogs::buy_mogwai(Origin::signed(buyer), mogwai_id, 1_000),
@@ -589,13 +534,13 @@ mod buy_mogwai {
 			let account = BOB;
 			let buyer = ALICE;
 			let mogwai_limit = BattleMogs::config_value(buyer, 1);
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 			let sell_price = 1;
 
 			assert_ok!(BattleMogs::set_price(Origin::signed(account), mogwai_id, sell_price));
 
 			for _ in 0..mogwai_limit {
-				let _ = create_mogwai(buyer, 0);
+				let _ = create_mogwai(buyer);
 			}
 
 			assert_noop!(
@@ -614,11 +559,13 @@ mod morph_mogwai {
 	fn morph_mogwai_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			assert_ok!(BattleMogs::morph_mogwai(Origin::signed(account), mogwai_id));
 
-			System::assert_last_event(Event::BattleMogs(crate::Event::MogwaiMorphed(mogwai_id)));
+			System::assert_last_event(mock::Event::BattleMogs(crate::Event::MogwaiMorphed(
+				mogwai_id,
+			)));
 		});
 	}
 
@@ -627,7 +574,7 @@ mod morph_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
 			let other = ALICE;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			assert!(BattleMogs::morph_mogwai(Origin::signed(other), mogwai_id).is_err());
 		});
@@ -642,8 +589,8 @@ mod breed_mogwai {
 	fn breed_mogwai_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
-			let mogwai_id_1 = create_mogwai(account, 0);
-			let mogwai_id_2 = create_mogwai(account, 1);
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(account);
 
 			assert_ok!(BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_1, mogwai_id_2));
 		});
@@ -654,8 +601,8 @@ mod breed_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
 			let other = ALICE;
-			let mogwai_id_1 = create_mogwai(account, 0);
-			let mogwai_id_2 = create_mogwai(other, 0);
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(other);
 
 			assert_noop!(
 				BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_2, mogwai_id_1),
@@ -668,7 +615,7 @@ mod breed_mogwai {
 	fn breed_mogwai_not_allowed_if_mogwais_are_the_same() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
-			let mogwai_id = create_mogwai(account, 0);
+			let mogwai_id = create_mogwai(account);
 
 			assert_noop!(
 				BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id, mogwai_id),
@@ -683,11 +630,11 @@ mod breed_mogwai {
 			let account = BOB;
 			let mogwai_limit = BattleMogs::config_value(account, 1);
 			let other = CHARLIE;
-			let mogwai_id_1 = create_mogwai(account, 0);
-			let mogwai_id_2 = create_mogwai(other, 0);
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(other);
 
 			for _ in 0..(mogwai_limit - 1) {
-				let _ = create_mogwai(account, 0);
+				let _ = create_mogwai(account);
 			}
 
 			assert_noop!(

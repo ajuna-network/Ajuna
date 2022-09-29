@@ -19,7 +19,7 @@ use codec::MaxEncodedLen;
 use frame_support::codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Debug, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 pub struct MogwaiStruct<Hash, BlockNumber, Balance, RarityType, PhaseType> {
 	pub id: Hash,
 	pub dna: [[u8; 32]; 2],
@@ -32,7 +32,7 @@ pub struct MogwaiStruct<Hash, BlockNumber, Balance, RarityType, PhaseType> {
 	pub phase: PhaseType,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq, TypeInfo)]
 pub enum BreedType {
 	DomDom = 0,
 	DomRez = 1,
@@ -40,7 +40,7 @@ pub enum BreedType {
 	RezRez = 3,
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 pub enum RarityType {
 	Common = 0,
 	Uncommon = 1,
