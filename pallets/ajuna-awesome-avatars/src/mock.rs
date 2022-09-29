@@ -102,7 +102,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
-	mint_availability: bool,
+	mint_open: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
 	balances: Vec<(MockAccountId, MockBalance)>,
@@ -118,8 +118,8 @@ impl ExtBuilder {
 		self.seasons = seasons;
 		self
 	}
-	pub fn mint_availability(mut self, mint_availability: bool) -> Self {
-		self.mint_availability = mint_availability;
+	pub fn mint_open(mut self, mint_open: bool) -> Self {
+		self.mint_open = mint_open;
 		self
 	}
 	pub fn mint_cooldown(mut self, mint_cooldown: MockBlockNumber) -> Self {
@@ -155,19 +155,19 @@ impl ExtBuilder {
 				Seasons::<Test>::insert(season_id, season);
 			}
 
-			GlobalConfigs::<Test>::mutate(|configs| {
-				configs.mint_available = self.mint_availability;
+			GlobalConfigs::<Test>::mutate(|config| {
+				config.mint.open = self.mint_open;
 			});
 
 			if let Some(mint_cooldown) = self.mint_cooldown {
-				GlobalConfigs::<Test>::mutate(|configs| {
-					configs.mint_cooldown = mint_cooldown;
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.mint.cooldown = mint_cooldown;
 				});
 			}
 
 			if let Some(mint_fees) = self.mint_fees {
-				GlobalConfigs::<Test>::mutate(|configs| {
-					configs.mint_fees = mint_fees;
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.mint.fees = mint_fees;
 				});
 			}
 

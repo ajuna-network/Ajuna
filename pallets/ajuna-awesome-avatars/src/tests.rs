@@ -320,7 +320,7 @@ mod minting {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
-			.mint_availability(true)
+			.mint_open(true)
 			.mint_fees(fees)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, initial_balance)])
@@ -457,8 +457,8 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_return_error_when_minting_is_unavailable() {
-		ExtBuilder::default().mint_availability(false).build().execute_with(|| {
+	fn mint_should_return_error_when_minting_is_closed() {
+		ExtBuilder::default().mint_open(false).build().execute_with(|| {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 				for mint_type in [MintType::Normal, MintType::Free] {
 					assert_noop!(
@@ -466,7 +466,7 @@ mod minting {
 							Origin::signed(ALICE),
 							MintOption { count, mint_type }
 						),
-						Error::<Test>::MintUnavailable
+						Error::<Test>::MintClosed
 					);
 				}
 			}
@@ -491,7 +491,7 @@ mod minting {
 	fn mint_should_return_error_when_season_is_inactive() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.mint_availability(true)
+			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -523,7 +523,7 @@ mod minting {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(SeasonId::default(), Season::default())])
-			.mint_availability(true)
+			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -552,7 +552,7 @@ mod minting {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
-			.mint_availability(true)
+			.mint_open(true)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
@@ -599,7 +599,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.mint_availability(true)
+			.mint_open(true)
 			.seasons(vec![(1, season)])
 			.build()
 			.execute_with(|| {
@@ -628,7 +628,7 @@ mod minting {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
-			.mint_availability(true)
+			.mint_open(true)
 			.free_mints(vec![(ALICE, 100)])
 			.build()
 			.execute_with(|| {

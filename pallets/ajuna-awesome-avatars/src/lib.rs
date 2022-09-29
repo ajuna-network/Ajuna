@@ -93,13 +93,15 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
 		GlobalConfig {
-			mint_available: false,
-			mint_fees: MintFees {
-				one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-				three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-				six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+			mint: MintConfig {
+				open: false,
+				fees: MintFees {
+					one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
+					three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
+					six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+				},
+				cooldown: 5_u8.into(),
 			},
-			mint_cooldown: 5_u8.into(),
 		}
 	}
 	#[pallet::storage]
@@ -170,7 +172,7 @@ pub mod pallet {
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
 		/// Minting is not available at the moment.
-		MintUnavailable,
+		MintClosed,
 		/// No season active currently.
 		OutOfSeason,
 		/// Max ownership reached.
@@ -352,30 +354,30 @@ pub mod pallet {
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			let season_configs = Self::global_configs();
-			ensure!(season_configs.mint_available, Error::<T>::MintUnavailable);
+			let GlobalConfig { mint, .. } = Self::global_configs();
+			ensure!(mint.open, Error::<T>::MintClosed);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				let cooldown = season_configs.mint_cooldown;
-				ensure!(current_block > last_block + cooldown, Error::<T>::MintCooldown);
+				ensure!(current_block > last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
-			match mint_option.mint_type {
+			let MintOption { mint_type, count } = mint_option;
+			match mint_type {
 				MintType::Normal => {
-					let fee = season_configs.mint_fees.fee_for(mint_option.count);
+					let fee = mint.fees.fee_for(*count);
 					ensure!(
 						T::Currency::free_balance(player) >= fee,
 						Error::<T>::InsufficientFunds
 					);
 				},
 				MintType::Free => ensure!(
-					Self::free_mints(player) >= mint_option.count as MintCount,
+					Self::free_mints(player) >= *count as MintCount,
 					Error::<T>::InsufficientFreeMints
 				),
 			};
 
-			let how_many = mint_option.count as usize;
+			let how_many = *count as usize;
 			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
 				.checked_sub(how_many)
 				.ok_or(ArithmeticError::Underflow)?;
@@ -409,11 +411,11 @@ pub mod pallet {
 				);
 				LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
-				match mint_option.mint_type {
+				match mint_type {
 					MintType::Normal => {
 						T::Currency::withdraw(
 							player,
-							season_configs.mint_fees.fee_for(mint_option.count),
+							mint.fees.fee_for(*count),
 							WithdrawReasons::FEE,
 							ExistenceRequirement::KeepAlive,
 						)?;
@@ -423,7 +425,7 @@ pub mod pallet {
 							player,
 							|dest_player_free_mints| -> DispatchResult {
 								*dest_player_free_mints = dest_player_free_mints
-									.checked_sub(mint_option.count as MintCount)
+									.checked_sub(*count as MintCount)
 									.ok_or(ArithmeticError::Overflow)?;
 								Ok(())
 							},

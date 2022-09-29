@@ -163,8 +163,13 @@ pub struct MintOption {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct MintConfig<Balance, BlockNumber> {
+	pub open: bool,
+	pub fees: MintFees<Balance>,
+	pub cooldown: BlockNumber,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
-	pub mint_available: bool,
-	pub mint_fees: MintFees<Balance>,
-	pub mint_cooldown: BlockNumber,
+	pub mint: MintConfig<Balance, BlockNumber>,
 }
