@@ -127,6 +127,11 @@ impl ExtBuilder {
 	}
 }
 
+pub fn last_event() -> Event {
+	let mut events = frame_system::Pallet::<Test>::events();
+	events.pop().expect("Event expected").event
+}
+
 /// Run until a particular block.
 pub fn run_to_block(n: u64) {
 	while System::block_number() < n {
