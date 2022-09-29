@@ -191,32 +191,28 @@ pub fn run_to_block(n: u64) {
 	}
 }
 
-pub fn test_rarity_tiers(rarity_tiers: Vec<(RarityTier, RarityPercent)>) -> RarityTiers {
-	rarity_tiers.try_into().unwrap()
-}
-
 impl Default for Season<MockBlockNumber> {
 	fn default() -> Self {
-		let tiers = test_rarity_tiers(vec![
-			(RarityTier::Common, 50),
-			(RarityTier::Uncommon, 30),
-			(RarityTier::Rare, 12),
-			(RarityTier::Epic, 5),
-			(RarityTier::Legendary, 2),
-			(RarityTier::Mythical, 1),
-		]);
-
 		Self {
 			name: b"cool season".to_vec().try_into().unwrap(),
 			description: b"this is a really cool season".to_vec().try_into().unwrap(),
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_rare_mints: 1,
-			rarity_tiers_single_mint: tiers.clone(),
-			rarity_tiers_batch_mint: tiers,
 			max_variations: 1,
 			max_components: 1,
+			tiers: vec![
+				RarityTier::Mythical,
+				RarityTier::Legendary,
+				RarityTier::Epic,
+				RarityTier::Rare,
+				RarityTier::Uncommon,
+				RarityTier::Common,
+			]
+			.try_into()
+			.unwrap(),
+			p_single_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+			p_batch_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
 		}
 	}
 }
@@ -234,20 +230,20 @@ impl Season<MockBlockNumber> {
 		self.end = end;
 		self
 	}
-	pub fn max_rare_mints(mut self, max_rare_mints: MintCount) -> Self {
-		self.max_rare_mints = max_rare_mints;
-		self
-	}
-	pub fn rarity_tiers_single_mint(mut self, rarity_tiers: RarityTiers) -> Self {
-		self.rarity_tiers_single_mint = rarity_tiers;
-		self
-	}
-	pub fn rarity_tiers_batch_mint(mut self, rarity_tiers: RarityTiers) -> Self {
-		self.rarity_tiers_batch_mint = rarity_tiers;
-		self
-	}
 	pub fn max_components(mut self, max_components: u8) -> Self {
 		self.max_components = max_components;
+		self
+	}
+	pub fn tiers(mut self, tiers: Vec<RarityTier>) -> Self {
+		self.tiers = tiers.try_into().unwrap();
+		self
+	}
+	pub fn p_single_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
+		self.p_single_mint = percentages.try_into().unwrap();
+		self
+	}
+	pub fn p_batch_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
+		self.p_batch_mint = percentages.try_into().unwrap();
 		self
 	}
 }

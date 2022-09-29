@@ -85,10 +85,6 @@ pub mod pallet {
 	#[pallet::getter(fn is_season_active)]
 	pub type IsSeasonActive<T: Config> = StorageValue<_, bool, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn active_season_rare_mints)]
-	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, MintCount, ValueQuery>;
-
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -140,8 +136,6 @@ pub mod pallet {
 		UpdatedGlobalConfig(GlobalConfigOf<T>),
 		/// Avatars minted.
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
-		/// Rare avatars minted.
-		RareAvatarsMinted { count: MintCount },
 		/// A season has started.
 		SeasonStarted(SeasonId),
 		/// A season has finished.
@@ -168,8 +162,11 @@ pub mod pallet {
 		UnknownSeason,
 		/// The season ID of a season to create is not sequential.
 		NonSequentialSeasonId,
-		/// The combination of all tiers rarity percentages doesn't add up to 100
+		/// Rarity percentages don't add up to 100
 		IncorrectRarityPercentages,
+		/// Max tier is achievable through forging only. Therefore the number of rarity percentages
+		/// must be less than that of tiers for a season.
+		TooManyRarityPercentages,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
 		/// Minting is not available at the moment.
@@ -286,16 +283,7 @@ pub mod pallet {
 			season_id: &SeasonId,
 			mut season: SeasonOf<T>,
 		) -> Result<SeasonOf<T>, DispatchError> {
-			ensure!(season.early_start < season.start, Error::<T>::EarlyStartTooLate);
-			ensure!(season.start < season.end, Error::<T>::SeasonStartTooLate);
-			ensure!(
-				season
-					.max_variations
-					.checked_add(season.max_components)
-					.ok_or(ArithmeticError::Overflow)? <=
-					MAX_RANDOM_BYTES,
-				Error::<T>::ExceededMaxRandomBytes
-			);
+			season.validate::<T>()?;
 
 			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -308,29 +296,7 @@ pub mod pallet {
 			if let Some(next_season) = Self::seasons(next_season_id) {
 				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
 			}
-
-			Self::validate_rarity_tiers(&mut season.rarity_tiers_single_mint)?;
-			Self::validate_rarity_tiers(&mut season.rarity_tiers_batch_mint)?;
-
 			Ok(season)
-		}
-
-		fn validate_rarity_tiers(rarity_tiers: &mut RarityTiers) -> DispatchResult {
-			rarity_tiers.sort_by(|a, b| b.1.cmp(&a.1));
-			let (tiers, chances) = {
-				let (mut tiers, chances): (Vec<_>, Vec<_>) =
-					rarity_tiers.clone().into_iter().unzip();
-				tiers.sort();
-				tiers.dedup();
-				(tiers, chances)
-			};
-			ensure!(
-				chances.iter().sum::<RarityPercent>() == MAX_PERCENTAGE,
-				Error::<T>::IncorrectRarityPercentages
-			);
-			ensure!(tiers.len() == chances.len(), Error::<T>::DuplicatedRarityTier);
-
-			Ok(())
 		}
 
 		#[inline]
@@ -352,18 +318,14 @@ pub mod pallet {
 		) -> (u8, u8) {
 			let hash = hash.as_ref();
 			let random_tier = {
-				let random_percent = hash[index] % MAX_PERCENTAGE;
-				let rarity_tiers = if batched_mint {
-					&season.rarity_tiers_batch_mint
-				} else {
-					&season.rarity_tiers_single_mint
-				};
+				let random_p = hash[index] % MAX_PERCENTAGE;
+				let p = if batched_mint { &season.p_batch_mint } else { &season.p_single_mint };
 				let mut cumulative_sum = 0;
-				let mut random_tier = rarity_tiers[0].0.clone() as u8;
-				for (tier, chance) in rarity_tiers.iter() {
-					let new_cumulative_sum = cumulative_sum + chance;
-					if random_percent >= cumulative_sum && random_percent < new_cumulative_sum {
-						random_tier = tier.clone() as u8;
+				let mut random_tier = season.tiers[0].clone() as u8;
+				for i in 0..p.len() {
+					let new_cumulative_sum = cumulative_sum + p[i];
+					if random_p >= cumulative_sum && random_p < new_cumulative_sum {
+						random_tier = season.tiers[i].clone() as u8;
 						break
 					}
 					cumulative_sum = new_cumulative_sum;
@@ -378,7 +340,7 @@ pub mod pallet {
 			hash: &T::Hash,
 			season: &SeasonOf<T>,
 			batched_mint: bool,
-		) -> Result<(Dna, bool), DispatchError> {
+		) -> Result<Dna, DispatchError> {
 			let dna = (0..season.max_components)
 				.map(|i| {
 					let (random_tier, random_variation) =
@@ -386,10 +348,7 @@ pub mod pallet {
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
-			let is_rare = dna.iter().all(|each| (each >> 4) >= RarityTier::Legendary as u8);
-			Dna::try_from(dna)
-				.map(|x| (x, is_rare))
-				.map_err(|_| Error::<T>::IncorrectDna.into())
+			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
@@ -429,23 +388,18 @@ pub mod pallet {
 			let generated_avatars = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
-					let (dna, is_rare) = Self::random_dna(&avatar_id, &season, how_many > 1)?;
-					let souls = (dna.iter().sum::<u8>() as SoulCount % 100) + 1;
+					let dna = Self::random_dna(&avatar_id, &season, how_many > 1)?;
+					let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
 					let avatar = Avatar { season_id, dna, souls };
-					Ok((avatar_id, avatar, is_rare))
+					Ok((avatar_id, avatar))
 				})
-				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
+				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
 
-			let mut rare_avatars = 0;
 			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
 				let generated_avatars_ids = generated_avatars
 					.into_iter()
-					.map(|(avatar_id, avatar, is_rare)| {
+					.map(|(avatar_id, avatar)| {
 						Avatars::<T>::insert(avatar_id, (&player, avatar));
-						if is_rare {
-							ActiveSeasonRareMints::<T>::mutate(|count| count.saturating_inc());
-							rare_avatars.saturating_inc();
-						}
 						avatar_id
 					})
 					.collect::<Vec<_>>();
@@ -478,9 +432,6 @@ pub mod pallet {
 				};
 
 				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
-				if rare_avatars > 0 {
-					Self::deposit_event(Event::RareAvatarsMinted { count: rare_avatars });
-				}
 				Ok(())
 			})
 		}
