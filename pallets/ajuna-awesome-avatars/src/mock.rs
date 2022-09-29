@@ -212,7 +212,6 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_rare_mints: 1,
 			rarity_tiers_single_mint: tiers.clone(),
 			rarity_tiers_batch_mint: tiers,
 			max_variations: 1,
@@ -232,10 +231,6 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn end(mut self, end: MockBlockNumber) -> Self {
 		self.end = end;
-		self
-	}
-	pub fn max_rare_mints(mut self, max_rare_mints: MintCount) -> Self {
-		self.max_rare_mints = max_rare_mints;
 		self
 	}
 	pub fn rarity_tiers_single_mint(mut self, rarity_tiers: RarityTiers) -> Self {

@@ -85,10 +85,6 @@ pub mod pallet {
 	#[pallet::getter(fn is_season_active)]
 	pub type IsSeasonActive<T: Config> = StorageValue<_, bool, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn active_season_rare_mints)]
-	pub type ActiveSeasonRareMints<T: Config> = StorageValue<_, MintCount, ValueQuery>;
-
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -140,8 +136,6 @@ pub mod pallet {
 		UpdatedGlobalConfig(GlobalConfigOf<T>),
 		/// Avatars minted.
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
-		/// Rare avatars minted.
-		RareAvatarsMinted { count: MintCount },
 		/// A season has started.
 		SeasonStarted(SeasonId),
 		/// A season has finished.
@@ -378,7 +372,7 @@ pub mod pallet {
 			hash: &T::Hash,
 			season: &SeasonOf<T>,
 			batched_mint: bool,
-		) -> Result<(Dna, bool), DispatchError> {
+		) -> Result<Dna, DispatchError> {
 			let dna = (0..season.max_components)
 				.map(|i| {
 					let (random_tier, random_variation) =
@@ -386,10 +380,7 @@ pub mod pallet {
 					((random_tier << 4) | random_variation) as u8
 				})
 				.collect::<Vec<_>>();
-			let is_rare = dna.iter().all(|each| (each >> 4) >= RarityTier::Legendary as u8);
-			Dna::try_from(dna)
-				.map(|x| (x, is_rare))
-				.map_err(|_| Error::<T>::IncorrectDna.into())
+			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
@@ -429,23 +420,18 @@ pub mod pallet {
 			let generated_avatars = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
-					let (dna, is_rare) = Self::random_dna(&avatar_id, &season, how_many > 1)?;
+					let dna = Self::random_dna(&avatar_id, &season, how_many > 1)?;
 					let souls = (dna.iter().sum::<u8>() as SoulCount % 100) + 1;
 					let avatar = Avatar { season_id, dna, souls };
-					Ok((avatar_id, avatar, is_rare))
+					Ok((avatar_id, avatar))
 				})
-				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar, bool)>, DispatchError>>()?;
+				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
 
-			let mut rare_avatars = 0;
 			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
 				let generated_avatars_ids = generated_avatars
 					.into_iter()
-					.map(|(avatar_id, avatar, is_rare)| {
+					.map(|(avatar_id, avatar)| {
 						Avatars::<T>::insert(avatar_id, (&player, avatar));
-						if is_rare {
-							ActiveSeasonRareMints::<T>::mutate(|count| count.saturating_inc());
-							rare_avatars.saturating_inc();
-						}
 						avatar_id
 					})
 					.collect::<Vec<_>>();
@@ -478,9 +464,6 @@ pub mod pallet {
 				};
 
 				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
-				if rare_avatars > 0 {
-					Self::deposit_event(Event::RareAvatarsMinted { count: rare_avatars });
-				}
 				Ok(())
 			})
 		}

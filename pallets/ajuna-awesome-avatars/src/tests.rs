@@ -473,82 +473,6 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_work_when_rare_tier_avatars_are_minted() {
-		let season_1 = Season::default().early_start(10).start(11).end(12).rarity_tiers_batch_mint(
-			test_rarity_tiers(vec![(RarityTier::Common, 99), (RarityTier::Legendary, 1)]),
-		);
-		let season_2 = Season::default().early_start(13).start(14).end(15).rarity_tiers_batch_mint(
-			test_rarity_tiers(vec![(RarityTier::Common, 50), (RarityTier::Legendary, 50)]),
-		);
-		let season_3 = Season::default().early_start(16).start(17).end(18).rarity_tiers_batch_mint(
-			test_rarity_tiers(vec![(RarityTier::Common, 50), (RarityTier::Mythical, 50)]),
-		);
-		let seasons = vec![(1, season_1.clone()), (2, season_2.clone()), (3, season_3.clone())];
-
-		ExtBuilder::default()
-			.organizer(ALICE)
-			.seasons(seasons)
-			.mint_availability(true)
-			.mint_cooldown(0)
-			.mint_fees(MintFees { one: 0, three: 0, six: 0 })
-			.build()
-			.execute_with(|| {
-				let count_high_tier = |season_id: SeasonId| -> MintCount {
-					AwesomeAvatars::owners(ALICE)
-						.into_iter()
-						.map(|avatar_id| {
-							let (_player, avatar) = AwesomeAvatars::avatars(avatar_id).unwrap();
-							if avatar.season_id == season_id &&
-								avatar
-									.dna
-									.into_iter()
-									.all(|x| (x >> 4) >= RarityTier::Legendary as u8)
-							{
-								1
-							} else {
-								0
-							}
-						})
-						.sum()
-				};
-
-				run_to_block(season_1.early_start + 1);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), 0);
-				assert_ok!(AwesomeAvatars::mint(
-					Origin::signed(ALICE),
-					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
-				));
-				let season_1_high_tiers = count_high_tier(1);
-				assert_eq!(season_1_high_tiers, 0);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_1_high_tiers);
-
-				run_to_block(season_2.early_start + 1);
-				assert_ok!(AwesomeAvatars::mint(
-					Origin::signed(ALICE),
-					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
-				));
-				let season_2_high_tiers = count_high_tier(2);
-				assert_eq!(season_2_high_tiers, 4);
-				assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_2_high_tiers);
-				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::RareAvatarsMinted { count: count_high_tier(2) },
-				));
-
-				run_to_block(season_3.early_start + 1);
-				assert_ok!(AwesomeAvatars::mint(
-					Origin::signed(ALICE),
-					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
-				));
-				let season_3_high_tiers = count_high_tier(3);
-				assert_eq!(season_3_high_tiers, 2);
-				// assert_eq!(AwesomeAvatars::active_season_rare_mints(), season_3_high_tiers);
-				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::RareAvatarsMinted { count: count_high_tier(3) },
-				));
-			});
-	}
-
-	#[test]
 	fn mint_should_return_error_when_minting_is_unavailable() {
 		ExtBuilder::default().mint_availability(false).build().execute_with(|| {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
@@ -739,28 +663,6 @@ mod minting {
 					crate::Event::AvatarsMinted {
 						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[0]],
 					},
-				));
-				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::RareAvatarsMinted { count: 1 },
-				));
-
-				run_to_block(season.start + 10);
-				assert_eq!(
-					AwesomeAvatars::seasons(AwesomeAvatars::current_season_id()),
-					Some(season)
-				);
-				assert_ok!(AwesomeAvatars::mint(
-					Origin::signed(ALICE),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
-				));
-
-				System::assert_has_event(mock::Event::AwesomeAvatars(
-					crate::Event::AvatarsMinted {
-						avatar_ids: vec![AwesomeAvatars::owners(ALICE)[1]],
-					},
-				));
-				System::assert_last_event(mock::Event::AwesomeAvatars(
-					crate::Event::RareAvatarsMinted { count: 1 },
 				));
 			});
 	}

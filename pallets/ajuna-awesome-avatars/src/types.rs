@@ -41,7 +41,6 @@ pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
-	pub max_rare_mints: MintCount,
 	pub max_variations: u8,
 	pub max_components: u8,
 	pub rarity_tiers_single_mint: RarityTiers,
