@@ -28,7 +28,8 @@ pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType
 	pub genesis: BlockNumber,
 	pub intrinsic: Balance,
 	pub generation: MogwaiGeneration,
-	pub rarity: RarityType,
+	pub rarity: Option<RarityType>,
+	pub(crate) original_rarity: RarityType,
 	pub phase: PhaseType,
 }
 
