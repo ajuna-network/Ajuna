@@ -704,3 +704,407 @@ mod minting {
 			});
 	}
 }
+
+mod forging {
+	use super::*;
+	use sp_runtime::testing::H256;
+	use sp_std::collections::btree_set::BTreeSet;
+
+	#[test]
+	fn forge_should_work_for_matches() {
+		let max_components = 5;
+		let max_variations = 3;
+		let tiers = vec![RarityTier::Common, RarityTier::Legendary];
+		let season = Season::default()
+			.end(99)
+			.tiers(tiers.clone())
+			.p_batch_mint(vec![100])
+			.max_components(max_components)
+			.max_variations(max_variations);
+		let min_sacrifices = 1;
+		let max_sacrifices = 2;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_open(true)
+			.mint_cooldown(1)
+			.free_mints(vec![(BOB, 10)])
+			.forge_open(true)
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				// prepare avatars to forge
+				run_to_block(season.early_start + 1);
+				assert_ok!(AwesomeAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
+				));
+
+				// forge
+				let owned_avatar_ids = AwesomeAvatars::owners(BOB);
+				let leader_id = owned_avatar_ids[0];
+				let sacrifice_ids = &owned_avatar_ids[1..3];
+
+				let original_leader = AwesomeAvatars::avatars(leader_id).unwrap().1;
+				let original_sacrifices = sacrifice_ids
+					.iter()
+					.map(|id| AwesomeAvatars::avatars(id).unwrap().1)
+					.collect::<Vec<_>>();
+
+				assert_ok!(AwesomeAvatars::forge(
+					Origin::signed(BOB),
+					leader_id,
+					sacrifice_ids.to_vec().try_into().unwrap()
+				));
+				let forged_leader = AwesomeAvatars::avatars(leader_id).unwrap().1;
+
+				// check the result of the compare method
+				for (sacrifice, result) in original_sacrifices
+					.iter()
+					.zip([(true, BTreeSet::from([1, 3])), (true, BTreeSet::from([0, 2, 3]))])
+				{
+					assert_eq!(
+						original_leader.compare(
+							sacrifice,
+							max_variations,
+							tiers[tiers.len() - 1].clone() as u8
+						),
+						result
+					)
+				}
+
+				// check all sacrifices are burned
+				for sacrifice_id in sacrifice_ids {
+					assert!(!Avatars::<Test>::contains_key(sacrifice_id));
+				}
+				// check for souls accumulation
+				assert_eq!(
+					forged_leader.souls,
+					original_leader.souls +
+						original_sacrifices.iter().map(|x| x.souls).sum::<SoulCount>(),
+				);
+
+				// check for the upgraded DNA
+				assert_ne!(original_leader.dna[0..=1], forged_leader.dna[0..=1]);
+				assert_eq!(original_leader.dna.to_vec()[0] >> 4, RarityTier::Common as u8);
+				assert_eq!(original_leader.dna.to_vec()[1] >> 4, RarityTier::Common as u8);
+				assert_eq!(forged_leader.dna.to_vec()[0] >> 4, RarityTier::Legendary as u8);
+				assert_eq!(forged_leader.dna.to_vec()[1] >> 4, RarityTier::Legendary as u8);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarForged { avatar_id: leader_id, upgraded_components: 2 },
+				));
+
+				// variations remain the same
+				assert_eq!(
+					original_leader.dna[0..=1].iter().map(|x| x & 0b0000_1111).collect::<Vec<_>>(),
+					forged_leader.dna[0..=1].iter().map(|x| x & 0b0000_1111).collect::<Vec<_>>(),
+				);
+				// other components remain the same
+				assert_eq!(
+					original_leader.dna[2..max_components as usize],
+					forged_leader.dna[2..max_components as usize]
+				);
+			});
+	}
+
+	#[test]
+	fn forge_should_work_for_non_matches() {
+		let max_components = 10;
+		let max_variations = 12;
+		let tiers =
+			vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Rare, RarityTier::Legendary];
+		let season = Season::default()
+			.end(99)
+			.tiers(tiers.clone())
+			.p_batch_mint(vec![33, 33, 34])
+			.max_components(max_components)
+			.max_variations(max_variations);
+		let min_sacrifices = 1;
+		let max_sacrifices = 5;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_open(true)
+			.mint_cooldown(1)
+			.free_mints(vec![(BOB, 10)])
+			.forge_open(true)
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				// prepare avatars to forge
+				run_to_block(season.early_start + 1);
+				assert_ok!(AwesomeAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
+				));
+
+				// forge
+				let owned_avatar_ids = AwesomeAvatars::owners(BOB);
+				let leader_id = owned_avatar_ids[0];
+				let sacrifice_id = owned_avatar_ids[1];
+
+				let original_leader = AwesomeAvatars::avatars(leader_id).unwrap().1;
+				let original_sacrifice = AwesomeAvatars::avatars(sacrifice_id).unwrap().1;
+
+				assert_ok!(AwesomeAvatars::forge(
+					Origin::signed(BOB),
+					leader_id,
+					[sacrifice_id].to_vec().try_into().unwrap()
+				));
+				let forged_leader = AwesomeAvatars::avatars(leader_id).unwrap().1;
+
+				// check the result of the compare method
+				assert_eq!(
+					original_leader.compare(
+						&original_sacrifice,
+						max_variations,
+						tiers[tiers.len() - 1].clone() as u8
+					),
+					(false, BTreeSet::new())
+				);
+				// check all sacrifices are burned
+				assert!(!Avatars::<Test>::contains_key(sacrifice_id));
+				// check for souls accumulation
+				assert_eq!(forged_leader.souls, original_leader.souls + original_sacrifice.souls);
+
+				// check DNAs are the same
+				assert_eq!(original_leader.dna, forged_leader.dna);
+				System::assert_last_event(mock::Event::AwesomeAvatars(
+					crate::Event::AvatarForged { avatar_id: leader_id, upgraded_components: 0 },
+				));
+			});
+	}
+
+	#[test]
+	fn forge_should_reject_caller() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AwesomeAvatars::forge(
+					Origin::none(),
+					H256::default(),
+					BoundedAvatarIdsOf::<Test>::default(),
+				),
+				DispatchError::BadOrigin,
+			);
+		});
+	}
+
+	#[test]
+	fn forge_should_check_bounds_for_sacrifices() {
+		let min_sacrifices = 3;
+		let max_sacrifices = 5;
+
+		ExtBuilder::default()
+			.forge_open(true)
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				for i in 0..min_sacrifices {
+					assert_noop!(
+						AwesomeAvatars::forge(
+							Origin::signed(ALICE),
+							H256::default(),
+							BoundedAvatarIdsOf::<Test>::try_from(
+								(0..i).map(|_| H256::default()).collect::<Vec<_>>()
+							)
+							.unwrap(),
+						),
+						Error::<Test>::TooFewSacrifices,
+					);
+				}
+
+				for i in (max_sacrifices + 1)..(max_sacrifices + 5) {
+					assert_noop!(
+						AwesomeAvatars::forge(
+							Origin::signed(ALICE),
+							H256::default(),
+							BoundedAvatarIdsOf::<Test>::try_from(
+								(0..i).map(|_| H256::default()).collect::<Vec<_>>()
+							)
+							.unwrap(),
+						),
+						Error::<Test>::TooManySacrifices,
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn forge_should_reject_out_of_season_calls() {
+		ExtBuilder::default()
+			.forge_open(true)
+			.forge_min_sacrifices(1)
+			.forge_max_sacrifices(1)
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AwesomeAvatars::forge(
+						Origin::signed(ALICE),
+						H256::default(),
+						BoundedAvatarIdsOf::<Test>::try_from(vec![H256::default()]).unwrap(),
+					),
+					Error::<Test>::OutOfSeason,
+				);
+			});
+	}
+
+	#[test]
+	fn forge_should_reject_unknown_season_calls() {
+		ExtBuilder::default()
+			.forge_open(true)
+			.forge_min_sacrifices(1)
+			.forge_max_sacrifices(1)
+			.build()
+			.execute_with(|| {
+				CurrentSeasonId::<Test>::put(123);
+				IsSeasonActive::<Test>::put(true);
+				assert_noop!(
+					AwesomeAvatars::forge(
+						Origin::signed(ALICE),
+						H256::default(),
+						BoundedAvatarIdsOf::<Test>::try_from(vec![H256::default()]).unwrap(),
+					),
+					Error::<Test>::UnknownSeason,
+				);
+			});
+	}
+
+	#[test]
+	fn forge_should_reject_unknown_avatars() {
+		let season = Season::default().end(99);
+		let min_sacrifices = 1;
+		let max_sacrifices = 3;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_open(true)
+			.mint_cooldown(0)
+			.free_mints(vec![(ALICE, 10)])
+			.forge_open(true)
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				for _ in 0..max_sacrifices {
+					assert_ok!(AwesomeAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					));
+					run_to_block(System::block_number() + 1);
+				}
+
+				let owned_avatars = AwesomeAvatars::owners(ALICE);
+				for (leader, sacrifices) in [
+					(H256::default(), vec![owned_avatars[0], owned_avatars[2]].try_into().unwrap()),
+					(owned_avatars[1], vec![H256::default(), H256::default()].try_into().unwrap()),
+					(owned_avatars[1], vec![H256::default(), owned_avatars[2]].try_into().unwrap()),
+				] {
+					assert_noop!(
+						AwesomeAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
+						Error::<Test>::UnknownAvatar,
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn forge_should_reject_incorrect_ownership() {
+		let season = Season::default().end(99);
+		let min_sacrifices = 1;
+		let max_sacrifices = 3;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_open(true)
+			.mint_cooldown(0)
+			.free_mints(vec![(ALICE, 10), (BOB, 10)])
+			.forge_open(true)
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				for player in [ALICE, BOB] {
+					for _ in 0..max_sacrifices {
+						assert_ok!(AwesomeAvatars::mint(
+							Origin::signed(player),
+							MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+						));
+						run_to_block(System::block_number() + 1);
+					}
+				}
+
+				for (player, leader, sacrifices) in [
+					(
+						ALICE,
+						AwesomeAvatars::owners(ALICE)[0],
+						AwesomeAvatars::owners(BOB)[0..2].to_vec().try_into().unwrap(),
+					),
+					(
+						ALICE,
+						AwesomeAvatars::owners(BOB)[0],
+						AwesomeAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
+					),
+					(
+						ALICE,
+						AwesomeAvatars::owners(BOB)[0],
+						AwesomeAvatars::owners(BOB)[0..2].to_vec().try_into().unwrap(),
+					),
+				] {
+					assert_noop!(
+						AwesomeAvatars::forge(Origin::signed(player), leader, sacrifices),
+						Error::<Test>::Ownership,
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn forge_should_reject_leader_in_sacrifice() {
+		let season = Season::default().end(99);
+		let min_sacrifices = 1;
+		let max_sacrifices = 3;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_open(true)
+			.mint_cooldown(0)
+			.free_mints(vec![(ALICE, 10)])
+			.forge_open(true)
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				for _ in 0..max_sacrifices {
+					assert_ok!(AwesomeAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					));
+					run_to_block(System::block_number() + 1);
+				}
+
+				for (player, leader, sacrifices) in [
+					(
+						ALICE,
+						AwesomeAvatars::owners(ALICE)[0],
+						AwesomeAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
+					),
+					(
+						ALICE,
+						AwesomeAvatars::owners(ALICE)[1],
+						AwesomeAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
+					),
+				] {
+					assert_noop!(
+						AwesomeAvatars::forge(Origin::signed(player), leader, sacrifices),
+						Error::<Test>::LeaderSacrificed,
+					);
+				}
+			});
+	}
+}

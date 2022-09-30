@@ -17,9 +17,8 @@
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::traits::{ConstU16, ConstU64, Hooks};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
+	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
@@ -105,6 +104,9 @@ pub struct ExtBuilder {
 	mint_open: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
+	forge_open: bool,
+	forge_min_sacrifices: Option<u8>,
+	forge_max_sacrifices: Option<u8>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 }
@@ -138,6 +140,19 @@ impl ExtBuilder {
 		self.free_mints = free_mints;
 		self
 	}
+	pub fn forge_open(mut self, forge_open: bool) -> Self {
+		self.forge_open = forge_open;
+		self
+	}
+	pub fn forge_min_sacrifices(mut self, forge_min_sacrifices: u8) -> Self {
+		self.forge_min_sacrifices = Some(forge_min_sacrifices);
+		self
+	}
+	pub fn forge_max_sacrifices(mut self, forge_max_sacrifices: u8) -> Self {
+		self.forge_max_sacrifices = Some(forge_max_sacrifices);
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
 			system: Default::default(),
@@ -158,16 +173,28 @@ impl ExtBuilder {
 			GlobalConfigs::<Test>::mutate(|config| {
 				config.mint.open = self.mint_open;
 			});
-
 			if let Some(mint_cooldown) = self.mint_cooldown {
 				GlobalConfigs::<Test>::mutate(|config| {
 					config.mint.cooldown = mint_cooldown;
 				});
 			}
-
 			if let Some(mint_fees) = self.mint_fees {
 				GlobalConfigs::<Test>::mutate(|config| {
 					config.mint.fees = mint_fees;
+				});
+			}
+
+			GlobalConfigs::<Test>::mutate(|config| {
+				config.forge.open = self.forge_open;
+			});
+			if let Some(forge_min_sacrifices) = self.forge_min_sacrifices {
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.forge.min_sacrifices = forge_min_sacrifices;
+				});
+			}
+			if let Some(forge_max_sacrifices) = self.forge_max_sacrifices {
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.forge.max_sacrifices = forge_max_sacrifices;
 				});
 			}
 
@@ -232,6 +259,10 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn max_components(mut self, max_components: u8) -> Self {
 		self.max_components = max_components;
+		self
+	}
+	pub fn max_variations(mut self, max_variations: u8) -> Self {
+		self.max_variations = max_variations;
 		self
 	}
 	pub fn tiers(mut self, tiers: Vec<RarityTier>) -> Self {
