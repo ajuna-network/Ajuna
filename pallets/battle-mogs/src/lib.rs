@@ -59,6 +59,7 @@ pub mod pallet {
 		MogwaiIdOf<T>,
 		<T as frame_system::Config>::BlockNumber,
 		BalanceOf<T>,
+		MogwaiGeneration,
 		RarityType,
 		PhaseType,
 	>;
@@ -330,9 +331,9 @@ pub mod pallet {
 			let random_hash_2 = Self::generate_random_hash(b"extend_mogwai", sender.clone());
 
 			let (rarity, next_gen) = Generation::next_gen(
-				1,
+				MogwaiGeneration::First,
 				RarityType::Common,
-				1,
+				MogwaiGeneration::First,
 				RarityType::Common,
 				random_hash_1.as_ref(),
 			);
@@ -353,7 +354,7 @@ pub mod pallet {
 				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
-				gen: next_gen,
+				generation: next_gen,
 				rarity,
 				phase: PhaseType::Breeded,
 			};
@@ -484,18 +485,19 @@ pub mod pallet {
 			);
 
 			let gen_jump = Breeding::sacrifice(
-				mogwai_1.gen,
+				mogwai_1.generation as u32,
 				mogwai_1.rarity as u32,
 				mogwai_1.dna.clone(),
-				mogwai_2.gen,
+				mogwai_2.generation as u32,
 				mogwai_2.rarity as u32,
 				mogwai_2.dna.clone(),
 			);
-			if gen_jump > 0 && (mogwai_2.gen + gen_jump) <= 16 {
+			if gen_jump > 0 && (mogwai_2.generation as u32 + gen_jump) <= 16 {
 				if mogwai_1.intrinsic > Zero::zero() {
 					mogwai_2.intrinsic += mogwai_1.intrinsic; // TODO check overflow
 				}
-				mogwai_2.gen += gen_jump;
+				mogwai_2.generation =
+					MogwaiGeneration::coerce_from(mogwai_2.generation as u16 + gen_jump as u16);
 				Mogwais::<T>::insert(mogwai_id_2, mogwai_2);
 			}
 
@@ -616,9 +618,9 @@ pub mod pallet {
 			let mogwai_id = Self::generate_random_hash(b"breed_mogwai", sender.clone());
 
 			let (rarity, next_gen) = Generation::next_gen(
-				parents[0].gen,
+				parents[0].generation,
 				parents[0].rarity,
-				parents[1].gen,
+				parents[1].generation,
 				parents[1].rarity,
 				mogwai_id.as_ref(),
 			);
@@ -641,7 +643,7 @@ pub mod pallet {
 				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
-				gen: next_gen,
+				generation: next_gen,
 				rarity,
 				phase: PhaseType::Breeded,
 			};
