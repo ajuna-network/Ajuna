@@ -20,19 +20,88 @@ use frame_support::codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, Debug, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
-pub struct MogwaiStruct<Hash, BlockNumber, Balance, RarityType, PhaseType> {
+pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType, PhaseType> {
 	pub id: Hash,
 	pub dna: [[u8; 32]; 2],
 	//	pub state: u32,
 	//  pub level: u32,
 	pub genesis: BlockNumber,
 	pub intrinsic: Balance,
-	pub gen: u32,
-	pub rarity: RarityType,
+	pub generation: MogwaiGeneration,
+	pub rarity: Option<RarityType>,
+	pub(crate) original_rarity: RarityType,
 	pub phase: PhaseType,
 }
 
-#[derive(Encode, Decode, Debug, Clone, PartialEq, TypeInfo)]
+#[derive(
+	Encode, Decode, Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd, TypeInfo, MaxEncodedLen,
+)]
+pub enum MogwaiGeneration {
+	First = 1,
+	Second = 2,
+	Third = 3,
+	Fourth = 4,
+	Fifth = 5,
+	Sixth = 6,
+	Seventh = 7,
+	Eighth = 8,
+	Ninth = 9,
+	Tenth = 10,
+	Eleventh = 11,
+	Twelfth = 12,
+	Thirteenth = 13,
+	Fourteenth = 14,
+	Fifteenth = 15,
+	Sixteenth = 16,
+}
+
+impl MogwaiGeneration {
+	pub fn coerce_from(num: u16) -> Self {
+		match num {
+			0 => Self::First,
+			1..=16 => Self::from(num),
+			_ => Self::Sixteenth,
+		}
+	}
+}
+
+impl Default for MogwaiGeneration {
+	fn default() -> Self {
+		Self::First
+	}
+}
+
+impl From<u8> for MogwaiGeneration {
+	fn from(num: u8) -> Self {
+		MogwaiGeneration::from(num as u16)
+	}
+}
+
+impl From<u16> for MogwaiGeneration {
+	fn from(num: u16) -> Self {
+		match num {
+			1 => MogwaiGeneration::First,
+			2 => MogwaiGeneration::Second,
+			3 => MogwaiGeneration::Third,
+			4 => MogwaiGeneration::Fourth,
+			5 => MogwaiGeneration::Fifth,
+			6 => MogwaiGeneration::Sixth,
+			7 => MogwaiGeneration::Seventh,
+			8 => MogwaiGeneration::Eighth,
+			9 => MogwaiGeneration::Ninth,
+			10 => MogwaiGeneration::Tenth,
+			11 => MogwaiGeneration::Eleventh,
+			12 => MogwaiGeneration::Twelfth,
+			13 => MogwaiGeneration::Thirteenth,
+			14 => MogwaiGeneration::Fourteenth,
+			15 => MogwaiGeneration::Fifteenth,
+			16 => MogwaiGeneration::Sixteenth,
+			_ => MogwaiGeneration::First,
+		}
+	}
+}
+
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq, TypeInfo)]
 pub enum BreedType {
 	DomDom = 0,
 	DomRez = 1,
@@ -40,7 +109,7 @@ pub enum BreedType {
 	RezRez = 3,
 }
 
-#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum RarityType {
 	Common = 0,
 	Uncommon = 1,
@@ -56,9 +125,15 @@ impl Default for RarityType {
 	}
 }
 
-impl RarityType {
-	pub fn from_u32(value: u32) -> RarityType {
-		match value {
+impl From<u8> for RarityType {
+	fn from(num: u8) -> Self {
+		RarityType::from(num as u16)
+	}
+}
+
+impl From<u16> for RarityType {
+	fn from(num: u16) -> Self {
+		match num {
 			0 => RarityType::Common,
 			1 => RarityType::Uncommon,
 			2 => RarityType::Rare,
@@ -440,95 +515,74 @@ impl Breeding {
 pub struct Generation {}
 
 impl Generation {
+	fn compute_next_gen_and_rarity(
+		generation: &MogwaiGeneration,
+		rarity: &RarityType,
+		hash: &[u8; 6],
+	) -> (RarityType, MogwaiGeneration) {
+		let generation = *generation as u16;
+		let rarity = (*rarity as u16).saturating_sub(1);
+
+		let gen_multiplier =
+			if generation >= rarity { (generation * 2) - rarity } else { generation * 2 };
+
+		let mut out_rarity = MogwaiGeneration::default() as u16;
+		let mut out_generation = generation;
+
+		let rng_gen_1 = hash[0] as u16 + hash[1] as u16;
+		let rng_gen_3 = hash[4] as u16 + hash[5] as u16;
+
+		if (rng_gen_1 % gen_multiplier) == 0 {
+			out_generation += 1;
+			out_rarity = 1;
+			let rng_gen_2 = hash[2] as u16 + hash[3] as u16;
+			if (rng_gen_2 % gen_multiplier) < (out_generation / 2) {
+				out_generation += 1;
+				out_rarity = 2;
+				if (rng_gen_3 % gen_multiplier) < (out_generation / 2) {
+					out_generation += 1;
+					out_rarity = 3;
+				}
+			}
+		} else if (rng_gen_3 % gen_multiplier) == 0 {
+			out_generation -= 1;
+		}
+
+		(RarityType::from(out_rarity), MogwaiGeneration::from(out_generation))
+	}
+
 	pub fn next_gen(
-		gen1: u32,
-		rar1: RarityType,
-		gen2: u32,
-		rar2: RarityType,
+		gen_1: MogwaiGeneration,
+		rar_1: RarityType,
+		gen_2: MogwaiGeneration,
+		rar_2: RarityType,
 		random_hash: &[u8],
-	) -> (RarityType, u32) {
-		let mut result: u32 = 1;
+	) -> (RarityType, MogwaiGeneration) {
+		let mut resulting_gen = MogwaiGeneration::default();
+		let mut resulting_rarity = RarityType::default();
 
-		let mut rarity1: u32 = 0;
-		let mut rarity2: u32 = 0;
+		if random_hash.len() >= 12 {
+			let base_rarity = (rar_1 as u16 + rar_2 as u16).saturating_sub(2) / 2;
 
-		let mut rar11 = rar1 as u32;
-		let mut rar22 = rar2 as u32;
+			let slice = unsafe { &*(&random_hash[0..6] as *const [u8] as *const [u8; 6]) };
+			let (out_rarity_1, out_gen_1) =
+				Self::compute_next_gen_and_rarity(&gen_1, &rar_1, slice);
 
-		if rar11 > 0 {
-			rar11 -= 1;
+			let slice = unsafe { &*(&random_hash[6..12] as *const [u8] as *const [u8; 6]) };
+			let (out_rarity_2, out_gen_2) =
+				Self::compute_next_gen_and_rarity(&gen_2, &rar_2, slice);
+
+			resulting_gen = MogwaiGeneration::coerce_from(
+				(out_gen_1 as u16 + out_gen_2 as u16 + base_rarity) / 2,
+			);
+
+			resulting_rarity = RarityType::from(
+				((out_rarity_1 as u16 + out_rarity_2 as u16 + ((rar_1 as u16 + rar_2 as u16) / 2)) /
+					2) % 5,
+			)
 		}
 
-		if rar22 > 0 {
-			rar22 -= 1;
-		}
-
-		let base_rar = (rar11 + rar22) / 2;
-
-		if gen1 > 0 && gen1 < 17 && gen2 > 0 && gen2 < 17 && random_hash.len() == 32 {
-			let rng_gen11 = random_hash[1] as u32 + random_hash[2] as u32;
-			let rng_gen12 = random_hash[3] as u32 + random_hash[4] as u32;
-			let rng_gen13 = random_hash[5] as u32 + random_hash[6] as u32;
-
-			let rng_gen21 = random_hash[7] as u32 + random_hash[8] as u32;
-			let rng_gen22 = random_hash[9] as u32 + random_hash[10] as u32;
-			let rng_gen23 = random_hash[11] as u32 + random_hash[12] as u32;
-
-			let mut gen1pow2 = gen1 * 2;
-			if gen1pow2 >= (rar11 * 2) {
-				gen1pow2 -= rar11;
-			}
-
-			let mut gen2pow2 = gen2 * 2;
-			if gen2pow2 >= (rar22 * 2) {
-				gen2pow2 -= rar22;
-			}
-
-			let mut base_gen1 = gen1.clone();
-			if (rng_gen11 % gen1pow2) == 0 {
-				base_gen1 += 1;
-				rarity1 = 1;
-				if (rng_gen12 % gen1pow2) < (base_gen1 / 2) {
-					base_gen1 += 1;
-					rarity1 = 2;
-					if (rng_gen13 % gen1pow2) < (base_gen1 / 2) {
-						base_gen1 += 1;
-						rarity1 = 3;
-					}
-				}
-			} else if (rng_gen13 % gen1pow2) == 0 {
-				base_gen1 -= 1;
-			}
-
-			let mut base_gen2 = gen2.clone();
-			if (rng_gen21 % gen2pow2) == 0 {
-				base_gen2 += 1;
-				rarity2 = 1;
-				if (rng_gen22 % gen2pow2) < (base_gen2 / 2) {
-					base_gen2 += 1;
-					rarity2 = 2;
-					if (rng_gen23 % gen2pow2) < (base_gen1 / 2) {
-						base_gen2 += 1;
-						rarity2 = 3;
-					}
-				}
-			} else if (rng_gen23 % gen2pow2) == 0 {
-				base_gen2 -= 1;
-			}
-
-			result = (base_gen1 + base_gen2 + base_rar) / 2;
-
-			if result > 16 {
-				result = 16;
-			} else if result < 1 {
-				result = 1;
-			}
-		}
-
-		let rarity =
-			RarityType::from_u32(((rarity1 + rarity2 + ((rar1 as u32 + rar2 as u32) / 2)) / 2) % 5);
-
-		(rarity, result)
+		(resulting_rarity, resulting_gen)
 	}
 }
 
