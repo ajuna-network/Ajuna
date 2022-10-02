@@ -20,7 +20,7 @@ use frame_support::codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, Debug, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
-pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType, PhaseType> {
+pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, PhaseType> {
 	pub id: Hash,
 	pub dna: [[u8; 32]; 2],
 	//	pub state: u32,
@@ -28,8 +28,7 @@ pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType
 	pub genesis: BlockNumber,
 	pub intrinsic: Balance,
 	pub generation: MogwaiGeneration,
-	pub rarity: Option<RarityType>,
-	pub(crate) original_rarity: RarityType,
+	pub rarity: u8,
 	pub phase: PhaseType,
 }
 
@@ -221,7 +220,7 @@ impl Pricing {
 
 		price
 	}
-	pub fn pairing(rarity1: RarityType, rarity2: RarityType) -> Balance {
+	pub fn pairing(rarity1: u8, rarity2: u8) -> Balance {
 		let price: Balance;
 		match rarity1 as u32 + rarity2 as u32 {
 			0 => price = 10 * MILLIMOGS,
@@ -510,6 +509,31 @@ impl Breeding {
 
 		result
 	}
+
+	/// baking an egg will reroll on rarity with a certain probability
+	pub fn bake(rarity: u8, blk: [u8; 32]) -> u8 {
+		let prob: u16 = 250;
+
+		let mut result = (rarity << 4) >> 4;
+		let max_rarity = rarity >> 4;
+
+		let mut rand: [u16; 16] = [0u16; 16];
+		for i in 0..(max_rarity + 1) {
+			let p = (i * 2) as usize;
+			rand[i as usize] = (((blk[p] as u16) << 8) | blk[p + 1] as u16) % 1000;
+		}
+
+		if rand[max_rarity as usize] > prob {
+			for i in 0..max_rarity {
+				if rand[i as usize] > prob {
+					result = i;
+					break
+				}
+			}
+		}
+
+		result
+	}
 }
 
 pub struct Generation {}
@@ -557,7 +581,7 @@ impl Generation {
 		gen_2: MogwaiGeneration,
 		rar_2: RarityType,
 		random_hash: &[u8],
-	) -> (RarityType, MogwaiGeneration) {
+	) -> (RarityType, MogwaiGeneration, RarityType) {
 		let mut resulting_gen = MogwaiGeneration::default();
 		let mut resulting_rarity = RarityType::default();
 
@@ -582,7 +606,9 @@ impl Generation {
 			)
 		}
 
-		(resulting_rarity, resulting_gen)
+		let max_rarity = RarityType::from((6 + ((rar_1 as u16 + rar_2 as u16) / 2 as u16) / 2) % 5);
+
+		(resulting_rarity, resulting_gen, max_rarity)
 	}
 }
 

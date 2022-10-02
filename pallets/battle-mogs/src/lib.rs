@@ -60,7 +60,6 @@ pub mod pallet {
 		<T as frame_system::Config>::BlockNumber,
 		BalanceOf<T>,
 		MogwaiGeneration,
-		RarityType,
 		PhaseType,
 	>;
 	pub(crate) type BoundedMogwaiIdsOf<T> =
@@ -321,8 +320,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			// TODO Add for production!
-			//let sender = ensure_signed(origin)?;
-			//ensure!(sender == Self::founder_key().unwrap(), Error::<T>::FounderAction);
+			//ensure!(sender == Self::organizer().unwrap(), Error::<T>::FounderAction);
 
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
@@ -330,7 +328,7 @@ pub mod pallet {
 			let random_hash_1 = Self::generate_random_hash(b"create_mogwai", sender.clone());
 			let random_hash_2 = Self::generate_random_hash(b"extend_mogwai", sender.clone());
 
-			let (rarity, next_gen) = Generation::next_gen(
+			let (rarity, next_gen, max_rarity) = Generation::next_gen(
 				MogwaiGeneration::First,
 				RarityType::Common,
 				MogwaiGeneration::First,
@@ -355,8 +353,7 @@ pub mod pallet {
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				generation: next_gen,
-				rarity: None,
-				original_rarity: rarity,
+				rarity: ((max_rarity as u8) << 4) + rarity as u8,
 				phase: PhaseType::Breeded,
 			};
 
@@ -424,10 +421,10 @@ pub mod pallet {
 
 			let block_hash = <frame_system::Pallet<T>>::block_hash(block_number);
 
-			let dna = Self::segment(mogwai.clone(), block_hash);
+			let (dna, rarity) = Self::segment_and_bake(mogwai.clone(), block_hash);
 
 			mogwai.phase = PhaseType::Hatched;
-			mogwai.rarity = Some(mogwai.original_rarity);
+			mogwai.rarity = rarity;
 			mogwai.dna = dna;
 
 			Mogwais::<T>::insert(mogwai_id, mogwai);
@@ -487,8 +484,8 @@ pub mod pallet {
 			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
 			ensure!(mogwai_2.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
 
-			let mogwai_1_rarity = mogwai_1.rarity.unwrap_or_default() as u32;
-			let mogwai_2_rarity = mogwai_2.rarity.unwrap_or_default() as u32;
+			let mogwai_1_rarity = mogwai_1.rarity as u32;
+			let mogwai_2_rarity = mogwai_2.rarity as u32;
 			ensure!((mogwai_1_rarity * mogwai_2_rarity) > 0, Error::<T>::MogwaiBadRarity);
 
 			let gen_jump = Breeding::sacrifice(
@@ -572,10 +569,9 @@ pub mod pallet {
 
 			let mut mogwai = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 			ensure!(mogwai.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
-			let mogwai_rarity = mogwai.rarity.unwrap_or_default();
 
 			let pairing_price: BalanceOf<T> =
-				Pricing::pairing(mogwai_rarity, mogwai_rarity).saturated_into();
+				Pricing::pairing(mogwai.rarity, mogwai.rarity).saturated_into();
 
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id, &mut mogwai)?;
 
@@ -625,18 +621,15 @@ pub mod pallet {
 			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
 			ensure!(mogwai_2.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
 
-			let mogwai_1_rarity = mogwai_1.rarity.unwrap_or_default();
-			let mogwai_2_rarity = mogwai_2.rarity.unwrap_or_default();
-
 			let parents = [mogwai_1.clone(), mogwai_2.clone()];
 
 			let mogwai_id = Self::generate_random_hash(b"breed_mogwai", sender.clone());
 
-			let (rarity, next_gen) = Generation::next_gen(
+			let (rarity, next_gen, max_rarity) = Generation::next_gen(
 				parents[0].generation,
-				mogwai_1_rarity,
+				RarityType::from(mogwai_1.rarity),
 				parents[1].generation,
-				mogwai_2_rarity,
+				RarityType::from(mogwai_2.rarity),
 				mogwai_id.as_ref(),
 			);
 
@@ -648,7 +641,7 @@ pub mod pallet {
 
 			// add pairing price to mogwai intrinsic value TODO
 			let pairing_price: BalanceOf<T> =
-				Pricing::pairing(mogwai_1_rarity, mogwai_2_rarity).saturated_into();
+				Pricing::pairing(mogwai_1.rarity, mogwai_2.rarity).saturated_into();
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, &mut mogwai_2)?;
 
 			let final_dna = Breeding::pairing(breed_type, dx, dy);
@@ -659,8 +652,7 @@ pub mod pallet {
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				generation: next_gen,
-				rarity: None,
-				original_rarity: rarity,
+				rarity: ((max_rarity as u8) << 4) + rarity as u8,
 				phase: PhaseType::Breeded,
 			};
 
@@ -856,13 +848,13 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// do the segmentation
-	fn segment(mogwai: MogwaiOf<T>, block_hash: T::Hash) -> [[u8; 32]; 2] {
+	/// do the segmentation and baking
+	fn segment_and_bake(mogwai: MogwaiOf<T>, block_hash: T::Hash) -> ([[u8; 32]; 2], u8) {
 		let mut blk: [u8; 32] = [0u8; 32];
 
 		blk.copy_from_slice(&block_hash.as_ref()[0..32]);
 
-		// segmenting the hatched mogwai
-		Breeding::segmenting(mogwai.dna.clone(), blk)
+		// segment and and bake the hatched mogwai
+		(Breeding::segmenting(mogwai.dna.clone(), blk), Breeding::bake(mogwai.rarity, blk))
 	}
 }

@@ -436,13 +436,13 @@ mod sacrifice_into {
 			// We need to up the rarity in order to be allowed to sacrifice
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
 			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
@@ -477,7 +477,7 @@ mod sacrifice_into {
 
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Common);
+					mogwai.rarity = RarityType::Common as u8;
 				}
 			});
 
@@ -498,13 +498,13 @@ mod sacrifice_into {
 			// We need to up the rarity in order to be allowed to sacrifice
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
 			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
@@ -525,13 +525,13 @@ mod sacrifice_into {
 
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
 			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
@@ -550,7 +550,7 @@ mod sacrifice_into {
 
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = Some(RarityType::Epic);
+					mogwai.rarity = RarityType::Epic as u8;
 				}
 			});
 
