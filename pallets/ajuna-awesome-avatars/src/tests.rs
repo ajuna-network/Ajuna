@@ -259,6 +259,40 @@ mod season {
 	}
 
 	#[test]
+	fn upsert_season_should_check_variations_bounds() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			for (season, error) in [
+				(Season::default().max_variations(0), Error::<Test>::MaxVariationsTooLow),
+				(Season::default().max_variations(1), Error::<Test>::MaxVariationsTooLow),
+				(Season::default().max_variations(16), Error::<Test>::MaxVariationsTooHigh),
+				(Season::default().max_variations(100), Error::<Test>::MaxVariationsTooHigh),
+			] {
+				assert_noop!(
+					AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season),
+					error
+				);
+			}
+		});
+	}
+
+	#[test]
+	fn upsert_season_should_check_components_bounds() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			for (season, error) in [
+				(Season::default().max_components(0), Error::<Test>::MaxComponentsTooLow),
+				(Season::default().max_components(1), Error::<Test>::MaxComponentsTooLow),
+				(Season::default().max_components(33), Error::<Test>::MaxComponentsTooHigh),
+				(Season::default().max_components(100), Error::<Test>::MaxComponentsTooHigh),
+			] {
+				assert_noop!(
+					AwesomeAvatars::upsert_season(Origin::signed(ALICE), 1, season),
+					error
+				);
+			}
+		});
+	}
+
+	#[test]
 	fn upsert_season_should_return_error_when_season_ids_are_not_sequential() {
 		ExtBuilder::default()
 			.organizer(ALICE)

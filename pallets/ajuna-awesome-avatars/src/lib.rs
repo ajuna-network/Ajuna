@@ -55,7 +55,6 @@ pub mod pallet {
 
 	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
-	pub(crate) const MAX_RANDOM_BYTES: u8 = 32;
 	pub(crate) const FREE_MINT_TRANSFER_FEE: MintCount = 1;
 
 	#[pallet::pallet]
@@ -197,9 +196,14 @@ pub mod pallet {
 		MintCooldown,
 		/// The player has not enough funds.
 		InsufficientFunds,
-		/// The season's variants + components exceed the maximum number of random bytes allowed
-		/// (32)
-		ExceededMaxRandomBytes,
+		/// The season's max components value is less than the minimum allowed (1).
+		MaxComponentsTooLow,
+		/// The season's max components value is more than the maximum allowed (random byte: 32).
+		MaxComponentsTooHigh,
+		/// The season's max variations value is less than the minimum allowed (1).
+		MaxVariationsTooLow,
+		/// The season's max variations value is more than the maximum allowed (15).
+		MaxVariationsTooHigh,
 		/// The player has not enough free mints available.
 		InsufficientFreeMints,
 		/// Less than minimum allowed sacrifices are used for forging.

@@ -54,7 +54,8 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	pub(crate) fn validate<T: Config>(&mut self) -> DispatchResult {
 		self.sort();
 		self.validate_block_numbers::<T>()?;
-		self.validate_dna_components::<T>()?;
+		self.validate_max_variations::<T>()?;
+		self.validate_max_components::<T>()?;
 		self.validate_tiers::<T>()?;
 		self.validate_percentages::<T>()?;
 		Ok(())
@@ -72,13 +73,18 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 		Ok(())
 	}
 
-	fn validate_dna_components<T: Config>(&self) -> DispatchResult {
+	fn validate_max_variations<T: Config>(&self) -> DispatchResult {
+		ensure!(self.max_variations > 1, Error::<T>::MaxVariationsTooLow);
+		ensure!(self.max_variations <= 0b0000_1111, Error::<T>::MaxVariationsTooHigh);
+		Ok(())
+	}
+
+	fn validate_max_components<T: Config>(&self) -> DispatchResult {
+		ensure!(self.max_components > 1, Error::<T>::MaxComponentsTooLow);
 		ensure!(
-			self.max_variations
-				.checked_add(self.max_components)
-				.ok_or(ArithmeticError::Overflow)? <=
-				MAX_RANDOM_BYTES,
-			Error::<T>::ExceededMaxRandomBytes
+			// TODO: 32 must come from T::Hashing::len()
+			self.max_components.checked_mul(2).ok_or(ArithmeticError::Overflow)? <= 32,
+			Error::<T>::MaxComponentsTooHigh
 		);
 		Ok(())
 	}

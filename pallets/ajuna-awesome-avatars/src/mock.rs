@@ -226,8 +226,8 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_variations: 1,
-			max_components: 1,
+			max_variations: 2,
+			max_components: 2,
 			tiers: vec![
 				RarityTier::Mythical,
 				RarityTier::Legendary,
