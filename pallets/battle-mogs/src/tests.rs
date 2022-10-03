@@ -330,7 +330,7 @@ mod hatch_mogwai {
 			let mogwai_id = create_mogwai(account);
 
 			let mogwai = BattleMogs::mogwai(mogwai_id).expect("Should have found mogwai");
-			assert_eq!(mogwai.phase, PhaseType::Breeded);
+			assert_eq!(mogwai.phase, PhaseType::Bred);
 
 			run_to_block(
 				System::block_number() + GameEventType::time_till(GameEventType::Hatch) as u64,
