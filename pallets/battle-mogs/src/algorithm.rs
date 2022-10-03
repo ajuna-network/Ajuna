@@ -312,6 +312,32 @@ impl Breeding {
 
 		[dna, evo]
 	}
+
+	pub fn bake(rarity: RarityType, blk: [u8; 32]) -> RarityType {
+		let prob: u16 = 250;
+
+		let rarity = rarity as u8;
+
+		let mut result = rarity & Binary::RIGHT_BITMASK;
+		let max_rarity = rarity >> 4;
+
+		let mut rand: [u16; 16] = Default::default();
+		for i in 0..(max_rarity + 1) {
+			let p = (i * 2) as usize;
+			rand[i as usize] = (((blk[p] as u16) << 8) | blk[p + 1] as u16) % 1000;
+		}
+
+		if rand[max_rarity as usize] > prob {
+			for i in 0..max_rarity {
+				if rand[i as usize] > prob {
+					result = i;
+					break
+				}
+			}
+		}
+
+		RarityType::from(result)
+	}
 }
 
 pub struct Generation;
@@ -359,7 +385,7 @@ impl Generation {
 		input_generation_2: MogwaiGeneration,
 		input_rarity_2: RarityType,
 		random_hash: &[u8],
-	) -> (RarityType, MogwaiGeneration) {
+	) -> (RarityType, MogwaiGeneration, RarityType) {
 		let mut resulting_gen = MogwaiGeneration::default();
 		let mut resulting_rarity = RarityType::default();
 
@@ -385,6 +411,10 @@ impl Generation {
 			)
 		}
 
-		(resulting_rarity, resulting_gen)
+		let max_rarity = RarityType::from(
+			(6 + ((input_rarity_1 as u16 + input_rarity_2 as u16) / 2 as u16) / 2) % 5,
+		);
+
+		(resulting_rarity, resulting_gen, max_rarity)
 	}
 }
