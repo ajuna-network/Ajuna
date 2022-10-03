@@ -352,7 +352,6 @@ mod minting {
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
 			.mint_open(true)
 			.mint_fees(fees)
@@ -524,7 +523,6 @@ mod minting {
 	#[test]
 	fn mint_should_return_error_when_season_is_inactive() {
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
@@ -555,7 +553,6 @@ mod minting {
 		assert!(avatar_ids.is_full());
 
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.seasons(vec![(SeasonId::default(), Season::default())])
 			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
@@ -584,7 +581,6 @@ mod minting {
 		let mint_cooldown = 7;
 
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
 			.mint_open(true)
 			.mint_cooldown(mint_cooldown)
@@ -632,7 +628,6 @@ mod minting {
 		let season = Season::default().end(20);
 
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.mint_open(true)
 			.seasons(vec![(1, season)])
 			.build()
@@ -660,7 +655,6 @@ mod minting {
 	fn free_mint_is_still_possible_outside_season() {
 		let season = Season::default().start(1).end(20);
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.seasons(vec![(1, season.clone())])
 			.mint_open(true)
 			.free_mints(vec![(ALICE, 100)])
