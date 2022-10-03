@@ -18,7 +18,7 @@
 use ajuna_service::{
 	ajuna,
 	ajuna::AjunaRuntimeExecutor,
-	ajuna_runtime::{Block as ParaAjunaBlock, RuntimeApi as AjunaRuntimeApi},
+	ajuna_runtime::{Block as ParaAjunaBlock, RuntimeApi as AjunaRuntimeApi, EXISTENTIAL_DEPOSIT},
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
@@ -28,29 +28,39 @@ use ajuna_service::{
 };
 #[cfg(any(feature = "bajun", feature = "ajuna"))]
 use {
-	crate::cli::RelayChainCli, codec::Encode,
-	cumulus_client_service::genesis::generate_genesis_block, cumulus_primitives_core::ParaId,
-	log::info, polkadot_parachain::primitives::AccountIdConversion, sc_cli::Result,
-	sp_core::hexdisplay::HexDisplay, sp_runtime::traits::Block as BlockT, std::io::Write,
+	crate::cli::RelayChainCli,
+	codec::Encode,
+	cumulus_client_cli::generate_genesis_block,
+	cumulus_primitives_core::ParaId,
+	log::info,
+	sc_cli::Result,
+	sp_core::hexdisplay::HexDisplay,
+	sp_runtime::traits::{AccountIdConversion, Block as BlockT},
+	std::io::Write,
 };
 
 #[cfg(feature = "solo")]
 use {
 	crate::{
+		benchmarking::inherent_benchmark_data,
 		cli::{Cli, Subcommand},
-		command_helper::{inherent_benchmark_data, BenchmarkExtrinsicBuilder},
 	},
 	ajuna_service::{
+		ajuna_solo_runtime::currency::EXISTENTIAL_DEPOSIT,
 		ajuna_solo_runtime::Block as SoloBlock,
 		chain_spec,
 		solo::{self, new_full, new_partial, ExecutorDispatch},
 	},
 };
 
-use frame_benchmarking_cli::BenchmarkCmd;
+use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
+
 use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
-use std::{path::PathBuf, sync::Arc};
+use sp_keyring::Sr25519Keyring;
+use std::path::PathBuf;
+
+use crate::benchmarking::{RemarkBuilder, TransferKeepAliveBuilder};
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	if cfg!(feature = "bajun") {
@@ -399,14 +409,30 @@ pub fn run() -> sc_cli::Result<()> {
 					if cfg!(feature = "bajun") {
 						return Err("Unsupported benchmarking command".into())
 					}
-					runner.sync_run(|config| {
+					construct_sync_run!(|components, cli, cmd, config| {
 						let PartialComponents { client, .. } = new_partial(&config)?;
-						let ext_builder = BenchmarkExtrinsicBuilder::new(client.clone());
-						cmd.run(config, client, inherent_benchmark_data()?, Arc::new(ext_builder))
+						let ext_builder = RemarkBuilder::new(client.clone());
+						cmd.run(config, client, inherent_benchmark_data()?, &ext_builder)
 					})
 				},
 				BenchmarkCmd::Machine(cmd) => {
-					construct_sync_run!(|components, cli, cmd, config| cmd.run(&config))
+					construct_sync_run!(|components, cli, cmd, config| cmd
+						.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
+				},
+				BenchmarkCmd::Extrinsic(cmd) => {
+					construct_sync_run!(|components, cli, cmd, config| {
+						let PartialComponents { client, .. } = new_partial(&config)?;
+						// Register the *Remark* and *TKA* builders.
+						let ext_factory = ExtrinsicFactory(vec![
+							Box::new(RemarkBuilder::new(client.clone())),
+							Box::new(TransferKeepAliveBuilder::new(
+								client.clone(),
+								Sr25519Keyring::Alice.to_account_id(),
+								EXISTENTIAL_DEPOSIT,
+							)),
+						]);
+						cmd.run(client, inherent_benchmark_data()?, &ext_factory)
+					})
 				},
 			}
 		},
@@ -431,7 +457,7 @@ pub fn run() -> sc_cli::Result<()> {
 					let id = ParaId::from(para_id);
 
 					let parachain_account =
-						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(
+						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(
 							&id,
 						);
 
@@ -484,7 +510,7 @@ pub fn run() -> sc_cli::Result<()> {
 					let id = ParaId::from(para_id);
 
 					let parachain_account =
-						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(
+						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(
 							&id,
 						);
 

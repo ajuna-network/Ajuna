@@ -20,7 +20,7 @@ smallvec    = "1.6.1"
 ajuna-primitives = { default-features = false, path = "../../primitives" }
 
 # ORML
-orml-vesting = { git = "https://github.com/ajuna-network/open-runtime-module-library", default-features = false, rev = "polkadot-v0.9.22" }
+orml-vesting = { git = "https://github.com/ajuna-network/open-runtime-module-library", default-features = false, branch = "rmm/PLAT-469-upgrade-to-v0.9.27" }
 
 # Substrate
 frame-benchmarking                         = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.27" }

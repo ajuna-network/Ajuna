@@ -58,7 +58,7 @@ sp-transaction-pool                        = { default-features = false, git = "
 sp-version                                 = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
 
 # open-runtime-module-library
-orml-vesting = { default-features = false, git = "https://github.com/ajuna-network/open-runtime-module-library", rev = "polkadot-v0.9.20" }
+orml-vesting = { default-features = false, git = "https://github.com/ajuna-network/open-runtime-module-library", branch = "rmm/PLAT-469-upgrade-to-v0.9.27" }
 
 # Ajuna pallets
 ajuna-common                 = { default-features = false, path = "../../ajuna-common" }

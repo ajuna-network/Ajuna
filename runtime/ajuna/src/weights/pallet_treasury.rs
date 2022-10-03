@@ -1,5 +1,5 @@
 // Ajuna Node
-// Copyright (C) 2022 BlogaTech AG 
+// Copyright (C) 2022 BlogaTech AG
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -79,4 +79,7 @@ impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(p as Weight)))
 	}
+	fn spend() -> u64 { todo!() }
+	fn remove_approval() -> u64 { todo!() }
+
 }

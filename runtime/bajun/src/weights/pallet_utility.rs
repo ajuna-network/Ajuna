@@ -1,5 +1,5 @@
 // Ajuna Node
-// Copyright (C) 2022 BlogaTech AG 
+// Copyright (C) 2022 BlogaTech AG
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -63,4 +63,5 @@ impl<T: frame_system::Config> pallet_utility::WeightInfo for WeightInfo<T> {
 	fn dispatch_as() -> Weight {
 		(22_864_000 as Weight)
 	}
+	fn force_batch(_: u32) -> u64 { todo!() }
 }

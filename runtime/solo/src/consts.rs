@@ -23,6 +23,8 @@ pub mod currency {
 	pub const MICRO_AJUNS: Balance = 1_000 * NANO_AJUNS;
 	pub const MILLI_AJUNS: Balance = 1_000 * MICRO_AJUNS;
 	pub const AJUNS: Balance = 1_000 * MILLI_AJUNS;
+
+	pub const EXISTENTIAL_DEPOSIT: Balance = MILLI_AJUNS;
 }
 
 pub mod time {

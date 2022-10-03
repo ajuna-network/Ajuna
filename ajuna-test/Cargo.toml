@@ -29,7 +29,7 @@ codec      = { package = "parity-scale-codec", version = "3.0.0", default-featur
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
 
 # open-runtime-module-library
-orml-vesting = { git = "https://github.com/ajuna-network/open-runtime-module-library", default-features = false, rev = "polkadot-v0.9.20" }
+orml-vesting = { git = "https://github.com/ajuna-network/open-runtime-module-library", default-features = false, branch = "rmm/PLAT-469-upgrade-to-v0.9.27" }
 
 [features]
 default = ["std"]

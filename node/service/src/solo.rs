@@ -247,7 +247,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			let deps =
 				ajuna_rpc::FullDeps { client: client.clone(), pool: pool.clone(), deny_unsafe };
 
-			Ok(ajuna_rpc::create_full(deps))
+			Ok(ajuna_rpc::create_full(deps)?)
 		})
 	};
 
@@ -257,7 +257,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		keystore: keystore_container.sync_keystore(),
 		task_manager: &mut task_manager,
 		transaction_pool: transaction_pool.clone(),
-		rpc_extensions_builder,
+		rpc_builder: rpc_extensions_builder,
 		backend,
 		system_rpc_tx,
 		config,
