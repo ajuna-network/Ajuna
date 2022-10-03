@@ -39,8 +39,10 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-/// Implementations of some helper traits passed into runtime modules as associated types.
+mod algorithm;
 mod types;
+
+pub use algorithm::*;
 pub use types::*;
 
 type BalanceOf<T> =
@@ -174,8 +176,8 @@ pub mod pallet {
 		/// A mogwai has been morphed.
 		MogwaiMorphed(T::Hash),
 
-		/// A mogwai has been breeded.
-		MogwaiBreeded(T::Hash),
+		/// A mogwai has been bred.
+		MogwaiBred(T::Hash),
 	}
 
 	#[pallet::error]
@@ -339,11 +341,10 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type: BreedType = Self::calculate_breedtype(block_number);
 
-			let mut dx: [u8; 32] = Default::default();
-			let mut dy: [u8; 32] = Default::default();
-
-			dx.copy_from_slice(&random_hash_1.as_ref()[0..32]);
-			dy.copy_from_slice(&random_hash_2.as_ref()[0..32]);
+			let dx =
+				unsafe { &*(&random_hash_1.as_ref()[0..32] as *const [u8] as *const [u8; 32]) };
+			let dy =
+				unsafe { &*(&random_hash_2.as_ref()[0..32] as *const [u8] as *const [u8; 32]) };
 
 			let final_dna = Breeding::pairing(breed_type, dx, dy);
 
@@ -446,7 +447,7 @@ pub mod pallet {
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
 			let mogwai_1 = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
-			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let intrinsic =
 				mogwai_1.intrinsic / Pricing::intrinsic_return(mogwai_1.phase).saturated_into();
@@ -478,25 +479,27 @@ pub mod pallet {
 			ensure!(mogwai_id_1 != mogwai_id_2, Error::<T>::MogwaiSame);
 
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
-			let mogwai_1 = Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			let mut mogwai_2 = Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
-
-			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
-			ensure!(mogwai_2.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			let mogwai_1: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mut mogwai_2: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
 			let mogwai_1_rarity = mogwai_1.rarity as u32;
 			let mogwai_2_rarity = mogwai_2.rarity as u32;
 			ensure!((mogwai_1_rarity * mogwai_2_rarity) > 0, Error::<T>::MogwaiBadRarity);
+			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_2.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let gen_jump = Breeding::sacrifice(
-				mogwai_1.generation as u32,
+				mogwai_1.generation,
 				mogwai_1_rarity,
-				mogwai_1.dna.clone(),
-				mogwai_2.generation as u32,
+				&mogwai_1.dna,
+				mogwai_2.generation,
 				mogwai_2_rarity,
-				mogwai_2.dna.clone(),
-			);
-			if gen_jump > 0 && (mogwai_2.generation as u32 + gen_jump) <= 16 {
+				&mogwai_2.dna,
+			) as u16;
+
+			if gen_jump > 0 && (mogwai_2.generation as u16 + gen_jump) <= 16 {
 				if mogwai_1.intrinsic > Zero::zero() {
 					mogwai_2.intrinsic += mogwai_1.intrinsic; // TODO check overflow
 				}
@@ -567,11 +570,13 @@ pub mod pallet {
 			let owner = Self::owner_of(mogwai_id).ok_or("No owner for this mogwai")?;
 			ensure!(owner == sender, "You don't own this mogwai");
 
-			let mut mogwai = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			ensure!(mogwai.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			let mut mogwai: MogwaiOf<T> =
+				Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			ensure!(mogwai.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
+			let mogwai_rarity = mogwai.rarity.unwrap_or_default();
 
 			let pairing_price: BalanceOf<T> =
-				Pricing::pairing(mogwai.rarity, mogwai.rarity).saturated_into();
+				Pricing::pairing(mogwai_rarity, mogwai_rarity).saturated_into();
 
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id, &mut mogwai)?;
 
@@ -579,10 +584,8 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type: BreedType = Self::calculate_breedtype(block_number);
 
-			let mut dx: [u8; 16] = Default::default();
-			let mut dy: [u8; 16] = Default::default();
-			dx.copy_from_slice(&mogwai.dna[0].as_ref()[0..16]);
-			dy.copy_from_slice(&mogwai.dna[0].as_ref()[16..32]);
+			let dx = unsafe { &*(&mogwai.dna[0][0..16] as *const [u8] as *const [u8; 16]) };
+			let dy = unsafe { &*(&mogwai.dna[0][16..32] as *const [u8] as *const [u8; 16]) };
 
 			mogwai.dna[0] = Breeding::morph(breed_type, dx, dy);
 
@@ -615,11 +618,16 @@ pub mod pallet {
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
 
-			let mogwai_1 = Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			let mut mogwai_2 = Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mogwai_1: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mut mogwai_2: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
-			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
-			ensure!(mogwai_2.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_2.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
+
+			let mogwai_1_rarity = mogwai_1.rarity.unwrap_or_default();
+			let mogwai_2_rarity = mogwai_2.rarity.unwrap_or_default();
 
 			let parents = [mogwai_1.clone(), mogwai_2.clone()];
 
@@ -636,15 +644,12 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type: BreedType = Self::calculate_breedtype(block_number);
 
-			let dx = mogwai_1.dna[0];
-			let dy = mogwai_2.dna[0];
-
 			// add pairing price to mogwai intrinsic value TODO
 			let pairing_price: BalanceOf<T> =
-				Pricing::pairing(mogwai_1.rarity, mogwai_2.rarity).saturated_into();
+				Pricing::pairing(mogwai_1_rarity, mogwai_2_rarity).saturated_into();
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, &mut mogwai_2)?;
 
-			let final_dna = Breeding::pairing(breed_type, dx, dy);
+			let final_dna = Breeding::pairing(breed_type, &mogwai_1.dna[0], &mogwai_2.dna[0]);
 
 			let mogwai_struct = MogwaiStruct {
 				id: mogwai_id,
@@ -660,7 +665,7 @@ pub mod pallet {
 			Self::mint(sender, mogwai_id, mogwai_struct)?;
 
 			// Emit an event.
-			Self::deposit_event(Event::MogwaiBreeded(mogwai_id));
+			Self::deposit_event(Event::MogwaiBred(mogwai_id));
 
 			Ok(())
 		}
