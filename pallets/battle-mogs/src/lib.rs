@@ -63,6 +63,7 @@ pub mod pallet {
 		<T as frame_system::Config>::BlockNumber,
 		BalanceOf<T>,
 		MogwaiGeneration,
+		RarityType,
 		PhaseType,
 	>;
 	pub(crate) type BoundedMogwaiIdsOf<T> =
@@ -370,8 +371,8 @@ pub mod pallet {
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				generation: next_gen,
-				rarity: ((max_rarity as u8) << 4) + rarity as u8,
-				phase: PhaseType::Breeded,
+				rarity: RarityType::from(((max_rarity as u8) << 4) + rarity as u8),
+				phase: PhaseType::Bred,
 			};
 
 			Self::mint(&sender, random_hash_1, new_mogwai)?;
@@ -519,18 +520,18 @@ pub mod pallet {
 			let mut mogwai_2: MogwaiOf<T> =
 				Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
-			let mogwai_1_rarity = mogwai_1.rarity as u32;
-			let mogwai_2_rarity = mogwai_2.rarity as u32;
-			ensure!((mogwai_1_rarity * mogwai_2_rarity) > 0, Error::<T>::MogwaiBadRarity);
+			ensure!(mogwai_1.rarity != RarityType::Common, Error::<T>::MogwaiBadRarity);
+			ensure!(mogwai_2.rarity != RarityType::Common, Error::<T>::MogwaiBadRarity);
+
 			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 			ensure!(mogwai_2.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let gen_jump = Breeding::sacrifice(
 				mogwai_1.generation,
-				mogwai_1_rarity,
+				mogwai_1.rarity,
 				&mogwai_1.dna,
 				mogwai_2.generation,
-				mogwai_2_rarity,
+				mogwai_2.rarity,
 				&mogwai_2.dna,
 			) as u16;
 
@@ -615,10 +616,9 @@ pub mod pallet {
 			let mut mogwai: MogwaiOf<T> =
 				Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 			ensure!(mogwai.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
-			let mogwai_rarity = mogwai.rarity.unwrap_or_default();
 
 			let pairing_price: BalanceOf<T> =
-				Pricing::pairing(mogwai_rarity, mogwai_rarity).saturated_into();
+				Pricing::pairing(mogwai.rarity, mogwai.rarity).saturated_into();
 
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id, &mut mogwai)?;
 
@@ -672,18 +672,15 @@ pub mod pallet {
 			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 			ensure!(mogwai_2.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
-			let mogwai_1_rarity = mogwai_1.rarity.unwrap_or_default();
-			let mogwai_2_rarity = mogwai_2.rarity.unwrap_or_default();
-
 			let parents = [mogwai_1.clone(), mogwai_2.clone()];
 
 			let mogwai_id = Self::generate_random_hash(b"breed_mogwai", sender.clone());
 
 			let (rarity, next_gen, max_rarity) = Generation::next_gen(
 				parents[0].generation,
-				RarityType::from(mogwai_1.rarity),
+				mogwai_1.rarity,
 				parents[1].generation,
-				RarityType::from(mogwai_2.rarity),
+				mogwai_2.rarity,
 				mogwai_id.as_ref(),
 			);
 
@@ -692,11 +689,11 @@ pub mod pallet {
 
 			// add pairing price to mogwai intrinsic value TODO
 			let pairing_price: BalanceOf<T> =
-				Pricing::pairing(mogwai_1_rarity, mogwai_2_rarity).saturated_into();
+				Pricing::pairing(mogwai_1.rarity, mogwai_2.rarity).saturated_into();
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, &mut mogwai_2)?;
 
 			let final_dna = Breeding::pairing(breed_type, &mogwai_1.dna[0], &mogwai_2.dna[0]);
-			let mogwai_rarity = ((max_rarity as u8) << 4) + rarity as u8;
+			let mogwai_rarity = RarityType::from(((max_rarity as u8) << 4) + rarity as u8);
 
 			let mogwai_struct = MogwaiStruct {
 				id: mogwai_id,
@@ -705,13 +702,13 @@ pub mod pallet {
 				intrinsic: Zero::zero(),
 				generation: next_gen,
 				rarity: mogwai_rarity,
-				phase: PhaseType::Breeded,
+				phase: PhaseType::Bred,
 			};
 
 			// mint mogwai
 			Self::mint(&sender, mogwai_id, mogwai_struct)?;
 
-			if mogwai_rarity == 16 {
+			if mogwai_rarity == RarityType::Mythical {
 				// TODO: Do something with the results
 				let _ = Self::update_achievement_for(&sender, AccountAchievement::LegendBreeder, 1);
 			}
@@ -915,7 +912,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// do the segmentation and baking
-	fn segment_and_bake(mogwai: MogwaiOf<T>, block_hash: T::Hash) -> ([[u8; 32]; 2], u8) {
+	fn segment_and_bake(mogwai: MogwaiOf<T>, block_hash: T::Hash) -> ([[u8; 32]; 2], RarityType) {
 		let mut blk: [u8; 32] = [0u8; 32];
 
 		blk.copy_from_slice(&block_hash.as_ref()[0..32]);

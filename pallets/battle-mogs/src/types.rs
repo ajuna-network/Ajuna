@@ -20,7 +20,7 @@ use frame_support::codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, Debug, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
-pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, PhaseType> {
+pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType, PhaseType> {
 	pub id: Hash,
 	pub dna: [[u8; 32]; 2],
 	//	pub state: u32,
@@ -28,7 +28,7 @@ pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, PhaseType>
 	pub genesis: BlockNumber,
 	pub intrinsic: Balance,
 	pub generation: MogwaiGeneration,
-	pub rarity: u8,
+	pub rarity: RarityType,
 	pub phase: PhaseType,
 }
 
@@ -270,9 +270,9 @@ impl Pricing {
 
 		price
 	}
-	pub fn pairing(rarity1: u8, rarity2: u8) -> Balance {
+	pub fn pairing(rarity1: RarityType, rarity2: RarityType) -> Balance {
 		let price: Balance;
-		match rarity1 as u32 + rarity2 as u32 {
+		match rarity1 as u8 + rarity2 as u8 {
 			0 => price = 10 * MILLIMOGS,
 			1 => price = 100 * MILLIMOGS,
 			2 => price = 200 * MILLIMOGS,
