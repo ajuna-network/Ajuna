@@ -46,7 +46,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Randomness: pallet_randomness_collective_flip,
-		AwesomeAvatars: pallet_ajuna_awesome_avatars,
+		AAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
 
@@ -209,12 +209,12 @@ impl ExtBuilder {
 pub fn run_to_block(n: u64) {
 	while System::block_number() < n {
 		if System::block_number() > 1 {
-			AwesomeAvatars::on_finalize(System::block_number());
+			AAvatars::on_finalize(System::block_number());
 			System::on_finalize(System::block_number());
 		}
 		System::set_block_number(System::block_number() + 1);
 		System::on_initialize(System::block_number());
-		AwesomeAvatars::on_initialize(System::block_number());
+		AAvatars::on_initialize(System::block_number());
 	}
 }
 
