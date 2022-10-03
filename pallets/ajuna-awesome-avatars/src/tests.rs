@@ -34,7 +34,7 @@ mod organizer {
 	}
 
 	#[test]
-	fn set_organizer_should_reject_non_root_caller() {
+	fn set_organizer_should_reject_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::set_organizer(Origin::signed(ALICE), HILDA),
@@ -55,7 +55,7 @@ mod organizer {
 	}
 
 	#[test]
-	fn ensure_organizer_should_fail_if_no_organizer_set() {
+	fn ensure_organizer_should_reject_whe_no_organizer_is_set() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(AwesomeAvatars::organizer(), None);
 			assert_noop!(
@@ -66,7 +66,7 @@ mod organizer {
 	}
 
 	#[test]
-	fn ensure_organizer_should_fail_if_caller_is_not_organizer() {
+	fn ensure_organizer_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ERIN).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::ensure_organizer(Origin::signed(DELTHEA)),
@@ -85,16 +85,6 @@ mod organizer {
 
 mod season {
 	use super::*;
-
-	#[test]
-	fn upsert_season_should_reject_non_organizer_as_caller() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			assert_noop!(
-				AwesomeAvatars::upsert_season(Origin::signed(BOB), 7357, Season::default()),
-				DispatchError::BadOrigin
-			);
-		});
-	}
 
 	#[test]
 	fn upsert_season_should_work() {
@@ -128,7 +118,17 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_return_error_when_early_start_is_earlier_than_previous_season_end() {
+	fn upsert_season_should_reject_non_organizer_calls() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert_noop!(
+				AwesomeAvatars::upsert_season(Origin::signed(BOB), 7357, Season::default()),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn upsert_season_should_reject_when_early_start_is_earlier_than_previous_season_end() {
 		let season_1 = Season::default();
 		ExtBuilder::default()
 			.organizer(ALICE)
@@ -147,7 +147,7 @@ mod season {
 	}
 
 	#[test]
-	fn update_season_should_return_error_when_early_start_is_earlier_than_or_equal_to_start() {
+	fn upsert_season_should_reject_when_early_start_is_earlier_than_or_equal_to_start() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for i in 3..6 {
 				let new_season = Season::default().early_start(i).start(3).end(10);
@@ -161,7 +161,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_return_error_when_start_is_later_than_end() {
+	fn upsert_season_should_reject_when_start_is_later_than_end() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			let new_season = Season::default().early_start(11).start(12).end(10);
 			assert!(new_season.early_start < new_season.start);
@@ -173,7 +173,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_return_error_when_rarity_tier_is_duplicated() {
+	fn upsert_season_should_reject_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for duplicated_rarity_tiers in [
 				vec![RarityTier::Common, RarityTier::Common],
@@ -192,7 +192,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_return_error_when_sum_of_rarity_chance_is_incorrect() {
+	fn upsert_season_should_reject_when_sum_of_rarity_chance_is_incorrect() {
 		let tiers = vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary];
 		let season_0 = Season::default().tiers(tiers.clone());
 		let season_1 = Season::default().tiers(tiers);
@@ -212,7 +212,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_return_error_when_season_to_update_ends_after_next_season_start() {
+	fn upsert_season_should_reject_when_season_to_update_ends_after_next_season_start() {
 		let season_1 = Season::default().early_start(1).start(5).end(10);
 		let season_2 = Season::default().early_start(11).start(15).end(20);
 
@@ -231,7 +231,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_handle_underflow() {
+	fn upsert_season_should_reject_season_id_underflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::upsert_season(
@@ -245,7 +245,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_handle_overflow() {
+	fn upsert_season_should_reject_season_id_overflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::upsert_season(
@@ -259,7 +259,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_check_variations_bounds() {
+	fn upsert_season_should_reject_out_of_bound_variations() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for (season, error) in [
 				(Season::default().max_variations(0), Error::<Test>::MaxVariationsTooLow),
@@ -276,7 +276,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_check_components_bounds() {
+	fn upsert_season_should_reject_out_of_bound_components_bounds() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for (season, error) in [
 				(Season::default().max_components(0), Error::<Test>::MaxComponentsTooLow),
@@ -293,7 +293,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_return_error_when_season_ids_are_not_sequential() {
+	fn upsert_season_should_reject_when_season_ids_are_not_sequential() {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, Season::default())])
@@ -322,7 +322,7 @@ mod config {
 	}
 
 	#[test]
-	fn update_global_config_should_reject_non_organizer_as_caller() {
+	fn update_global_config_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::update_global_config(
@@ -490,7 +490,7 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_return_error_when_minting_is_closed() {
+	fn mint_should_reject_when_minting_is_closed() {
 		ExtBuilder::default().mint_open(false).build().execute_with(|| {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 				for mint_type in [MintType::Normal, MintType::Free] {
@@ -507,7 +507,7 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_reject_unsigned_caller() {
+	fn mint_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 				for mint_type in [MintType::Normal, MintType::Free] {
@@ -521,7 +521,7 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_return_error_when_season_is_inactive() {
+	fn mint_should_reject_when_season_is_inactive() {
 		ExtBuilder::default()
 			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
@@ -543,7 +543,7 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_return_error_when_max_ownership_has_reached() {
+	fn mint_should_reject_when_max_ownership_has_reached() {
 		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
 			(0..MAX_AVATARS_PER_PLAYER)
 				.map(|_| sp_core::H256::default())
@@ -624,12 +624,10 @@ mod minting {
 	}
 
 	#[test]
-	fn mint_should_return_error_on_insufficient_funds() {
-		let season = Season::default().end(20);
-
+	fn mint_should_reject_when_balance_is_insufficient() {
 		ExtBuilder::default()
 			.mint_open(true)
-			.seasons(vec![(1, season)])
+			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
@@ -698,7 +696,7 @@ mod minting {
 	}
 
 	#[test]
-	fn transfer_free_mints_should_return_error_if_not_enough_funds_available() {
+	fn transfer_free_mints_should_reject_when_balance_is_insufficient() {
 		ExtBuilder::default().free_mints(vec![(ALICE, 7)]).build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, 10),
@@ -906,7 +904,7 @@ mod forging {
 	}
 
 	#[test]
-	fn forge_should_reject_caller() {
+	fn forge_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AwesomeAvatars::forge(
@@ -920,7 +918,7 @@ mod forging {
 	}
 
 	#[test]
-	fn forge_should_check_bounds_for_sacrifices() {
+	fn forge_should_reject_out_of_bound_sacrifices() {
 		let min_sacrifices = 3;
 		let max_sacrifices = 5;
 
