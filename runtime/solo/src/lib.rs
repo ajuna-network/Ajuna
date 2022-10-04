@@ -513,6 +513,51 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Randomness = Randomness;
 }
 
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 20 * AJUNS + (bytes as Balance) * 1_000 * MICRO_AJUNS
+}
+
+parameter_types! {
+	/// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const DepositBase: Balance = deposit(1, 88);
+	/// Additional storage item size of 32 bytes.
+	pub const DepositFactor: Balance = deposit(0, 32);
+	pub const MaxSignatories: u16 = 10;
+}
+
+impl pallet_multisig::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type DepositBase = DepositBase;
+	type DepositFactor = DepositFactor;
+	type MaxSignatories = MaxSignatories;
+	type WeightInfo = ();
+}
+
+impl pallet_utility::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub MaxSize: u32 = 50;
+	pub BaseDeposit: Balance = 100 * MILLI_AJUNS;
+	pub ByteDeposit: Balance = 10 * MILLI_AJUNS;
+}
+
+impl pallet_preimage::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = MaxSize;
+	type BaseDeposit = BaseDeposit;
+	type ByteDeposit = ByteDeposit;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -537,6 +582,9 @@ construct_runtime!(
 		Scheduler: pallet_scheduler = 14,
 		Identity: pallet_identity = 15,
 		Proxy: pallet_proxy = 16,
+		Multisig: pallet_multisig = 17,
+		Utility: pallet_utility = 18,
+		PreImage: pallet_preimage = 19,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 		Randomness: pallet_randomness_collective_flip = 23,
 	}
