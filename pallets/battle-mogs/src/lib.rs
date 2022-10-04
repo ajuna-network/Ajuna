@@ -16,7 +16,9 @@
 +-----------------------------------------------------------------
 */
 #![cfg_attr(not(feature = "std"), no_std)]
+
 pub use pallet::*;
+use std::{mem::MaybeUninit, ptr::copy_nonoverlapping};
 
 use frame_support::{
 	codec::{Decode, Encode},
@@ -252,10 +254,10 @@ pub mod pallet {
 				Error::<T>::ConfigIndexOutOfRange
 			);
 
-			let config_opt = AccountConfig::<T>::get(&sender);
 			let mut game_config = GameConfig::new();
-			if config_opt.is_some() {
-				game_config.parameters = config_opt.unwrap();
+
+			if let Some(config) = AccountConfig::<T>::get(&sender) {
+				game_config.parameters = config;
 			}
 
 			// TODO: add rules (min, max) for different configurations
@@ -350,7 +352,7 @@ pub mod pallet {
 			let final_dna = Breeding::pairing(breed_type, dx, dy);
 
 			let new_mogwai = MogwaiStruct {
-				id: random_hash_1.clone(),
+				id: random_hash_1,
 				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
@@ -578,7 +580,7 @@ pub mod pallet {
 			let pairing_price: BalanceOf<T> =
 				Pricing::pairing(mogwai.rarity, mogwai.rarity).saturated_into();
 
-			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id, &mut mogwai)?;
+			Self::tip_mogwai(sender, pairing_price, mogwai_id, &mut mogwai)?;
 
 			// get blocknumber to calculate moon phase for morphing
 			let block_number = <frame_system::Pallet<T>>::block_number();
@@ -648,7 +650,7 @@ pub mod pallet {
 
 			let final_dna = Breeding::pairing(breed_type, &mogwai_1.dna[0], &mogwai_2.dna[0]);
 
-			let mogwai_struct = MogwaiStruct {
+			let new_mogwai = MogwaiStruct {
 				id: mogwai_id,
 				dna: final_dna,
 				genesis: block_number,
@@ -659,7 +661,7 @@ pub mod pallet {
 			};
 
 			// mint mogwai
-			Self::mint(sender, mogwai_id, mogwai_struct)?;
+			Self::mint(sender, mogwai_id, new_mogwai)?;
 
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiBred(mogwai_id));
@@ -705,7 +707,7 @@ impl<T: Config> Pallet<T> {
 		organizer: T::AccountId,
 		amount: BalanceOf<T>,
 	) -> DispatchResult {
-		let _ = T::Currency::transfer(&who, &organizer, amount, ExistenceRequirement::KeepAlive)?;
+		T::Currency::transfer(&who, &organizer, amount, ExistenceRequirement::KeepAlive)?;
 
 		Ok(())
 	}
@@ -727,20 +729,17 @@ impl<T: Config> Pallet<T> {
 
 	///
 	pub(crate) fn config_value(who: T::AccountId, index: u8) -> u32 {
-		let config_opt = AccountConfig::<T>::get(&who);
-		let result: u32;
-		if config_opt.is_some() {
-			let value = config_opt.unwrap()[usize::from(index)];
-			result = GameConfig::config_value(index, value);
-		} else {
-			result = GameConfig::config_value(index, 0);
-		}
-		result
+		GameConfig::config_value(
+			index,
+			AccountConfig::<T>::get(&who)
+				.map(|config| config[index as usize])
+				.unwrap_or_default(),
+		)
 	}
 
 	///
 	fn ensure_not_max_mogwais(who: T::AccountId) -> bool {
-		Self::owned_mogwais_count(&who) < Self::config_value(who.clone(), 1) as u64
+		Self::owned_mogwais_count(&who) < Self::config_value(who, 1) as u64
 	}
 
 	/// Add mogwai to storage
@@ -851,12 +850,15 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// do the segmentation and baking
-	fn segment_and_bake(mogwai: MogwaiOf<T>, block_hash: T::Hash) -> ([[u8; 32]; 2], RarityType) {
-		let mut blk: [u8; 32] = [0u8; 32];
-
-		blk.copy_from_slice(&block_hash.as_ref()[0..32]);
+	fn segment_and_bake(mogwai: MogwaiOf<T>, hash: T::Hash) -> ([[u8; 32]; 2], RarityType) {
+		let block_hash = unsafe {
+			let mut block_hash: MaybeUninit<[u8; 32]> = MaybeUninit::uninit();
+			let block_hash_ptr = block_hash.as_mut_ptr() as *mut u8;
+			copy_nonoverlapping(hash.as_ref()[0..32].as_ptr(), block_hash_ptr, 32);
+			block_hash.assume_init()
+		};
 
 		// segment and and bake the hatched mogwai
-		(Breeding::segmenting(mogwai.dna.clone(), blk), Breeding::bake(mogwai.rarity, blk))
+		(Breeding::segmenting(mogwai.dna, block_hash), Breeding::bake(mogwai.rarity, block_hash))
 	}
 }

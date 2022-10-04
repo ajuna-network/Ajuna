@@ -177,63 +177,54 @@ impl Default for FeeType {
 pub struct Pricing;
 impl Pricing {
 	pub fn config_update_price(index: u8, value: u8) -> Balance {
-		let price: Balance;
 		match index {
-			// Config max. Mogwais in account
-			1 => price = Self::config_max_mogwais(value),
-			_ => price = 0,
+			1 => Self::config_max_mogwais(value),
+			_ => 0,
 		}
-		price
 	}
+
 	fn config_max_mogwais(value: u8) -> Balance {
-		let price: Balance;
 		match value {
-			1 => price = 5 * DMOGS,
-			2 => price = 10 * DMOGS,
-			3 => price = 20 * DMOGS,
-			_ => price = 0 * DMOGS,
+			1 => 5 * DMOGS,
+			2 => 10 * DMOGS,
+			3 => 20 * DMOGS,
+			_ => 0,
 		}
-		price
 	}
+
 	pub fn fee_price(fee: FeeType) -> Balance {
-		let price: Balance;
 		match fee {
-			FeeType::Default => price = 1 * MILLIMOGS,
-			FeeType::Remove => price = 50 * MILLIMOGS,
+			FeeType::Default => MILLIMOGS,
+			FeeType::Remove => 50 * MILLIMOGS,
 		}
-
-		price
 	}
+
 	pub fn intrinsic_return(phase: PhaseType) -> Balance {
-		let price: Balance;
-
 		match phase {
-			PhaseType::None => price = 0 * MILLIMOGS,
-			PhaseType::Bred => price = 20 * MILLIMOGS,
-			PhaseType::Hatched => price = 5 * MILLIMOGS,
-			PhaseType::Matured => price = 3 * MILLIMOGS,
-			PhaseType::Mastered => price = 2 * MILLIMOGS,
-			PhaseType::Exalted => price = 1 * MILLIMOGS,
+			PhaseType::None => 0,
+			PhaseType::Bred => 20 * MILLIMOGS,
+			PhaseType::Hatched => 5 * MILLIMOGS,
+			PhaseType::Matured => 3 * MILLIMOGS,
+			PhaseType::Mastered => 2 * MILLIMOGS,
+			PhaseType::Exalted => MILLIMOGS,
 		}
-
-		price
 	}
-	pub fn pairing(rarity1: RarityType, rarity2: RarityType) -> Balance {
-		let price: Balance;
-		match rarity1 as u8 + rarity2 as u8 {
-			0 => price = 10 * MILLIMOGS,
-			1 => price = 100 * MILLIMOGS,
-			2 => price = 200 * MILLIMOGS,
-			3 => price = 300 * MILLIMOGS,
-			4 => price = 400 * MILLIMOGS,
-			5 => price = 500 * MILLIMOGS,
-			6 => price = 1000 * MILLIMOGS,
-			7 => price = 1500 * MILLIMOGS,
-			8 => price = 2000 * MILLIMOGS,
-			_ => price = 10000 * MILLIMOGS,
-		}
 
-		price
+	pub fn pairing(rarity1: RarityType, rarity2: RarityType) -> Balance {
+		let rarity_sum = rarity1 as u8 + rarity2 as u8;
+
+		match rarity_sum {
+			0 => 10 * MILLIMOGS,
+			1 => 100 * MILLIMOGS,
+			2 => 200 * MILLIMOGS,
+			3 => 300 * MILLIMOGS,
+			4 => 400 * MILLIMOGS,
+			5 => 500 * MILLIMOGS,
+			6 => 1000 * MILLIMOGS,
+			7 => 1500 * MILLIMOGS,
+			8 => 2000 * MILLIMOGS,
+			_ => 10000 * MILLIMOGS,
+		}
 	}
 }
 
@@ -260,10 +251,9 @@ impl GameConfig {
 	pub const PARAM_COUNT: usize = 10;
 
 	pub fn new() -> Self {
-		let parameters = [0; GameConfig::PARAM_COUNT];
-
-		return GameConfig { parameters }
+		GameConfig { parameters: [0; GameConfig::PARAM_COUNT] }
 	}
+
 	pub fn config_value(index: u8, value: u8) -> u32 {
 		let result: u32;
 		match index {
@@ -279,6 +269,7 @@ impl GameConfig {
 		}
 		result
 	}
+
 	pub fn verify_update(index: u8, value: u8, update_value_opt: Option<u8>) -> u8 {
 		let mut result: u8;
 		match index {

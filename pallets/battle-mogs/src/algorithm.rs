@@ -183,134 +183,167 @@ impl Breeding {
 		}
 	}
 
-	pub fn segmenting(gen: [[u8; 32]; 2], blk: [u8; 32]) -> [[u8; 32]; 2] {
-		let a_sec = &gen[0][0..32];
-		let b_sec = &gen[1][0..32];
+	pub fn segmenting(input_dna: [[u8; 32]; 2], block_hash: [u8; 32]) -> [[u8; 32]; 2] {
+		let stats_segment = &input_dna[0];
+		let visuals_segment = &input_dna[1];
 
-		//let a_x = &gen[0 ..  8];
-		let a_y = &a_sec[16..32];
-		let b_x = &b_sec[0..16];
-		//let b_y = &gen[24 .. 32];
+		let _stats_segment_high = &stats_segment[0..16]; // Unused for now
+		let stats_segment_low = &stats_segment[16..32];
+		let visuals_segment_high = &visuals_segment[0..16];
+		let _visuals_segment_low = &visuals_segment[16..32]; // Unused for now
 
-		let a_c = &a_y[0..8];
-		let b_c = &b_x[0..8];
+		let stats_segment_low_1 = &stats_segment_low[0..8];
+		let visuals_segment_high_1 = &visuals_segment_high[0..8];
 
-		let mut dna: [u8; 32] = Default::default();
-		let mut evo: [u8; 32] = Default::default();
+		let mut output_stats: [u8; 32] = Default::default();
+		let mut output_visuals: [u8; 32] = Default::default();
 
-		let mut full: u8 = 0;
-		let mut mark: u8 = 0;
+		let mut stats_byte: u8 = 0;
+		let mut visuals_byte: u8 = 0;
 
 		let mut mask_side = BitMaskSide::Left;
 
-		for i in 0..64 {
-			let bit_a = Binary::get_bit_at(a_c[i / 8], i as u8 % 8);
-			let bit_b = Binary::get_bit_at(b_c[i / 8], i as u8 % 8);
+		let base_range = 0..64;
+		let rev_range = base_range.clone().rev();
 
-			let p1: usize = i;
-			let p2: usize = 63 - i;
-			let blk_a = Binary::get_bit_at(blk[p1 / 8], p1 as u8 % 8);
-			let blk_b = Binary::get_bit_at(blk[p2 / 8], p2 as u8 % 8);
+		for (i, j) in base_range.zip(rev_range) {
+			let bit_index = (i % 8) as u8;
+			let byte_index = i / 8;
 
-			let mut half_byte: u8 = dna[i / 2];
-			let mut mark_byte: u8 = evo[i / 2];
+			let stats_bit = Binary::get_bit_at(stats_segment_low_1[byte_index], bit_index);
+			let visuals_bit = Binary::get_bit_at(visuals_segment_high_1[byte_index], bit_index);
 
-			let a_byte = a_sec[i / 2];
-			let b_byte = b_sec[i / 2];
+			let block_hash_bit_1 = Binary::get_bit_at(block_hash[byte_index], bit_index);
+			let block_hash_bit_2 = Binary::get_bit_at(block_hash[j / 8], (j % 8) as u8);
+
+			let half_i = i / 2;
+			let mut stats_half_byte: u8 = output_stats[half_i];
+			let mut visuals_half_byte: u8 = output_visuals[half_i];
+
+			let stats_segment_byte = stats_segment[half_i];
+			let visuals_segment_byte = visuals_segment[half_i];
 
 			if mask_side == BitMaskSide::Left {
-				full = 0;
-				mark = 0;
+				stats_byte = 0;
+				visuals_byte = 0;
 			}
 
-			match (bit_a, bit_b) {
+			match (stats_bit, visuals_bit) {
 				(true, false) => {
-					if blk_a {
-						half_byte = Binary::copy_bits(half_byte, a_byte, mask_side); // A+ as 4
-						half_byte = Binary::add_one(half_byte, mask_side);
-						mark_byte = Binary::copy_bits(mark_byte, 0x44, mask_side);
-					} else if !blk_b {
-						half_byte = Binary::copy_bits(half_byte, a_byte, mask_side); // A as A
-						mark_byte = Binary::copy_bits(mark_byte, 0xAA, mask_side);
+					if block_hash_bit_1 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, stats_segment_byte, mask_side); // A+ as 4
+						stats_half_byte = Binary::add_one(stats_half_byte, mask_side);
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0x44, mask_side);
+					} else if !block_hash_bit_2 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, stats_segment_byte, mask_side); // A as A
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xAA, mask_side);
 					} else {
-						half_byte = Binary::copy_bits(half_byte, a_byte ^ b_byte, mask_side); // A^B as 7
-						mark_byte = Binary::copy_bits(mark_byte, 0x77, mask_side);
+						stats_half_byte = Binary::copy_bits(
+							stats_half_byte,
+							stats_segment_byte ^ visuals_segment_byte,
+							mask_side,
+						); // A^B as 7
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0x77, mask_side);
 					}
 				},
 				(false, true) => {
-					if blk_b {
-						half_byte = Binary::copy_bits(half_byte, b_byte, mask_side); // 8
-						mark_byte = Binary::copy_bits(mark_byte, 0x88, mask_side);
-						half_byte = Binary::add_one(half_byte, mask_side);
-					} else if !blk_a {
-						half_byte = Binary::copy_bits(half_byte, b_byte, mask_side); // B
-						mark_byte = Binary::copy_bits(mark_byte, 0xBB, mask_side);
+					if block_hash_bit_2 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, visuals_segment_byte, mask_side); // 8
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0x88, mask_side);
+						stats_half_byte = Binary::add_one(stats_half_byte, mask_side);
+					} else if !block_hash_bit_1 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, visuals_segment_byte, mask_side); // B
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xBB, mask_side);
 					} else {
-						half_byte = Binary::copy_bits(half_byte, b_byte ^ a_byte, mask_side); // A^B as 7
-						mark_byte = Binary::copy_bits(mark_byte, 0x77, mask_side);
+						stats_half_byte = Binary::copy_bits(
+							stats_half_byte,
+							visuals_segment_byte ^ stats_segment_byte,
+							mask_side,
+						); // A^B as 7
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0x77, mask_side);
 					}
 				},
 				(false, false) => {
-					if !blk_a && !blk_b {
-						if bit_a < bit_b {
-							half_byte = Binary::copy_bits(half_byte, a_byte & !b_byte, mask_side); // !b- as 1
-							half_byte = Binary::sub_one(half_byte, mask_side);
-							mark_byte = Binary::copy_bits(mark_byte, 0x11, mask_side);
+					if !block_hash_bit_1 && !block_hash_bit_2 {
+						if !stats_bit & visuals_bit {
+							stats_half_byte = Binary::copy_bits(
+								stats_half_byte,
+								stats_segment_byte & !visuals_segment_byte,
+								mask_side,
+							); // !b- as 1
+							stats_half_byte = Binary::sub_one(stats_half_byte, mask_side);
+							visuals_half_byte =
+								Binary::copy_bits(visuals_half_byte, 0x11, mask_side);
 						} else {
-							half_byte = Binary::copy_bits(half_byte, !a_byte & b_byte, mask_side); // !a- as 0
-							mark_byte = Binary::copy_bits(mark_byte, 0x00, mask_side);
-							half_byte = Binary::sub_one(half_byte, mask_side);
+							stats_half_byte = Binary::copy_bits(
+								stats_half_byte,
+								!stats_segment_byte & visuals_segment_byte,
+								mask_side,
+							); // !a- as 0
+							visuals_half_byte =
+								Binary::copy_bits(visuals_half_byte, 0x00, mask_side);
+							stats_half_byte = Binary::sub_one(stats_half_byte, mask_side);
 						}
-					} else if blk_a && blk_b {
-						half_byte = Binary::copy_bits(half_byte, !blk[i % 32], mask_side); // !blk as E
-						mark_byte = Binary::copy_bits(mark_byte, 0xEE, mask_side);
+					} else if block_hash_bit_1 && block_hash_bit_2 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, !block_hash[i % 32], mask_side); // !blk as E
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xEE, mask_side);
+					} else if block_hash_bit_1 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, stats_segment_byte, mask_side); // A
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xAA, mask_side);
 					} else {
-						if blk_a {
-							half_byte = Binary::copy_bits(half_byte, a_byte, mask_side); // A
-							mark_byte = Binary::copy_bits(mark_byte, 0xAA, mask_side);
-						} else {
-							half_byte = Binary::copy_bits(half_byte, b_byte, mask_side); // B
-							mark_byte = Binary::copy_bits(mark_byte, 0xBB, mask_side);
-						}
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, visuals_segment_byte, mask_side); // B
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xBB, mask_side);
 					}
 				},
 				(true, true) => {
-					if blk_a && blk_b {
-						half_byte = Binary::copy_bits(half_byte, a_byte | b_byte, mask_side); // |+ as C
-						half_byte = Binary::add_one(half_byte, mask_side);
-						mark_byte = Binary::copy_bits(mark_byte, 0xCC, mask_side);
-					} else if !blk_a && !blk_b {
-						half_byte = Binary::copy_bits(half_byte, blk[i % 32], mask_side); // blk as F
-						mark_byte = Binary::copy_bits(mark_byte, 0xFF, mask_side);
+					if block_hash_bit_1 && block_hash_bit_2 {
+						stats_half_byte = Binary::copy_bits(
+							stats_half_byte,
+							stats_segment_byte | visuals_segment_byte,
+							mask_side,
+						); // |+ as C
+						stats_half_byte = Binary::add_one(stats_half_byte, mask_side);
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xCC, mask_side);
+					} else if !block_hash_bit_1 && !block_hash_bit_2 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, block_hash[i % 32], mask_side); // blk as F
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xFF, mask_side);
+					} else if block_hash_bit_1 {
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, stats_segment_byte, mask_side); // A
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xAA, mask_side);
 					} else {
-						if blk_a {
-							half_byte = Binary::copy_bits(half_byte, a_byte, mask_side); // A
-							mark_byte = Binary::copy_bits(mark_byte, 0xAA, mask_side);
-						} else {
-							half_byte = Binary::copy_bits(half_byte, b_byte, mask_side); // B
-							mark_byte = Binary::copy_bits(mark_byte, 0xBB, mask_side);
-						}
+						stats_half_byte =
+							Binary::copy_bits(stats_half_byte, visuals_segment_byte, mask_side); // B
+						visuals_half_byte = Binary::copy_bits(visuals_half_byte, 0xBB, mask_side);
 					}
 				},
 			}
 
-			full = Binary::copy_bits(full, half_byte, mask_side);
-			mark = Binary::copy_bits(mark, mark_byte, mask_side);
+			stats_byte = Binary::copy_bits(stats_byte, stats_half_byte, mask_side);
+			visuals_byte = Binary::copy_bits(visuals_byte, visuals_half_byte, mask_side);
 
 			// recombination
 			if mask_side == BitMaskSide::Right {
-				if full == 0xFF || full == 0x00 {
-					full &= blk[i % 32];
-					mark = 0x33;
+				if stats_byte == 0xFF || stats_byte == 0x00 {
+					stats_byte &= block_hash[i % 32];
+					visuals_byte = 0x33;
 				}
-				dna[i / 2] = full;
-				evo[i / 2] = mark;
+				output_stats[i / 2] = stats_byte;
+				output_visuals[i / 2] = visuals_byte;
 			}
 
 			mask_side = mask_side.flip();
 		}
 
-		[dna, evo]
+		[output_stats, output_visuals]
 	}
 
 	pub fn bake(rarity: RarityType, blk: [u8; 32]) -> RarityType {
