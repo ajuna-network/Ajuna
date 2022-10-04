@@ -19,7 +19,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::ArithmeticError;
-use sp_std::vec::Vec;
+use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 #[derive(
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
@@ -54,7 +54,8 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	pub(crate) fn validate<T: Config>(&mut self) -> DispatchResult {
 		self.sort();
 		self.validate_block_numbers::<T>()?;
-		self.validate_dna_components::<T>()?;
+		self.validate_max_variations::<T>()?;
+		self.validate_max_components::<T>()?;
 		self.validate_tiers::<T>()?;
 		self.validate_percentages::<T>()?;
 		Ok(())
@@ -72,13 +73,18 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 		Ok(())
 	}
 
-	fn validate_dna_components<T: Config>(&self) -> DispatchResult {
+	fn validate_max_variations<T: Config>(&self) -> DispatchResult {
+		ensure!(self.max_variations > 1, Error::<T>::MaxVariationsTooLow);
+		ensure!(self.max_variations <= 0b0000_1111, Error::<T>::MaxVariationsTooHigh);
+		Ok(())
+	}
+
+	fn validate_max_components<T: Config>(&self) -> DispatchResult {
+		ensure!(self.max_components > 1, Error::<T>::MaxComponentsTooLow);
 		ensure!(
-			self.max_variations
-				.checked_add(self.max_components)
-				.ok_or(ArithmeticError::Overflow)? <=
-				MAX_RANDOM_BYTES,
-			Error::<T>::ExceededMaxRandomBytes
+			// TODO: 32 must come from T::Hashing::len()
+			self.max_components.checked_mul(2).ok_or(ArithmeticError::Overflow)? <= 32,
+			Error::<T>::MaxComponentsTooHigh
 		);
 		Ok(())
 	}
@@ -111,6 +117,50 @@ pub struct Avatar {
 	pub season_id: SeasonId,
 	pub dna: Dna,
 	pub souls: SoulCount,
+}
+
+impl Avatar {
+	pub(crate) fn compare(
+		&self,
+		other: &Self,
+		max_variations: u8,
+		max_tier: u8,
+	) -> (bool, BTreeSet<usize>) {
+		let compare_variation = |lhs: u8, rhs: u8| -> bool {
+			let diff = if lhs > rhs { lhs - rhs } else { rhs - lhs };
+			diff == 1 || diff == (max_variations - 1)
+		};
+
+		let (matching_indexes, matches, mirrors) =
+			self.dna.clone().into_iter().zip(other.dna.clone()).enumerate().fold(
+				(BTreeSet::new(), 0, 0),
+				|(mut matching_indexes, mut matches, mut mirrors), (i, (lhs, rhs))| {
+					let lhs_tier = lhs >> 4;
+					let rhs_tier = rhs >> 4;
+					let is_matching_tier = lhs_tier == rhs_tier;
+					let is_maxed_tier = lhs_tier == max_tier;
+
+					let lhs_variation = lhs & 0b0000_1111;
+					let rhs_variation = rhs & 0b0000_1111;
+					let is_similar_variation = compare_variation(lhs_variation, rhs_variation);
+
+					if is_matching_tier && !is_maxed_tier && is_similar_variation {
+						matching_indexes.insert(i);
+						matches += 1;
+					}
+
+					if lhs_variation == rhs_variation {
+						mirrors += 1;
+					}
+
+					(matching_indexes, matches, mirrors)
+				},
+			);
+
+		// 0 matches = false, 1 match + 2 mirrors || 2 match + 1 mirror || 3+ matches = true
+		let is_match = matches >= 3 || (matches >= 1 && mirrors >= 1 && (matches + mirrors) >= 3);
+		(is_match, matching_indexes)
+	}
 }
 
 /// Number of avatars to be minted.
@@ -163,8 +213,21 @@ pub struct MintOption {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct MintConfig<Balance, BlockNumber> {
+	pub open: bool,
+	pub fees: MintFees<Balance>,
+	pub cooldown: BlockNumber,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct ForgeConfig {
+	pub open: bool,
+	pub min_sacrifices: u8,
+	pub max_sacrifices: u8,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
-	pub mint_available: bool,
-	pub mint_fees: MintFees<Balance>,
-	pub mint_cooldown: BlockNumber,
+	pub mint: MintConfig<Balance, BlockNumber>,
+	pub forge: ForgeConfig,
 }

@@ -17,9 +17,8 @@
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::traits::{ConstU16, ConstU64, Hooks};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
+	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
@@ -47,7 +46,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Randomness: pallet_randomness_collective_flip,
-		AwesomeAvatars: pallet_ajuna_awesome_avatars,
+		AAvatars: pallet_ajuna_awesome_avatars,
 	}
 );
 
@@ -102,9 +101,12 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
-	mint_availability: bool,
+	mint_open: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
+	forge_open: bool,
+	forge_min_sacrifices: Option<u8>,
+	forge_max_sacrifices: Option<u8>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 }
@@ -118,8 +120,8 @@ impl ExtBuilder {
 		self.seasons = seasons;
 		self
 	}
-	pub fn mint_availability(mut self, mint_availability: bool) -> Self {
-		self.mint_availability = mint_availability;
+	pub fn mint_open(mut self, mint_open: bool) -> Self {
+		self.mint_open = mint_open;
 		self
 	}
 	pub fn mint_cooldown(mut self, mint_cooldown: MockBlockNumber) -> Self {
@@ -138,6 +140,19 @@ impl ExtBuilder {
 		self.free_mints = free_mints;
 		self
 	}
+	pub fn forge_open(mut self, forge_open: bool) -> Self {
+		self.forge_open = forge_open;
+		self
+	}
+	pub fn forge_min_sacrifices(mut self, forge_min_sacrifices: u8) -> Self {
+		self.forge_min_sacrifices = Some(forge_min_sacrifices);
+		self
+	}
+	pub fn forge_max_sacrifices(mut self, forge_max_sacrifices: u8) -> Self {
+		self.forge_max_sacrifices = Some(forge_max_sacrifices);
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
 			system: Default::default(),
@@ -155,19 +170,31 @@ impl ExtBuilder {
 				Seasons::<Test>::insert(season_id, season);
 			}
 
-			GlobalConfigs::<Test>::mutate(|configs| {
-				configs.mint_available = self.mint_availability;
+			GlobalConfigs::<Test>::mutate(|config| {
+				config.mint.open = self.mint_open;
 			});
-
 			if let Some(mint_cooldown) = self.mint_cooldown {
-				GlobalConfigs::<Test>::mutate(|configs| {
-					configs.mint_cooldown = mint_cooldown;
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.mint.cooldown = mint_cooldown;
+				});
+			}
+			if let Some(mint_fees) = self.mint_fees {
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.mint.fees = mint_fees;
 				});
 			}
 
-			if let Some(mint_fees) = self.mint_fees {
-				GlobalConfigs::<Test>::mutate(|configs| {
-					configs.mint_fees = mint_fees;
+			GlobalConfigs::<Test>::mutate(|config| {
+				config.forge.open = self.forge_open;
+			});
+			if let Some(forge_min_sacrifices) = self.forge_min_sacrifices {
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.forge.min_sacrifices = forge_min_sacrifices;
+				});
+			}
+			if let Some(forge_max_sacrifices) = self.forge_max_sacrifices {
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.forge.max_sacrifices = forge_max_sacrifices;
 				});
 			}
 
@@ -182,12 +209,12 @@ impl ExtBuilder {
 pub fn run_to_block(n: u64) {
 	while System::block_number() < n {
 		if System::block_number() > 1 {
-			AwesomeAvatars::on_finalize(System::block_number());
+			AAvatars::on_finalize(System::block_number());
 			System::on_finalize(System::block_number());
 		}
 		System::set_block_number(System::block_number() + 1);
 		System::on_initialize(System::block_number());
-		AwesomeAvatars::on_initialize(System::block_number());
+		AAvatars::on_initialize(System::block_number());
 	}
 }
 
@@ -199,8 +226,8 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
-			max_variations: 1,
-			max_components: 1,
+			max_variations: 2,
+			max_components: 2,
 			tiers: vec![
 				RarityTier::Mythical,
 				RarityTier::Legendary,
@@ -232,6 +259,10 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn max_components(mut self, max_components: u8) -> Self {
 		self.max_components = max_components;
+		self
+	}
+	pub fn max_variations(mut self, max_variations: u8) -> Self {
+		self.max_variations = max_variations;
 		self
 	}
 	pub fn tiers(mut self, tiers: Vec<RarityTier>) -> Self {
