@@ -103,6 +103,7 @@ pub mod pallet {
 				cooldown: 5_u8.into(),
 			},
 			forge: ForgeConfig { open: false, min_sacrifices: 1, max_sacrifices: 4 },
+			trade: TradeConfig { open: false },
 		}
 	}
 	#[pallet::storage]
@@ -128,6 +129,10 @@ pub mod pallet {
 	#[pallet::getter(fn free_mints)]
 	pub type FreeMints<T: Config> = StorageMap<_, Identity, T::AccountId, MintCount, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn trade)]
+	pub type Trade<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, BalanceOf<T>, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -149,6 +154,12 @@ pub mod pallet {
 		FreeMintsTransferred { from: T::AccountId, to: T::AccountId, how_many: MintCount },
 		/// Free mints issued to account.
 		FreeMintsIssued { to: T::AccountId, how_many: MintCount },
+		/// Avatar has price set for trade.
+		AvatarPriceSet { avatar_id: AvatarIdOf<T>, price: BalanceOf<T> },
+		/// Avatar has price removed for trade.
+		AvatarPriceUnset { avatar_id: AvatarIdOf<T> },
+		/// Avatar has been traded.
+		AvatarTraded { avatar_id: AvatarIdOf<T>, from: T::AccountId, to: T::AccountId },
 	}
 
 	#[pallet::error]
@@ -167,6 +178,8 @@ pub mod pallet {
 		UnknownSeason,
 		/// The avatar doesn't exist.
 		UnknownAvatar,
+		/// The avatar for sale doesn't exist.
+		UnknownAvatarForSale,
 		/// The tier doesn't exist.
 		UnknownTier,
 		/// The season ID of a season to create is not sequential.
@@ -182,6 +195,8 @@ pub mod pallet {
 		MintClosed,
 		/// Forging is not available at the moment.
 		ForgeClosed,
+		/// Trading is not available at the moment.
+		TradeClosed,
 		/// No season active currently.
 		OutOfSeason,
 		/// Max ownership reached.
@@ -212,6 +227,8 @@ pub mod pallet {
 		TooManySacrifices,
 		/// Leader is being sacrificed.
 		LeaderSacrificed,
+		/// An avatar listed for trade is used to forge.
+		AvatarInTrade,
 	}
 
 	#[pallet::call]
@@ -257,6 +274,61 @@ pub mod pallet {
 			FreeMints::<T>::insert(&dest, dest_free_mints);
 
 			Self::deposit_event(Event::FreeMintsTransferred { from: sender, to: dest, how_many });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn set_price(
+			origin: OriginFor<T>,
+			avatar_id: AvatarIdOf<T>,
+			#[pallet::compact] price: BalanceOf<T>,
+		) -> DispatchResult {
+			let seller = ensure_signed(origin)?;
+			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			let _ = Self::ensure_ownership(&seller, &avatar_id)?;
+			Trade::<T>::insert(&avatar_id, &price);
+			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+			let seller = ensure_signed(origin)?;
+			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			Self::ensure_for_trade(&avatar_id)?;
+			Self::ensure_ownership(&seller, &avatar_id)?;
+			Trade::<T>::remove(&avatar_id);
+			Self::deposit_event(Event::AvatarPriceUnset { avatar_id });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+			let buyer = ensure_signed(origin)?;
+			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
+			ensure!(T::Currency::free_balance(&buyer) >= price, Error::<T>::InsufficientFunds);
+
+			T::Currency::transfer(&buyer, &seller, price, ExistenceRequirement::KeepAlive)?;
+
+			let mut buyer_avatar_ids = Self::owners(&buyer);
+			buyer_avatar_ids
+				.try_push(avatar_id)
+				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+
+			let mut seller_avatar_ids = Self::owners(&seller);
+			seller_avatar_ids.retain(|x| x != &avatar_id);
+
+			Owners::<T>::mutate(&buyer, |avatar_ids| *avatar_ids = buyer_avatar_ids);
+			Owners::<T>::mutate(&seller, |avatar_ids| *avatar_ids = seller_avatar_ids);
+			Avatars::<T>::mutate(&avatar_id, |maybe_avatar| {
+				if let Some((owner, _)) = maybe_avatar {
+					*owner = buyer.clone();
+				}
+			});
+			Trade::<T>::remove(&avatar_id);
+
+			Self::deposit_event(Event::AvatarTraded { avatar_id, from: seller, to: buyer });
 			Ok(())
 		}
 
@@ -488,6 +560,7 @@ pub mod pallet {
 				Self::seasons(Self::current_season_id()).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
+			ensure!(Self::ensure_for_trade(leader).is_err(), Error::<T>::AvatarInTrade);
 			let mut leader_avatar = Self::ensure_ownership(player, leader)?;
 			type Accumulator<T> = (BTreeSet<usize>, Vec<AvatarIdOf<T>>, u8);
 			let (mut unique_matched_indexes, _, matches) = sacrifices
@@ -497,6 +570,10 @@ pub mod pallet {
 					|(mut matched_components, mut seen, mut matches), sacrifice| {
 						ensure!(leader != sacrifice, Error::<T>::LeaderSacrificed);
 						if !seen.contains(sacrifice) {
+							ensure!(
+								Self::ensure_for_trade(sacrifice).is_err(),
+								Error::<T>::AvatarInTrade
+							);
 							let sacrifice_avatar = Self::ensure_ownership(player, sacrifice)?;
 							let (is_match, matching_components) =
 								leader_avatar.compare(&sacrifice_avatar, max_variations, max_tier);
@@ -565,6 +642,14 @@ pub mod pallet {
 			let (owner, avatar) = Self::avatars(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
 			ensure!(player == &owner, Error::<T>::Ownership);
 			Ok(avatar)
+		}
+
+		fn ensure_for_trade(
+			avatar_id: &AvatarIdOf<T>,
+		) -> Result<(T::AccountId, BalanceOf<T>), DispatchError> {
+			let price = Self::trade(avatar_id).ok_or(Error::<T>::UnknownAvatarForSale)?;
+			let (seller, _) = Self::avatars(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			Ok((seller, price))
 		}
 
 		fn toggle_season() {

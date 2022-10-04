@@ -227,7 +227,13 @@ pub struct ForgeConfig {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct TradeConfig {
+	pub open: bool,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,
+	pub trade: TradeConfig,
 }

@@ -107,6 +107,7 @@ pub struct ExtBuilder {
 	forge_open: bool,
 	forge_min_sacrifices: Option<u8>,
 	forge_max_sacrifices: Option<u8>,
+	trade_open: bool,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 }
@@ -152,6 +153,10 @@ impl ExtBuilder {
 		self.forge_max_sacrifices = Some(forge_max_sacrifices);
 		self
 	}
+	pub fn trade_open(mut self, trade_open: bool) -> Self {
+		self.trade_open = trade_open;
+		self
+	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
@@ -170,9 +175,7 @@ impl ExtBuilder {
 				Seasons::<Test>::insert(season_id, season);
 			}
 
-			GlobalConfigs::<Test>::mutate(|config| {
-				config.mint.open = self.mint_open;
-			});
+			GlobalConfigs::<Test>::mutate(|config| config.mint.open = self.mint_open);
 			if let Some(mint_cooldown) = self.mint_cooldown {
 				GlobalConfigs::<Test>::mutate(|config| {
 					config.mint.cooldown = mint_cooldown;
@@ -184,9 +187,7 @@ impl ExtBuilder {
 				});
 			}
 
-			GlobalConfigs::<Test>::mutate(|config| {
-				config.forge.open = self.forge_open;
-			});
+			GlobalConfigs::<Test>::mutate(|config| config.forge.open = self.forge_open);
 			if let Some(forge_min_sacrifices) = self.forge_min_sacrifices {
 				GlobalConfigs::<Test>::mutate(|config| {
 					config.forge.min_sacrifices = forge_min_sacrifices;
@@ -198,6 +199,7 @@ impl ExtBuilder {
 				});
 			}
 
+			GlobalConfigs::<Test>::mutate(|config| config.trade.open = self.trade_open);
 			for (account_id, mint_amount) in self.free_mints {
 				FreeMints::<Test>::insert(account_id, mint_amount);
 			}

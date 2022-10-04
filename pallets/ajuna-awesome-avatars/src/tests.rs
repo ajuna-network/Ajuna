@@ -1098,4 +1098,331 @@ mod forging {
 				}
 			});
 	}
+
+	#[test]
+	fn forge_should_reject_avatars_in_trade() {
+		let season = Season::default();
+		let price = 321;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(ALICE, 6), (BOB, 6)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.forge_open(true)
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(ALICE),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
+				));
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
+				));
+
+				let leader = AAvatars::owners(ALICE)[0];
+				let sacrifices: BoundedAvatarIdsOf<Test> =
+					AAvatars::owners(ALICE)[1..3].to_vec().try_into().unwrap();
+
+				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), leader, price));
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices.clone()),
+					Error::<Test>::AvatarInTrade
+				);
+
+				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), sacrifices[1], price));
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices.clone()),
+					Error::<Test>::AvatarInTrade
+				);
+
+				assert_ok!(AAvatars::remove_price(Origin::signed(ALICE), leader));
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
+					Error::<Test>::AvatarInTrade
+				);
+			});
+	}
+}
+
+mod trading {
+	use super::*;
+
+	#[test]
+	fn set_price_should_work() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(BOB, 999)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				let price = 7357;
+
+				assert_eq!(AAvatars::trade(avatar_for_sale), None);
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+				assert_eq!(AAvatars::trade(avatar_for_sale), Some(price));
+				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarPriceSet {
+					avatar_id: avatar_for_sale,
+					price,
+				}));
+			});
+	}
+
+	#[test]
+	fn set_price_should_reject_when_trading_is_closed() {
+		ExtBuilder::default().trade_open(false).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_price(Origin::signed(ALICE), sp_core::H256::default(), 1),
+				Error::<Test>::TradeClosed,
+			);
+		});
+	}
+
+	#[test]
+	fn set_price_should_reject_unsigned_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_price(Origin::none(), sp_core::H256::default(), 1),
+				DispatchError::BadOrigin,
+			);
+		});
+	}
+
+	#[test]
+	fn set_price_should_reject_incorrect_ownership() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(BOB, 999)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				assert_noop!(
+					AAvatars::set_price(Origin::signed(CHARLIE), AAvatars::owners(BOB)[0], 101),
+					Error::<Test>::Ownership
+				);
+			});
+	}
+
+	#[test]
+	fn remove_price_should_work() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(BOB, 999)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				let price = 101;
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+
+				assert_eq!(AAvatars::trade(avatar_for_sale), Some(101));
+				assert_ok!(AAvatars::remove_price(Origin::signed(BOB), avatar_for_sale));
+				assert_eq!(AAvatars::trade(avatar_for_sale), None);
+				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarPriceUnset {
+					avatar_id: avatar_for_sale,
+				}));
+			});
+	}
+
+	#[test]
+	fn remove_price_should_reject_when_trading_is_closed() {
+		ExtBuilder::default().trade_open(false).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::remove_price(Origin::signed(ALICE), sp_core::H256::default()),
+				Error::<Test>::TradeClosed,
+			);
+		});
+	}
+
+	#[test]
+	fn remove_price_should_reject_unsigned_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::remove_price(Origin::none(), sp_core::H256::default()),
+				DispatchError::BadOrigin,
+			);
+		});
+	}
+
+	#[test]
+	fn remove_price_should_reject_incorrect_ownership() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(BOB, 999)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 123));
+
+				assert_noop!(
+					AAvatars::remove_price(Origin::signed(CHARLIE), avatar_for_sale),
+					Error::<Test>::Ownership
+				);
+			});
+	}
+
+	#[test]
+	fn remove_price_should_reject_unlisted_avatar() {
+		ExtBuilder::default().trade_open(true).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::remove_price(Origin::signed(CHARLIE), sp_core::H256::default()),
+				Error::<Test>::UnknownAvatarForSale,
+			);
+		});
+	}
+
+	#[test]
+	fn buy_should_work() {
+		let season = Season::default();
+		let mint_fees = MintFees { one: 1, three: 3, six: 6 };
+		let price = 310_984;
+		let alice_initial_bal = price + 20_849;
+		let bob_initial_bal = 103_598;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(ALICE, alice_initial_bal), (BOB, bob_initial_bal)])
+			.mint_open(true)
+			.mint_fees(mint_fees)
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let owned_by_alice = AAvatars::owners(ALICE);
+				let owned_by_bob = AAvatars::owners(BOB);
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+				assert_ok!(AAvatars::buy(Origin::signed(ALICE), avatar_for_sale));
+
+				// check for balance transfer
+				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price);
+				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.one);
+
+				// check for ownership transfer
+				assert_eq!(AAvatars::owners(ALICE).len(), owned_by_alice.len() + 1);
+				assert_eq!(AAvatars::owners(BOB).len(), owned_by_bob.len() - 1);
+				assert!(AAvatars::owners(ALICE).contains(&avatar_for_sale));
+				assert!(!AAvatars::owners(BOB).contains(&avatar_for_sale));
+				assert_eq!(AAvatars::avatars(avatar_for_sale).unwrap().0, ALICE);
+
+				// check for removal from trade storage
+				assert_eq!(AAvatars::trade(avatar_for_sale), None);
+
+				// check events
+				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarTraded {
+					avatar_id: avatar_for_sale,
+					from: BOB,
+					to: ALICE,
+				}));
+			});
+	}
+
+	#[test]
+	fn buy_should_reject_when_trading_is_closed() {
+		ExtBuilder::default().trade_open(false).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::buy(Origin::signed(ALICE), sp_core::H256::default()),
+				Error::<Test>::TradeClosed,
+			);
+		});
+	}
+
+	#[test]
+	fn buy_should_reject_unsigned_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::buy(Origin::none(), sp_core::H256::default()),
+				DispatchError::BadOrigin,
+			);
+		});
+	}
+
+	#[test]
+	fn buy_should_reject_unlisted_avatar() {
+		ExtBuilder::default().trade_open(true).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::buy(Origin::signed(BOB), sp_core::H256::default()),
+				Error::<Test>::UnknownAvatarForSale,
+			);
+		});
+	}
+
+	#[test]
+	fn buy_should_reject_insufficient_balance() {
+		let season = Season::default();
+		let price = 310_984;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(ALICE, price - 1), (BOB, 999)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+				assert_noop!(
+					AAvatars::buy(Origin::signed(ALICE), avatar_for_sale),
+					Error::<Test>::InsufficientFunds
+				);
+			});
+	}
 }
