@@ -1098,6 +1098,54 @@ mod forging {
 				}
 			});
 	}
+
+	#[test]
+	fn forge_should_reject_avatars_in_trade() {
+		let season = Season::default();
+		let price = 321;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(ALICE, 6), (BOB, 6)])
+			.mint_open(true)
+			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.forge_open(true)
+			.trade_open(true)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(ALICE),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
+				));
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
+				));
+
+				let leader = AAvatars::owners(ALICE)[0];
+				let sacrifices: BoundedAvatarIdsOf<Test> =
+					AAvatars::owners(ALICE)[1..3].to_vec().try_into().unwrap();
+
+				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), leader, price));
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices.clone()),
+					Error::<Test>::AvatarInTrade
+				);
+
+				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), sacrifices[1], price));
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices.clone()),
+					Error::<Test>::AvatarInTrade
+				);
+
+				assert_ok!(AAvatars::remove_price(Origin::signed(ALICE), leader));
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
+					Error::<Test>::AvatarInTrade
+				);
+			});
+	}
 }
 
 mod trading {

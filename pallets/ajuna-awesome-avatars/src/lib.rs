@@ -227,6 +227,8 @@ pub mod pallet {
 		TooManySacrifices,
 		/// Leader is being sacrificed.
 		LeaderSacrificed,
+		/// An avatar listed for trade is used to forge.
+		AvatarInTrade,
 	}
 
 	#[pallet::call]
@@ -558,6 +560,7 @@ pub mod pallet {
 				Self::seasons(Self::current_season_id()).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
+			ensure!(Self::ensure_for_trade(leader).is_err(), Error::<T>::AvatarInTrade);
 			let mut leader_avatar = Self::ensure_ownership(player, leader)?;
 			type Accumulator<T> = (BTreeSet<usize>, Vec<AvatarIdOf<T>>, u8);
 			let (mut unique_matched_indexes, _, matches) = sacrifices
@@ -567,6 +570,10 @@ pub mod pallet {
 					|(mut matched_components, mut seen, mut matches), sacrifice| {
 						ensure!(leader != sacrifice, Error::<T>::LeaderSacrificed);
 						if !seen.contains(sacrifice) {
+							ensure!(
+								Self::ensure_for_trade(sacrifice).is_err(),
+								Error::<T>::AvatarInTrade
+							);
 							let sacrifice_avatar = Self::ensure_ownership(player, sacrifice)?;
 							let (is_match, matching_components) =
 								leader_avatar.compare(&sacrifice_avatar, max_variations, max_tier);
