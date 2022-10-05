@@ -69,6 +69,7 @@ use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
 use types::governance::*;
 
 // Some public reexports..
+pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
 
@@ -225,6 +226,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
 	type OperationalFeeMultiplier = frame_support::traits::ConstU8<5>;
 	type WeightToFee = IdentityFee<Balance>;
@@ -261,6 +263,7 @@ impl pallet_assets::Config for Runtime {
 
 type BalanceToAssetConverter = BalanceToAssetBalance<Balances, Runtime, OneToOneConversion>;
 impl pallet_asset_tx_payment::Config for Runtime {
+	type Event = Event;
 	type Fungibles = Assets;
 	type OnChargeAssetTransaction = FungiblesAdapter<BalanceToAssetConverter, CreditToTreasury>;
 }
@@ -332,6 +335,7 @@ impl pallet_treasury::Config for Runtime {
 	type BurnDestination = ();
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 	type SpendFunds = ();
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type MaxApprovals = frame_support::traits::ConstU32<100>;
 }
 
