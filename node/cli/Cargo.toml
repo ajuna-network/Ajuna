@@ -23,17 +23,20 @@ ajuna-service    = { path = "../service", optional = true }
 # Substrate
 frame-benchmarking-cli  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 frame-system            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 pallet-asset-tx-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sc-cli                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", features = [ "wasmtime" ] }
 sc-client-api           = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sc-finality-grandpa     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sc-service              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", features = [ "wasmtime" ] }
+sp-api                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sp-core                 = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sp-inherents            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sp-keyring              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sp-runtime              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 sp-timestamp            = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 
+sc-sysinfo   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sc-tracing   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 
@@ -52,6 +55,7 @@ default = [ "solo" ]
 
 para = [
     "log",
+    "sc-sysinfo",
     "sc-telemetry",
     "sc-tracing",
     "polkadot-cli",

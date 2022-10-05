@@ -38,6 +38,16 @@ pub struct Cli {
 	#[clap(flatten)]
 	pub run_para: cumulus_client_cli::RunCmd,
 
+	/// Disable automatic hardware benchmarks.
+	///
+	/// By default these benchmarks are automatically ran at startup and measure
+	/// the CPU speed, the memory bandwidth and the disk speed.
+	///
+	/// The results are then printed out in the logs, and also sent as part of
+	/// telemetry, if telemetry is enabled.
+	#[clap(long)]
+	pub no_hardware_benchmarks: bool,
+
 	/// Relay chain arguments
 	#[cfg(any(feature = "bajun", feature = "ajuna"))]
 	#[clap(raw = true)]
@@ -52,13 +62,13 @@ pub enum Subcommand {
 
 	/// Export the genesis state of the parachain.
 	#[cfg(any(feature = "bajun", feature = "ajuna"))]
-	#[clap(name = "export-genesis-state")]
-	ExportGenesisState(ExportGenesisStateCommand),
+	// #[clap(name = "export-genesis-state")]
+	ExportGenesisState(cumulus_client_cli::ExportGenesisStateCommand),
 
 	/// Export the genesis wasm of the parachain.
 	#[cfg(any(feature = "bajun", feature = "ajuna"))]
-	#[clap(name = "export-genesis-wasm")]
-	ExportGenesisWasm(ExportGenesisWasmCommand),
+	// #[clap(name = "export-genesis-wasm")]
+	ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),
 
 	/// Build a chain specification.
 	BuildSpec(sc_cli::BuildSpecCmd),
@@ -89,40 +99,6 @@ pub enum Subcommand {
 	/// Sub-commands concerned with benchmarking.
 	#[clap(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
-}
-
-// Command for exporting the genesis state of the parachain
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
-#[derive(Debug, Parser)]
-pub struct ExportGenesisStateCommand {
-	/// Output file name or stdout if unspecified.
-	#[clap(parse(from_os_str))]
-	pub output: Option<PathBuf>,
-
-	/// Write output in binary. Default is to write in hex.
-	#[clap(short, long)]
-	pub raw: bool,
-
-	/// The name of the chain for that the genesis state should be exported.
-	#[clap(long)]
-	pub chain: Option<String>,
-}
-
-/// Command for exporting the genesis wasm file.
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
-#[derive(Debug, Parser)]
-pub struct ExportGenesisWasmCommand {
-	/// Output file name or stdout if unspecified.
-	#[clap(parse(from_os_str))]
-	pub output: Option<PathBuf>,
-
-	/// Write output in binary. Default is to write in hex.
-	#[clap(short, long)]
-	pub raw: bool,
-
-	/// The name of the chain for that the genesis wasm file should be exported.
-	#[clap(long)]
-	pub chain: Option<String>,
 }
 
 #[cfg(any(feature = "bajun", feature = "ajuna"))]
@@ -239,8 +215,8 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.role(is_dev)
 	}
 
-	fn transaction_pool(&self) -> Result<sc_service::config::TransactionPoolOptions> {
-		self.base.base.transaction_pool()
+	fn transaction_pool(&self, is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
+		self.base.base.transaction_pool(is_dev)
 	}
 
 	fn state_cache_child_ratio(&self) -> Result<Option<usize>> {

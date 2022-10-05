@@ -28,29 +28,29 @@ use ajuna_service::{
 };
 #[cfg(any(feature = "bajun", feature = "ajuna"))]
 use {
-	crate::cli::RelayChainCli, codec::Encode,
-	cumulus_client_service::genesis::generate_genesis_block, cumulus_primitives_core::ParaId,
-	log::info, polkadot_parachain::primitives::AccountIdConversion, sc_cli::Result,
-	sp_core::hexdisplay::HexDisplay, sp_runtime::traits::Block as BlockT, std::io::Write,
+	crate::cli::RelayChainCli, codec::Encode, cumulus_client_cli::generate_genesis_block,
+	cumulus_primitives_core::ParaId, log::info, sp_core::hexdisplay::HexDisplay,
+	sp_runtime::traits::AccountIdConversion, sp_runtime::traits::Block as BlockT,
 };
 
 #[cfg(feature = "solo")]
 use {
 	crate::{
+		benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},
 		cli::{Cli, Subcommand},
-		command_helper::{inherent_benchmark_data, BenchmarkExtrinsicBuilder},
 	},
 	ajuna_service::{
-		ajuna_solo_runtime::Block as SoloBlock,
+		ajuna_solo_runtime::{Block as SoloBlock, ExistentialDeposit},
 		chain_spec,
 		solo::{self, new_full, new_partial, ExecutorDispatch},
 	},
 };
 
-use frame_benchmarking_cli::BenchmarkCmd;
+use frame_benchmarking_cli::*;
 use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
-use std::{path::PathBuf, sync::Arc};
+use sp_keyring::Sr25519Keyring;
+use std::path::PathBuf;
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	if cfg!(feature = "bajun") {
@@ -186,17 +186,6 @@ impl SubstrateCli for RelayChainCli {
 	}
 }
 
-#[cfg(any(feature = "bajun", feature = "ajuna"))]
-#[allow(clippy::borrowed_box)]
-fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<Vec<u8>> {
-	let mut storage = chain_spec.build_storage()?;
-
-	storage
-		.top
-		.remove(sp_core::storage::well_known_keys::CODE)
-		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
-}
-
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 		let runner = $cli.create_runner($cmd)?;
@@ -246,7 +235,7 @@ macro_rules! construct_sync_run {
 	}}
 }
 
-/// Parse and run command line arguments
+/// Parse command line arguments into service configuration.
 #[allow(unused_variables)]
 pub fn run() -> sc_cli::Result<()> {
 	let cli = Cli::from_args();
@@ -254,55 +243,27 @@ pub fn run() -> sc_cli::Result<()> {
 	match &cli.subcommand {
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
 		#[cfg(any(feature = "bajun", feature = "ajuna"))]
-		Some(Subcommand::ExportGenesisState(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
-
-			let spec = load_spec(&params.chain.clone().unwrap_or_default())?;
+		Some(Subcommand::ExportGenesisState(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
 			let state_version = Cli::native_runtime_version(&spec).state_version();
-
 			#[cfg(feature = "bajun")]
-			let block: ParaBajunBlock = generate_genesis_block(&spec, state_version)?;
-			#[cfg(feature = "ajuna")]
-			let block: ParaAjunaBlock = generate_genesis_block(&spec, state_version)?;
-
-			let raw_header = block.header().encode();
-			let output_buf = if params.raw {
-				raw_header
-			} else {
-				format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
-			};
-
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
+			if cfg!(feature = "bajun") {
+				return runner.sync_run(|_config| cmd.run::<ParaBajunBlock>(&*spec, state_version))
 			}
-
-			Ok(())
+			#[cfg(feature = "ajuna")]
+			if cfg!(feature = "ajuna") {
+				return runner.sync_run(|_config| cmd.run::<ParaAjunaBlock>(&*spec, state_version))
+			}
+			Err("This subcommand should only work under bajun / ajuna features.".into())
 		},
 		#[cfg(any(feature = "bajun", feature = "ajuna"))]
-		Some(Subcommand::ExportGenesisWasm(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
-
-			let raw_wasm_blob =
-				extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
-			let output_buf = if params.raw {
-				raw_wasm_blob
-			} else {
-				format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
-			};
-
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
-
-			Ok(())
+		Some(Subcommand::ExportGenesisWasm(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|_config| {
+				let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+				cmd.run(&*spec)
+			})
 		},
 		Some(Subcommand::BuildSpec(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
@@ -401,12 +362,29 @@ pub fn run() -> sc_cli::Result<()> {
 					}
 					runner.sync_run(|config| {
 						let PartialComponents { client, .. } = new_partial(&config)?;
-						let ext_builder = BenchmarkExtrinsicBuilder::new(client.clone());
-						cmd.run(config, client, inherent_benchmark_data()?, Arc::new(ext_builder))
+						let ext_builder = RemarkBuilder::new(client.clone());
+						cmd.run(config, client, inherent_benchmark_data()?, &ext_builder)
+					})
+				},
+				BenchmarkCmd::Extrinsic(cmd) => {
+					runner.sync_run(|config| {
+						let PartialComponents { client, .. } = new_partial(&config)?;
+						// Register the *Remark* and *TKA* builders.
+						let ext_factory = ExtrinsicFactory(vec![
+							Box::new(RemarkBuilder::new(client.clone())),
+							Box::new(TransferKeepAliveBuilder::new(
+								client.clone(),
+								Sr25519Keyring::Alice.to_account_id(),
+								ExistentialDeposit::get(),
+							)),
+						]);
+
+						cmd.run(client, inherent_benchmark_data()?, &ext_factory)
 					})
 				},
 				BenchmarkCmd::Machine(cmd) => {
-					construct_sync_run!(|components, cli, cmd, config| cmd.run(&config))
+					construct_sync_run!(|_components, cli, cmd, config| cmd
+						.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
 				},
 			}
 		},
@@ -417,6 +395,15 @@ pub fn run() -> sc_cli::Result<()> {
 				let collator_options = cli.run_para.collator_options();
 
 				return runner.run_node_until_exit(|config| async move {
+					let hwbench = if !cli.no_hardware_benchmarks {
+						config.database.path().map(|database_path| {
+							let _ = std::fs::create_dir_all(&database_path);
+							sc_sysinfo::gather_hwbench(Some(database_path))
+						})
+					} else {
+						None
+					};
+
 					let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 						.map(|e| e.para_id)
 						.ok_or("Could not find parachain ID in chain-spec.")?;
@@ -431,14 +418,14 @@ pub fn run() -> sc_cli::Result<()> {
 					let id = ParaId::from(para_id);
 
 					let parachain_account =
-						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(
+						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(
 							&id,
 						);
 
 					let state_version =
 						RelayChainCli::native_runtime_version(&config.chain_spec).state_version();
 					let block: ParaBajunBlock =
-						generate_genesis_block(&config.chain_spec, state_version)
+						generate_genesis_block(&*config.chain_spec, state_version)
 							.map_err(|e| format!("{:?}", e))?;
 					let genesis_state =
 						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
@@ -458,10 +445,16 @@ pub fn run() -> sc_cli::Result<()> {
 						"Is collating: {}",
 						if config.role.is_authority() { "yes" } else { "no" }
 					);
-					bajun::start_parachain_node(config, polkadot_config, collator_options, id)
-						.await
-						.map(|r| r.0)
-						.map_err(Into::into)
+					bajun::start_parachain_node(
+						config,
+						polkadot_config,
+						collator_options,
+						id,
+						hwbench,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into)
 				})
 			}
 			#[cfg(feature = "ajuna")]
@@ -470,6 +463,15 @@ pub fn run() -> sc_cli::Result<()> {
 				let collator_options = cli.run_para.collator_options();
 
 				return runner.run_node_until_exit(|config| async move {
+					let hwbench = if !cli.no_hardware_benchmarks {
+						config.database.path().map(|database_path| {
+							let _ = std::fs::create_dir_all(&database_path);
+							sc_sysinfo::gather_hwbench(Some(database_path))
+						})
+					} else {
+						None
+					};
+
 					let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 						.map(|e| e.para_id)
 						.ok_or("Could not find parachain ID in chain-spec.")?;
@@ -484,14 +486,14 @@ pub fn run() -> sc_cli::Result<()> {
 					let id = ParaId::from(para_id);
 
 					let parachain_account =
-						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(
+						AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(
 							&id,
 						);
 
 					let state_version =
 						RelayChainCli::native_runtime_version(&config.chain_spec).state_version();
 					let block: ParaAjunaBlock =
-						generate_genesis_block(&config.chain_spec, state_version)
+						generate_genesis_block(&*config.chain_spec, state_version)
 							.map_err(|e| format!("{:?}", e))?;
 					let genesis_state =
 						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
@@ -511,10 +513,16 @@ pub fn run() -> sc_cli::Result<()> {
 						"Is collating: {}",
 						if config.role.is_authority() { "yes" } else { "no" }
 					);
-					ajuna::start_parachain_node(config, polkadot_config, collator_options, id)
-						.await
-						.map(|r| r.0)
-						.map_err(Into::into)
+					ajuna::start_parachain_node(
+						config,
+						polkadot_config,
+						collator_options,
+						id,
+						hwbench,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into)
 				})
 			}
 			let runner = cli.create_runner(&cli.run_solo)?;

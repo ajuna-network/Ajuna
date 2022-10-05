@@ -15,44 +15,110 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #[cfg(feature = "solo")]
-use ajuna_service::{ajuna_solo_runtime as runtime, solo::FullClient};
+use ajuna_service::{
+	ajuna_solo_runtime as runtime,
+	ajuna_solo_runtime::{BalancesCall, SystemCall},
+	solo::FullClient,
+};
 
+use ajuna_primitives::{AccountId, Balance};
+use frame_system_rpc_runtime_api::AccountNonceApi;
 use sc_cli::Result;
 use sc_client_api::BlockBackend;
+use sp_api::ProvideRuntimeApi;
 use sp_core::{Encode, Pair};
 use sp_inherents::{InherentData, InherentDataProvider};
 use sp_keyring::Sr25519Keyring;
-use sp_runtime::{OpaqueExtrinsic, SaturatedConversion};
+use sp_runtime::{generic, OpaqueExtrinsic, SaturatedConversion};
 
 use std::{sync::Arc, time::Duration};
 
-/// Generates extrinsics for the `benchmark overhead` command.
+/// Generates `System::Remark` extrinsics for the benchmarks.
 ///
 /// Note: Should only be used for benchmarking.
-pub struct BenchmarkExtrinsicBuilder {
+pub struct RemarkBuilder {
 	client: Arc<FullClient>,
 }
 
-impl BenchmarkExtrinsicBuilder {
+impl RemarkBuilder {
 	/// Creates a new [`Self`] from the given client.
 	pub fn new(client: Arc<FullClient>) -> Self {
 		Self { client }
 	}
 }
 
-impl frame_benchmarking_cli::ExtrinsicBuilder for BenchmarkExtrinsicBuilder {
-	fn remark(&self, nonce: u32) -> std::result::Result<OpaqueExtrinsic, &'static str> {
+impl frame_benchmarking_cli::ExtrinsicBuilder for RemarkBuilder {
+	fn pallet(&self) -> &str {
+		"system"
+	}
+
+	fn extrinsic(&self) -> &str {
+		"remark"
+	}
+
+	fn build(&self, nonce: u32) -> std::result::Result<OpaqueExtrinsic, &'static str> {
 		let acc = Sr25519Keyring::Bob.pair();
 		let extrinsic: OpaqueExtrinsic = create_benchmark_extrinsic(
 			self.client.as_ref(),
 			acc,
-			frame_system::Call::remark { remark: vec![] }.into(),
-			nonce,
+			SystemCall::remark { remark: vec![] }.into(),
+			Some(nonce),
 		)
 		.into();
 
 		Ok(extrinsic)
 	}
+}
+
+/// Generates `Balances::TransferKeepAlive` extrinsics for the benchmarks.
+///
+/// Note: Should only be used for benchmarking.
+pub struct TransferKeepAliveBuilder {
+	client: Arc<FullClient>,
+	dest: AccountId,
+	value: Balance,
+}
+
+impl TransferKeepAliveBuilder {
+	/// Creates a new [`Self`] from the given client.
+	pub fn new(client: Arc<FullClient>, dest: AccountId, value: Balance) -> Self {
+		Self { client, dest, value }
+	}
+}
+
+impl frame_benchmarking_cli::ExtrinsicBuilder for TransferKeepAliveBuilder {
+	fn pallet(&self) -> &str {
+		"balances"
+	}
+
+	fn extrinsic(&self) -> &str {
+		"transfer_keep_alive"
+	}
+
+	fn build(&self, nonce: u32) -> std::result::Result<OpaqueExtrinsic, &'static str> {
+		let acc = Sr25519Keyring::Bob.pair();
+		let extrinsic: OpaqueExtrinsic = create_benchmark_extrinsic(
+			self.client.as_ref(),
+			acc,
+			BalancesCall::transfer_keep_alive { dest: self.dest.clone().into(), value: self.value }
+				.into(),
+			Some(nonce),
+		)
+		.into();
+
+		Ok(extrinsic)
+	}
+}
+
+/// Fetch the nonce of the given `account` from the chain state.
+///
+/// Note: Should only be used for tests.
+pub fn fetch_nonce(client: &FullClient, account: sp_core::sr25519::Pair) -> u32 {
+	let best_hash = client.chain_info().best_hash;
+	client
+		.runtime_api()
+		.account_nonce(&generic::BlockId::Hash(best_hash), account.public().into())
+		.expect("Fetching account nonce works; qed")
 }
 
 /// Create a transaction using the given `call`.
@@ -62,11 +128,12 @@ pub fn create_benchmark_extrinsic(
 	client: &FullClient,
 	sender: sp_core::sr25519::Pair,
 	call: runtime::Call,
-	nonce: u32,
+	nonce: Option<u32>,
 ) -> runtime::UncheckedExtrinsic {
 	let genesis_hash = client.block_hash(0).ok().flatten().expect("Genesis block exists; qed");
 	let best_hash = client.chain_info().best_hash;
 	let best_block = client.chain_info().best_number;
+	let nonce = nonce.unwrap_or_else(|| fetch_nonce(client, sender.clone()));
 
 	let period = runtime::BlockHashCount::get()
 		.checked_next_power_of_two()
