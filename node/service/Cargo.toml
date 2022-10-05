@@ -8,7 +8,7 @@ version    = "0.1.2"
 
 [dependencies]
 hex-literal  = "0.3.3"
-jsonrpc-core = "18.0.0"
+jsonrpsee = { version = "0.15.1", features = ["server"] }
 serde        = { version = "1.0.132", features = [ "derive" ] }
 
 # Local
@@ -40,7 +40,9 @@ sp-timestamp        = { git = "https://github.com/paritytech/substrate", branch 
 
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sc-network                     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+sc-network-common              = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sc-rpc                         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+sc-sysinfo                     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sc-tracing                     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sp-api                         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 sp-block-builder               = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
@@ -73,7 +75,9 @@ default = [ "solo" ]
 para = [
     "pallet-transaction-payment-rpc",
     "sc-network",
+    "sc-network-common",
     "sc-rpc",
+    "sc-sysinfo",
     "sc-tracing",
     "sp-api",
     "sp-block-builder",
