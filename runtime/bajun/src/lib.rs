@@ -26,6 +26,7 @@ mod proxy_type;
 mod weights;
 pub mod xcm_config;
 
+use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -43,7 +44,7 @@ use sp_version::RuntimeVersion;
 
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, Currency, EnsureOneOf, Imbalance, OnUnbalanced},
+	traits::{Contains, Currency, EitherOfDiverse, Imbalance, OnUnbalanced},
 	weights::{
 		constants::WEIGHT_PER_SECOND, ConstantMultiplier, DispatchClass, Weight,
 		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -386,6 +387,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
@@ -417,12 +419,14 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
-type EnsureRootOrMoreThanHalfCouncil = EnsureOneOf<
+type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
-type EnsureRootOrAtLeastTwoThirdsCouncil =
-	EnsureOneOf<EnsureRoot<AccountId>, EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>>;
+type EnsureRootOrAtLeastTwoThirdsCouncil = EitherOfDiverse<
+	EnsureRoot<AccountId>,
+	EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+>;
 
 impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
 	type Event = Event;
@@ -451,6 +455,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type Burn = ZeroPercent;
 	type BurnDestination = ();
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
 }
 
@@ -482,6 +487,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = RelayNumberStrictlyIncreases;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -703,7 +709,7 @@ construct_runtime!(
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 16,
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 16,
 		Vesting: orml_vesting = 17,
 
 		// Collator support. The order of these 4 are important and shall not change.
