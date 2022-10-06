@@ -460,7 +460,7 @@ impl pallet_treasury::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 10 * BAJUN;
+	pub const MinVestedTransfer: Balance = 100 * MICRO_BAJUN;
 }
 
 impl orml_vesting::Config for Runtime {
