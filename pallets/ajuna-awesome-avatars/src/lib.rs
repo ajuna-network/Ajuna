@@ -53,7 +53,6 @@ pub mod pallet {
 		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
-	pub(crate) const FREE_MINT_TRANSFER_FEE: MintCount = 1;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -100,6 +99,7 @@ pub mod pallet {
 					six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
 				},
 				cooldown: 5_u8.into(),
+				free_mint_transfer_fee: 1,
 			},
 			forge: ForgeConfig { open: false, min_sacrifices: 1, max_sacrifices: 4 },
 			trade: TradeConfig { open: false },
@@ -257,11 +257,11 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-
+			let GlobalConfig { mint, .. } = Self::global_configs();
 			let sender_free_mints = FreeMints::<T>::get(&sender)
 				.checked_sub(
 					how_many
-						.checked_add(FREE_MINT_TRANSFER_FEE)
+						.checked_add(mint.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
