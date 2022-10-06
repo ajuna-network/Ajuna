@@ -62,7 +62,9 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	}
 
 	fn sort(&mut self) {
-		self.tiers.sort_by(|a, b| b.cmp(a));
+		// tiers are sorted in ascending order
+		self.tiers.sort_by(|a, b| a.cmp(b));
+		// probabilities are sorted in descending order
 		self.p_single_mint.sort_by(|a, b| b.cmp(a));
 		self.p_batch_mint.sort_by(|a, b| b.cmp(a));
 	}

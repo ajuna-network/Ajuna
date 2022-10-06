@@ -232,12 +232,12 @@ impl Default for Season<MockBlockNumber> {
 			max_variations: 2,
 			max_components: 2,
 			tiers: vec![
-				RarityTier::Mythical,
-				RarityTier::Legendary,
-				RarityTier::Epic,
-				RarityTier::Rare,
-				RarityTier::Uncommon,
 				RarityTier::Common,
+				RarityTier::Uncommon,
+				RarityTier::Rare,
+				RarityTier::Epic,
+				RarityTier::Legendary,
+				RarityTier::Mythical,
 			]
 			.try_into()
 			.unwrap(),

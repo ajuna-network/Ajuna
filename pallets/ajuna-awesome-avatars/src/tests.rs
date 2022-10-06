@@ -87,6 +87,25 @@ mod season {
 	use super::*;
 
 	#[test]
+	fn season_validate_should_mutate_correctly() {
+		let mut season = Season::default()
+			.tiers(vec![RarityTier::Rare, RarityTier::Common, RarityTier::Epic])
+			.p_single_mint(vec![20, 80])
+			.p_batch_mint(vec![60, 40]);
+		assert_ok!(season.validate::<Test>());
+
+		// check for ascending order sort
+		assert_eq!(
+			season.tiers.to_vec(),
+			vec![RarityTier::Common, RarityTier::Rare, RarityTier::Epic]
+		);
+
+		// check for descending order sort
+		assert_eq!(season.p_single_mint.to_vec(), vec![80, 20]);
+		assert_eq!(season.p_batch_mint.to_vec(), vec![60, 40]);
+	}
+
+	#[test]
 	fn upsert_season_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
