@@ -48,12 +48,10 @@ pub mod pallet {
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
-	pub(crate) type BoundedAvatarIdsOf<T> =
-		BoundedVec<AvatarIdOf<T>, ConstU32<MAX_AVATARS_PER_PLAYER>>;
+	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, ConstU32<4_294_967_295>>;
 	pub(crate) type GlobalConfigOf<T> =
 		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
-	pub(crate) const MAX_AVATARS_PER_PLAYER: u32 = 1_000;
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 	pub(crate) const FREE_MINT_TRANSFER_FEE: MintCount = 1;
 
@@ -93,6 +91,7 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
 		GlobalConfig {
+			max_avatars_per_player: 1_000,
 			mint: MintConfig {
 				open: false,
 				fees: MintFees {
@@ -461,7 +460,7 @@ pub mod pallet {
 		}
 
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			let GlobalConfig { mint, .. } = Self::global_configs();
+			let GlobalConfig { max_avatars_per_player, mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -485,7 +484,7 @@ pub mod pallet {
 			};
 
 			let how_many = *count as usize;
-			let max_ownership = (MAX_AVATARS_PER_PLAYER as usize)
+			let max_ownership = (max_avatars_per_player as usize)
 				.checked_sub(how_many)
 				.ok_or(ArithmeticError::Underflow)?;
 			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);

@@ -510,16 +510,18 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_when_max_ownership_has_reached() {
+		let max_avatars_per_player = 7;
 		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
-			(0..MAX_AVATARS_PER_PLAYER)
+			(0..max_avatars_per_player)
 				.map(|_| sp_core::H256::default())
 				.collect::<Vec<_>>(),
 		)
 		.unwrap();
-		assert!(avatar_ids.is_full());
+		assert_eq!(avatar_ids.len(), max_avatars_per_player);
 
 		ExtBuilder::default()
 			.seasons(vec![(SeasonId::default(), Season::default())])
+			.max_avatars_per_player(max_avatars_per_player as u32)
 			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
