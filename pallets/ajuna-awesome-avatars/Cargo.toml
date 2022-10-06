@@ -6,7 +6,7 @@ homepage    = "https://ajuna.io"
 license     = "Apache-2.0"
 name        = "pallet-ajuna-awesome-avatars"
 repository  = "https://github.com/ajuna-network/Ajuna"
-version     = "0.1.3"
+version     = "0.1.4"
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
