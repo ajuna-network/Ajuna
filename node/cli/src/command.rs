@@ -16,21 +16,20 @@
 
 #[cfg(feature = "ajuna")]
 use ajuna_service::{
-	ajuna,
-	ajuna::AjunaRuntimeExecutor,
 	ajuna_runtime::{Block as ParaAjunaBlock, RuntimeApi as AjunaRuntimeApi},
+	para::ajuna::{self, AjunaRuntimeExecutor},
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
-	bajun,
-	bajun::BajunRuntimeExecutor,
 	bajun_runtime::{Block as ParaBajunBlock, RuntimeApi as BajunRuntimeApi},
+	para::bajun::{self, BajunRuntimeExecutor},
 };
 #[cfg(any(feature = "bajun", feature = "ajuna"))]
 use {
-	crate::cli::RelayChainCli, codec::Encode, cumulus_client_cli::generate_genesis_block,
-	cumulus_primitives_core::ParaId, log::info, sp_core::hexdisplay::HexDisplay,
-	sp_runtime::traits::AccountIdConversion, sp_runtime::traits::Block as BlockT,
+	crate::cli::RelayChainCli, ajuna_service::para, codec::Encode,
+	cumulus_client_cli::generate_genesis_block, cumulus_primitives_core::ParaId, log::info,
+	sp_core::hexdisplay::HexDisplay, sp_runtime::traits::AccountIdConversion,
+	sp_runtime::traits::Block as BlockT,
 };
 
 #[cfg(feature = "solo")]
@@ -194,13 +193,13 @@ macro_rules! construct_async_run {
             let $components = solo::new_partial(&$config)?;
 
 			#[cfg(feature = "bajun")]
-            let $components = bajun::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
+            let $components = para::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
                 bajun::parachain_build_import_queue,
             )?;
 
 			#[cfg(feature = "ajuna")]
-            let $components = ajuna::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+            let $components = para::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
                 &$config,
                 ajuna::parachain_build_import_queue,
             )?;
@@ -219,13 +218,13 @@ macro_rules! construct_sync_run {
             let $components = solo::new_partial(&$config)?;
 
 			#[cfg(feature = "bajun")]
-            let $components = bajun::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
+            let $components = para::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
                 bajun::parachain_build_import_queue,
             )?;
 
 			#[cfg(feature = "ajuna")]
-            let $components = ajuna::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+            let $components = para::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
                 &$config,
                 ajuna::parachain_build_import_queue,
             )?;
