@@ -101,6 +101,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
+	max_avatars_per_player: Option<u32>,
 	mint_open: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
@@ -119,6 +120,10 @@ impl ExtBuilder {
 	}
 	pub fn seasons(mut self, seasons: Vec<(SeasonId, Season<MockBlockNumber>)>) -> Self {
 		self.seasons = seasons;
+		self
+	}
+	pub fn max_avatars_per_player(mut self, max_avatars_per_player: u32) -> Self {
+		self.max_avatars_per_player = Some(max_avatars_per_player);
 		self
 	}
 	pub fn mint_open(mut self, mint_open: bool) -> Self {
@@ -175,28 +180,24 @@ impl ExtBuilder {
 				Seasons::<Test>::insert(season_id, season);
 			}
 
-			GlobalConfigs::<Test>::mutate(|config| config.mint.open = self.mint_open);
-			if let Some(mint_cooldown) = self.mint_cooldown {
-				GlobalConfigs::<Test>::mutate(|config| {
-					config.mint.cooldown = mint_cooldown;
-				});
+			if let Some(x) = self.max_avatars_per_player {
+				GlobalConfigs::<Test>::mutate(|config| config.max_avatars_per_player = x);
 			}
-			if let Some(mint_fees) = self.mint_fees {
-				GlobalConfigs::<Test>::mutate(|config| {
-					config.mint.fees = mint_fees;
-				});
+
+			GlobalConfigs::<Test>::mutate(|config| config.mint.open = self.mint_open);
+			if let Some(x) = self.mint_cooldown {
+				GlobalConfigs::<Test>::mutate(|config| config.mint.cooldown = x);
+			}
+			if let Some(x) = self.mint_fees {
+				GlobalConfigs::<Test>::mutate(|config| config.mint.fees = x);
 			}
 
 			GlobalConfigs::<Test>::mutate(|config| config.forge.open = self.forge_open);
-			if let Some(forge_min_sacrifices) = self.forge_min_sacrifices {
-				GlobalConfigs::<Test>::mutate(|config| {
-					config.forge.min_sacrifices = forge_min_sacrifices;
-				});
+			if let Some(x) = self.forge_min_sacrifices {
+				GlobalConfigs::<Test>::mutate(|config| config.forge.min_sacrifices = x);
 			}
-			if let Some(forge_max_sacrifices) = self.forge_max_sacrifices {
-				GlobalConfigs::<Test>::mutate(|config| {
-					config.forge.max_sacrifices = forge_max_sacrifices;
-				});
+			if let Some(x) = self.forge_max_sacrifices {
+				GlobalConfigs::<Test>::mutate(|config| config.forge.max_sacrifices = x);
 			}
 
 			GlobalConfigs::<Test>::mutate(|config| config.trade.open = self.trade_open);
