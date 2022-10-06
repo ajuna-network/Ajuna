@@ -92,7 +92,7 @@ pub mod pallet {
 		GlobalConfig {
 			max_avatars_per_player: 1_000,
 			mint: MintConfig {
-				open: false,
+				open: true,
 				fees: MintFees {
 					one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
 					three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
@@ -101,8 +101,8 @@ pub mod pallet {
 				cooldown: 5_u8.into(),
 				free_mint_transfer_fee: 1,
 			},
-			forge: ForgeConfig { open: false, min_sacrifices: 1, max_sacrifices: 4 },
-			trade: TradeConfig { open: false },
+			forge: ForgeConfig { open: true, min_sacrifices: 1, max_sacrifices: 4 },
+			trade: TradeConfig { open: true },
 		}
 	}
 	#[pallet::storage]
@@ -426,7 +426,7 @@ pub mod pallet {
 		) -> (u8, u8) {
 			let hash = hash.as_ref();
 			let random_tier = {
-				let random_p = hash[index] % MAX_PERCENTAGE;
+				let random_p = (hash[index] % MAX_PERCENTAGE) as u16;
 				let p = if batched_mint { &season.p_batch_mint } else { &season.p_single_mint };
 				let mut cumulative_sum = 0;
 				let mut random_tier = season.tiers[0].clone() as u8;
