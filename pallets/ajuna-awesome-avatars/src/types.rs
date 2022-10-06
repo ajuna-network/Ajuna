@@ -33,7 +33,7 @@ pub enum RarityTier {
 	Mythical = 5,
 }
 
-pub type RarityPercent = u8;
+pub type RarityPercent = u16;
 pub type MintCount = u16;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
@@ -102,8 +102,8 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	fn validate_percentages<T: Config>(&self) -> DispatchResult {
 		let p_1 = self.p_single_mint.iter().sum::<RarityPercent>();
 		let p_2 = self.p_batch_mint.iter().sum::<RarityPercent>();
-		ensure!(p_1 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
-		ensure!(p_2 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
+		ensure!(p_1 == MAX_PERCENTAGE as u16, Error::<T>::IncorrectRarityPercentages);
+		ensure!(p_2 == MAX_PERCENTAGE as u16, Error::<T>::IncorrectRarityPercentages);
 		ensure!(self.p_single_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
 		ensure!(self.p_batch_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
 		Ok(())

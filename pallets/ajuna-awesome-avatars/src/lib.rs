@@ -426,7 +426,7 @@ pub mod pallet {
 		) -> (u8, u8) {
 			let hash = hash.as_ref();
 			let random_tier = {
-				let random_p = hash[index] % MAX_PERCENTAGE;
+				let random_p = (hash[index] % MAX_PERCENTAGE) as u16;
 				let p = if batched_mint { &season.p_batch_mint } else { &season.p_single_mint };
 				let mut cumulative_sum = 0;
 				let mut random_tier = season.tiers[0].clone() as u8;
