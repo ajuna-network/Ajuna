@@ -16,10 +16,8 @@
 
 pub mod chain_spec;
 
-#[cfg(feature = "ajuna")]
-pub mod ajuna;
-#[cfg(feature = "bajun")]
-pub mod bajun;
+#[cfg(any(feature = "bajun", feature = "ajuna"))]
+pub mod para;
 #[cfg(feature = "solo")]
 pub mod solo;
 
