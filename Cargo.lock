@@ -321,27 +321,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ajuna-test"
-version = "0.1.4"
-dependencies = [
- "ajuna-primitives",
- "ajuna-solo-runtime",
- "frame-support",
- "frame-system",
- "orml-vesting",
- "pallet-balances",
- "pallet-membership",
- "pallet-sudo",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "always-assert"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
