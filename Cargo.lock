@@ -119,16 +119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ajuna-common"
-version = "0.1.4"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "scale-info",
- "sp-std",
-]
-
-[[package]]
 name = "ajuna-node"
 version = "0.1.4"
 dependencies = [
@@ -283,7 +273,6 @@ dependencies = [
 name = "ajuna-solo-runtime"
 version = "0.1.4"
 dependencies = [
- "ajuna-common",
  "ajuna-primitives",
  "frame-benchmarking",
  "frame-executive",
@@ -335,7 +324,6 @@ dependencies = [
 name = "ajuna-test"
 version = "0.1.4"
 dependencies = [
- "ajuna-common",
  "ajuna-primitives",
  "ajuna-solo-runtime",
  "frame-support",
@@ -5180,7 +5168,6 @@ dependencies = [
 name = "pallet-ajuna-awesome-avatars"
 version = "0.1.4"
 dependencies = [
- "ajuna-common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

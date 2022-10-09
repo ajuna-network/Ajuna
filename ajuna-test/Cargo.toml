@@ -9,7 +9,6 @@ version    = "0.1.4"
 [dependencies]
 
 # Local
-ajuna-common       = { path = "../ajuna-common", default-features = false }
 ajuna-primitives   = { path = "../primitives", default-features = false }
 ajuna-solo-runtime = { path = "../runtime/solo", default-features = false }
 
