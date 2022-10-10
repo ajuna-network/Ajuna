@@ -766,6 +766,7 @@ mod forging {
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
+				let upgradable_indexes = original_leader.upgradable_indexes::<Test>().unwrap();
 				for (sacrifice, result) in original_sacrifices
 					.iter()
 					.zip([(true, BTreeSet::from([1, 3])), (true, BTreeSet::from([0, 2, 3]))])
@@ -773,6 +774,7 @@ mod forging {
 					assert_eq!(
 						original_leader.compare(
 							sacrifice,
+							&upgradable_indexes,
 							max_variations,
 							tiers[tiers.len() - 1].clone() as u8
 						),
@@ -859,9 +861,11 @@ mod forging {
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
+				let upgradable_indexes = original_leader.upgradable_indexes::<Test>().unwrap();
 				assert_eq!(
 					original_leader.compare(
 						&original_sacrifice,
+						&upgradable_indexes,
 						max_variations,
 						tiers[tiers.len() - 1].clone() as u8
 					),

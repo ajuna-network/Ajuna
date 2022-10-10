@@ -128,10 +128,12 @@ impl Avatar {
 		max_variations: u8,
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
+		let upgradable_indexes = self.upgradable_indexes::<T>()?;
 		Ok(others.iter().fold(
 			(BTreeSet::<usize>::new(), 0),
 			|(mut matched_components, mut matches), other| {
-				let (is_match, matching_components) = self.compare(other, max_variations, max_tier);
+				let (is_match, matching_components) =
+					self.compare(other, &upgradable_indexes, max_variations, max_tier);
 
 				if is_match {
 					matches += 1;
@@ -145,9 +147,21 @@ impl Avatar {
 		))
 	}
 
+	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
+		let min_tier = self.dna.iter().map(|x| *x >> 4).min().ok_or(Error::<T>::IncorrectDna)?;
+		Ok(self
+			.dna
+			.iter()
+			.enumerate()
+			.filter(|(_, x)| (*x >> 4) == min_tier)
+			.map(|(i, _)| i)
+			.collect::<Vec<usize>>())
+	}
+
 	pub(crate) fn compare(
 		&self,
 		other: &Self,
+		indexes: &[usize],
 		max_variations: u8,
 		max_tier: u8,
 	) -> (bool, BTreeSet<usize>) {
@@ -160,22 +174,24 @@ impl Avatar {
 			self.dna.clone().into_iter().zip(other.dna.clone()).enumerate().fold(
 				(BTreeSet::new(), 0, 0),
 				|(mut matching_indexes, mut matches, mut mirrors), (i, (lhs, rhs))| {
-					let lhs_tier = lhs >> 4;
-					let rhs_tier = rhs >> 4;
-					let is_matching_tier = lhs_tier == rhs_tier;
-					let is_maxed_tier = lhs_tier == max_tier;
+					if indexes.contains(&i) {
+						let lhs_tier = lhs >> 4;
+						let rhs_tier = rhs >> 4;
+						let is_matching_tier = lhs_tier == rhs_tier;
+						let is_maxed_tier = lhs_tier == max_tier;
 
-					let lhs_variation = lhs & 0b0000_1111;
-					let rhs_variation = rhs & 0b0000_1111;
-					let is_similar_variation = compare_variation(lhs_variation, rhs_variation);
+						let lhs_variation = lhs & 0b0000_1111;
+						let rhs_variation = rhs & 0b0000_1111;
+						let is_similar_variation = compare_variation(lhs_variation, rhs_variation);
 
-					if is_matching_tier && !is_maxed_tier && is_similar_variation {
-						matching_indexes.insert(i);
-						matches += 1;
-					}
+						if is_matching_tier && !is_maxed_tier && is_similar_variation {
+							matching_indexes.insert(i);
+							matches += 1;
+						}
 
-					if lhs_variation == rhs_variation {
-						mirrors += 1;
+						if lhs_variation == rhs_variation {
+							mirrors += 1;
+						}
 					}
 
 					(matching_indexes, matches, mirrors)
