@@ -122,6 +122,29 @@ pub struct Avatar {
 }
 
 impl Avatar {
+	pub(crate) fn compare_all<T: Config>(
+		&mut self,
+		others: &[Self],
+		max_variations: u8,
+		max_tier: u8,
+	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
+		Ok(others.iter().fold(
+			(BTreeSet::<usize>::new(), 0),
+			|(mut matched_components, mut matches), other| {
+				let (is_match, matching_components) = self.compare(other, max_variations, max_tier);
+
+				if is_match {
+					matches += 1;
+					matched_components.extend(matching_components.iter());
+				}
+
+				// TODO: is u32 enough?
+				self.souls = self.souls.saturating_add(other.souls);
+				(matched_components, matches)
+			},
+		))
+	}
+
 	pub(crate) fn compare(
 		&self,
 		other: &Self,

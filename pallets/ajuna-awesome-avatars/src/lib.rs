@@ -579,22 +579,8 @@ pub mod pallet {
 				.map(|id| Self::ensure_ownership(player, id))
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-			let (mut unique_matched_indexes, matches) = sacrifices.iter().fold(
-				(BTreeSet::<usize>::new(), 0),
-				|(mut matched_components, mut matches), sacrifice| {
-					let (is_match, matching_components) =
-						leader.compare(sacrifice, max_variations, max_tier);
-
-					if is_match {
-						matches += 1;
-						matched_components.extend(matching_components.iter());
-					}
-
-					// TODO: is u32 enough?
-					leader.souls = leader.souls.saturating_add(sacrifice.souls);
-					(matched_components, matches)
-				},
-			);
+			let (mut unique_matched_indexes, matches) =
+				leader.compare_all::<T>(&sacrifices, max_variations, max_tier)?;
 
 			let random_hash = Self::random_hash(b"forging avatar", player);
 			let random_hash = random_hash.as_ref();
