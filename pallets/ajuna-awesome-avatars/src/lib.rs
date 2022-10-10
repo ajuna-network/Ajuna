@@ -560,32 +560,38 @@ pub mod pallet {
 			let max_tier = tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader).is_err(), Error::<T>::AvatarInTrade);
+			ensure!(
+				sacrifices.iter().all(|sacrifices| Self::ensure_for_trade(sacrifices).is_err()),
+				Error::<T>::AvatarInTrade
+			);
+			ensure!(!sacrifices.contains(leader), Error::<T>::LeaderSacrificed);
+
 			let mut leader_avatar = Self::ensure_ownership(player, leader)?;
 			let sacrifices = sacrifices.iter().copied().collect::<BTreeSet<_>>();
-			let (mut unique_matched_indexes, matches) = sacrifices.iter().try_fold::<_, _, Result<
-				_,
-				DispatchError,
-			>>(
-				(BTreeSet::<usize>::new(), 0),
-				|(mut matched_components, mut matches), sacrifice| {
-					ensure!(leader != sacrifice, Error::<T>::LeaderSacrificed);
-					ensure!(Self::ensure_for_trade(sacrifice).is_err(), Error::<T>::AvatarInTrade);
-					let sacrifice_avatar = Self::ensure_ownership(player, sacrifice)?;
-					let (is_match, matching_components) =
-						leader_avatar.compare(&sacrifice_avatar, max_variations, max_tier);
+			let sacrifice_avatars = sacrifices
+				.iter()
+				.map(|sacrifice| Self::ensure_ownership(player, sacrifice))
+				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-					if is_match {
-						matches += 1;
-						matched_components.extend(matching_components.iter());
-					}
+			let (mut unique_matched_indexes, matches) =
+				sacrifice_avatars.iter().try_fold::<_, _, Result<_, DispatchError>>(
+					(BTreeSet::<usize>::new(), 0),
+					|(mut matched_components, mut matches), sacrifice_avatar| {
+						let (is_match, matching_components) =
+							leader_avatar.compare(sacrifice_avatar, max_variations, max_tier);
 
-					leader_avatar.souls = leader_avatar
-						.souls
-						.checked_add(sacrifice_avatar.souls)
-						.ok_or(ArithmeticError::Overflow)?;
-					Ok((matched_components, matches))
-				},
-			)?;
+						if is_match {
+							matches += 1;
+							matched_components.extend(matching_components.iter());
+						}
+
+						leader_avatar.souls = leader_avatar
+							.souls
+							.checked_add(sacrifice_avatar.souls)
+							.ok_or(ArithmeticError::Overflow)?;
+						Ok((matched_components, matches))
+					},
+				)?;
 
 			let random_hash = Self::random_hash(b"forging avatar", player);
 			let random_hash = random_hash.as_ref();

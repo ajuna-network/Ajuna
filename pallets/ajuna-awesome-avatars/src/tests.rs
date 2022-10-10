@@ -1027,7 +1027,7 @@ mod forging {
 				for (player, leader, sacrifices) in [
 					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(BOB)[0..2].to_vec()),
 					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(ALICE)[0..2].to_vec()),
-					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(BOB)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(BOB)[1..2].to_vec()),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(player), leader, sacrifices),
