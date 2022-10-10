@@ -762,11 +762,7 @@ mod forging {
 					.map(|id| AAvatars::avatars(id).unwrap().1)
 					.collect::<Vec<_>>();
 
-				assert_ok!(AAvatars::forge(
-					Origin::signed(BOB),
-					leader_id,
-					sacrifice_ids.to_vec().try_into().unwrap()
-				));
+				assert_ok!(AAvatars::forge(Origin::signed(BOB), leader_id, sacrifice_ids.to_vec()));
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
@@ -859,11 +855,7 @@ mod forging {
 				let original_leader = AAvatars::avatars(leader_id).unwrap().1;
 				let original_sacrifice = AAvatars::avatars(sacrifice_id).unwrap().1;
 
-				assert_ok!(AAvatars::forge(
-					Origin::signed(BOB),
-					leader_id,
-					[sacrifice_id].to_vec().try_into().unwrap()
-				));
+				assert_ok!(AAvatars::forge(Origin::signed(BOB), leader_id, vec![sacrifice_id]));
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
@@ -893,11 +885,7 @@ mod forging {
 	fn forge_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::forge(
-					Origin::none(),
-					H256::default(),
-					BoundedAvatarIdsOf::<Test>::default(),
-				),
+				AAvatars::forge(Origin::none(), H256::default(), Vec::new()),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -919,10 +907,7 @@ mod forging {
 						AAvatars::forge(
 							Origin::signed(ALICE),
 							H256::default(),
-							BoundedAvatarIdsOf::<Test>::try_from(
-								(0..i).map(|_| H256::default()).collect::<Vec<_>>()
-							)
-							.unwrap(),
+							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
 						),
 						Error::<Test>::TooFewSacrifices,
 					);
@@ -933,10 +918,7 @@ mod forging {
 						AAvatars::forge(
 							Origin::signed(ALICE),
 							H256::default(),
-							BoundedAvatarIdsOf::<Test>::try_from(
-								(0..i).map(|_| H256::default()).collect::<Vec<_>>()
-							)
-							.unwrap(),
+							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
 						),
 						Error::<Test>::TooManySacrifices,
 					);
@@ -953,11 +935,7 @@ mod forging {
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AAvatars::forge(
-						Origin::signed(ALICE),
-						H256::default(),
-						BoundedAvatarIdsOf::<Test>::try_from(vec![H256::default()]).unwrap(),
-					),
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
 					Error::<Test>::OutOfSeason,
 				);
 			});
@@ -974,11 +952,7 @@ mod forging {
 				CurrentSeasonId::<Test>::put(123);
 				IsSeasonActive::<Test>::put(true);
 				assert_noop!(
-					AAvatars::forge(
-						Origin::signed(ALICE),
-						H256::default(),
-						BoundedAvatarIdsOf::<Test>::try_from(vec![H256::default()]).unwrap(),
-					),
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
 					Error::<Test>::UnknownSeason,
 				);
 			});
@@ -1011,9 +985,9 @@ mod forging {
 
 				let owned_avatars = AAvatars::owners(ALICE);
 				for (leader, sacrifices) in [
-					(H256::default(), vec![owned_avatars[0], owned_avatars[2]].try_into().unwrap()),
-					(owned_avatars[1], vec![H256::default(), H256::default()].try_into().unwrap()),
-					(owned_avatars[1], vec![H256::default(), owned_avatars[2]].try_into().unwrap()),
+					(H256::default(), vec![owned_avatars[0], owned_avatars[2]]),
+					(owned_avatars[1], vec![H256::default(), H256::default()]),
+					(owned_avatars[1], vec![H256::default(), owned_avatars[2]]),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
@@ -1051,21 +1025,9 @@ mod forging {
 				}
 
 				for (player, leader, sacrifices) in [
-					(
-						ALICE,
-						AAvatars::owners(ALICE)[0],
-						AAvatars::owners(BOB)[0..2].to_vec().try_into().unwrap(),
-					),
-					(
-						ALICE,
-						AAvatars::owners(BOB)[0],
-						AAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
-					),
-					(
-						ALICE,
-						AAvatars::owners(BOB)[0],
-						AAvatars::owners(BOB)[0..2].to_vec().try_into().unwrap(),
-					),
+					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(BOB)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(ALICE)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(BOB)[0..2].to_vec()),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(player), leader, sacrifices),
@@ -1101,16 +1063,8 @@ mod forging {
 				}
 
 				for (player, leader, sacrifices) in [
-					(
-						ALICE,
-						AAvatars::owners(ALICE)[0],
-						AAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
-					),
-					(
-						ALICE,
-						AAvatars::owners(ALICE)[1],
-						AAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
-					),
+					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(ALICE)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(ALICE)[1], AAvatars::owners(ALICE)[0..2].to_vec()),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(player), leader, sacrifices),
@@ -1145,8 +1099,7 @@ mod forging {
 				));
 
 				let leader = AAvatars::owners(ALICE)[0];
-				let sacrifices: BoundedAvatarIdsOf<Test> =
-					AAvatars::owners(ALICE)[1..3].to_vec().try_into().unwrap();
+				let sacrifices = AAvatars::owners(ALICE)[1..3].to_vec();
 
 				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), leader, price));
 				assert_noop!(

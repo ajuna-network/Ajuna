@@ -243,7 +243,7 @@ pub mod pallet {
 		pub fn forge(
 			origin: OriginFor<T>,
 			leader: AvatarIdOf<T>,
-			sacrifices: BoundedAvatarIdsOf<T>,
+			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			Self::toggle_season();
@@ -547,7 +547,7 @@ pub mod pallet {
 		pub(crate) fn do_forge(
 			player: &T::AccountId,
 			leader: &AvatarIdOf<T>,
-			sacrifices: &BoundedAvatarIdsOf<T>,
+			sacrifices: &[AvatarIdOf<T>],
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(sacrifices.len() as u8 >= forge.min_sacrifices, Error::<T>::TooFewSacrifices);
