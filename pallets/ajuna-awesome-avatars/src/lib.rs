@@ -465,7 +465,7 @@ pub mod pallet {
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				ensure!(current_block > last_block + mint.cooldown, Error::<T>::MintCooldown);
+				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
 			let MintOption { mint_type, count } = mint_option;

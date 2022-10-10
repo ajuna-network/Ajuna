@@ -579,7 +579,7 @@ mod minting {
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
 
-					for _ in 0..mint_cooldown {
+					for _ in 1..mint_cooldown {
 						run_to_block(System::block_number() + 1);
 						assert_noop!(
 							AAvatars::mint(
@@ -594,7 +594,7 @@ mod minting {
 					}
 
 					run_to_block(System::block_number() + 1);
-					assert_eq!(System::block_number(), (season.start + 1) + (mint_cooldown + 1));
+					assert_eq!(System::block_number(), (season.start + 1) + mint_cooldown);
 					assert_ok!(AAvatars::mint(
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
