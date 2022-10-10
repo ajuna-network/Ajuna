@@ -449,3 +449,138 @@ impl Generation {
 		(resulting_rarity, resulting_gen, max_rarity)
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod segmenting {
+		use super::*;
+
+		#[test]
+		fn segmenting_consistency_test_1() {
+			let dna: [[u8; 32]; 2] = [[0; 32]; 2];
+			let hash: [u8; 32] = [0; 32];
+
+			let expected_output = [[0; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_2() {
+			let dna: [[u8; 32]; 2] = [[0; 32]; 2];
+			let hash: [u8; 32] = [0xFF; 32];
+
+			let expected_output = [[0; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_3() {
+			let dna: [[u8; 32]; 2] = [[0xFF; 32]; 2];
+			let hash: [u8; 32] = [0; 32];
+
+			let expected_output = [[0; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_4() {
+			let dna: [[u8; 32]; 2] = [[0xFF; 32]; 2];
+			let hash: [u8; 32] = [0xFF; 32];
+
+			let expected_output = [[0xFF; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_5() {
+			let dna: [[u8; 32]; 2] = [[0xFF; 32], [0; 32]];
+			let hash: [u8; 32] = [0; 32];
+
+			let expected_output = [[0; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_6() {
+			let dna: [[u8; 32]; 2] = [[0xFF; 32], [0; 32]];
+			let hash: [u8; 32] = [0xFF; 32];
+
+			let expected_output = [[0xFF; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_7() {
+			let dna: [[u8; 32]; 2] = [[0; 32], [0xFF; 32]];
+			let hash: [u8; 32] = [0; 32];
+
+			let expected_output = [[0; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_consistency_test_8() {
+			let dna: [[u8; 32]; 2] = [[0; 32], [0xFF; 32]];
+			let hash: [u8; 32] = [0xFF; 32];
+
+			let expected_output = [[0xFF; 32], [0x33; 32]];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+
+		#[test]
+		fn segmenting_mogwai_test_1() {
+			let dna = [
+				[
+					0x93, 0x9D, 0xCA, 0xDD, 0x21, 0xB0, 0x15, 0x09, 0xD9, 0x8E, 0x69, 0x35, 0xA3,
+					0xED, 0xA0, 0x5C, 0xC5, 0x2B, 0x91, 0x9F, 0x68, 0x34, 0xBE, 0x48, 0x2D, 0x0A,
+					0x58, 0x23, 0xA3, 0xB2, 0x41, 0xCD,
+				],
+				[
+					0x0A, 0xC0, 0xEF, 0x2F, 0xF6, 0xF5, 0x23, 0xBE, 0xEA, 0xAE, 0x29, 0x53, 0x27,
+					0x45, 0xAD, 0x27, 0x46, 0x34, 0x30, 0xA8, 0x36, 0xEF, 0xCA, 0x51, 0x7B, 0xCE,
+					0xC9, 0x51, 0x79, 0xD9, 0xC0, 0x0A,
+				],
+			];
+
+			let hash = [
+				0x91, 0x2B, 0xCA, 0x9F, 0x21, 0xB0, 0x48, 0x09, 0x34, 0x8E, 0x69, 0x35, 0xA3, 0xED,
+				0x23, 0x5C, 0xC5, 0xA0, 0x91, 0x9F, 0x68, 0x8E, 0x0A, 0x48, 0x2D, 0x0A, 0x58, 0x23,
+				0xA3, 0x68, 0x41, 0xCD,
+			];
+
+			let expected_output = [
+				[
+					0xAA, 0x90, 0xD4, 0xDE, 0x32, 0x31, 0x26, 0xBE, 0xE3, 0xBF, 0x69, 0x65, 0xA3,
+					0xFD, 0xBD, 0x1D, 0x66, 0x3F, 0x42, 0xA9, 0x46, 0x6A, 0xFE, 0x69, 0x70, 0xCB,
+					0x9E, 0xF2, 0xD9, 0xDC, 0xC0, 0xCB,
+				],
+				[
+					0x4B, 0xAB, 0xE0, 0xA4, 0x44, 0x04, 0xB4, 0xBB, 0xB7, 0x88, 0xAB, 0x7A, 0xAA,
+					0xCA, 0x4B, 0x04, 0xEB, 0xB7, 0x8C, 0xB8, 0x8B, 0xF0, 0xCA, 0x87, 0xBF, 0x74,
+					0x7F, 0xE7, 0xEB, 0xBC, 0xBB, 0xA8,
+				],
+			];
+			let output_dna = Breeding::segmenting(dna, hash);
+
+			assert_eq!(output_dna, expected_output);
+		}
+	}
+}
