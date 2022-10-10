@@ -187,13 +187,13 @@ impl Breeding {
 		let stats_segment = &input_dna[0];
 		let visuals_segment = &input_dna[1];
 
-		let _stats_segment_high = &stats_segment[0..16]; // Unused for now
-		let stats_segment_low = &stats_segment[16..32];
-		let visuals_segment_high = &visuals_segment[0..16];
-		let _visuals_segment_low = &visuals_segment[16..32]; // Unused for now
+		let _stats_segment_1 = &stats_segment[0..16]; // Unused for now
+		let stats_segment_2 = &stats_segment[16..32];
+		let visuals_segment_1 = &visuals_segment[0..16];
+		let _visuals_segment_2 = &visuals_segment[16..32]; // Unused for now
 
-		let stats_segment_low_1 = &stats_segment_low[0..8];
-		let visuals_segment_high_1 = &visuals_segment_high[0..8];
+		let stats_segment_2_1 = &stats_segment_2[0..8];
+		let visuals_segment_1_1 = &visuals_segment_1[0..8];
 
 		let mut output_stats: [u8; 32] = Default::default();
 		let mut output_visuals: [u8; 32] = Default::default();
@@ -203,15 +203,13 @@ impl Breeding {
 
 		let mut mask_side = BitMaskSide::Left;
 
-		let base_range = 0..64;
-		let rev_range = base_range.clone().rev();
-
-		for (i, j) in base_range.zip(rev_range) {
+		for i in 0..64 {
 			let bit_index = (i % 8) as u8;
 			let byte_index = i / 8;
+			let j = 63 - i;
 
-			let stats_bit = Binary::get_bit_at(stats_segment_low_1[byte_index], bit_index);
-			let visuals_bit = Binary::get_bit_at(visuals_segment_high_1[byte_index], bit_index);
+			let stats_bit = Binary::get_bit_at(stats_segment_2_1[byte_index], bit_index);
+			let visuals_bit = Binary::get_bit_at(visuals_segment_1_1[byte_index], bit_index);
 
 			let block_hash_bit_1 = Binary::get_bit_at(block_hash[byte_index], bit_index);
 			let block_hash_bit_2 = Binary::get_bit_at(block_hash[j / 8], (j % 8) as u8);
