@@ -112,7 +112,7 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
-pub type SoulCount = u32;
+pub type SoulCount = u32; // TODO: is u32 enough?
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct Avatar {

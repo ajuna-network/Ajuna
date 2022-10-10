@@ -573,25 +573,23 @@ pub mod pallet {
 				.map(|sacrifice| Self::ensure_ownership(player, sacrifice))
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-			let (mut unique_matched_indexes, matches) =
-				sacrifice_avatars.iter().try_fold::<_, _, Result<_, DispatchError>>(
-					(BTreeSet::<usize>::new(), 0),
-					|(mut matched_components, mut matches), sacrifice_avatar| {
-						let (is_match, matching_components) =
-							leader_avatar.compare(sacrifice_avatar, max_variations, max_tier);
+			let (mut unique_matched_indexes, matches) = sacrifice_avatars.iter().fold(
+				(BTreeSet::<usize>::new(), 0),
+				|(mut matched_components, mut matches), sacrifice_avatar| {
+					let (is_match, matching_components) =
+						leader_avatar.compare(sacrifice_avatar, max_variations, max_tier);
 
-						if is_match {
-							matches += 1;
-							matched_components.extend(matching_components.iter());
-						}
+					if is_match {
+						matches += 1;
+						matched_components.extend(matching_components.iter());
+					}
 
-						leader_avatar.souls = leader_avatar
-							.souls
-							.checked_add(sacrifice_avatar.souls)
-							.ok_or(ArithmeticError::Overflow)?;
-						Ok((matched_components, matches))
-					},
-				)?;
+					// TODO: is u32 enough?
+					leader_avatar.souls =
+						leader_avatar.souls.saturating_add(sacrifice_avatar.souls);
+					(matched_components, matches)
+				},
+			);
 
 			let random_hash = Self::random_hash(b"forging avatar", player);
 			let random_hash = random_hash.as_ref();
