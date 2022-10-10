@@ -66,7 +66,6 @@ sp-version                                 = { default-features = false, git = "
 orml-vesting = { default-features = false, git = "https://github.com/ajuna-network/open-runtime-module-library", branch = "polkadot-v0.9.28" }
 
 # Ajuna pallets
-ajuna-common                 = { default-features = false, path = "../../ajuna-common" }
 ajuna-primitives             = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
 
@@ -94,7 +93,6 @@ std = [
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
-    "ajuna-common/std",
     "ajuna-primitives/std",
     "pallet-asset-tx-payment/std",
     "pallet-assets/std",

@@ -12,6 +12,4 @@ members = [
     "runtime/ajuna",
     "pallets/ajuna-awesome-avatars",
     "primitives",
-    "ajuna-common",
-    "ajuna-test",
 ]

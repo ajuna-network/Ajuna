@@ -119,16 +119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ajuna-common"
-version = "0.1.4"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "scale-info",
- "sp-std",
-]
-
-[[package]]
 name = "ajuna-node"
 version = "0.1.4"
 dependencies = [
@@ -283,7 +273,6 @@ dependencies = [
 name = "ajuna-solo-runtime"
 version = "0.1.4"
 dependencies = [
- "ajuna-common",
  "ajuna-primitives",
  "frame-benchmarking",
  "frame-executive",
@@ -329,28 +318,6 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder",
-]
-
-[[package]]
-name = "ajuna-test"
-version = "0.1.4"
-dependencies = [
- "ajuna-common",
- "ajuna-primitives",
- "ajuna-solo-runtime",
- "frame-support",
- "frame-system",
- "orml-vesting",
- "pallet-balances",
- "pallet-membership",
- "pallet-sudo",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -5180,7 +5147,6 @@ dependencies = [
 name = "pallet-ajuna-awesome-avatars"
 version = "0.1.4"
 dependencies = [
- "ajuna-common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
