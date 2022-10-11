@@ -112,7 +112,7 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
-pub type SoulCount = u32;
+pub type SoulCount = u32; // TODO: is u32 enough?
 
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct Avatar {
@@ -122,9 +122,46 @@ pub struct Avatar {
 }
 
 impl Avatar {
+	pub(crate) fn compare_all<T: Config>(
+		&mut self,
+		others: &[Self],
+		max_variations: u8,
+		max_tier: u8,
+	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
+		let upgradable_indexes = self.upgradable_indexes::<T>()?;
+		Ok(others.iter().fold(
+			(BTreeSet::<usize>::new(), 0),
+			|(mut matched_components, mut matches), other| {
+				let (is_match, matching_components) =
+					self.compare(other, &upgradable_indexes, max_variations, max_tier);
+
+				if is_match {
+					matches += 1;
+					matched_components.extend(matching_components.iter());
+				}
+
+				// TODO: is u32 enough?
+				self.souls = self.souls.saturating_add(other.souls);
+				(matched_components, matches)
+			},
+		))
+	}
+
+	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
+		let min_tier = self.dna.iter().map(|x| *x >> 4).min().ok_or(Error::<T>::IncorrectDna)?;
+		Ok(self
+			.dna
+			.iter()
+			.enumerate()
+			.filter(|(_, x)| (*x >> 4) == min_tier)
+			.map(|(i, _)| i)
+			.collect::<Vec<usize>>())
+	}
+
 	pub(crate) fn compare(
 		&self,
 		other: &Self,
+		indexes: &[usize],
 		max_variations: u8,
 		max_tier: u8,
 	) -> (bool, BTreeSet<usize>) {
@@ -137,30 +174,34 @@ impl Avatar {
 			self.dna.clone().into_iter().zip(other.dna.clone()).enumerate().fold(
 				(BTreeSet::new(), 0, 0),
 				|(mut matching_indexes, mut matches, mut mirrors), (i, (lhs, rhs))| {
-					let lhs_tier = lhs >> 4;
-					let rhs_tier = rhs >> 4;
-					let is_matching_tier = lhs_tier == rhs_tier;
-					let is_maxed_tier = lhs_tier == max_tier;
-
 					let lhs_variation = lhs & 0b0000_1111;
 					let rhs_variation = rhs & 0b0000_1111;
-					let is_similar_variation = compare_variation(lhs_variation, rhs_variation);
-
-					if is_matching_tier && !is_maxed_tier && is_similar_variation {
-						matching_indexes.insert(i);
-						matches += 1;
-					}
-
 					if lhs_variation == rhs_variation {
 						mirrors += 1;
 					}
 
+					if indexes.contains(&i) {
+						let lhs_tier = lhs >> 4;
+						let rhs_tier = rhs >> 4;
+						let is_matching_tier = lhs_tier == rhs_tier;
+						let is_maxed_tier = lhs_tier == max_tier;
+
+						let is_similar_variation = compare_variation(lhs_variation, rhs_variation);
+
+						if is_matching_tier && !is_maxed_tier && is_similar_variation {
+							matching_indexes.insert(i);
+							matches += 1;
+						}
+					}
 					(matching_indexes, matches, mirrors)
 				},
 			);
 
-		// 0 matches = false, 1 match + 2 mirrors || 2 match + 1 mirror || 3+ matches = true
-		let is_match = matches >= 3 || (matches >= 1 && mirrors >= 1 && (matches + mirrors) >= 3);
+		// 1 upgradable component requires 1 match + 4 mirrors
+		// 2 upgradable component requires 2 match + 2 mirrors
+		// 3 upgradable component requires 3 match + 0 mirrors
+		let mirrors_required = (3_u8.saturating_sub(matches)) * 2;
+		let is_match = matches >= 3 || (matches >= 1 && mirrors >= mirrors_required);
 		(is_match, matching_indexes)
 	}
 }

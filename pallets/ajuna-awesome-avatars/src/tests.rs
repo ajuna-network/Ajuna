@@ -352,7 +352,6 @@ mod minting {
 		let mint_cooldown = 1;
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_fees(fees)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, initial_balance)])
@@ -511,7 +510,6 @@ mod minting {
 	#[test]
 	fn mint_should_reject_when_season_is_inactive() {
 		ExtBuilder::default()
-			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -541,7 +539,6 @@ mod minting {
 		ExtBuilder::default()
 			.seasons(vec![(SeasonId::default(), Season::default())])
 			.max_avatars_per_player(max_avatars_per_player as u32)
-			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -566,7 +563,6 @@ mod minting {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
@@ -579,7 +575,7 @@ mod minting {
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
 
-					for _ in 0..mint_cooldown {
+					for _ in 1..mint_cooldown {
 						run_to_block(System::block_number() + 1);
 						assert_noop!(
 							AAvatars::mint(
@@ -594,7 +590,7 @@ mod minting {
 					}
 
 					run_to_block(System::block_number() + 1);
-					assert_eq!(System::block_number(), (season.start + 1) + (mint_cooldown + 1));
+					assert_eq!(System::block_number(), (season.start + 1) + mint_cooldown);
 					assert_ok!(AAvatars::mint(
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
@@ -610,7 +606,6 @@ mod minting {
 	#[test]
 	fn mint_should_reject_when_balance_is_insufficient() {
 		ExtBuilder::default()
-			.mint_open(true)
 			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
@@ -638,7 +633,6 @@ mod minting {
 		let season = Season::default().start(1).end(20);
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.free_mints(vec![(ALICE, 100)])
 			.build()
 			.execute_with(|| {
@@ -721,6 +715,82 @@ mod forging {
 	use sp_std::collections::btree_set::BTreeSet;
 
 	#[test]
+	fn forge_should_work() {
+		let season = Season::default()
+			.end(99)
+			.tiers(vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
+			.p_single_mint(vec![100, 0])
+			.p_batch_mint(vec![100, 0])
+			.max_components(8)
+			.max_variations(6);
+
+		let assert_dna =
+			|leader_id: &AvatarIdOf<Test>, expected_dna: Vec<u8>, insert_dna: Option<Vec<u8>>| {
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
+				));
+
+				if let Some(dna) = insert_dna {
+					AAvatars::owners(BOB)[1..=4].iter().for_each(|id| {
+						Avatars::<Test>::mutate(id, |maybe_avatar| {
+							if let Some((_, avatar)) = maybe_avatar {
+								avatar.dna = dna.clone().try_into().unwrap();
+							}
+						});
+					})
+				}
+
+				assert_ok!(AAvatars::forge(
+					Origin::signed(BOB),
+					*leader_id,
+					AAvatars::owners(BOB)[1..=4].to_vec()
+				));
+				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
+			};
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_cooldown(0)
+			.free_mints(vec![(BOB, MintCount::MAX)])
+			.forge_min_sacrifices(1)
+			.forge_max_sacrifices(4)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+				));
+				let leader_id = AAvatars::owners(BOB)[0];
+				assert_eq!(
+					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
+					vec![0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01]
+				);
+
+				// 1st mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+
+				// 2nd mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x10, 0x13, 0x13, 0x05, 0x15, 0x01], None);
+
+				// 3rd mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x10, 0x13, 0x13, 0x05, 0x15, 0x11], None);
+
+				// 4th mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11], None);
+
+				// 5th mutation: force 1st component's variation to be "similar"
+				assert_dna(
+					&leader_id,
+					vec![0x13, 0x14, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11],
+					Some(vec![0x13, 0x05, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11]),
+				);
+			});
+	}
+
+	#[test]
 	fn forge_should_work_for_matches() {
 		let max_components = 5;
 		let max_variations = 3;
@@ -736,10 +806,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(1)
 			.free_mints(vec![(BOB, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -762,14 +830,11 @@ mod forging {
 					.map(|id| AAvatars::avatars(id).unwrap().1)
 					.collect::<Vec<_>>();
 
-				assert_ok!(AAvatars::forge(
-					Origin::signed(BOB),
-					leader_id,
-					sacrifice_ids.to_vec().try_into().unwrap()
-				));
+				assert_ok!(AAvatars::forge(Origin::signed(BOB), leader_id, sacrifice_ids.to_vec()));
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
+				let upgradable_indexes = original_leader.upgradable_indexes::<Test>().unwrap();
 				for (sacrifice, result) in original_sacrifices
 					.iter()
 					.zip([(true, BTreeSet::from([1, 3])), (true, BTreeSet::from([0, 2, 3]))])
@@ -777,6 +842,7 @@ mod forging {
 					assert_eq!(
 						original_leader.compare(
 							sacrifice,
+							&upgradable_indexes,
 							max_variations,
 							tiers[tiers.len() - 1].clone() as u8
 						),
@@ -836,10 +902,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(1)
 			.free_mints(vec![(BOB, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -859,17 +923,15 @@ mod forging {
 				let original_leader = AAvatars::avatars(leader_id).unwrap().1;
 				let original_sacrifice = AAvatars::avatars(sacrifice_id).unwrap().1;
 
-				assert_ok!(AAvatars::forge(
-					Origin::signed(BOB),
-					leader_id,
-					[sacrifice_id].to_vec().try_into().unwrap()
-				));
+				assert_ok!(AAvatars::forge(Origin::signed(BOB), leader_id, vec![sacrifice_id]));
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
+				let upgradable_indexes = original_leader.upgradable_indexes::<Test>().unwrap();
 				assert_eq!(
 					original_leader.compare(
 						&original_sacrifice,
+						&upgradable_indexes,
 						max_variations,
 						tiers[tiers.len() - 1].clone() as u8
 					),
@@ -890,14 +952,24 @@ mod forging {
 	}
 
 	#[test]
+	fn forge_should_reject_when_forging_is_closed() {
+		ExtBuilder::default()
+			.forge_min_sacrifices(0)
+			.forge_open(false)
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), Vec::new()),
+					Error::<Test>::ForgeClosed,
+				);
+			});
+	}
+
+	#[test]
 	fn forge_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::forge(
-					Origin::none(),
-					H256::default(),
-					BoundedAvatarIdsOf::<Test>::default(),
-				),
+				AAvatars::forge(Origin::none(), H256::default(), Vec::new()),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -909,7 +981,6 @@ mod forging {
 		let max_sacrifices = 5;
 
 		ExtBuilder::default()
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -919,10 +990,7 @@ mod forging {
 						AAvatars::forge(
 							Origin::signed(ALICE),
 							H256::default(),
-							BoundedAvatarIdsOf::<Test>::try_from(
-								(0..i).map(|_| H256::default()).collect::<Vec<_>>()
-							)
-							.unwrap(),
+							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
 						),
 						Error::<Test>::TooFewSacrifices,
 					);
@@ -933,10 +1001,7 @@ mod forging {
 						AAvatars::forge(
 							Origin::signed(ALICE),
 							H256::default(),
-							BoundedAvatarIdsOf::<Test>::try_from(
-								(0..i).map(|_| H256::default()).collect::<Vec<_>>()
-							)
-							.unwrap(),
+							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
 						),
 						Error::<Test>::TooManySacrifices,
 					);
@@ -947,17 +1012,12 @@ mod forging {
 	#[test]
 	fn forge_should_reject_out_of_season_calls() {
 		ExtBuilder::default()
-			.forge_open(true)
 			.forge_min_sacrifices(1)
 			.forge_max_sacrifices(1)
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AAvatars::forge(
-						Origin::signed(ALICE),
-						H256::default(),
-						BoundedAvatarIdsOf::<Test>::try_from(vec![H256::default()]).unwrap(),
-					),
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
 					Error::<Test>::OutOfSeason,
 				);
 			});
@@ -966,7 +1026,6 @@ mod forging {
 	#[test]
 	fn forge_should_reject_unknown_season_calls() {
 		ExtBuilder::default()
-			.forge_open(true)
 			.forge_min_sacrifices(1)
 			.forge_max_sacrifices(1)
 			.build()
@@ -974,11 +1033,7 @@ mod forging {
 				CurrentSeasonId::<Test>::put(123);
 				IsSeasonActive::<Test>::put(true);
 				assert_noop!(
-					AAvatars::forge(
-						Origin::signed(ALICE),
-						H256::default(),
-						BoundedAvatarIdsOf::<Test>::try_from(vec![H256::default()]).unwrap(),
-					),
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
 					Error::<Test>::UnknownSeason,
 				);
 			});
@@ -992,10 +1047,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(0)
 			.free_mints(vec![(ALICE, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -1011,9 +1064,9 @@ mod forging {
 
 				let owned_avatars = AAvatars::owners(ALICE);
 				for (leader, sacrifices) in [
-					(H256::default(), vec![owned_avatars[0], owned_avatars[2]].try_into().unwrap()),
-					(owned_avatars[1], vec![H256::default(), H256::default()].try_into().unwrap()),
-					(owned_avatars[1], vec![H256::default(), owned_avatars[2]].try_into().unwrap()),
+					(H256::default(), vec![owned_avatars[0], owned_avatars[2]]),
+					(owned_avatars[1], vec![H256::default(), H256::default()]),
+					(owned_avatars[1], vec![H256::default(), owned_avatars[2]]),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
@@ -1031,10 +1084,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(0)
 			.free_mints(vec![(ALICE, 10), (BOB, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -1051,21 +1102,9 @@ mod forging {
 				}
 
 				for (player, leader, sacrifices) in [
-					(
-						ALICE,
-						AAvatars::owners(ALICE)[0],
-						AAvatars::owners(BOB)[0..2].to_vec().try_into().unwrap(),
-					),
-					(
-						ALICE,
-						AAvatars::owners(BOB)[0],
-						AAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
-					),
-					(
-						ALICE,
-						AAvatars::owners(BOB)[0],
-						AAvatars::owners(BOB)[0..2].to_vec().try_into().unwrap(),
-					),
+					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(BOB)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(ALICE)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(BOB)[1..2].to_vec()),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(player), leader, sacrifices),
@@ -1083,10 +1122,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(0)
 			.free_mints(vec![(ALICE, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -1101,16 +1138,8 @@ mod forging {
 				}
 
 				for (player, leader, sacrifices) in [
-					(
-						ALICE,
-						AAvatars::owners(ALICE)[0],
-						AAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
-					),
-					(
-						ALICE,
-						AAvatars::owners(ALICE)[1],
-						AAvatars::owners(ALICE)[0..2].to_vec().try_into().unwrap(),
-					),
+					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(ALICE)[0..2].to_vec()),
+					(ALICE, AAvatars::owners(ALICE)[1], AAvatars::owners(ALICE)[0..2].to_vec()),
 				] {
 					assert_noop!(
 						AAvatars::forge(Origin::signed(player), leader, sacrifices),
@@ -1128,10 +1157,7 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, 6), (BOB, 6)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.forge_open(true)
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1145,8 +1171,7 @@ mod forging {
 				));
 
 				let leader = AAvatars::owners(ALICE)[0];
-				let sacrifices: BoundedAvatarIdsOf<Test> =
-					AAvatars::owners(ALICE)[1..3].to_vec().try_into().unwrap();
+				let sacrifices = AAvatars::owners(ALICE)[1..3].to_vec();
 
 				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), leader, price));
 				assert_noop!(
@@ -1179,9 +1204,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1230,9 +1253,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1255,9 +1276,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1306,9 +1325,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1329,7 +1346,7 @@ mod trading {
 
 	#[test]
 	fn remove_price_should_reject_unlisted_avatar() {
-		ExtBuilder::default().trade_open(true).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AAvatars::remove_price(Origin::signed(CHARLIE), sp_core::H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
@@ -1348,9 +1365,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, alice_initial_bal), (BOB, bob_initial_bal)])
-			.mint_open(true)
 			.mint_fees(mint_fees)
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1411,7 +1426,7 @@ mod trading {
 
 	#[test]
 	fn buy_should_reject_unlisted_avatar() {
-		ExtBuilder::default().trade_open(true).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AAvatars::buy(Origin::signed(BOB), sp_core::H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
@@ -1427,9 +1442,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, price - 1), (BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);

@@ -243,7 +243,7 @@ pub mod pallet {
 		pub fn forge(
 			origin: OriginFor<T>,
 			leader: AvatarIdOf<T>,
-			sacrifices: BoundedAvatarIdsOf<T>,
+			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			Self::toggle_season();
@@ -465,7 +465,7 @@ pub mod pallet {
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
-				ensure!(current_block > last_block + mint.cooldown, Error::<T>::MintCooldown);
+				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
 			let MintOption { mint_type, count } = mint_option;
@@ -546,12 +546,18 @@ pub mod pallet {
 
 		pub(crate) fn do_forge(
 			player: &T::AccountId,
-			leader: &AvatarIdOf<T>,
-			sacrifices: &BoundedAvatarIdsOf<T>,
+			leader_id: &AvatarIdOf<T>,
+			sacrifice_ids: &[AvatarIdOf<T>],
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
-			ensure!(sacrifices.len() as u8 >= forge.min_sacrifices, Error::<T>::TooFewSacrifices);
-			ensure!(sacrifices.len() as u8 <= forge.max_sacrifices, Error::<T>::TooManySacrifices);
+			ensure!(
+				sacrifice_ids.len() as u8 >= forge.min_sacrifices,
+				Error::<T>::TooFewSacrifices
+			);
+			ensure!(
+				sacrifice_ids.len() as u8 <= forge.max_sacrifices,
+				Error::<T>::TooManySacrifices
+			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
 			ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
@@ -559,38 +565,22 @@ pub mod pallet {
 				Self::seasons(Self::current_season_id()).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
-			ensure!(Self::ensure_for_trade(leader).is_err(), Error::<T>::AvatarInTrade);
-			let mut leader_avatar = Self::ensure_ownership(player, leader)?;
-			type Accumulator<T> = (BTreeSet<usize>, Vec<AvatarIdOf<T>>, u8);
-			let (mut unique_matched_indexes, _, matches) = sacrifices
+			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
+			ensure!(
+				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
+				Error::<T>::AvatarInTrade
+			);
+			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
+
+			let mut leader = Self::ensure_ownership(player, leader_id)?;
+			let sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
+			let sacrifices = sacrifice_ids
 				.iter()
-				.try_fold::<Accumulator<T>, _, Result<Accumulator<T>, DispatchError>>(
-					Accumulator::<T>::default(),
-					|(mut matched_components, mut seen, mut matches), sacrifice| {
-						ensure!(leader != sacrifice, Error::<T>::LeaderSacrificed);
-						if !seen.contains(sacrifice) {
-							ensure!(
-								Self::ensure_for_trade(sacrifice).is_err(),
-								Error::<T>::AvatarInTrade
-							);
-							let sacrifice_avatar = Self::ensure_ownership(player, sacrifice)?;
-							let (is_match, matching_components) =
-								leader_avatar.compare(&sacrifice_avatar, max_variations, max_tier);
+				.map(|id| Self::ensure_ownership(player, id))
+				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-							if is_match {
-								matches += 1;
-								matched_components.extend(matching_components.iter());
-							}
-
-							leader_avatar.souls = leader_avatar
-								.souls
-								.checked_add(sacrifice_avatar.souls)
-								.ok_or(ArithmeticError::Overflow)?;
-							seen.push(*sacrifice);
-						}
-						Ok((matched_components, seen, matches))
-					},
-				)?;
+			let (mut unique_matched_indexes, matches) =
+				leader.compare_all::<T>(&sacrifices, max_variations, max_tier)?;
 
 			let random_hash = Self::random_hash(b"forging avatar", player);
 			let random_hash = random_hash.as_ref();
@@ -603,7 +593,7 @@ pub mod pallet {
 				if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
 					let roll = hash % MAX_PERCENTAGE;
 					if roll <= p {
-						let nucleotide = leader_avatar.dna[first_matched_index];
+						let nucleotide = leader.dna[first_matched_index];
 						let current_tier_index = tiers
 							.iter()
 							.position(|tier| tier.clone() as u8 == nucleotide >> 4)
@@ -613,24 +603,24 @@ pub mod pallet {
 						if !already_maxed_out {
 							let next_tier = tiers[current_tier_index + 1].clone() as u8;
 							let upgraded_nucleotide = (next_tier << 4) | (nucleotide & 0b0000_1111);
-							leader_avatar.dna[first_matched_index] = upgraded_nucleotide;
+							leader.dna[first_matched_index] = upgraded_nucleotide;
 							upgraded_components += 1;
 						}
 					}
 				}
 			}
 
-			Avatars::<T>::insert(leader, (player, leader_avatar));
-			sacrifices.iter().for_each(Avatars::<T>::remove);
+			Avatars::<T>::insert(leader_id, (player, leader));
+			sacrifice_ids.iter().for_each(Avatars::<T>::remove);
 			let remaining_avatar_ids = Owners::<T>::take(player)
 				.into_iter()
-				.filter(|avatar_id| !sacrifices.contains(avatar_id))
+				.filter(|avatar_id| !sacrifice_ids.contains(avatar_id))
 				.collect::<Vec<_>>();
 			let remaining_avatar_ids = BoundedAvatarIdsOf::<T>::try_from(remaining_avatar_ids)
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
-			Self::deposit_event(Event::AvatarForged { avatar_id: *leader, upgraded_components });
+			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
 			Ok(())
 		}
 
