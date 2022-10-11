@@ -1,4 +1,4 @@
-use crate::{mock, mock::*, Error, Event, GameEventType, PhaseType};
+use crate::{mock, mock::*, Error, Event, GameEventType, MogwaiPrices, PhaseType};
 use frame_support::{assert_noop, assert_ok};
 
 #[cfg(test)]
@@ -51,7 +51,7 @@ mod update_config {
 	}
 }
 
-fn create_mogwai(owner: MockAccountId) -> <Test as frame_system::Config>::Hash {
+fn create_mogwai(owner: MockAccountId) -> MockMogwaiId {
 	BattleMogs::create_mogwai(Origin::signed(owner)).expect("Failed mogwai creation!");
 	if let crate::mock::Event::BattleMogs(Event::<Test>::MogwaiCreated(_, mogwai_id)) = last_event()
 	{
@@ -59,6 +59,11 @@ fn create_mogwai(owner: MockAccountId) -> <Test as frame_system::Config>::Hash {
 	}
 
 	panic!("Expected MogwaiCreated event");
+}
+
+fn put_mogwai_on_sale(owner: MockAccountId, mogwai_id: MockMogwaiId, price: u64) {
+	BattleMogs::set_price(Origin::signed(owner), mogwai_id, price)
+		.expect("Failed setting mogwai price!");
 }
 
 #[cfg(test)]
@@ -295,6 +300,20 @@ mod transfer {
 			);
 		});
 	}
+
+	#[test]
+	fn transfer_removes_mogwai_sale() {
+		ExtBuilder::default().build().execute_with(|| {
+			let sender = ALICE;
+			let target = BOB;
+			let mogwai_id = create_mogwai(sender);
+
+			put_mogwai_on_sale(sender, mogwai_id, 1000);
+
+			assert_ok!(BattleMogs::transfer(Origin::signed(sender), target, mogwai_id));
+			assert!(!MogwaiPrices::<Test>::contains_key(mogwai_id));
+		});
+	}
 }
 
 #[cfg(test)]
@@ -409,6 +428,21 @@ mod sacrifice {
 			assert_noop!(
 				BattleMogs::sacrifice(Origin::signed(other), mogwai_id),
 				Error::<Test>::MogwaiNotOwned
+			);
+		});
+	}
+
+	#[test]
+	fn sacrifice_not_allowed_with_mogwai_on_sale() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = CHARLIE;
+			let mogwai_id = create_mogwai(account);
+
+			put_mogwai_on_sale(account, mogwai_id, 1000);
+
+			assert_noop!(
+				BattleMogs::sacrifice(Origin::signed(account), mogwai_id),
+				Error::<Test>::MogwaiIsOnSale
 			);
 		});
 	}
@@ -560,6 +594,43 @@ mod sacrifice_into {
 			);
 		});
 	}
+
+	#[test]
+	fn sacrifice_into_not_allowed_if_any_of_the_target_mogwais_on_sale() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = CHARLIE;
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(account);
+
+			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic as u8;
+				}
+			});
+
+			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic as u8;
+				}
+			});
+
+			put_mogwai_on_sale(account, mogwai_id_1, 1000);
+
+			assert_noop!(
+				BattleMogs::sacrifice_into(Origin::signed(account), mogwai_id_1, mogwai_id_2),
+				Error::<Test>::MogwaiIsOnSale
+			);
+
+			assert_ok!(BattleMogs::remove_price(Origin::signed(account), mogwai_id_1));
+
+			put_mogwai_on_sale(account, mogwai_id_2, 1000);
+
+			assert_noop!(
+				BattleMogs::sacrifice_into(Origin::signed(account), mogwai_id_1, mogwai_id_2),
+				Error::<Test>::MogwaiIsOnSale
+			);
+		});
+	}
 }
 
 #[cfg(test)]
@@ -676,6 +747,21 @@ mod morph_mogwai {
 			let mogwai_id = create_mogwai(account);
 
 			assert!(BattleMogs::morph_mogwai(Origin::signed(other), mogwai_id).is_err());
+		});
+	}
+
+	#[test]
+	fn morph_mogwai_fails_morphing_mogwai_on_sale() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id = create_mogwai(account);
+
+			put_mogwai_on_sale(account, mogwai_id, 1000);
+
+			assert_noop!(
+				BattleMogs::morph_mogwai(Origin::signed(account), mogwai_id),
+				Error::<Test>::MogwaiIsOnSale
+			);
 		});
 	}
 }

@@ -218,6 +218,9 @@ pub mod pallet {
 
 		// Can't hatch mogwai.
 		MogwaiNoHatch,
+
+		/// Can't perform specified action while mogwai is on sale
+		MogwaiIsOnSale,
 	}
 
 	#[pallet::call]
@@ -380,7 +383,7 @@ pub mod pallet {
 		}
 
 		/// Transfer mogwai to another account.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -436,12 +439,14 @@ pub mod pallet {
 		}
 
 		/// Sacrifice mogwai to get some currency
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
 		pub fn sacrifice(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			let owner = Self::owner_of(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
+
+			ensure!(!MogwaiPrices::<T>::contains_key(mogwai_id), Error::<T>::MogwaiIsOnSale);
 
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
 			let mogwai_1 = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
@@ -462,7 +467,7 @@ pub mod pallet {
 		}
 
 		/// Sacrifice mogwai to an other mogwai.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
 		pub fn sacrifice_into(
 			origin: OriginFor<T>,
 			mogwai_id_1: T::Hash,
@@ -476,6 +481,9 @@ pub mod pallet {
 
 			// Sacrificing into the same mogwai isn't allowed
 			ensure!(mogwai_id_1 != mogwai_id_2, Error::<T>::MogwaiSame);
+
+			ensure!(!MogwaiPrices::<T>::contains_key(mogwai_id_1), Error::<T>::MogwaiIsOnSale);
+			ensure!(!MogwaiPrices::<T>::contains_key(mogwai_id_2), Error::<T>::MogwaiIsOnSale);
 
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
 			let mogwai_1 = Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
@@ -556,12 +564,14 @@ pub mod pallet {
 		}
 
 		/// Morph a mogwai
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(5,1))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(6,1))]
 		pub fn morph_mogwai(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			// be sure there is such a mogwai.
 			ensure!(Mogwais::<T>::contains_key(mogwai_id), Error::<T>::MogwaiDoesntExists);
+
+			ensure!(!MogwaiPrices::<T>::contains_key(mogwai_id), Error::<T>::MogwaiIsOnSale);
 
 			// check that the mogwai has an owner and that it is the one calling this extrinsic
 			let owner = Self::owner_of(mogwai_id).ok_or("No owner for this mogwai")?;
