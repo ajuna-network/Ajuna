@@ -1,4 +1,4 @@
-use crate::{mock, mock::*, Error, Event, GameEventType, PhaseType};
+use crate::{mock, mock::*, Error, Event, GameEventType, MogwaiPrices, PhaseType};
 use frame_support::{assert_noop, assert_ok};
 
 #[cfg(test)]
@@ -591,6 +591,21 @@ mod buy_mogwai {
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
 			assert_eq!(BattleMogs::owned_mogwais_count(buyer), 1);
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
+		});
+	}
+
+	#[test]
+	fn buy_mogwai_removes_sale_entry_in_storage() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let buyer = ALICE;
+			let mogwai_id = create_mogwai(account);
+			let sell_price = 1;
+
+			assert_ok!(BattleMogs::set_price(Origin::signed(account), mogwai_id, sell_price));
+			assert_ok!(BattleMogs::buy_mogwai(Origin::signed(buyer), mogwai_id, sell_price));
+
+			assert!(!MogwaiPrices::<Test>::contains_key(mogwai_id));
 		});
 	}
 
