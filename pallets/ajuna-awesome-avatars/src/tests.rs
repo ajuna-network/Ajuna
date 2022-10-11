@@ -715,6 +715,82 @@ mod forging {
 	use sp_std::collections::btree_set::BTreeSet;
 
 	#[test]
+	fn forge_should_work() {
+		let season = Season::default()
+			.end(99)
+			.tiers(vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
+			.p_single_mint(vec![100, 0])
+			.p_batch_mint(vec![100, 0])
+			.max_components(8)
+			.max_variations(6);
+
+		let assert_dna =
+			|leader_id: &AvatarIdOf<Test>, expected_dna: Vec<u8>, insert_dna: Option<Vec<u8>>| {
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
+				));
+
+				if let Some(dna) = insert_dna {
+					AAvatars::owners(BOB)[1..=4].iter().for_each(|id| {
+						Avatars::<Test>::mutate(id, |maybe_avatar| {
+							if let Some((_, avatar)) = maybe_avatar {
+								avatar.dna = dna.clone().try_into().unwrap();
+							}
+						});
+					})
+				}
+
+				assert_ok!(AAvatars::forge(
+					Origin::signed(BOB),
+					*leader_id,
+					AAvatars::owners(BOB)[1..=4].to_vec()
+				));
+				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
+			};
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_cooldown(0)
+			.free_mints(vec![(BOB, MintCount::MAX)])
+			.forge_min_sacrifices(1)
+			.forge_max_sacrifices(4)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+				));
+				let leader_id = AAvatars::owners(BOB)[0];
+				assert_eq!(
+					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
+					vec![0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01]
+				);
+
+				// 1st mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+
+				// 2nd mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x10, 0x13, 0x13, 0x05, 0x15, 0x01], None);
+
+				// 3rd mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x10, 0x13, 0x13, 0x05, 0x15, 0x11], None);
+
+				// 4th mutation
+				assert_dna(&leader_id, vec![0x13, 0x04, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11], None);
+
+				// 5th mutation: force 1st component's variation to be "similar"
+				assert_dna(
+					&leader_id,
+					vec![0x13, 0x14, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11],
+					Some(vec![0x13, 0x05, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11]),
+				);
+			});
+	}
+
+	#[test]
 	fn forge_should_work_for_matches() {
 		let max_components = 5;
 		let max_variations = 3;

@@ -174,32 +174,34 @@ impl Avatar {
 			self.dna.clone().into_iter().zip(other.dna.clone()).enumerate().fold(
 				(BTreeSet::new(), 0, 0),
 				|(mut matching_indexes, mut matches, mut mirrors), (i, (lhs, rhs))| {
+					let lhs_variation = lhs & 0b0000_1111;
+					let rhs_variation = rhs & 0b0000_1111;
+					if lhs_variation == rhs_variation {
+						mirrors += 1;
+					}
+
 					if indexes.contains(&i) {
 						let lhs_tier = lhs >> 4;
 						let rhs_tier = rhs >> 4;
 						let is_matching_tier = lhs_tier == rhs_tier;
 						let is_maxed_tier = lhs_tier == max_tier;
 
-						let lhs_variation = lhs & 0b0000_1111;
-						let rhs_variation = rhs & 0b0000_1111;
 						let is_similar_variation = compare_variation(lhs_variation, rhs_variation);
 
 						if is_matching_tier && !is_maxed_tier && is_similar_variation {
 							matching_indexes.insert(i);
 							matches += 1;
 						}
-
-						if lhs_variation == rhs_variation {
-							mirrors += 1;
-						}
 					}
-
 					(matching_indexes, matches, mirrors)
 				},
 			);
 
-		// 0 matches = false, 1 match + 2 mirrors || 2 match + 1 mirror || 3+ matches = true
-		let is_match = matches >= 3 || (matches >= 1 && mirrors >= 1 && (matches + mirrors) >= 3);
+		// 1 upgradable component requires 1 match + 4 mirrors
+		// 2 upgradable component requires 2 match + 2 mirrors
+		// 3 upgradable component requires 3 match + 0 mirrors
+		let mirrors_required = (3_u8.saturating_sub(matches)) * 2;
+		let is_match = matches >= 3 || (matches >= 1 && mirrors >= mirrors_required);
 		(is_match, matching_indexes)
 	}
 }
