@@ -352,7 +352,6 @@ mod minting {
 		let mint_cooldown = 1;
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_fees(fees)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, initial_balance)])
@@ -511,7 +510,6 @@ mod minting {
 	#[test]
 	fn mint_should_reject_when_season_is_inactive() {
 		ExtBuilder::default()
-			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -541,7 +539,6 @@ mod minting {
 		ExtBuilder::default()
 			.seasons(vec![(SeasonId::default(), Season::default())])
 			.max_avatars_per_player(max_avatars_per_player as u32)
-			.mint_open(true)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
@@ -566,7 +563,6 @@ mod minting {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
@@ -610,7 +606,6 @@ mod minting {
 	#[test]
 	fn mint_should_reject_when_balance_is_insufficient() {
 		ExtBuilder::default()
-			.mint_open(true)
 			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
@@ -638,7 +633,6 @@ mod minting {
 		let season = Season::default().start(1).end(20);
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.free_mints(vec![(ALICE, 100)])
 			.build()
 			.execute_with(|| {
@@ -736,10 +730,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(1)
 			.free_mints(vec![(BOB, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -834,10 +826,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(1)
 			.free_mints(vec![(BOB, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -886,6 +876,20 @@ mod forging {
 	}
 
 	#[test]
+	fn forge_should_reject_when_forging_is_closed() {
+		ExtBuilder::default()
+			.forge_min_sacrifices(0)
+			.forge_open(false)
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), Vec::new()),
+					Error::<Test>::ForgeClosed,
+				);
+			});
+	}
+
+	#[test]
 	fn forge_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
@@ -901,7 +905,6 @@ mod forging {
 		let max_sacrifices = 5;
 
 		ExtBuilder::default()
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -933,7 +936,6 @@ mod forging {
 	#[test]
 	fn forge_should_reject_out_of_season_calls() {
 		ExtBuilder::default()
-			.forge_open(true)
 			.forge_min_sacrifices(1)
 			.forge_max_sacrifices(1)
 			.build()
@@ -948,7 +950,6 @@ mod forging {
 	#[test]
 	fn forge_should_reject_unknown_season_calls() {
 		ExtBuilder::default()
-			.forge_open(true)
 			.forge_min_sacrifices(1)
 			.forge_max_sacrifices(1)
 			.build()
@@ -970,10 +971,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(0)
 			.free_mints(vec![(ALICE, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -1009,10 +1008,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(0)
 			.free_mints(vec![(ALICE, 10), (BOB, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -1049,10 +1046,8 @@ mod forging {
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.mint_open(true)
 			.mint_cooldown(0)
 			.free_mints(vec![(ALICE, 10)])
-			.forge_open(true)
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
@@ -1086,10 +1081,7 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, 6), (BOB, 6)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.forge_open(true)
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1136,9 +1128,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1187,9 +1177,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1212,9 +1200,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1263,9 +1249,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1286,7 +1270,7 @@ mod trading {
 
 	#[test]
 	fn remove_price_should_reject_unlisted_avatar() {
-		ExtBuilder::default().trade_open(true).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AAvatars::remove_price(Origin::signed(CHARLIE), sp_core::H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
@@ -1305,9 +1289,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, alice_initial_bal), (BOB, bob_initial_bal)])
-			.mint_open(true)
 			.mint_fees(mint_fees)
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);
@@ -1368,7 +1350,7 @@ mod trading {
 
 	#[test]
 	fn buy_should_reject_unlisted_avatar() {
-		ExtBuilder::default().trade_open(true).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AAvatars::buy(Origin::signed(BOB), sp_core::H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
@@ -1384,9 +1366,7 @@ mod trading {
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, price - 1), (BOB, 999)])
-			.mint_open(true)
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.trade_open(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start + 1);

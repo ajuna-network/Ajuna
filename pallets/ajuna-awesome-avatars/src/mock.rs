@@ -97,7 +97,6 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Randomness = Randomness;
 }
 
-#[derive(Default)]
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
@@ -111,6 +110,25 @@ pub struct ExtBuilder {
 	trade_open: bool,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			organizer: Default::default(),
+			seasons: Default::default(),
+			max_avatars_per_player: Default::default(),
+			mint_cooldown: Default::default(),
+			mint_fees: Default::default(),
+			forge_min_sacrifices: Default::default(),
+			forge_max_sacrifices: Default::default(),
+			balances: Default::default(),
+			free_mints: Default::default(),
+			mint_open: true,
+			forge_open: true,
+			trade_open: true,
+		}
+	}
 }
 
 impl ExtBuilder {
