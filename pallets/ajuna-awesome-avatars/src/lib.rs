@@ -99,6 +99,7 @@ pub mod pallet {
 					six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
 				},
 				cooldown: 5_u8.into(),
+				free_mint_fee_multiplier: 1,
 				free_mint_transfer_fee: 1,
 			},
 			forge: ForgeConfig { open: true, min_sacrifices: 1, max_sacrifices: 4 },
@@ -478,7 +479,8 @@ pub mod pallet {
 					);
 				},
 				MintType::Free => ensure!(
-					Self::free_mints(player) >= *count as MintCount,
+					Self::free_mints(player) >=
+						(*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier),
 					Error::<T>::InsufficientFreeMints
 				),
 			};
