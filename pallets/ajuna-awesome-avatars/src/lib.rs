@@ -470,19 +470,20 @@ pub mod pallet {
 			}
 
 			let MintOption { mint_type, count } = mint_option;
-			match mint_type {
+			let fee = match mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(*count);
 					ensure!(
 						T::Currency::free_balance(player) >= fee,
 						Error::<T>::InsufficientFunds
 					);
+					fee
 				},
-				MintType::Free => ensure!(
-					Self::free_mints(player) >=
-						(*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier),
-					Error::<T>::InsufficientFreeMints
-				),
+				MintType::Free => {
+					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
+					ensure!(Self::free_mints(player) >= fee, Error::<T>::InsufficientFreeMints);
+					fee.unique_saturated_into()
+				},
 			};
 
 			let how_many = *count as usize;
@@ -523,21 +524,21 @@ pub mod pallet {
 					MintType::Normal => {
 						T::Currency::withdraw(
 							player,
-							mint.fees.fee_for(*count),
+							fee,
 							WithdrawReasons::FEE,
 							ExistenceRequirement::KeepAlive,
 						)?;
 					},
 					MintType::Free => {
-						let _ = FreeMints::<T>::try_mutate(
+						FreeMints::<T>::try_mutate(
 							player,
 							|dest_player_free_mints| -> DispatchResult {
 								*dest_player_free_mints = dest_player_free_mints
-									.checked_sub(*count as MintCount)
-									.ok_or(ArithmeticError::Overflow)?;
+									.checked_sub(fee.unique_saturated_into())
+									.ok_or(ArithmeticError::Underflow)?;
 								Ok(())
 							},
-						);
+						)?;
 					},
 				};
 
