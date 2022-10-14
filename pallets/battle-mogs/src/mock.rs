@@ -31,6 +31,7 @@ pub type MockAccountId = u32;
 pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
 pub type MockIndex = u64;
+pub type MockMogwaiId = <Test as frame_system::Config>::Hash;
 
 use frame_support_test::TestRandomness;
 
