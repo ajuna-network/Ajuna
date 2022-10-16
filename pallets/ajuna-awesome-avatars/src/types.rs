@@ -260,6 +260,7 @@ pub struct MintConfig<Balance, BlockNumber> {
 	pub open: bool,
 	pub fees: MintFees<Balance>,
 	pub cooldown: BlockNumber,
+	pub free_mint_fee_multiplier: MintCount,
 	pub free_mint_transfer_fee: MintCount,
 }
 

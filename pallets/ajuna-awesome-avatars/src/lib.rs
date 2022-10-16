@@ -99,6 +99,7 @@ pub mod pallet {
 					six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
 				},
 				cooldown: 5_u8.into(),
+				free_mint_fee_multiplier: 1,
 				free_mint_transfer_fee: 1,
 			},
 			forge: ForgeConfig { open: true, min_sacrifices: 1, max_sacrifices: 4 },
@@ -469,18 +470,20 @@ pub mod pallet {
 			}
 
 			let MintOption { mint_type, count } = mint_option;
-			match mint_type {
+			let fee = match mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(*count);
 					ensure!(
 						T::Currency::free_balance(player) >= fee,
 						Error::<T>::InsufficientFunds
 					);
+					fee
 				},
-				MintType::Free => ensure!(
-					Self::free_mints(player) >= *count as MintCount,
-					Error::<T>::InsufficientFreeMints
-				),
+				MintType::Free => {
+					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
+					ensure!(Self::free_mints(player) >= fee, Error::<T>::InsufficientFreeMints);
+					fee.unique_saturated_into()
+				},
 			};
 
 			let how_many = *count as usize;
@@ -493,55 +496,45 @@ pub mod pallet {
 			let season_id = Self::current_season_id();
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 
-			let generated_avatars = (0..how_many)
+			let generated_avatar_ids = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let dna = Self::random_dna(&avatar_id, &season, how_many > 1)?;
 					let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
 					let avatar = Avatar { season_id, dna, souls };
-					Ok((avatar_id, avatar))
+					Avatars::<T>::insert(avatar_id, (&player, avatar));
+					Owners::<T>::try_append(&player, avatar_id)
+						.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+					Ok(avatar_id)
 				})
-				.collect::<Result<Vec<(AvatarIdOf<T>, Avatar)>, DispatchError>>()?;
+				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
-			Owners::<T>::try_mutate(&player, |avatar_ids| -> DispatchResult {
-				let generated_avatars_ids = generated_avatars
-					.into_iter()
-					.map(|(avatar_id, avatar)| {
-						Avatars::<T>::insert(avatar_id, (&player, avatar));
-						avatar_id
-					})
-					.collect::<Vec<_>>();
-				ensure!(
-					avatar_ids.try_extend(generated_avatars_ids.clone().into_iter()).is_ok(),
-					Error::<T>::MaxOwnershipReached
-				);
-				LastMintedBlockNumbers::<T>::insert(&player, current_block);
+			match mint_type {
+				MintType::Normal => {
+					T::Currency::withdraw(
+						player,
+						fee,
+						WithdrawReasons::FEE,
+						ExistenceRequirement::KeepAlive,
+					)?;
+				},
+				MintType::Free => {
+					FreeMints::<T>::try_mutate(
+						player,
+						|dest_player_free_mints| -> DispatchResult {
+							*dest_player_free_mints = dest_player_free_mints
+								.checked_sub(fee.unique_saturated_into())
+								.ok_or(ArithmeticError::Underflow)?;
+							Ok(())
+						},
+					)?;
+				},
+			};
 
-				match mint_type {
-					MintType::Normal => {
-						T::Currency::withdraw(
-							player,
-							mint.fees.fee_for(*count),
-							WithdrawReasons::FEE,
-							ExistenceRequirement::KeepAlive,
-						)?;
-					},
-					MintType::Free => {
-						let _ = FreeMints::<T>::try_mutate(
-							player,
-							|dest_player_free_mints| -> DispatchResult {
-								*dest_player_free_mints = dest_player_free_mints
-									.checked_sub(*count as MintCount)
-									.ok_or(ArithmeticError::Overflow)?;
-								Ok(())
-							},
-						);
-					},
-				};
+			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 
-				Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatars_ids });
-				Ok(())
-			})
+			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
+			Ok(())
 		}
 
 		pub(crate) fn do_forge(
