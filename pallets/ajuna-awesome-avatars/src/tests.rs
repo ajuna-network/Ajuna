@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{mock::*, types::*, *};
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok};
 use sp_runtime::{ArithmeticError, DispatchError};
 
 mod organizer {
@@ -449,7 +449,7 @@ mod minting {
 
 					// check for season ending
 					run_to_block(season.end + 1);
-					assert_err!(
+					assert_noop!(
 						AAvatars::mint(
 							Origin::signed(ALICE),
 							MintOption { count: MintPackSize::One, mint_type }
@@ -614,7 +614,7 @@ mod minting {
 						(MintType::Normal, Error::<Test>::InsufficientFunds),
 						(MintType::Free, Error::<Test>::InsufficientFreeMints),
 					] {
-						assert_err!(
+						assert_noop!(
 							AAvatars::mint(
 								Origin::signed(ALICE),
 								MintOption { count: mint_count, mint_type }
