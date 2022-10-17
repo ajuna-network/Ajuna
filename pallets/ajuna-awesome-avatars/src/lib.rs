@@ -647,12 +647,14 @@ pub mod pallet {
 				if now > season.end {
 					Self::deactivate_season();
 					let next_season_id = current_season_id.saturating_add(1);
-					if let Some(next_season) = Self::seasons(next_season_id) {
-						if next_season.is_active(now) {
-							Self::activate_season(next_season_id);
-						}
-					} else {
-						season_deactivated = true;
+					match Self::seasons(next_season_id) {
+						Some(next_season) =>
+							if next_season.is_active(now) {
+								Self::activate_season(next_season_id);
+							},
+						None => {
+							season_deactivated = true;
+						},
 					}
 				}
 			}
