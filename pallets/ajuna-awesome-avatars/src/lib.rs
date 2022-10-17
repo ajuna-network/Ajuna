@@ -637,11 +637,9 @@ pub mod pallet {
 			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
-				let is_active = now >= season.early_start && now <= season.end;
-				let is_currently_active = Self::is_season_active();
 
 				// activate season
-				if !is_currently_active && is_active {
+				if !Self::is_season_active() && season.is_active(now) {
 					Self::activate_season(current_season_id);
 				}
 
@@ -650,7 +648,7 @@ pub mod pallet {
 					Self::deactivate_season();
 					current_season_id.saturating_inc();
 					if let Some(next_season) = Self::seasons(current_season_id) {
-						if now >= next_season.early_start && now <= next_season.end {
+						if next_season.is_active(now) {
 							Self::activate_season(current_season_id);
 						}
 					} else {

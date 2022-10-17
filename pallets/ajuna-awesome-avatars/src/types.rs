@@ -51,6 +51,10 @@ pub struct Season<BlockNumber> {
 }
 
 impl<BlockNumber: PartialOrd> Season<BlockNumber> {
+	pub(crate) fn is_active(&self, now: BlockNumber) -> bool {
+		now >= self.early_start && now <= self.end
+	}
+
 	pub(crate) fn validate<T: Config>(&mut self) -> DispatchResult {
 		self.sort();
 		self.validate_block_numbers::<T>()?;
