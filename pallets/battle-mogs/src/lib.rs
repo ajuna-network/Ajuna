@@ -25,7 +25,7 @@ use frame_support::{
 };
 
 use sp_runtime::{
-	traits::{Hash, TrailingZeroInput, Zero},
+	traits::{Hash, Saturating, TrailingZeroInput, Zero},
 	DispatchResult, SaturatedConversion,
 };
 use sp_std::{prelude::*, vec::Vec};
@@ -50,6 +50,7 @@ type BalanceOf<T> =
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, BoundedBTreeSet};
 	use frame_system::pallet_prelude::*;
+	use sp_runtime::traits::{Bounded, Saturating};
 
 	// important to use outside structs and consts
 	use super::*;
@@ -453,12 +454,20 @@ pub mod pallet {
 
 			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
 
-			let intrinsic =
-				mogwai_1.intrinsic / Pricing::intrinsic_return(mogwai_1.phase).saturated_into();
+			let intrinsic_to_deposit = {
+				let computed_intrinsic =
+					mogwai_1.intrinsic / Pricing::intrinsic_return(mogwai_1.phase).saturated_into();
+
+				let max_intrinsic =
+					BalanceOf::<T>::max_value() - T::Currency::free_balance(&sender);
+
+				std::cmp::min(computed_intrinsic, max_intrinsic)
+			};
+
 			Self::remove(sender.clone(), mogwai_id)?;
 
 			// TODO check this function on return value
-			let _ = T::Currency::deposit_into_existing(&sender, intrinsic)?;
+			let _ = T::Currency::deposit_into_existing(&sender, intrinsic_to_deposit)?;
 
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiSacrificed(sender, mogwai_id));
@@ -505,9 +514,7 @@ pub mod pallet {
 				mogwai_2.dna.clone(),
 			);
 			if gen_jump > 0 && (mogwai_2.generation as u32 + gen_jump) <= 16 {
-				if mogwai_1.intrinsic > Zero::zero() {
-					mogwai_2.intrinsic += mogwai_1.intrinsic; // TODO check overflow
-				}
+				mogwai_2.intrinsic = mogwai_2.intrinsic.saturating_add(mogwai_1.intrinsic);
 				mogwai_2.generation =
 					MogwaiGeneration::coerce_from(mogwai_2.generation as u16 + gen_jump as u16);
 				Mogwais::<T>::insert(mogwai_id_2, mogwai_2);
@@ -727,7 +734,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		Self::pay_fee(who, amount)?;
 
-		mogwai.intrinsic += amount; // check for overflow
+		mogwai.intrinsic = mogwai.intrinsic.saturating_add(amount);
 		Mogwais::<T>::insert(mogwai_id, mogwai);
 
 		Ok(())

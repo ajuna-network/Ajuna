@@ -90,7 +90,7 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type Balance = u64;
+	type Balance = MockBalance;
 	type Event = Event;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
@@ -109,14 +109,16 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let balance = 1_000_000_000_000_000_000_u64;
-		let config = GenesisConfig {
-			system: Default::default(),
-			balances: BalancesConfig {
-				balances: [(ALICE, balance), (BOB, balance), (CHARLIE, balance)].to_vec(),
-			},
-			//battleMogs: Default::default(),
-		};
+		let balance = 1_000_000_000_000_000_000;
+		self.build_with_balances([(ALICE, balance), (BOB, balance), (CHARLIE, balance)].to_vec())
+	}
+
+	pub fn build_with_balances(
+		self,
+		balances: Vec<(MockAccountId, MockBalance)>,
+	) -> sp_io::TestExternalities {
+		let config =
+			GenesisConfig { system: Default::default(), balances: BalancesConfig { balances } };
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));

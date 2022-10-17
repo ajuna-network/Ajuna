@@ -1,4 +1,6 @@
-use crate::{mock, mock::*, Error, Event, GameEventType, MogwaiPrices, PhaseType};
+use crate::{
+	mock, mock::*, Error, Event, GameEventType, MogwaiPrices, Mogwais, PhaseType, RarityType,
+};
 use frame_support::{assert_noop, assert_ok};
 
 #[cfg(test)]
@@ -446,12 +448,49 @@ mod sacrifice {
 			);
 		});
 	}
+
+	#[test]
+	fn sacrifice_with_balance_overflow() {
+		let balance = MockBalance::MAX;
+		let existential_deposit = <Test as pallet_balances::Config>::ExistentialDeposit::get();
+		// We need to create an account that has almost the maximum amount of Balance possible
+		// in order to test the resilience of the sacrifice extrinsic, in this case CHARLIE gets
+		// almost all funds possible
+		ExtBuilder::default()
+			.build_with_balances(
+				[
+					(ALICE, existential_deposit),
+					(BOB, existential_deposit),
+					(CHARLIE, balance - (2 * existential_deposit)),
+				]
+				.to_vec(),
+			)
+			.execute_with(|| {
+				let account = CHARLIE;
+				let mogwai_id = create_mogwai(account);
+
+				// We artificially increase the mogwai intrinsic so that it then deposits to the
+				// target account trying to cause an overflow when calling BattleMogs::sacrifice
+				crate::Mogwais::<Test>::mutate(mogwai_id, |maybe_mogwai| {
+					if let Some(ref mut mogwai) = maybe_mogwai {
+						mogwai.intrinsic = balance;
+					}
+				});
+
+				let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+				run_to_block(System::block_number() + time_till_hatch);
+
+				assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id));
+
+				assert_ok!(BattleMogs::sacrifice(Origin::signed(account), mogwai_id));
+			});
+	}
 }
 
 #[cfg(test)]
 mod sacrifice_into {
 	use super::*;
-	use crate::{Mogwais, RarityType};
 
 	#[test]
 	fn sacrifice_into_successfully() {
@@ -631,6 +670,43 @@ mod sacrifice_into {
 			);
 		});
 	}
+
+	#[test]
+	fn sacrifice_into_with_overflow() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = CHARLIE;
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(account);
+
+			let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+			run_to_block(System::block_number() + time_till_hatch);
+
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id_1));
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id_2));
+
+			// We need to up the rarity in order to be allowed to sacrifice
+			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic as u8;
+					mogwai.intrinsic = MockBalance::MAX;
+				}
+			});
+
+			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.rarity = RarityType::Epic as u8;
+					mogwai.intrinsic = MockBalance::MAX;
+				}
+			});
+
+			assert_ok!(BattleMogs::sacrifice_into(
+				Origin::signed(account),
+				mogwai_id_1,
+				mogwai_id_2
+			));
+		});
+	}
 }
 
 #[cfg(test)]
@@ -779,6 +855,28 @@ mod morph_mogwai {
 			);
 		});
 	}
+
+	#[test]
+	fn morph_mogwai_with_overflow() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id = create_mogwai(account);
+
+			Mogwais::<Test>::mutate(mogwai_id, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.intrinsic = MockBalance::MAX;
+				}
+			});
+
+			let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+			run_to_block(System::block_number() + time_till_hatch);
+
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id));
+
+			assert_ok!(BattleMogs::morph_mogwai(Origin::signed(account), mogwai_id));
+		});
+	}
 }
 
 #[cfg(test)]
@@ -862,6 +960,36 @@ mod breed_mogwai {
 				BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_1, mogwai_id_2),
 				Error::<Test>::MaxMogwaisInAccount
 			);
+		});
+	}
+
+	#[test]
+	fn breed_mogwai_with_overflow() {
+		ExtBuilder::default().build().execute_with(|| {
+			let account = BOB;
+			let mogwai_id_1 = create_mogwai(account);
+			let mogwai_id_2 = create_mogwai(account);
+
+			let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+			run_to_block(System::block_number() + time_till_hatch);
+
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id_1));
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id_2));
+
+			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.intrinsic = MockBalance::MAX;
+				}
+			});
+
+			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
+				if let Some(ref mut mogwai) = maybe_mogwai {
+					mogwai.intrinsic = MockBalance::MAX;
+				}
+			});
+
+			assert_ok!(BattleMogs::breed_mogwai(Origin::signed(account), mogwai_id_1, mogwai_id_2));
 		});
 	}
 }
