@@ -39,7 +39,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
+		traits::{Hash, TrailingZeroInput, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -236,8 +236,8 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::toggle_season();
-			Self::do_mint(&player, &mint_option)
+			let season_id = Self::toggle_season()?;
+			Self::do_mint(&player, &mint_option, season_id)
 		}
 
 		#[pallet::weight(10_000)]
@@ -247,8 +247,8 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::toggle_season();
-			Self::do_forge(&player, &leader, &sacrifices)
+			let season_id = Self::toggle_season()?;
+			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
 		#[pallet::weight(10_000)]
@@ -460,7 +460,11 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
+		pub(crate) fn do_mint(
+			player: &T::AccountId,
+			mint_option: &MintOption,
+			season_id: SeasonId,
+		) -> DispatchResult {
 			let GlobalConfig { max_avatars_per_player, mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
 
@@ -492,10 +496,7 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Underflow)?;
 			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
 
-			ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
-			let season_id = Self::current_season_id();
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
-
 			let generated_avatar_ids = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
@@ -541,6 +542,7 @@ pub mod pallet {
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
 			sacrifice_ids: &[AvatarIdOf<T>],
+			season_id: SeasonId,
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(
@@ -553,10 +555,8 @@ pub mod pallet {
 			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
-			let Season { max_variations, tiers, .. } =
-				Self::seasons(Self::current_season_id()).ok_or(Error::<T>::UnknownSeason)?;
-			let max_tier = tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
+			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(
@@ -573,7 +573,7 @@ pub mod pallet {
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
 			let (mut unique_matched_indexes, matches) =
-				leader.compare_all::<T>(&sacrifices, max_variations, max_tier)?;
+				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
 
 			let random_hash = Self::random_hash(b"forging avatar", player);
 			let random_hash = random_hash.as_ref();
@@ -587,14 +587,15 @@ pub mod pallet {
 					let roll = hash % MAX_PERCENTAGE;
 					if roll <= p {
 						let nucleotide = leader.dna[first_matched_index];
-						let current_tier_index = tiers
+						let current_tier_index = season
+							.tiers
 							.iter()
 							.position(|tier| tier.clone() as u8 == nucleotide >> 4)
 							.ok_or(Error::<T>::UnknownTier)?;
 
-						let already_maxed_out = current_tier_index == (tiers.len() - 1);
+						let already_maxed_out = current_tier_index == (season.tiers.len() - 1);
 						if !already_maxed_out {
-							let next_tier = tiers[current_tier_index + 1].clone() as u8;
+							let next_tier = season.tiers[current_tier_index + 1].clone() as u8;
 							let upgraded_nucleotide = (next_tier << 4) | (nucleotide & 0b0000_1111);
 							leader.dna[first_matched_index] = upgraded_nucleotide;
 							upgraded_components += 1;
@@ -634,29 +635,42 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season() {
-			let mut current_season_id = Self::current_season_id();
+		fn toggle_season() -> Result<SeasonId, DispatchError> {
+			let current_season_id = Self::current_season_id();
+			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
-				let is_active = now >= season.early_start && now <= season.end;
-				let is_currently_active = Self::is_season_active();
 
 				// activate season
-				if !is_currently_active && is_active {
+				if !Self::is_season_active() && season.is_active(now) {
 					Self::activate_season(current_season_id);
 				}
 
 				// deactivate season (and active if condition met)
 				if now > season.end {
-					Self::deactivate_season();
-					current_season_id.saturating_inc();
-					if let Some(next_season) = Self::seasons(current_season_id) {
-						if now >= next_season.early_start {
-							Self::activate_season(current_season_id);
-						}
+					Self::deactivate_season(current_season_id);
+					let next_season_id = current_season_id.saturating_add(1);
+					match Self::seasons(next_season_id) {
+						Some(next_season) =>
+							if next_season.is_active(now) {
+								Self::activate_season(next_season_id);
+							},
+						None => {
+							season_deactivated = true;
+						},
 					}
 				}
 			}
+
+			// Failed extrinsics roll back storage changes as they're atomic, meaning it's
+			// impossible to deactivate a season and check for out of season inside the same
+			// extrinsic (since deactivation will be rolled back). Hence this condition is required
+			// to allow for one extra mint / forge to happen when a season is deactivated.
+			if !season_deactivated {
+				ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
+			}
+
+			Ok(current_season_id)
 		}
 
 		fn activate_season(season_id: SeasonId) {
@@ -664,12 +678,10 @@ pub mod pallet {
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
-		fn deactivate_season() {
+		fn deactivate_season(season_id: SeasonId) {
 			IsSeasonActive::<T>::put(false);
-			CurrentSeasonId::<T>::mutate(|season_id| {
-				Self::deposit_event(Event::SeasonFinished(*season_id));
-				season_id.saturating_inc()
-			});
+			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
+			Self::deposit_event(Event::SeasonFinished(season_id));
 		}
 	}
 }
