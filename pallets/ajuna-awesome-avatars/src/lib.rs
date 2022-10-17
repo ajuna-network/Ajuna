@@ -236,7 +236,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::toggle_season();
+			Self::toggle_season()?;
 			Self::do_mint(&player, &mint_option)
 		}
 
@@ -247,7 +247,7 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::toggle_season();
+			Self::toggle_season()?;
 			Self::do_forge(&player, &leader, &sacrifices)
 		}
 
@@ -492,7 +492,6 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Underflow)?;
 			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
 
-			ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
 			let season_id = Self::current_season_id();
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 
@@ -553,7 +552,6 @@ pub mod pallet {
 			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
 			let Season { max_variations, tiers, .. } =
 				Self::seasons(Self::current_season_id()).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
@@ -634,8 +632,9 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season() {
+		fn toggle_season() -> DispatchResult {
 			let mut current_season_id = Self::current_season_id();
+			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
 				let is_active = now >= season.early_start && now <= season.end;
@@ -651,12 +650,24 @@ pub mod pallet {
 					Self::deactivate_season();
 					current_season_id.saturating_inc();
 					if let Some(next_season) = Self::seasons(current_season_id) {
-						if now >= next_season.early_start {
+						if now >= next_season.early_start && now <= next_season.end {
 							Self::activate_season(current_season_id);
 						}
+					} else {
+						season_deactivated = true;
 					}
 				}
 			}
+
+			// Failed extrinsics roll back storage changes as they're atomic, meaning it's
+			// impossible to deactivate a season and check for out of season inside the same
+			// extrinsic (since deactivation will be rolled back). Hence this condition is required
+			// to allow for one extra mint / forge to happen when a season is deactivated.
+			if !season_deactivated {
+				ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
+			}
+
+			Ok(())
 		}
 
 		fn activate_season(season_id: SeasonId) {

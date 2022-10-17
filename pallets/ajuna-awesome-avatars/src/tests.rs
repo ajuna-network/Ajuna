@@ -341,7 +341,12 @@ mod minting {
 	#[test]
 	fn mint_should_work() {
 		let max_components = 7;
-		let season = Season::default().end(20).max_components(max_components);
+		let season_1 = Season::default().end(20).max_components(max_components);
+		let season_2 = Season::default()
+			.early_start(23)
+			.start(35)
+			.end(40)
+			.max_components(max_components);
 
 		let expected_nonce_increment = 1 as MockIndex;
 		let mut expected_nonce = 0;
@@ -351,7 +356,7 @@ mod minting {
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(vec![(1, season_1.clone()), (2, season_2)])
 			.mint_fees(fees)
 			.mint_cooldown(mint_cooldown)
 			.balances(vec![(ALICE, initial_balance)])
@@ -371,7 +376,7 @@ mod minting {
 					assert!(!AAvatars::is_season_active());
 
 					// single mint
-					run_to_block(season.early_start + 1);
+					run_to_block(season_1.early_start + 1);
 					assert_ok!(AAvatars::mint(
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
@@ -448,7 +453,7 @@ mod minting {
 					}));
 
 					// check for season ending
-					run_to_block(season.end + 1);
+					run_to_block(season_1.end + 1);
 					assert_noop!(
 						AAvatars::mint(
 							Origin::signed(ALICE),
@@ -481,16 +486,23 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_when_minting_is_closed() {
-		ExtBuilder::default().mint_open(false).build().execute_with(|| {
-			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				for mint_type in [MintType::Normal, MintType::Free] {
-					assert_noop!(
-						AAvatars::mint(Origin::signed(ALICE), MintOption { count, mint_type }),
-						Error::<Test>::MintClosed
-					);
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_open(false)
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+					for mint_type in [MintType::Normal, MintType::Free] {
+						assert_noop!(
+							AAvatars::mint(Origin::signed(ALICE), MintOption { count, mint_type }),
+							Error::<Test>::MintClosed
+						);
+					}
 				}
-			}
-		});
+			});
 	}
 
 	#[test]
@@ -527,6 +539,7 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_when_max_ownership_has_reached() {
+		let season = Season::default();
 		let max_avatars_per_player = 7;
 		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
 			(0..max_avatars_per_player)
@@ -537,13 +550,13 @@ mod minting {
 		assert_eq!(avatar_ids.len(), max_avatars_per_player);
 
 		ExtBuilder::default()
-			.seasons(vec![(SeasonId::default(), Season::default())])
+			.seasons(vec![(1, season.clone())])
 			.max_avatars_per_player(max_avatars_per_player as u32)
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
 			.free_mints(vec![(ALICE, 10)])
 			.build()
 			.execute_with(|| {
-				run_to_block(2);
+				run_to_block(season.early_start + 1);
 				Owners::<Test>::insert(ALICE, avatar_ids);
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for mint_type in [MintType::Normal, MintType::Free] {
@@ -953,11 +966,15 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_when_forging_is_closed() {
+		let season = Season::default();
+
 		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
 			.forge_min_sacrifices(0)
 			.forge_open(false)
 			.build()
 			.execute_with(|| {
+				run_to_block(season.early_start + 1);
 				assert_noop!(
 					AAvatars::forge(Origin::signed(ALICE), H256::default(), Vec::new()),
 					Error::<Test>::ForgeClosed,
@@ -977,14 +994,18 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_out_of_bound_sacrifices() {
+		let season = Season::default();
 		let min_sacrifices = 3;
 		let max_sacrifices = 5;
 
 		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
 			.forge_min_sacrifices(min_sacrifices)
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
 			.execute_with(|| {
+				run_to_block(season.early_start + 1);
+
 				for i in 0..min_sacrifices {
 					assert_noop!(
 						AAvatars::forge(
