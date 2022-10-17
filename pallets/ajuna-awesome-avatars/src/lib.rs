@@ -39,7 +39,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
+		traits::{Hash, TrailingZeroInput, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -645,7 +645,7 @@ pub mod pallet {
 
 				// deactivate season (and active if condition met)
 				if now > season.end {
-					Self::deactivate_season();
+					Self::deactivate_season(current_season_id);
 					let next_season_id = current_season_id.saturating_add(1);
 					match Self::seasons(next_season_id) {
 						Some(next_season) =>
@@ -675,12 +675,10 @@ pub mod pallet {
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
-		fn deactivate_season() {
+		fn deactivate_season(season_id: SeasonId) {
 			IsSeasonActive::<T>::put(false);
-			CurrentSeasonId::<T>::mutate(|season_id| {
-				Self::deposit_event(Event::SeasonFinished(*season_id));
-				season_id.saturating_inc()
-			});
+			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
+			Self::deposit_event(Event::SeasonFinished(season_id));
 		}
 	}
 }
