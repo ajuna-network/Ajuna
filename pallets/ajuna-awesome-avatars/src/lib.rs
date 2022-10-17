@@ -633,7 +633,7 @@ pub mod pallet {
 		}
 
 		fn toggle_season() -> DispatchResult {
-			let mut current_season_id = Self::current_season_id();
+			let current_season_id = Self::current_season_id();
 			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
@@ -646,10 +646,10 @@ pub mod pallet {
 				// deactivate season (and active if condition met)
 				if now > season.end {
 					Self::deactivate_season();
-					current_season_id.saturating_inc();
-					if let Some(next_season) = Self::seasons(current_season_id) {
+					let next_season_id = current_season_id.saturating_add(1);
+					if let Some(next_season) = Self::seasons(next_season_id) {
 						if next_season.is_active(now) {
-							Self::activate_season(current_season_id);
+							Self::activate_season(next_season_id);
 						}
 					} else {
 						season_deactivated = true;
