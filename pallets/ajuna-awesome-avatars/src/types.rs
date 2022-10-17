@@ -152,7 +152,7 @@ impl Avatar {
 	}
 
 	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
-		let min_tier = self.dna.iter().map(|x| *x >> 4).min().ok_or(Error::<T>::IncorrectDna)?;
+		let min_tier = self.min_tier::<T>()?;
 		Ok(self
 			.dna
 			.iter()
@@ -160,6 +160,14 @@ impl Avatar {
 			.filter(|(_, x)| (*x >> 4) == min_tier)
 			.map(|(i, _)| i)
 			.collect::<Vec<usize>>())
+	}
+
+	fn min_tier<T: Config>(&self) -> Result<u8, DispatchError> {
+		self.dna
+			.iter()
+			.map(|x| *x >> 4)
+			.min()
+			.ok_or_else(|| Error::<T>::IncorrectDna.into())
 	}
 
 	pub(crate) fn compare(
