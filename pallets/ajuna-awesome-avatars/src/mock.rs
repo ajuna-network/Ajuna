@@ -247,6 +247,7 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
+			max_tier_forges: 10,
 			max_variations: 2,
 			max_components: 2,
 			tiers: vec![

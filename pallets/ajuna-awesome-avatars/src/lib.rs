@@ -82,6 +82,10 @@ pub mod pallet {
 	#[pallet::getter(fn is_season_active)]
 	pub type IsSeasonActive<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn is_season_prematurely_ended)]
+	pub type IsSeasonPrematurelyEnded<T: Config> = StorageValue<_, bool, ValueQuery>;
+
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -201,8 +205,10 @@ pub mod pallet {
 		ForgeClosed,
 		/// Trading is not available at the moment.
 		TradeClosed,
-		/// No season active currently.
+		/// Attempt to mint or forge outside of an active season.
 		OutOfSeason,
+		/// Attempt to mint when the season has ended prematurely.
+		PrematureSeasonEnd,
 		/// Max ownership reached.
 		MaxOwnershipReached,
 		/// Avatar belongs to someone else.
@@ -471,6 +477,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let GlobalConfig { max_avatars_per_player, mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
+			ensure!(!Self::is_season_prematurely_ended(), Error::<T>::PrematureSeasonEnd);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
@@ -609,7 +616,12 @@ pub mod pallet {
 			}
 
 			if leader.min_tier::<T>()? == max_tier {
-				SeasonMaxTierForges::<T>::mutate(|x| x.saturating_inc());
+				SeasonMaxTierForges::<T>::mutate(|season_max_tier_forges| {
+					*season_max_tier_forges = season_max_tier_forges.saturating_add(1);
+					if *season_max_tier_forges == season.max_tier_forges {
+						IsSeasonPrematurelyEnded::<T>::put(true);
+					}
+				});
 			}
 
 			Avatars::<T>::insert(leader_id, (player, leader));
@@ -683,13 +695,20 @@ pub mod pallet {
 
 		fn activate_season(season_id: SeasonId) {
 			IsSeasonActive::<T>::put(true);
+			Self::reset_seasonal_high_tier_forge();
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
 		fn deactivate_season(season_id: SeasonId) {
 			IsSeasonActive::<T>::put(false);
+			Self::reset_seasonal_high_tier_forge();
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
+		}
+
+		fn reset_seasonal_high_tier_forge() {
+			IsSeasonPrematurelyEnded::<T>::put(false);
+			SeasonMaxTierForges::<T>::put(0);
 		}
 	}
 }

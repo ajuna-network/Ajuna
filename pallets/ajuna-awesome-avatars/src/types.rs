@@ -43,6 +43,7 @@ pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
+	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
