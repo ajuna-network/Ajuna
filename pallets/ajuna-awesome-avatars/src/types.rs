@@ -162,7 +162,7 @@ impl Avatar {
 			.collect::<Vec<usize>>())
 	}
 
-	fn min_tier<T: Config>(&self) -> Result<u8, DispatchError> {
+	pub(crate) fn min_tier<T: Config>(&self) -> Result<u8, DispatchError> {
 		self.dna
 			.iter()
 			.map(|x| *x >> 4)

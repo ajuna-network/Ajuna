@@ -87,6 +87,10 @@ pub mod pallet {
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn season_max_tier_forges)]
+	pub type SeasonMaxTierForges<T: Config> = StorageValue<_, u32, ValueQuery>;
+
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
 		GlobalConfig {
@@ -602,6 +606,10 @@ pub mod pallet {
 						}
 					}
 				}
+			}
+
+			if leader.min_tier::<T>()? == max_tier {
+				SeasonMaxTierForges::<T>::mutate(|x| x.saturating_inc());
 			}
 
 			Avatars::<T>::insert(leader_id, (player, leader));
