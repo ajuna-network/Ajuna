@@ -652,44 +652,44 @@ pub mod pallet {
 		fn toggle_season() -> ToggleSeasonResult {
 			let current_season_id = Self::current_season_id();
 
-			match Self::seasons(&current_season_id) {
-				None => ToggleSeasonResult::NoActiveSeason,
-				Some(season) => {
-					let now = <frame_system::Pallet<T>>::block_number();
+			let maybe_current_season = Self::seasons(&current_season_id);
+			if maybe_current_season.is_none() {
+				return ToggleSeasonResult::NoActiveSeason
+			}
 
-					// activate season
-					if !Self::is_season_active() && season.is_active(now) {
-						Self::activate_season(current_season_id);
-						return ToggleSeasonResult::ActiveSeason(current_season_id)
+			let now = <frame_system::Pallet<T>>::block_number();
+			let current_season = maybe_current_season.unwrap();
+
+			if current_season.is_active(now) {
+				// activate current season
+				if !Self::is_season_active() {
+					Self::on_start_season(current_season_id);
+				}
+				return ToggleSeasonResult::ActiveSeason(current_season_id)
+			}
+
+			// deactivate current season (and active next if condition met)
+			Self::on_finish_season(current_season_id);
+			let next_season_id = current_season_id.saturating_add(1);
+
+			match Self::seasons(next_season_id) {
+				None => ToggleSeasonResult::NoActiveSeason,
+				Some(next_season) => {
+					if !next_season.is_active(now) {
+						return ToggleSeasonResult::NoActiveSeason
 					}
-					// deactivate season (and active if condition met)
-					if now > season.end {
-						Self::deactivate_season(current_season_id);
-						let next_season_id = current_season_id.saturating_add(1);
-						match Self::seasons(next_season_id) {
-							Some(next_season) =>
-								if next_season.is_active(now) {
-									Self::activate_season(next_season_id);
-									return ToggleSeasonResult::ActiveSeason(next_season_id)
-								} else {
-									return ToggleSeasonResult::NoActiveSeason
-								},
-							None => {
-								return ToggleSeasonResult::NoActiveSeason
-							},
-						}
-					}
-					ToggleSeasonResult::ActiveSeason(current_season_id)
+					Self::on_start_season(next_season_id);
+					ToggleSeasonResult::ActiveSeason(next_season_id)
 				},
 			}
 		}
 
-		fn activate_season(season_id: SeasonId) {
+		fn on_start_season(season_id: SeasonId) {
 			IsSeasonActive::<T>::put(true);
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
-		fn deactivate_season(season_id: SeasonId) {
+		fn on_finish_season(season_id: SeasonId) {
 			IsSeasonActive::<T>::put(false);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
