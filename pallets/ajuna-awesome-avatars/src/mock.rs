@@ -279,6 +279,10 @@ impl Season<MockBlockNumber> {
 		self.end = end;
 		self
 	}
+	pub fn max_tier_forges(mut self, max_tier_forges: u32) -> Self {
+		self.max_tier_forges = max_tier_forges;
+		self
+	}
 	pub fn max_components(mut self, max_components: u8) -> Self {
 		self.max_components = max_components;
 		self
