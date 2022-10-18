@@ -730,10 +730,10 @@ mod forging {
 	#[test]
 	fn forge_should_work() {
 		let season = Season::default()
-			.end(99)
 			.tiers(vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
 			.p_single_mint(vec![100, 0])
 			.p_batch_mint(vec![100, 0])
+			.max_tier_forges(1)
 			.max_components(8)
 			.max_variations(6);
 
@@ -800,6 +800,37 @@ mod forging {
 					vec![0x13, 0x14, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11],
 					Some(vec![0x13, 0x05, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11]),
 				);
+
+				// force highest tier mint and assert for associated checks
+				assert_dna(
+					&leader_id,
+					vec![0x43, 0x44, 0x40, 0x43, 0x13, 0x15, 0x15, 0x11],
+					Some(vec![0x14, 0x15, 0x11, 0x14, 0x14, 0x16, 0x16, 0x12]),
+				);
+				assert_eq!(AAvatars::season_max_tier_forges(), 0);
+				assert_dna(
+					&leader_id,
+					vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x45, 0x45, 0x41],
+					Some(vec![0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x12]),
+				);
+				assert_eq!(AAvatars::season_max_tier_forges(), 1);
+				assert!(AAvatars::is_season_prematurely_ended());
+				assert_noop!(
+					AAvatars::mint(
+						Origin::signed(BOB),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					),
+					Error::<Test>::PrematureSeasonEnd
+				);
+
+				// trigger season end and assert for associated checks
+				run_to_block(season.end + 1);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+				));
+				assert_eq!(AAvatars::season_max_tier_forges(), 0);
+				assert!(!AAvatars::is_season_prematurely_ended());
 			});
 	}
 
