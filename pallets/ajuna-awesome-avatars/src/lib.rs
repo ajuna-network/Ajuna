@@ -54,6 +54,11 @@ pub mod pallet {
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
+	enum ToggleSeasonResult {
+		ActiveSeason(SeasonId),
+		NoActiveSeason,
+	}
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -229,6 +234,8 @@ pub mod pallet {
 		LeaderSacrificed,
 		/// An avatar listed for trade is used to forge.
 		AvatarInTrade,
+		/// Tried to forge avatars from different seasons.
+		IncorrectAvatarSeason,
 	}
 
 	#[pallet::call]
@@ -236,8 +243,11 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let season_id = Self::toggle_season()?;
-			Self::do_mint(&player, &mint_option, season_id)
+			match Self::toggle_season() {
+				ToggleSeasonResult::ActiveSeason(season_id) =>
+					Self::do_mint(&player, &mint_option, season_id),
+				ToggleSeasonResult::NoActiveSeason => Err(Error::<T>::OutOfSeason.into()),
+			}
 		}
 
 		#[pallet::weight(10_000)]
@@ -247,8 +257,8 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let season_id = Self::toggle_season()?;
-			Self::do_forge(&player, &leader, &sacrifices, season_id)
+			Self::toggle_season();
+			Self::do_forge(&player, &leader, &sacrifices)
 		}
 
 		#[pallet::weight(10_000)]
@@ -542,7 +552,6 @@ pub mod pallet {
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
 			sacrifice_ids: &[AvatarIdOf<T>],
-			season_id: SeasonId,
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(
@@ -555,7 +564,8 @@ pub mod pallet {
 			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let (_, leader) = Avatars::<T>::get(leader_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let season = Seasons::<T>::get(leader.season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
@@ -571,6 +581,10 @@ pub mod pallet {
 				.iter()
 				.map(|id| Self::ensure_ownership(player, id))
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
+
+			for sac in sacrifices.clone() {
+				ensure!(sac.season_id == leader.season_id, Error::<T>::IncorrectAvatarSeason);
+			}
 
 			let (mut unique_matched_indexes, matches) =
 				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
@@ -635,42 +649,39 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season() -> Result<SeasonId, DispatchError> {
+		fn toggle_season() -> ToggleSeasonResult {
 			let current_season_id = Self::current_season_id();
-			let mut season_deactivated = false;
-			if let Some(season) = Self::seasons(&current_season_id) {
-				let now = <frame_system::Pallet<T>>::block_number();
 
-				// activate season
-				if !Self::is_season_active() && season.is_active(now) {
-					Self::activate_season(current_season_id);
-				}
+			match Self::seasons(&current_season_id) {
+				None => ToggleSeasonResult::NoActiveSeason,
+				Some(season) => {
+					let now = <frame_system::Pallet<T>>::block_number();
 
-				// deactivate season (and active if condition met)
-				if now > season.end {
-					Self::deactivate_season(current_season_id);
-					let next_season_id = current_season_id.saturating_add(1);
-					match Self::seasons(next_season_id) {
-						Some(next_season) =>
-							if next_season.is_active(now) {
-								Self::activate_season(next_season_id);
-							},
-						None => {
-							season_deactivated = true;
-						},
+					// activate season
+					if !Self::is_season_active() && season.is_active(now) {
+						Self::activate_season(current_season_id);
+						return ToggleSeasonResult::ActiveSeason(current_season_id)
 					}
-				}
+					// deactivate season (and active if condition met)
+					if now > season.end {
+						Self::deactivate_season(current_season_id);
+						let next_season_id = current_season_id.saturating_add(1);
+						match Self::seasons(next_season_id) {
+							Some(next_season) =>
+								if next_season.is_active(now) {
+									Self::activate_season(next_season_id);
+									return ToggleSeasonResult::ActiveSeason(next_season_id)
+								} else {
+									return ToggleSeasonResult::NoActiveSeason
+								},
+							None => {
+								return ToggleSeasonResult::NoActiveSeason
+							},
+						}
+					}
+					ToggleSeasonResult::ActiveSeason(current_season_id)
+				},
 			}
-
-			// Failed extrinsics roll back storage changes as they're atomic, meaning it's
-			// impossible to deactivate a season and check for out of season inside the same
-			// extrinsic (since deactivation will be rolled back). Hence this condition is required
-			// to allow for one extra mint / forge to happen when a season is deactivated.
-			if !season_deactivated {
-				ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
-			}
-
-			Ok(current_season_id)
 		}
 
 		fn activate_season(season_id: SeasonId) {
