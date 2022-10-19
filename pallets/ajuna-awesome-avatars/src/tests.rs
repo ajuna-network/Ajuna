@@ -623,18 +623,23 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-					for (mint_type, error) in [
-						(MintType::Normal, Error::<Test>::InsufficientFunds),
-						(MintType::Free, Error::<Test>::InsufficientFreeMints),
-					] {
-						assert_noop!(
-							AAvatars::mint(
-								Origin::signed(ALICE),
-								MintOption { count: mint_count, mint_type }
-							),
-							error,
-						);
-					}
+					assert_noop!(
+						AAvatars::mint(
+							Origin::signed(ALICE),
+							MintOption { count: mint_count, mint_type: MintType::Normal }
+						),
+						pallet_balances::Error::<Test>::InsufficientBalance
+					);
+				}
+
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+					assert_noop!(
+						AAvatars::mint(
+							Origin::signed(ALICE),
+							MintOption { count: mint_count, mint_type: MintType::Free }
+						),
+						Error::<Test>::InsufficientFreeMints
+					);
 				}
 			});
 	}
@@ -1507,7 +1512,7 @@ mod trading {
 				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
 				assert_noop!(
 					AAvatars::buy(Origin::signed(ALICE), avatar_for_sale),
-					Error::<Test>::InsufficientFunds
+					pallet_balances::Error::<Test>::InsufficientBalance
 				);
 			});
 	}

@@ -215,8 +215,6 @@ pub mod pallet {
 		IncorrectAvatarId,
 		/// The player must wait cooldown period.
 		MintCooldown,
-		/// The player has not enough funds.
-		InsufficientFunds,
 		/// The season's max components value is less than the minimum allowed (1).
 		MaxComponentsTooLow,
 		/// The season's max components value is more than the maximum allowed (random byte: 32).
@@ -313,7 +311,6 @@ pub mod pallet {
 			let buyer = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
-			ensure!(T::Currency::free_balance(&buyer) >= price, Error::<T>::InsufficientFunds);
 
 			T::Currency::transfer(&buyer, &seller, price, ExistenceRequirement::KeepAlive)?;
 
@@ -484,22 +481,6 @@ pub mod pallet {
 			}
 
 			let MintOption { mint_type, count } = mint_option;
-			let fee = match mint_type {
-				MintType::Normal => {
-					let fee = mint.fees.fee_for(*count);
-					ensure!(
-						T::Currency::free_balance(player) >= fee,
-						Error::<T>::InsufficientFunds
-					);
-					fee
-				},
-				MintType::Free => {
-					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
-					ensure!(Self::free_mints(player) >= fee, Error::<T>::InsufficientFreeMints);
-					fee.unique_saturated_into()
-				},
-			};
-
 			let how_many = *count as usize;
 			let max_ownership = (max_avatars_per_player as usize)
 				.checked_sub(how_many)
@@ -522,6 +503,7 @@ pub mod pallet {
 
 			match mint_type {
 				MintType::Normal => {
+					let fee = mint.fees.fee_for(*count);
 					T::Currency::withdraw(
 						player,
 						fee,
@@ -530,12 +512,13 @@ pub mod pallet {
 					)?;
 				},
 				MintType::Free => {
+					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
 					FreeMints::<T>::try_mutate(
 						player,
 						|dest_player_free_mints| -> DispatchResult {
 							*dest_player_free_mints = dest_player_free_mints
 								.checked_sub(fee.unique_saturated_into())
-								.ok_or(ArithmeticError::Underflow)?;
+								.ok_or(Error::<T>::InsufficientFreeMints)?;
 							Ok(())
 						},
 					)?;
