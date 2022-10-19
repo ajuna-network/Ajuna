@@ -16,7 +16,9 @@
 +-----------------------------------------------------------------
 */
 #![cfg_attr(not(feature = "std"), no_std)]
+
 pub use pallet::*;
+use std::{mem::MaybeUninit, ptr::copy_nonoverlapping};
 
 use frame_support::{
 	codec::{Decode, Encode},
@@ -39,8 +41,10 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-/// Implementations of some helper traits passed into runtime modules as associated types.
+mod algorithm;
 mod types;
+
+pub use algorithm::*;
 pub use types::*;
 
 type BalanceOf<T> =
@@ -61,6 +65,7 @@ pub mod pallet {
 		<T as frame_system::Config>::BlockNumber,
 		BalanceOf<T>,
 		MogwaiGeneration,
+		RarityType,
 		PhaseType,
 	>;
 	pub(crate) type BoundedMogwaiIdsOf<T> =
@@ -187,8 +192,8 @@ pub mod pallet {
 		/// A mogwai has been morphed.
 		MogwaiMorphed(T::Hash),
 
-		/// A mogwai has been breeded.
-		MogwaiBreeded(T::Hash),
+		/// A mogwai has been bred.
+		MogwaiBred(T::Hash),
 	}
 
 	#[pallet::error]
@@ -265,10 +270,10 @@ pub mod pallet {
 				Error::<T>::ConfigIndexOutOfRange
 			);
 
-			let config_opt = AccountConfig::<T>::get(&sender);
 			let mut game_config = GameConfig::new();
-			if config_opt.is_some() {
-				game_config.parameters = config_opt.unwrap();
+
+			if let Some(config) = AccountConfig::<T>::get(&sender) {
+				game_config.parameters = config;
 			}
 
 			// TODO: add rules (min, max) for different configurations
@@ -355,22 +360,21 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type: BreedType = Self::calculate_breedtype(block_number);
 
-			let mut dx: [u8; 32] = Default::default();
-			let mut dy: [u8; 32] = Default::default();
-
-			dx.copy_from_slice(&random_hash_1.as_ref()[0..32]);
-			dy.copy_from_slice(&random_hash_2.as_ref()[0..32]);
+			let dx =
+				unsafe { &*(&random_hash_1.as_ref()[0..32] as *const [u8] as *const [u8; 32]) };
+			let dy =
+				unsafe { &*(&random_hash_2.as_ref()[0..32] as *const [u8] as *const [u8; 32]) };
 
 			let final_dna = Breeding::pairing(breed_type, dx, dy);
 
 			let new_mogwai = MogwaiStruct {
-				id: random_hash_1.clone(),
+				id: random_hash_1,
 				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				generation: next_gen,
-				rarity: ((max_rarity as u8) << 4) + rarity as u8,
-				phase: PhaseType::Breeded,
+				rarity: RarityType::from(((max_rarity as u8) << 4) + rarity as u8),
+				phase: PhaseType::Bred,
 			};
 
 			Self::mint(&sender, random_hash_1, new_mogwai)?;
@@ -467,7 +471,7 @@ pub mod pallet {
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
 			let mogwai_1 = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
-			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let intrinsic_to_deposit = {
 				let computed_intrinsic =
@@ -513,25 +517,27 @@ pub mod pallet {
 			ensure!(!MogwaiPrices::<T>::contains_key(mogwai_id_2), Error::<T>::MogwaiIsOnSale);
 
 			// TODO this needs to be check, reworked and corrected, add dynasty feature !!!
-			let mogwai_1 = Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			let mut mogwai_2 = Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mogwai_1: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mut mogwai_2: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
-			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
-			ensure!(mogwai_2.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_1.rarity != RarityType::Common, Error::<T>::MogwaiBadRarity);
+			ensure!(mogwai_2.rarity != RarityType::Common, Error::<T>::MogwaiBadRarity);
 
-			let mogwai_1_rarity = mogwai_1.rarity as u32;
-			let mogwai_2_rarity = mogwai_2.rarity as u32;
-			ensure!((mogwai_1_rarity * mogwai_2_rarity) > 0, Error::<T>::MogwaiBadRarity);
+			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_2.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let gen_jump = Breeding::sacrifice(
-				mogwai_1.generation as u32,
-				mogwai_1_rarity,
-				mogwai_1.dna.clone(),
-				mogwai_2.generation as u32,
-				mogwai_2_rarity,
-				mogwai_2.dna.clone(),
-			);
-			if gen_jump > 0 && (mogwai_2.generation as u32 + gen_jump) <= 16 {
+				mogwai_1.generation,
+				mogwai_1.rarity,
+				&mogwai_1.dna,
+				mogwai_2.generation,
+				mogwai_2.rarity,
+				&mogwai_2.dna,
+			) as u16;
+
+			if gen_jump > 0 && (mogwai_2.generation as u16 + gen_jump) <= 16 {
 				mogwai_2.intrinsic = mogwai_2.intrinsic.saturating_add(mogwai_1.intrinsic);
 				mogwai_2.generation =
 					MogwaiGeneration::coerce_from(mogwai_2.generation as u16 + gen_jump as u16);
@@ -609,22 +615,21 @@ pub mod pallet {
 			let owner = Self::owner_of(mogwai_id).ok_or("No owner for this mogwai")?;
 			ensure!(owner == sender, "You don't own this mogwai");
 
-			let mut mogwai = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			ensure!(mogwai.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			let mut mogwai: MogwaiOf<T> =
+				Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			ensure!(mogwai.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let pairing_price: BalanceOf<T> =
 				Pricing::pairing(mogwai.rarity, mogwai.rarity).saturated_into();
 
-			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id, &mut mogwai)?;
+			Self::tip_mogwai(&sender, pairing_price, mogwai_id, &mut mogwai)?;
 
 			// get blocknumber to calculate moon phase for morphing
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type: BreedType = Self::calculate_breedtype(block_number);
 
-			let mut dx: [u8; 16] = Default::default();
-			let mut dy: [u8; 16] = Default::default();
-			dx.copy_from_slice(&mogwai.dna[0].as_ref()[0..16]);
-			dy.copy_from_slice(&mogwai.dna[0].as_ref()[16..32]);
+			let dx = unsafe { &*(&mogwai.dna[0][0..16] as *const [u8] as *const [u8; 16]) };
+			let dy = unsafe { &*(&mogwai.dna[0][16..32] as *const [u8] as *const [u8; 16]) };
 
 			mogwai.dna[0] = Breeding::morph(breed_type, dx, dy);
 
@@ -661,11 +666,13 @@ pub mod pallet {
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
 
-			let mogwai_1 = Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			let mut mogwai_2 = Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mogwai_1: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let mut mogwai_2: MogwaiOf<T> =
+				Self::mogwai(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
 
-			ensure!(mogwai_1.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
-			ensure!(mogwai_2.phase != PhaseType::Breeded, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_1.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
+			ensure!(mogwai_2.phase != PhaseType::Bred, Error::<T>::MogwaiNoHatch);
 
 			let parents = [mogwai_1.clone(), mogwai_2.clone()];
 
@@ -673,40 +680,37 @@ pub mod pallet {
 
 			let (rarity, next_gen, max_rarity) = Generation::next_gen(
 				parents[0].generation,
-				RarityType::from(mogwai_1.rarity),
+				mogwai_1.rarity,
 				parents[1].generation,
-				RarityType::from(mogwai_2.rarity),
+				mogwai_2.rarity,
 				mogwai_id.as_ref(),
 			);
 
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			let breed_type: BreedType = Self::calculate_breedtype(block_number);
 
-			let dx = mogwai_1.dna[0];
-			let dy = mogwai_2.dna[0];
-
 			// add pairing price to mogwai intrinsic value TODO
 			let pairing_price: BalanceOf<T> =
 				Pricing::pairing(mogwai_1.rarity, mogwai_2.rarity).saturated_into();
-			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, &mut mogwai_2)?;
+			Self::tip_mogwai(&sender, pairing_price, mogwai_id_2, &mut mogwai_2)?;
 
-			let final_dna = Breeding::pairing(breed_type, dx, dy);
-			let mogwai_rarity = ((max_rarity as u8) << 4) + rarity as u8;
+			let final_dna = Breeding::pairing(breed_type, &mogwai_1.dna[0], &mogwai_2.dna[0]);
+			let mogwai_rarity = RarityType::from(((max_rarity as u8) << 4) + rarity as u8);
 
-			let mogwai_struct = MogwaiStruct {
+			let new_mogwai = MogwaiStruct {
 				id: mogwai_id,
 				dna: final_dna,
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				generation: next_gen,
 				rarity: mogwai_rarity,
-				phase: PhaseType::Breeded,
+				phase: PhaseType::Bred,
 			};
 
 			// mint mogwai
-			Self::mint(&sender, mogwai_id, mogwai_struct)?;
+			Self::mint(&sender, mogwai_id, new_mogwai)?;
 
-			if mogwai_rarity == 16 {
+			if mogwai_rarity == RarityType::Mythical {
 				// TODO: Do something with the results
 				let _ = Self::update_achievement_for(&sender, AccountAchievement::LegendBreeder, 1);
 			}
@@ -717,7 +721,7 @@ pub mod pallet {
 			}
 
 			// Emit an event.
-			Self::deposit_event(Event::MogwaiBreeded(mogwai_id));
+			Self::deposit_event(Event::MogwaiBred(mogwai_id));
 
 			Ok(())
 		}
@@ -743,9 +747,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// pay fee
-	fn pay_fee(who: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+	fn pay_fee(who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 		let _ = T::Currency::withdraw(
-			&who,
+			who,
 			amount,
 			WithdrawReasons::FEE,
 			ExistenceRequirement::KeepAlive,
@@ -760,14 +764,14 @@ impl<T: Config> Pallet<T> {
 		organizer: T::AccountId,
 		amount: BalanceOf<T>,
 	) -> DispatchResult {
-		let _ = T::Currency::transfer(&who, &organizer, amount, ExistenceRequirement::KeepAlive)?;
+		T::Currency::transfer(&who, &organizer, amount, ExistenceRequirement::KeepAlive)?;
 
 		Ok(())
 	}
 
 	/// tiping mogwai
 	fn tip_mogwai(
-		who: T::AccountId,
+		who: &T::AccountId,
 		amount: BalanceOf<T>,
 		mogwai_id: MogwaiIdOf<T>,
 		mogwai: &mut MogwaiOf<T>,
@@ -782,20 +786,17 @@ impl<T: Config> Pallet<T> {
 
 	///
 	pub(crate) fn config_value(who: T::AccountId, index: u8) -> u32 {
-		let config_opt = AccountConfig::<T>::get(&who);
-		let result: u32;
-		if config_opt.is_some() {
-			let value = config_opt.unwrap()[usize::from(index)];
-			result = GameConfig::config_value(index, value);
-		} else {
-			result = GameConfig::config_value(index, 0);
-		}
-		result
+		GameConfig::config_value(
+			index,
+			AccountConfig::<T>::get(&who)
+				.map(|config| config[index as usize])
+				.unwrap_or_default(),
+		)
 	}
 
 	///
 	fn ensure_not_max_mogwais(who: T::AccountId) -> bool {
-		Self::owned_mogwais_count(&who) < Self::config_value(who.clone(), 1) as u64
+		Self::owned_mogwais_count(&who) < Self::config_value(who, 1) as u64
 	}
 
 	/// Add mogwai to storage
@@ -910,13 +911,16 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// do the segmentation and baking
-	fn segment_and_bake(mogwai: MogwaiOf<T>, block_hash: T::Hash) -> ([[u8; 32]; 2], u8) {
-		let mut blk: [u8; 32] = [0u8; 32];
-
-		blk.copy_from_slice(&block_hash.as_ref()[0..32]);
+	fn segment_and_bake(mogwai: MogwaiOf<T>, hash: T::Hash) -> ([[u8; 32]; 2], RarityType) {
+		let block_hash = unsafe {
+			let mut block_hash: MaybeUninit<[u8; 32]> = MaybeUninit::uninit();
+			let block_hash_ptr = block_hash.as_mut_ptr() as *mut u8;
+			copy_nonoverlapping(hash.as_ref()[0..32].as_ptr(), block_hash_ptr, 32);
+			block_hash.assume_init()
+		};
 
 		// segment and and bake the hatched mogwai
-		(Breeding::segmenting(mogwai.dna.clone(), blk), Breeding::bake(mogwai.rarity, blk))
+		(Breeding::segmenting(mogwai.dna, block_hash), Breeding::bake(mogwai.rarity, block_hash))
 	}
 
 	#[inline]
