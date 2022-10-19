@@ -240,7 +240,8 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let season_id = Self::toggle_season()?;
+			let is_early_access = mint_option.mint_type == MintType::Free;
+			let season_id = Self::toggle_season(is_early_access)?;
 			Self::do_mint(&player, &mint_option, season_id)
 		}
 
@@ -251,7 +252,7 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let season_id = Self::toggle_season()?;
+			let season_id = Self::toggle_season(false)?;
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
@@ -637,14 +638,20 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season() -> Result<SeasonId, DispatchError> {
+		fn toggle_season(early_access: bool) -> Result<SeasonId, DispatchError> {
 			let current_season_id = Self::current_season_id();
 			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
+				let is_current_season_active = Self::current_season_status().active;
+
+				// activate early season
+				if !is_current_season_active && season.is_early(now) {
+					CurrentSeasonStatus::<T>::mutate(|status| status.early = true);
+				}
 
 				// activate season
-				if !Self::current_season_status().active && season.is_active(now) {
+				if !is_current_season_active && season.is_active(now) {
 					Self::activate_season(current_season_id);
 				}
 
@@ -666,7 +673,11 @@ pub mod pallet {
 			// extrinsic (since deactivation will be rolled back). Hence this condition is required
 			// to allow for one extra mint / forge to happen when a season is deactivated.
 			if !season_deactivated {
-				ensure!(Self::current_season_status().active, Error::<T>::OutOfSeason);
+				let SeasonStatus { early, active, .. } = Self::current_season_status();
+				ensure!(
+					if early_access { early || active } else { active },
+					Error::<T>::OutOfSeason
+				);
 			}
 
 			Ok(current_season_id)
@@ -675,6 +686,7 @@ pub mod pallet {
 		fn activate_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = true;
+				status.early = false;
 				status.prematurely_ended = false;
 			});
 			SeasonMaxTierForges::<T>::put(0);
@@ -684,6 +696,7 @@ pub mod pallet {
 		fn deactivate_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = false;
+				status.early = false;
 				status.prematurely_ended = false;
 			});
 			SeasonMaxTierForges::<T>::put(0);

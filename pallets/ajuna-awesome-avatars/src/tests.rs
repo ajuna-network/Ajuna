@@ -351,7 +351,7 @@ mod minting {
 		let expected_nonce_increment = 1 as MockIndex;
 		let mut expected_nonce = 0;
 		let mut initial_balance = 1_234_567_890_123_456;
-		let mut initial_free_mints = 11;
+		let mut initial_free_mints = 12;
 		let mut owned_avatar_count = 0;
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
@@ -376,7 +376,7 @@ mod minting {
 					assert!(!AAvatars::current_season_status().active);
 
 					// single mint
-					run_to_block(season_1.early_start + 1);
+					run_to_block(season_1.start);
 					assert_ok!(AAvatars::mint(
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
@@ -498,7 +498,7 @@ mod minting {
 			.mint_open(false)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for mint_type in [MintType::Normal, MintType::Free] {
 						assert_noop!(
@@ -561,7 +561,7 @@ mod minting {
 			.free_mints(vec![(ALICE, 10)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				Owners::<Test>::insert(ALICE, avatar_ids);
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for mint_type in [MintType::Normal, MintType::Free] {
@@ -623,10 +623,14 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_when_balance_is_insufficient() {
+		let season = Season::default();
+
 		ExtBuilder::default()
-			.seasons(vec![(1, Season::default())])
+			.seasons(vec![(1, season.clone())])
 			.build()
 			.execute_with(|| {
+				run_to_block(season.start);
+
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AAvatars::mint(
@@ -780,7 +784,7 @@ mod forging {
 			.forge_max_sacrifices(4)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
@@ -867,7 +871,7 @@ mod forging {
 			.build()
 			.execute_with(|| {
 				// prepare avatars to forge
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
@@ -963,7 +967,7 @@ mod forging {
 			.build()
 			.execute_with(|| {
 				// prepare avatars to forge
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
@@ -1015,7 +1019,7 @@ mod forging {
 			.forge_open(false)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_noop!(
 					AAvatars::forge(Origin::signed(ALICE), H256::default(), Vec::new()),
 					Error::<Test>::ForgeClosed,
@@ -1045,7 +1049,7 @@ mod forging {
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 
 				for i in 0..min_sacrifices {
 					assert_noop!(
@@ -1115,7 +1119,7 @@ mod forging {
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				for _ in 0..max_sacrifices {
 					assert_ok!(AAvatars::mint(
 						Origin::signed(ALICE),
@@ -1152,7 +1156,7 @@ mod forging {
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				for player in [ALICE, BOB] {
 					for _ in 0..max_sacrifices {
 						assert_ok!(AAvatars::mint(
@@ -1190,7 +1194,7 @@ mod forging {
 			.forge_max_sacrifices(max_sacrifices)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				for _ in 0..max_sacrifices {
 					assert_ok!(AAvatars::mint(
 						Origin::signed(ALICE),
@@ -1222,7 +1226,7 @@ mod forging {
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(ALICE),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
@@ -1269,7 +1273,7 @@ mod trading {
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
@@ -1318,7 +1322,7 @@ mod trading {
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
@@ -1341,7 +1345,7 @@ mod trading {
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
@@ -1390,7 +1394,7 @@ mod trading {
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
@@ -1430,7 +1434,7 @@ mod trading {
 			.mint_fees(mint_fees)
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
@@ -1507,7 +1511,7 @@ mod trading {
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
+				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
