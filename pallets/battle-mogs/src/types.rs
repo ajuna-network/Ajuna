@@ -160,6 +160,58 @@ impl Default for PhaseType {
 	}
 }
 
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+pub enum AchievementState {
+	InProgress { current: u16, target: u16 },
+	Completed,
+}
+
+impl AchievementState {
+	pub fn new(target: u16) -> Self {
+		Self::InProgress { current: Default::default(), target }
+	}
+
+	pub fn update(self, amount: u16) -> Self {
+		match self {
+			AchievementState::InProgress { current, target } => {
+				let new_current = current + amount;
+
+				if new_current >= target {
+					Self::Completed
+				} else {
+					Self::InProgress { current: new_current, target }
+				}
+			},
+			AchievementState::Completed => Self::Completed,
+		}
+	}
+}
+
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+pub enum AccountAchievement {
+	EggHatcher = 0,
+	Sacrificer = 1,
+	Morpheus = 2,
+	LegendBreeder = 3,
+	Promiscuous = 4,
+	Buyer = 5,
+	Seller = 6,
+}
+
+impl AccountAchievement {
+	pub fn target_for(&self) -> u16 {
+		match self {
+			AccountAchievement::EggHatcher => 100,
+			AccountAchievement::Sacrificer => 100,
+			AccountAchievement::Morpheus => 100,
+			AccountAchievement::LegendBreeder => 1,
+			AccountAchievement::Promiscuous => 50,
+			AccountAchievement::Buyer => 10,
+			AccountAchievement::Seller => 100,
+		}
+	}
+}
+
 pub type Balance = u128;
 pub const MILLIMOGS: Balance = 1_000_000_000;
 pub const DMOGS: Balance = 1_000 * MILLIMOGS;

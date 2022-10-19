@@ -97,6 +97,18 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::AccountId, [u8; 10], OptionQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn account_achievements)]
+	pub type AccountAchievements<T: Config> = StorageDoubleMap<
+		_,
+		Identity,
+		T::AccountId,
+		Identity,
+		AccountAchievement,
+		AchievementState,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn mogwai)]
 	/// A map of mogwais accessible by the mogwai hash.
 	pub type Mogwais<T: Config> = StorageMap<_, Identity, MogwaiIdOf<T>, MogwaiOf<T>, OptionQuery>;
@@ -361,7 +373,7 @@ pub mod pallet {
 				phase: PhaseType::Breeded,
 			};
 
-			Self::mint(sender.clone(), random_hash_1, new_mogwai)?;
+			Self::mint(&sender, random_hash_1, new_mogwai)?;
 
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiCreated(sender, random_hash_1));
@@ -433,6 +445,9 @@ pub mod pallet {
 
 			Mogwais::<T>::insert(mogwai_id, mogwai);
 
+			// TODO: Do something with the result
+			let _ = Self::update_achievement_for(&sender, AccountAchievement::EggHatcher, 1);
+
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiHatched(sender, mogwai_id));
 
@@ -468,6 +483,9 @@ pub mod pallet {
 
 			// TODO check this function on return value
 			let _ = T::Currency::deposit_into_existing(&sender, intrinsic_to_deposit)?;
+
+			// TODO: Do something with the results
+			let _ = Self::update_achievement_for(&sender, AccountAchievement::Sacrificer, 1);
 
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiSacrificed(sender, mogwai_id));
@@ -522,6 +540,9 @@ pub mod pallet {
 
 			Self::remove(sender.clone(), mogwai_id_1)?;
 
+			// TODO: Do something with the results
+			let _ = Self::update_achievement_for(&sender, AccountAchievement::Sacrificer, 1);
+
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiSacrificedInto(sender, mogwai_id_1, mogwai_id_2));
 
@@ -564,6 +585,10 @@ pub mod pallet {
 				qed",
 			);
 
+			// TODO: Do something with the results
+			let _ = Self::update_achievement_for(&sender, AccountAchievement::Buyer, 1);
+			let _ = Self::update_achievement_for(&owner, AccountAchievement::Seller, 1);
+
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiBought(sender, owner, mogwai_id, mogwai_price));
 
@@ -605,6 +630,9 @@ pub mod pallet {
 
 			Mogwais::<T>::insert(mogwai_id, mogwai);
 
+			// TODO: Do something with the results
+			let _ = Self::update_achievement_for(&sender, AccountAchievement::Morpheus, 1);
+
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiMorphed(mogwai_id));
 
@@ -623,8 +651,9 @@ pub mod pallet {
 			ensure!(Mogwais::<T>::contains_key(mogwai_id_1), Error::<T>::MogwaiDoesntExists);
 			ensure!(Mogwais::<T>::contains_key(mogwai_id_2), Error::<T>::MogwaiDoesntExists);
 
-			let owner = Self::owner_of(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			ensure!(owner == sender, Error::<T>::MogwaiNotOwned);
+			let owner_1 = Self::owner_of(mogwai_id_1).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			let owner_2 = Self::owner_of(mogwai_id_2).ok_or(Error::<T>::MogwaiDoesntExists)?;
+			ensure!(owner_1 == sender, Error::<T>::MogwaiNotOwned);
 
 			// breeding into the same mogwai isn't allowed
 			ensure!(mogwai_id_1 != mogwai_id_2, Error::<T>::MogwaiSame);
@@ -662,6 +691,7 @@ pub mod pallet {
 			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, &mut mogwai_2)?;
 
 			let final_dna = Breeding::pairing(breed_type, dx, dy);
+			let mogwai_rarity = ((max_rarity as u8) << 4) + rarity as u8;
 
 			let mogwai_struct = MogwaiStruct {
 				id: mogwai_id,
@@ -669,12 +699,22 @@ pub mod pallet {
 				genesis: block_number,
 				intrinsic: Zero::zero(),
 				generation: next_gen,
-				rarity: ((max_rarity as u8) << 4) + rarity as u8,
+				rarity: mogwai_rarity,
 				phase: PhaseType::Breeded,
 			};
 
 			// mint mogwai
-			Self::mint(sender, mogwai_id, mogwai_struct)?;
+			Self::mint(&sender, mogwai_id, mogwai_struct)?;
+
+			if mogwai_rarity == 16 {
+				// TODO: Do something with the results
+				let _ = Self::update_achievement_for(&sender, AccountAchievement::LegendBreeder, 1);
+			}
+
+			if owner_1 != owner_2 {
+				// TODO: Do something with the results
+				let _ = Self::update_achievement_for(&sender, AccountAchievement::Promiscuous, 1);
+			}
 
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiBreeded(mogwai_id));
@@ -759,10 +799,14 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Add mogwai to storage
-	fn mint(to: T::AccountId, mogwai_id: MogwaiIdOf<T>, new_mogwai: MogwaiOf<T>) -> DispatchResult {
+	fn mint(
+		to: &T::AccountId,
+		mogwai_id: MogwaiIdOf<T>,
+		new_mogwai: MogwaiOf<T>,
+	) -> DispatchResult {
 		ensure!(!MogwaiOwner::<T>::contains_key(&mogwai_id), Error::<T>::MogwaiAlreadyExists);
 
-		let new_owned_mogwais_count = Self::owned_mogwais_count(&to)
+		let new_owned_mogwais_count = Self::owned_mogwais_count(to)
 			.checked_add(1)
 			.ok_or("Overflow adding a new mogwai to account balance")?;
 
@@ -773,12 +817,12 @@ impl<T: Config> Pallet<T> {
 		// Update maps.
 		Mogwais::<T>::insert(mogwai_id, new_mogwai);
 
-		MogwaiOwner::<T>::insert(mogwai_id, &to);
-		Owners::<T>::try_mutate(&to, |id_set| id_set.try_insert(mogwai_id))
+		MogwaiOwner::<T>::insert(mogwai_id, to);
+		Owners::<T>::try_mutate(to, |id_set| id_set.try_insert(mogwai_id))
 			.map_err(|_| Error::<T>::MaxMogwaisInAccount)?;
 
 		AllMogwaisCount::<T>::put(new_all_mogwais_count);
-		OwnedMogwaisCount::<T>::insert(&to, new_owned_mogwais_count);
+		OwnedMogwaisCount::<T>::insert(to, new_owned_mogwais_count);
 
 		Ok(())
 	}
@@ -873,5 +917,26 @@ impl<T: Config> Pallet<T> {
 
 		// segment and and bake the hatched mogwai
 		(Breeding::segmenting(mogwai.dna.clone(), blk), Breeding::bake(mogwai.rarity, blk))
+	}
+
+	#[inline]
+	fn update_achievement_for(
+		account: &T::AccountId,
+		achievement: AccountAchievement,
+		update_amount: u16,
+	) -> bool {
+		AccountAchievements::<T>::mutate(account, achievement, |maybe_value| match maybe_value {
+			None => {
+				*maybe_value =
+					Some(AchievementState::new(achievement.target_for()).update(update_amount));
+				false
+			},
+			Some(AchievementState::Completed) => false,
+			Some(value) => {
+				let updated_value = value.update(update_amount);
+				*maybe_value = Some(updated_value);
+				updated_value == AchievementState::Completed
+			},
+		})
 	}
 }

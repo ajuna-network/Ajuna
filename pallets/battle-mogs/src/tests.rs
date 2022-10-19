@@ -1,5 +1,6 @@
 use crate::{
-	mock, mock::*, Error, Event, GameEventType, MogwaiPrices, Mogwais, PhaseType, RarityType,
+	mock, mock::*, AccountAchievement, AchievementState, Error, Event, GameEventType, MogwaiPrices,
+	PhaseType, RarityType,
 };
 use frame_support::{assert_noop, assert_ok};
 
@@ -339,6 +340,14 @@ mod hatch_mogwai {
 
 			let mogwai = BattleMogs::mogwai(mogwai_id).expect("Should have found mogwai");
 			assert_eq!(mogwai.phase, PhaseType::Hatched);
+
+			assert_eq!(
+				BattleMogs::account_achievements(account, AccountAchievement::EggHatcher),
+				Some(AchievementState::InProgress {
+					current: 1,
+					target: AccountAchievement::EggHatcher.target_for()
+				})
+			);
 		});
 	}
 
@@ -404,6 +413,14 @@ mod sacrifice {
 			assert_eq!(BattleMogs::all_mogwais_count(), 0);
 
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
+
+			assert_eq!(
+				BattleMogs::account_achievements(account, AccountAchievement::Sacrificer),
+				Some(AchievementState::InProgress {
+					current: 1,
+					target: AccountAchievement::Sacrificer.target_for()
+				})
+			);
 		});
 	}
 
@@ -531,6 +548,14 @@ mod sacrifice_into {
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
 
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 1);
+
+			assert_eq!(
+				BattleMogs::account_achievements(account, AccountAchievement::Sacrificer),
+				Some(AchievementState::InProgress {
+					current: 1,
+					target: AccountAchievement::Sacrificer.target_for()
+				})
+			);
 		});
 	}
 
@@ -738,6 +763,22 @@ mod buy_mogwai {
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
 			assert_eq!(BattleMogs::owned_mogwais_count(buyer), 1);
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
+
+			assert_eq!(
+				BattleMogs::account_achievements(buyer, AccountAchievement::Buyer),
+				Some(AchievementState::InProgress {
+					current: 1,
+					target: AccountAchievement::Buyer.target_for()
+				})
+			);
+
+			assert_eq!(
+				BattleMogs::account_achievements(account, AccountAchievement::Seller),
+				Some(AchievementState::InProgress {
+					current: 1,
+					target: AccountAchievement::Seller.target_for()
+				})
+			);
 		});
 	}
 
@@ -814,6 +855,14 @@ mod morph_mogwai {
 			System::assert_last_event(mock::Event::BattleMogs(crate::Event::MogwaiMorphed(
 				mogwai_id,
 			)));
+
+			assert_eq!(
+				BattleMogs::account_achievements(account, AccountAchievement::Morpheus),
+				Some(AchievementState::InProgress {
+					current: 1,
+					target: AccountAchievement::Morpheus.target_for()
+				})
+			);
 		});
 	}
 
