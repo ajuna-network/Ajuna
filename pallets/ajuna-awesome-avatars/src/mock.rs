@@ -247,6 +247,7 @@ impl Default for Season<MockBlockNumber> {
 			early_start: 1,
 			start: 2,
 			end: 3,
+			max_tier_forges: 10,
 			max_variations: 2,
 			max_components: 2,
 			tiers: vec![
@@ -276,6 +277,10 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn end(mut self, end: MockBlockNumber) -> Self {
 		self.end = end;
+		self
+	}
+	pub fn max_tier_forges(mut self, max_tier_forges: u32) -> Self {
+		self.max_tier_forges = max_tier_forges;
 		self
 	}
 	pub fn max_components(mut self, max_components: u8) -> Self {

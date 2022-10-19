@@ -54,11 +54,6 @@ pub mod pallet {
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
-	enum ToggleSeasonResult {
-		ActiveSeason(SeasonId),
-		NoActiveSeason,
-	}
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -84,13 +79,17 @@ pub mod pallet {
 	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultSeasonId>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn is_season_active)]
-	pub type IsSeasonActive<T: Config> = StorageValue<_, bool, ValueQuery>;
+	#[pallet::getter(fn current_season_status)]
+	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn season_max_tier_forges)]
+	pub type SeasonMaxTierForges<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
@@ -155,7 +154,7 @@ pub mod pallet {
 		SeasonStarted(SeasonId),
 		/// A season has finished.
 		SeasonFinished(SeasonId),
-		/// Free mints transfered between accounts.
+		/// Free mints transferred between accounts.
 		FreeMintsTransferred { from: T::AccountId, to: T::AccountId, how_many: MintCount },
 		/// Free mints issued to account.
 		FreeMintsIssued { to: T::AccountId, how_many: MintCount },
@@ -202,8 +201,10 @@ pub mod pallet {
 		ForgeClosed,
 		/// Trading is not available at the moment.
 		TradeClosed,
-		/// No season active currently.
+		/// Attempt to mint or forge outside of an active season.
 		OutOfSeason,
+		/// Attempt to mint when the season has ended prematurely.
+		PrematureSeasonEnd,
 		/// Max ownership reached.
 		MaxOwnershipReached,
 		/// Avatar belongs to someone else.
@@ -214,8 +215,6 @@ pub mod pallet {
 		IncorrectAvatarId,
 		/// The player must wait cooldown period.
 		MintCooldown,
-		/// The player has not enough funds.
-		InsufficientFunds,
 		/// The season's max components value is less than the minimum allowed (1).
 		MaxComponentsTooLow,
 		/// The season's max components value is more than the maximum allowed (random byte: 32).
@@ -243,11 +242,9 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			match Self::toggle_season() {
-				ToggleSeasonResult::ActiveSeason(season_id) =>
-					Self::do_mint(&player, &mint_option, season_id),
-				ToggleSeasonResult::NoActiveSeason => Err(Error::<T>::OutOfSeason.into()),
-			}
+			let is_early_access = mint_option.mint_type == MintType::Free;
+			let season_id = Self::toggle_season(is_early_access)?;
+			Self::do_mint(&player, &mint_option, season_id)
 		}
 
 		#[pallet::weight(10_000)]
@@ -257,8 +254,8 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::toggle_season();
-			Self::do_forge(&player, &leader, &sacrifices)
+			let season_id = Self::toggle_season(false)?;
+			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
 		#[pallet::weight(10_000)]
@@ -317,7 +314,6 @@ pub mod pallet {
 			let buyer = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
-			ensure!(T::Currency::free_balance(&buyer) >= price, Error::<T>::InsufficientFunds);
 
 			T::Currency::transfer(&buyer, &seller, price, ExistenceRequirement::KeepAlive)?;
 
@@ -477,6 +473,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let GlobalConfig { max_avatars_per_player, mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
+			ensure!(
+				!Self::current_season_status().prematurely_ended,
+				Error::<T>::PrematureSeasonEnd
+			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
@@ -484,22 +484,6 @@ pub mod pallet {
 			}
 
 			let MintOption { mint_type, count } = mint_option;
-			let fee = match mint_type {
-				MintType::Normal => {
-					let fee = mint.fees.fee_for(*count);
-					ensure!(
-						T::Currency::free_balance(player) >= fee,
-						Error::<T>::InsufficientFunds
-					);
-					fee
-				},
-				MintType::Free => {
-					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
-					ensure!(Self::free_mints(player) >= fee, Error::<T>::InsufficientFreeMints);
-					fee.unique_saturated_into()
-				},
-			};
-
 			let how_many = *count as usize;
 			let max_ownership = (max_avatars_per_player as usize)
 				.checked_sub(how_many)
@@ -522,6 +506,7 @@ pub mod pallet {
 
 			match mint_type {
 				MintType::Normal => {
+					let fee = mint.fees.fee_for(*count);
 					T::Currency::withdraw(
 						player,
 						fee,
@@ -530,12 +515,13 @@ pub mod pallet {
 					)?;
 				},
 				MintType::Free => {
+					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
 					FreeMints::<T>::try_mutate(
 						player,
 						|dest_player_free_mints| -> DispatchResult {
 							*dest_player_free_mints = dest_player_free_mints
 								.checked_sub(fee.unique_saturated_into())
-								.ok_or(ArithmeticError::Underflow)?;
+								.ok_or(Error::<T>::InsufficientFreeMints)?;
 							Ok(())
 						},
 					)?;
@@ -552,6 +538,7 @@ pub mod pallet {
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
 			sacrifice_ids: &[AvatarIdOf<T>],
+			season_id: SeasonId,
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(
@@ -564,8 +551,7 @@ pub mod pallet {
 			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			let (_, leader) = Avatars::<T>::get(leader_id).ok_or(Error::<T>::UnknownAvatar)?;
-			let season = Seasons::<T>::get(leader.season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
@@ -618,6 +604,15 @@ pub mod pallet {
 				}
 			}
 
+			if leader.min_tier::<T>()? == max_tier {
+				SeasonMaxTierForges::<T>::mutate(|season_max_tier_forges| {
+					*season_max_tier_forges = season_max_tier_forges.saturating_add(1);
+					if *season_max_tier_forges == season.max_tier_forges {
+						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
+					}
+				});
+			}
+
 			Avatars::<T>::insert(leader_id, (player, leader));
 			sacrifice_ids.iter().for_each(Avatars::<T>::remove);
 			let remaining_avatar_ids = Owners::<T>::take(player)
@@ -649,48 +644,69 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season() -> ToggleSeasonResult {
+		fn toggle_season(early_access: bool) -> Result<SeasonId, DispatchError> {
 			let current_season_id = Self::current_season_id();
+			let mut season_deactivated = false;
+			if let Some(season) = Self::seasons(&current_season_id) {
+				let now = <frame_system::Pallet<T>>::block_number();
+				let is_current_season_active = Self::current_season_status().active;
 
-			let maybe_current_season = Self::seasons(&current_season_id);
-			if maybe_current_season.is_none() {
-				return ToggleSeasonResult::NoActiveSeason
-			}
+				// activate early season
+				if !is_current_season_active && season.is_early(now) {
+					CurrentSeasonStatus::<T>::mutate(|status| status.early = true);
+				}
 
-			let now = <frame_system::Pallet<T>>::block_number();
-			let current_season = maybe_current_season.unwrap();
-
-			if current_season.is_active(now) {
-				// activate current season
-				if !Self::is_season_active() {
+				// activate season
+				if !is_current_season_active && season.is_active(now) {
 					Self::on_start_season(current_season_id);
 				}
-				return ToggleSeasonResult::ActiveSeason(current_season_id)
-			}
 
-			// deactivate current season (and active next if condition met)
-			Self::on_finish_season(current_season_id);
-			let next_season_id = current_season_id.saturating_add(1);
-
-			match Self::seasons(next_season_id) {
-				None => ToggleSeasonResult::NoActiveSeason,
-				Some(next_season) => {
-					if !next_season.is_active(now) {
-						return ToggleSeasonResult::NoActiveSeason
+				// deactivate season (and active if condition met)
+				if now > season.end {
+					Self::on_finish_season(current_season_id);
+					season_deactivated = true;
+					let next_season_id = current_season_id.saturating_add(1);
+					if let Some(next_season) = Self::seasons(next_season_id) {
+						if next_season.is_active(now) {
+							Self::on_start_season(next_season_id);
+						}
 					}
-					Self::on_start_season(next_season_id);
-					ToggleSeasonResult::ActiveSeason(next_season_id)
-				},
+				}
 			}
+
+			// Failed extrinsics roll back storage changes as they're atomic, meaning it's
+			// impossible to deactivate a season and check for out of season inside the same
+			// extrinsic (since deactivation will be rolled back). Hence this condition is required
+			// to allow for one extra mint / forge to happen when a season is deactivated.
+			if !season_deactivated {
+				let SeasonStatus { early, active, .. } = Self::current_season_status();
+				ensure!(
+					if early_access { early || active } else { active },
+					Error::<T>::OutOfSeason
+				);
+			}
+
+			Ok(current_season_id)
 		}
 
 		fn on_start_season(season_id: SeasonId) {
-			IsSeasonActive::<T>::put(true);
+			CurrentSeasonStatus::<T>::mutate(|status| {
+				status.active = true;
+				status.early = false;
+				status.prematurely_ended = false;
+			});
+			SeasonMaxTierForges::<T>::put(0);
+
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
 		fn on_finish_season(season_id: SeasonId) {
-			IsSeasonActive::<T>::put(false);
+			CurrentSeasonStatus::<T>::mutate(|status| {
+				status.active = false;
+				status.early = false;
+				status.prematurely_ended = false;
+			});
+			SeasonMaxTierForges::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
 		}

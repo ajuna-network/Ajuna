@@ -36,6 +36,13 @@ pub enum RarityTier {
 pub type RarityPercent = u16;
 pub type MintCount = u16;
 
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
+pub struct SeasonStatus {
+	pub active: bool,
+	pub early: bool,
+	pub prematurely_ended: bool,
+}
+
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
@@ -43,6 +50,7 @@ pub struct Season<BlockNumber> {
 	pub early_start: BlockNumber,
 	pub start: BlockNumber,
 	pub end: BlockNumber,
+	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
@@ -52,7 +60,11 @@ pub struct Season<BlockNumber> {
 
 impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	pub(crate) fn is_active(&self, now: BlockNumber) -> bool {
-		now >= self.early_start && now <= self.end
+		now >= self.start && now <= self.end
+	}
+
+	pub(crate) fn is_early(&self, now: BlockNumber) -> bool {
+		now >= self.early_start && now < self.start
 	}
 
 	pub(crate) fn validate<T: Config>(&mut self) -> DispatchResult {
@@ -152,7 +164,7 @@ impl Avatar {
 	}
 
 	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
-		let min_tier = self.dna.iter().map(|x| *x >> 4).min().ok_or(Error::<T>::IncorrectDna)?;
+		let min_tier = self.min_tier::<T>()?;
 		Ok(self
 			.dna
 			.iter()
@@ -160,6 +172,14 @@ impl Avatar {
 			.filter(|(_, x)| (*x >> 4) == min_tier)
 			.map(|(i, _)| i)
 			.collect::<Vec<usize>>())
+	}
+
+	pub(crate) fn min_tier<T: Config>(&self) -> Result<u8, DispatchError> {
+		self.dna
+			.iter()
+			.map(|x| *x >> 4)
+			.min()
+			.ok_or_else(|| Error::<T>::IncorrectDna.into())
 	}
 
 	pub(crate) fn compare(
