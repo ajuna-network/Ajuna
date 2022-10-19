@@ -452,8 +452,13 @@ mod minting {
 						avatar_ids: AAvatars::owners(ALICE)[4..=9].to_vec(),
 					}));
 
-					// check for season ending
+					// check for season ending (we allow one extra mint before closing season)
 					run_to_block(season_1.end + 1);
+					assert_ok!(AAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
+					));
+					expected_nonce += 1;
 					assert_noop!(
 						AAvatars::mint(
 							Origin::signed(ALICE),
