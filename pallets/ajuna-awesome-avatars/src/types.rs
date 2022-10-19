@@ -36,6 +36,13 @@ pub enum RarityTier {
 pub type RarityPercent = u16;
 pub type MintCount = u16;
 
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
+pub struct SeasonStatus {
+	pub active: bool,
+	pub early: bool,
+	pub prematurely_ended: bool,
+}
+
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
@@ -53,7 +60,11 @@ pub struct Season<BlockNumber> {
 
 impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	pub(crate) fn is_active(&self, now: BlockNumber) -> bool {
-		now >= self.early_start && now <= self.end
+		now >= self.start && now <= self.end
+	}
+
+	pub(crate) fn is_early(&self, now: BlockNumber) -> bool {
+		now >= self.early_start && now < self.start
 	}
 
 	pub(crate) fn validate<T: Config>(&mut self) -> DispatchResult {
