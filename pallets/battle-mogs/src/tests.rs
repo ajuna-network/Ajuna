@@ -1,6 +1,6 @@
 use crate::{
 	mock, mock::*, AccountAchievement, AchievementState, Error, Event, GameEventType, MogwaiPrices,
-	PhaseType, RarityType,
+	Mogwais, PhaseType, RarityType,
 };
 use frame_support::{assert_noop, assert_ok};
 
@@ -668,13 +668,13 @@ mod sacrifice_into {
 
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = RarityType::Epic as u8;
+					mogwai.rarity = RarityType::Epic;
 				}
 			});
 
 			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = RarityType::Epic as u8;
+					mogwai.rarity = RarityType::Epic;
 				}
 			});
 
@@ -713,14 +713,14 @@ mod sacrifice_into {
 			// We need to up the rarity in order to be allowed to sacrifice
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = RarityType::Epic as u8;
+					mogwai.rarity = RarityType::Epic;
 					mogwai.intrinsic = MockBalance::MAX;
 				}
 			});
 
 			Mogwais::<Test>::mutate(mogwai_id_2, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
-					mogwai.rarity = RarityType::Epic as u8;
+					mogwai.rarity = RarityType::Epic;
 					mogwai.intrinsic = MockBalance::MAX;
 				}
 			});

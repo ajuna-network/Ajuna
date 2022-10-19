@@ -622,7 +622,7 @@ pub mod pallet {
 			let pairing_price: BalanceOf<T> =
 				Pricing::pairing(mogwai.rarity, mogwai.rarity).saturated_into();
 
-			Self::tip_mogwai(sender, pairing_price, mogwai_id, &mut mogwai)?;
+			Self::tip_mogwai(&sender, pairing_price, mogwai_id, &mut mogwai)?;
 
 			// get blocknumber to calculate moon phase for morphing
 			let block_number = <frame_system::Pallet<T>>::block_number();
@@ -692,7 +692,7 @@ pub mod pallet {
 			// add pairing price to mogwai intrinsic value TODO
 			let pairing_price: BalanceOf<T> =
 				Pricing::pairing(mogwai_1.rarity, mogwai_2.rarity).saturated_into();
-			Self::tip_mogwai(sender.clone(), pairing_price, mogwai_id_2, &mut mogwai_2)?;
+			Self::tip_mogwai(&sender, pairing_price, mogwai_id_2, &mut mogwai_2)?;
 
 			let final_dna = Breeding::pairing(breed_type, &mogwai_1.dna[0], &mogwai_2.dna[0]);
 			let mogwai_rarity = RarityType::from(((max_rarity as u8) << 4) + rarity as u8);
@@ -708,7 +708,7 @@ pub mod pallet {
 			};
 
 			// mint mogwai
-			Self::mint(sender, mogwai_id, new_mogwai)?;
+			Self::mint(&sender, mogwai_id, new_mogwai)?;
 
 			if mogwai_rarity == RarityType::Mythical {
 				// TODO: Do something with the results
@@ -747,9 +747,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// pay fee
-	fn pay_fee(who: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+	fn pay_fee(who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 		let _ = T::Currency::withdraw(
-			&who,
+			who,
 			amount,
 			WithdrawReasons::FEE,
 			ExistenceRequirement::KeepAlive,
@@ -771,7 +771,7 @@ impl<T: Config> Pallet<T> {
 
 	/// tiping mogwai
 	fn tip_mogwai(
-		who: T::AccountId,
+		who: &T::AccountId,
 		amount: BalanceOf<T>,
 		mogwai_id: MogwaiIdOf<T>,
 		mogwai: &mut MogwaiOf<T>,
