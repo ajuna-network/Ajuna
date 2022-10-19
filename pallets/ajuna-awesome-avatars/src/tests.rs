@@ -525,6 +525,31 @@ mod minting {
 	}
 
 	#[test]
+	fn mint_should_allow_free_mint_when_season_is_early() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.free_mints(vec![(ALICE, 10)])
+			.seasons(vec![(1, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start);
+
+				assert_noop!(
+					AAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+					),
+					Error::<Test>::OutOfSeason
+				);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(ALICE),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+				),);
+			});
+	}
+
+	#[test]
 	fn mint_should_reject_when_season_is_inactive() {
 		ExtBuilder::default()
 			.balances(vec![(ALICE, 1_234_567_890_123_456)])
@@ -650,28 +675,6 @@ mod minting {
 						Error::<Test>::InsufficientFreeMints
 					);
 				}
-			});
-	}
-
-	// TODO: refine free mint
-	#[ignore]
-	#[test]
-	fn free_mint_is_still_possible_outside_season() {
-		let season = Season::default().start(1).end(20);
-		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.free_mints(vec![(ALICE, 100)])
-			.build()
-			.execute_with(|| {
-				run_to_block(season.end + 1);
-				assert!(!AAvatars::current_season_status().active);
-				assert_ok!(AAvatars::mint(
-					Origin::signed(ALICE),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
-				));
-				System::assert_has_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
-					avatar_ids: vec![AAvatars::owners(ALICE)[0]],
-				}));
 			});
 	}
 
