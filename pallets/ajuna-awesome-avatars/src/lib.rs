@@ -82,14 +82,14 @@ pub mod pallet {
 	#[pallet::getter(fn current_season_status)]
 	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn current_season_max_tier_avatars)]
+	pub type CurrentSeasonMaxTierAvatars<T: Config> = StorageValue<_, u32, ValueQuery>;
+
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn season_max_tier_forges)]
-	pub type SeasonMaxTierForges<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
@@ -605,9 +605,9 @@ pub mod pallet {
 			}
 
 			if leader.min_tier::<T>()? == max_tier {
-				SeasonMaxTierForges::<T>::mutate(|season_max_tier_forges| {
-					*season_max_tier_forges = season_max_tier_forges.saturating_add(1);
-					if *season_max_tier_forges == season.max_tier_forges {
+				CurrentSeasonMaxTierAvatars::<T>::mutate(|max_tier_avatars| {
+					*max_tier_avatars = max_tier_avatars.saturating_add(1);
+					if *max_tier_avatars == season.max_tier_forges {
 						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
 					}
 				});
@@ -695,8 +695,7 @@ pub mod pallet {
 				status.early = false;
 				status.prematurely_ended = false;
 			});
-			SeasonMaxTierForges::<T>::put(0);
-
+			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
@@ -706,7 +705,7 @@ pub mod pallet {
 				status.early = false;
 				status.prematurely_ended = false;
 			});
-			SeasonMaxTierForges::<T>::put(0);
+			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
 		}
