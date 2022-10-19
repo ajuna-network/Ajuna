@@ -36,6 +36,12 @@ pub enum RarityTier {
 pub type RarityPercent = u16;
 pub type MintCount = u16;
 
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
+pub struct SeasonStatus {
+	pub active: bool,
+	pub prematurely_ended: bool,
+}
+
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub name: BoundedVec<u8, ConstU32<100>>,

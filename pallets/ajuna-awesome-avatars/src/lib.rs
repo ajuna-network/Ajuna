@@ -79,12 +79,8 @@ pub mod pallet {
 	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultSeasonId>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn is_season_active)]
-	pub type IsSeasonActive<T: Config> = StorageValue<_, bool, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn is_season_prematurely_ended)]
-	pub type IsSeasonPrematurelyEnded<T: Config> = StorageValue<_, bool, ValueQuery>;
+	#[pallet::getter(fn current_season_status)]
+	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
 	/// Storage for the seasons.
 	#[pallet::storage]
@@ -158,7 +154,7 @@ pub mod pallet {
 		SeasonStarted(SeasonId),
 		/// A season has finished.
 		SeasonFinished(SeasonId),
-		/// Free mints transfered between accounts.
+		/// Free mints transferred between accounts.
 		FreeMintsTransferred { from: T::AccountId, to: T::AccountId, how_many: MintCount },
 		/// Free mints issued to account.
 		FreeMintsIssued { to: T::AccountId, how_many: MintCount },
@@ -477,7 +473,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let GlobalConfig { max_avatars_per_player, mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
-			ensure!(!Self::is_season_prematurely_ended(), Error::<T>::PrematureSeasonEnd);
+			ensure!(
+				!Self::current_season_status().prematurely_ended,
+				Error::<T>::PrematureSeasonEnd
+			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
@@ -619,7 +618,7 @@ pub mod pallet {
 				SeasonMaxTierForges::<T>::mutate(|season_max_tier_forges| {
 					*season_max_tier_forges = season_max_tier_forges.saturating_add(1);
 					if *season_max_tier_forges == season.max_tier_forges {
-						IsSeasonPrematurelyEnded::<T>::put(true);
+						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
 					}
 				});
 			}
@@ -662,7 +661,7 @@ pub mod pallet {
 				let now = <frame_system::Pallet<T>>::block_number();
 
 				// activate season
-				if !Self::is_season_active() && season.is_active(now) {
+				if !Self::current_season_status().active && season.is_active(now) {
 					Self::activate_season(current_season_id);
 				}
 
@@ -687,28 +686,29 @@ pub mod pallet {
 			// extrinsic (since deactivation will be rolled back). Hence this condition is required
 			// to allow for one extra mint / forge to happen when a season is deactivated.
 			if !season_deactivated {
-				ensure!(Self::is_season_active(), Error::<T>::OutOfSeason);
+				ensure!(Self::current_season_status().active, Error::<T>::OutOfSeason);
 			}
 
 			Ok(current_season_id)
 		}
 
 		fn activate_season(season_id: SeasonId) {
-			IsSeasonActive::<T>::put(true);
-			Self::reset_seasonal_high_tier_forge();
+			CurrentSeasonStatus::<T>::mutate(|status| {
+				status.active = true;
+				status.prematurely_ended = false;
+			});
+			SeasonMaxTierForges::<T>::put(0);
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
 		fn deactivate_season(season_id: SeasonId) {
-			IsSeasonActive::<T>::put(false);
-			Self::reset_seasonal_high_tier_forge();
+			CurrentSeasonStatus::<T>::mutate(|status| {
+				status.active = false;
+				status.prematurely_ended = false;
+			});
+			SeasonMaxTierForges::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
-		}
-
-		fn reset_seasonal_high_tier_forge() {
-			IsSeasonPrematurelyEnded::<T>::put(false);
-			SeasonMaxTierForges::<T>::put(0);
 		}
 	}
 }
