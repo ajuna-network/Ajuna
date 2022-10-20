@@ -509,7 +509,7 @@ pub mod pallet {
 						player,
 						fee,
 						WithdrawReasons::FEE,
-						ExistenceRequirement::KeepAlive,
+						ExistenceRequirement::AllowDeath,
 					)?;
 				},
 				MintType::Free => {

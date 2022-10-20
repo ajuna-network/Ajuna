@@ -349,12 +349,13 @@ mod minting {
 			.max_components(max_components);
 
 		let expected_nonce_increment = 1 as MockIndex;
-		let mut expected_nonce = 0;
-		let mut initial_balance = 1_234_567_890_123_456;
-		let mut initial_free_mints = 12;
-		let mut owned_avatar_count = 0;
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
+
+		let mut initial_balance = fees.one + fees.three + fees.six + MockExistentialDeposit::get();
+		let mut initial_free_mints = 12;
+		let mut owned_avatar_count = 0;
+
 		ExtBuilder::default()
 			.seasons(vec![(1, season_1.clone()), (2, season_2)])
 			.mint_fees(fees)
@@ -364,6 +365,8 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				for mint_type in [MintType::Normal, MintType::Free] {
+					let mut expected_nonce = 0;
+
 					// initial checks
 					match mint_type {
 						MintType::Normal =>
@@ -458,7 +461,17 @@ mod minting {
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
-					expected_nonce += 1;
+					match mint_type {
+						MintType::Normal => {
+							// account is reaped, nonce and balance are reset to 0
+							assert_eq!(System::account_nonce(ALICE), 0);
+							assert_eq!(Balances::total_balance(&ALICE), 0);
+						},
+						MintType::Free => {
+							expected_nonce += 1;
+							assert_eq!(System::account_nonce(ALICE), expected_nonce);
+						},
+					}
 					assert_noop!(
 						AAvatars::mint(
 							Origin::signed(ALICE),
@@ -1241,10 +1254,11 @@ mod forging {
 	fn forge_should_reject_avatars_in_trade() {
 		let season = Season::default();
 		let price = 321;
+		let initial_balance = 6 + MockExistentialDeposit::get();
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, 6), (BOB, 6)])
+			.balances(vec![(ALICE, initial_balance), (BOB, 6 + initial_balance)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {

@@ -15,7 +15,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
-use frame_support::traits::{ConstU16, ConstU64, Hooks};
+use frame_support::{
+	parameter_types,
+	traits::{ConstU16, ConstU64, Hooks},
+};
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_runtime::{
 	testing::{Header, H256},
@@ -77,11 +80,15 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+parameter_types! {
+	pub const MockExistentialDeposit: MockBalance = 321;
+}
+
 impl pallet_balances::Config for Test {
 	type Balance = MockBalance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = frame_support::traits::ConstU64<1>;
+	type ExistentialDeposit = MockExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
