@@ -83,6 +83,44 @@ mod organizer {
 	}
 }
 
+mod treasurer {
+	use super::*;
+
+	#[test]
+	fn set_treasurer_should_work() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(AAvatars::treasurer(), None);
+			assert_ok!(AAvatars::set_treasurer(Origin::root(), CHARLIE));
+			assert_eq!(AAvatars::treasurer(), Some(CHARLIE));
+			System::assert_last_event(mock::Event::AAvatars(crate::Event::TreasurerSet {
+				treasurer: CHARLIE,
+			}));
+		});
+	}
+
+	#[test]
+	fn set_treasurer_should_reject_non_root_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_treasurer(Origin::signed(ALICE), CHARLIE),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn set_treasurer_should_replace_existing_treasurer() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(AAvatars::set_treasurer(Origin::root(), ALICE));
+			assert_ok!(AAvatars::set_treasurer(Origin::root(), BOB));
+			assert_eq!(AAvatars::treasurer(), Some(BOB));
+			System::assert_last_event(mock::Event::AAvatars(crate::Event::TreasurerSet {
+				treasurer: BOB,
+			}));
+		});
+	}
+}
+
 mod season {
 	use super::*;
 

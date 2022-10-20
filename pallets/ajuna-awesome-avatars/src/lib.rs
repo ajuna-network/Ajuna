@@ -69,6 +69,10 @@ pub mod pallet {
 	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn treasurer)]
+	pub type Treasurer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
 	#[pallet::type_value]
 	pub fn DefaultSeasonId() -> SeasonId {
 		1
@@ -148,8 +152,10 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A new organizer has been set.
+		/// An organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
+		/// A treasurer has been set.
+		TreasurerSet { treasurer: T::AccountId },
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -359,6 +365,14 @@ pub mod pallet {
 			ensure_root(origin)?;
 			Organizer::<T>::put(&organizer);
 			Self::deposit_event(Event::OrganizerSet { organizer });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+			Treasurer::<T>::put(&treasurer);
+			Self::deposit_event(Event::TreasurerSet { treasurer });
 			Ok(())
 		}
 
