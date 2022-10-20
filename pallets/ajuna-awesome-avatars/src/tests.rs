@@ -353,6 +353,7 @@ mod minting {
 		let mint_cooldown = 1;
 
 		let mut initial_balance = fees.one + fees.three + fees.six + MockExistentialDeposit::get();
+		let mut initial_treasury_balance = 0;
 		let mut initial_free_mints = 12;
 		let mut owned_avatar_count = 0;
 
@@ -387,7 +388,10 @@ mod minting {
 					match mint_type {
 						MintType::Normal => {
 							initial_balance -= fees.fee_for(MintPackSize::One);
+							initial_treasury_balance += fees.fee_for(MintPackSize::One);
+
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::One as MintCount;
@@ -413,7 +417,10 @@ mod minting {
 					match mint_type {
 						MintType::Normal => {
 							initial_balance -= fees.fee_for(MintPackSize::Three);
+							initial_treasury_balance += fees.fee_for(MintPackSize::Three);
+
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Three as MintCount;
@@ -439,7 +446,10 @@ mod minting {
 					match mint_type {
 						MintType::Normal => {
 							initial_balance -= fees.fee_for(MintPackSize::Six);
+							initial_treasury_balance += fees.fee_for(MintPackSize::Six);
+
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Six as MintCount;

@@ -39,7 +39,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, TrailingZeroInput, UniqueSaturatedInto},
+		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -90,6 +90,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn treasury)]
+	pub type Treasury<T: Config> = StorageMap<_, Identity, SeasonId, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
@@ -506,18 +510,14 @@ pub mod pallet {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(*count);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
+					Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(fee));
 				},
 				MintType::Free => {
 					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
-					FreeMints::<T>::try_mutate(
-						player,
-						|dest_player_free_mints| -> DispatchResult {
-							*dest_player_free_mints = dest_player_free_mints
-								.checked_sub(fee.unique_saturated_into())
-								.ok_or(Error::<T>::InsufficientFreeMints)?;
-							Ok(())
-						},
-					)?;
+					let free_mints = Self::free_mints(player)
+						.checked_sub(fee)
+						.ok_or(Error::<T>::InsufficientFreeMints)?;
+					FreeMints::<T>::insert(player, free_mints);
 				},
 			};
 
