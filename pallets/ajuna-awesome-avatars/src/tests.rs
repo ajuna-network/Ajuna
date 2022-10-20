@@ -83,6 +83,44 @@ mod organizer {
 	}
 }
 
+mod treasurer {
+	use super::*;
+
+	#[test]
+	fn set_treasurer_should_work() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(AAvatars::treasurer(), None);
+			assert_ok!(AAvatars::set_treasurer(Origin::root(), CHARLIE));
+			assert_eq!(AAvatars::treasurer(), Some(CHARLIE));
+			System::assert_last_event(mock::Event::AAvatars(crate::Event::TreasurerSet {
+				treasurer: CHARLIE,
+			}));
+		});
+	}
+
+	#[test]
+	fn set_treasurer_should_reject_non_root_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_treasurer(Origin::signed(ALICE), CHARLIE),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn set_treasurer_should_replace_existing_treasurer() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(AAvatars::set_treasurer(Origin::root(), ALICE));
+			assert_ok!(AAvatars::set_treasurer(Origin::root(), BOB));
+			assert_eq!(AAvatars::treasurer(), Some(BOB));
+			System::assert_last_event(mock::Event::AAvatars(crate::Event::TreasurerSet {
+				treasurer: BOB,
+			}));
+		});
+	}
+}
+
 mod season {
 	use super::*;
 
@@ -106,14 +144,14 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_work() {
+	fn set_season_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				let season_1 = Season::default().early_start(1).start(5).end(10);
-				assert_ok!(AAvatars::upsert_season(Origin::signed(ALICE), 1, season_1.clone()));
+				assert_ok!(AAvatars::set_season(Origin::signed(ALICE), 1, season_1.clone()));
 				assert_eq!(AAvatars::seasons(1), Some(season_1.clone()));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedSeason {
 					season_id: 1,
@@ -121,7 +159,7 @@ mod season {
 				}));
 
 				let season_2 = Season::default().early_start(11).start(12).end(13);
-				assert_ok!(AAvatars::upsert_season(Origin::signed(ALICE), 2, season_2.clone()));
+				assert_ok!(AAvatars::set_season(Origin::signed(ALICE), 2, season_2.clone()));
 				assert_eq!(AAvatars::seasons(2), Some(season_2.clone()));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedSeason {
 					season_id: 2,
@@ -131,17 +169,17 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_non_organizer_calls() {
+	fn set_season_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(BOB), 7357, Season::default()),
+				AAvatars::set_season(Origin::signed(BOB), 7357, Season::default()),
 				DispatchError::BadOrigin
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_early_start_is_earlier_than_previous_season_end() {
+	fn set_season_should_reject_when_early_start_is_earlier_than_previous_season_end() {
 		let season_1 = Season::default();
 		ExtBuilder::default()
 			.organizer(ALICE)
@@ -152,7 +190,7 @@ mod season {
 					let season_2 = Season::default().early_start(i).start(i + 1).end(i + 2);
 					assert!(season_2.early_start <= season_1.end);
 					assert_noop!(
-						AAvatars::upsert_season(Origin::signed(ALICE), 2, season_2),
+						AAvatars::set_season(Origin::signed(ALICE), 2, season_2),
 						Error::<Test>::EarlyStartTooEarly
 					);
 				}
@@ -160,13 +198,13 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_early_start_is_earlier_than_or_equal_to_start() {
+	fn set_season_should_reject_when_early_start_is_earlier_than_or_equal_to_start() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for i in 3..6 {
 				let new_season = Season::default().early_start(i).start(3).end(10);
 				assert!(new_season.early_start >= new_season.start);
 				assert_noop!(
-					AAvatars::upsert_season(Origin::signed(ALICE), 1, new_season),
+					AAvatars::set_season(Origin::signed(ALICE), 1, new_season),
 					Error::<Test>::EarlyStartTooLate
 				);
 			}
@@ -174,26 +212,26 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_start_is_later_than_end() {
+	fn set_season_should_reject_when_start_is_later_than_end() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			let new_season = Season::default().early_start(11).start(12).end(10);
 			assert!(new_season.early_start < new_season.start);
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(ALICE), 1, new_season),
+				AAvatars::set_season(Origin::signed(ALICE), 1, new_season),
 				Error::<Test>::SeasonStartTooLate
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_rarity_tier_is_duplicated() {
+	fn set_season_should_reject_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for duplicated_rarity_tiers in [
 				vec![RarityTier::Common, RarityTier::Common],
 				vec![RarityTier::Common, RarityTier::Common, RarityTier::Legendary],
 			] {
 				assert_noop!(
-					AAvatars::upsert_season(
+					AAvatars::set_season(
 						Origin::signed(ALICE),
 						1,
 						Season::default().tiers(duplicated_rarity_tiers)
@@ -205,7 +243,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_sum_of_rarity_chance_is_incorrect() {
+	fn set_season_should_reject_when_sum_of_rarity_chance_is_incorrect() {
 		let tiers = vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary];
 		let season_0 = Season::default().tiers(tiers.clone());
 		let season_1 = Season::default().tiers(tiers);
@@ -216,7 +254,7 @@ mod season {
 					season_1.clone().p_single_mint(incorrect_percentages),
 				] {
 					assert_noop!(
-						AAvatars::upsert_season(Origin::signed(ALICE), 1, season),
+						AAvatars::set_season(Origin::signed(ALICE), 1, season),
 						Error::<Test>::IncorrectRarityPercentages
 					);
 				}
@@ -225,7 +263,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_season_to_update_ends_after_next_season_start() {
+	fn set_season_should_reject_when_season_to_update_ends_after_next_season_start() {
 		let season_1 = Season::default().early_start(1).start(5).end(10);
 		let season_2 = Season::default().early_start(11).start(15).end(20);
 
@@ -237,34 +275,34 @@ mod season {
 				let season_1_update = Season::default().early_start(1).start(5).end(14);
 				assert!(season_1_update.end > season_2.early_start);
 				assert_noop!(
-					AAvatars::upsert_season(Origin::signed(ALICE), 1, season_1_update),
+					AAvatars::set_season(Origin::signed(ALICE), 1, season_1_update),
 					Error::<Test>::SeasonEndTooLate
 				);
 			});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_season_id_underflow() {
+	fn set_season_should_reject_season_id_underflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(ALICE), SeasonId::MIN, Season::default()),
+				AAvatars::set_season(Origin::signed(ALICE), SeasonId::MIN, Season::default()),
 				ArithmeticError::Underflow
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_season_id_overflow() {
+	fn set_season_should_reject_season_id_overflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(ALICE), SeasonId::MAX, Season::default()),
+				AAvatars::set_season(Origin::signed(ALICE), SeasonId::MAX, Season::default()),
 				ArithmeticError::Overflow
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_out_of_bound_variations() {
+	fn set_season_should_reject_out_of_bound_variations() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for (season, error) in [
 				(Season::default().max_variations(0), Error::<Test>::MaxVariationsTooLow),
@@ -272,13 +310,13 @@ mod season {
 				(Season::default().max_variations(16), Error::<Test>::MaxVariationsTooHigh),
 				(Season::default().max_variations(100), Error::<Test>::MaxVariationsTooHigh),
 			] {
-				assert_noop!(AAvatars::upsert_season(Origin::signed(ALICE), 1, season), error);
+				assert_noop!(AAvatars::set_season(Origin::signed(ALICE), 1, season), error);
 			}
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_out_of_bound_components_bounds() {
+	fn set_season_should_reject_out_of_bound_components_bounds() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for (season, error) in [
 				(Season::default().max_components(0), Error::<Test>::MaxComponentsTooLow),
@@ -286,20 +324,20 @@ mod season {
 				(Season::default().max_components(33), Error::<Test>::MaxComponentsTooHigh),
 				(Season::default().max_components(100), Error::<Test>::MaxComponentsTooHigh),
 			] {
-				assert_noop!(AAvatars::upsert_season(Origin::signed(ALICE), 1, season), error);
+				assert_noop!(AAvatars::set_season(Origin::signed(ALICE), 1, season), error);
 			}
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_season_ids_are_not_sequential() {
+	fn set_season_should_reject_when_season_ids_are_not_sequential() {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AAvatars::upsert_season(Origin::signed(ALICE), 3, Season::default()),
+					AAvatars::set_season(Origin::signed(ALICE), 3, Season::default()),
 					Error::<Test>::NonSequentialSeasonId,
 				);
 			});
@@ -349,12 +387,14 @@ mod minting {
 			.max_components(max_components);
 
 		let expected_nonce_increment = 1 as MockIndex;
-		let mut expected_nonce = 0;
-		let mut initial_balance = 1_234_567_890_123_456;
-		let mut initial_free_mints = 12;
-		let mut owned_avatar_count = 0;
 		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
+
+		let mut initial_balance = fees.one + fees.three + fees.six + MockExistentialDeposit::get();
+		let mut initial_treasury_balance = 0;
+		let mut initial_free_mints = 12;
+		let mut owned_avatar_count = 0;
+
 		ExtBuilder::default()
 			.seasons(vec![(1, season_1.clone()), (2, season_2)])
 			.mint_fees(fees)
@@ -364,6 +404,8 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				for mint_type in [MintType::Normal, MintType::Free] {
+					let mut expected_nonce = 0;
+
 					// initial checks
 					match mint_type {
 						MintType::Normal =>
@@ -384,7 +426,10 @@ mod minting {
 					match mint_type {
 						MintType::Normal => {
 							initial_balance -= fees.fee_for(MintPackSize::One);
+							initial_treasury_balance += fees.fee_for(MintPackSize::One);
+
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::One as MintCount;
@@ -410,7 +455,10 @@ mod minting {
 					match mint_type {
 						MintType::Normal => {
 							initial_balance -= fees.fee_for(MintPackSize::Three);
+							initial_treasury_balance += fees.fee_for(MintPackSize::Three);
+
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Three as MintCount;
@@ -436,7 +484,10 @@ mod minting {
 					match mint_type {
 						MintType::Normal => {
 							initial_balance -= fees.fee_for(MintPackSize::Six);
+							initial_treasury_balance += fees.fee_for(MintPackSize::Six);
+
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
+							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Six as MintCount;
@@ -458,7 +509,17 @@ mod minting {
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
-					expected_nonce += 1;
+					match mint_type {
+						MintType::Normal => {
+							// account is reaped, nonce and balance are reset to 0
+							assert_eq!(System::account_nonce(ALICE), 0);
+							assert_eq!(Balances::total_balance(&ALICE), 0);
+						},
+						MintType::Free => {
+							expected_nonce += 1;
+							assert_eq!(System::account_nonce(ALICE), expected_nonce);
+						},
+					}
 					assert_noop!(
 						AAvatars::mint(
 							Origin::signed(ALICE),
@@ -824,13 +885,13 @@ mod forging {
 					vec![0x43, 0x44, 0x40, 0x43, 0x13, 0x15, 0x15, 0x11],
 					Some(vec![0x14, 0x15, 0x11, 0x14, 0x14, 0x16, 0x16, 0x12]),
 				);
-				assert_eq!(AAvatars::season_max_tier_forges(), 0);
+				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
 				assert_dna(
 					&leader_id,
 					vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x45, 0x45, 0x41],
 					Some(vec![0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x12]),
 				);
-				assert_eq!(AAvatars::season_max_tier_forges(), 1);
+				assert_eq!(AAvatars::current_season_max_tier_avatars(), 1);
 				assert!(AAvatars::current_season_status().prematurely_ended);
 				assert_noop!(
 					AAvatars::mint(
@@ -846,7 +907,7 @@ mod forging {
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
-				assert_eq!(AAvatars::season_max_tier_forges(), 0);
+				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
 				assert!(!AAvatars::current_season_status().prematurely_ended);
 			});
 	}
@@ -1241,10 +1302,11 @@ mod forging {
 	fn forge_should_reject_avatars_in_trade() {
 		let season = Season::default();
 		let price = 321;
+		let initial_balance = 6 + MockExistentialDeposit::get();
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, 6), (BOB, 6)])
+			.balances(vec![(ALICE, initial_balance), (BOB, 6 + initial_balance)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -1494,20 +1556,27 @@ mod trading {
 		let season = Season::default();
 		let mint_fees = MintFees { one: 1, three: 3, six: 6 };
 		let price = 310_984;
-		let alice_initial_bal = price + 20_849;
+		let buy_fee = 54_321;
+		let alice_initial_bal = price + buy_fee + 20_849;
 		let bob_initial_bal = 103_598;
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
 			.balances(vec![(ALICE, alice_initial_bal), (BOB, bob_initial_bal)])
 			.mint_fees(mint_fees)
+			.trade_buy_fee(buy_fee)
 			.build()
 			.execute_with(|| {
+				let mut treasury_balance = 0;
+				assert_eq!(AAvatars::treasury(1), treasury_balance);
+
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
+				treasury_balance += mint_fees.one;
+				assert_eq!(AAvatars::treasury(1), treasury_balance);
 
 				let owned_by_alice = AAvatars::owners(ALICE);
 				let owned_by_bob = AAvatars::owners(BOB);
@@ -1517,8 +1586,9 @@ mod trading {
 				assert_ok!(AAvatars::buy(Origin::signed(ALICE), avatar_for_sale));
 
 				// check for balance transfer
-				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price);
+				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - buy_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.one);
+				assert_eq!(AAvatars::treasury(1), treasury_balance + buy_fee);
 
 				// check for ownership transfer
 				assert_eq!(AAvatars::owners(ALICE).len(), owned_by_alice.len() + 1);

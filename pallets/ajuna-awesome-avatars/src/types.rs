@@ -296,8 +296,9 @@ pub struct ForgeConfig {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct TradeConfig {
+pub struct TradeConfig<Balance> {
 	pub open: bool,
+	pub buy_fee: Balance,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
@@ -305,5 +306,5 @@ pub struct GlobalConfig<Balance, BlockNumber> {
 	pub max_avatars_per_player: u32,
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,
-	pub trade: TradeConfig,
+	pub trade: TradeConfig<Balance>,
 }

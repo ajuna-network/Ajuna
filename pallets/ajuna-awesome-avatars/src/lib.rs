@@ -35,11 +35,11 @@ pub mod pallet {
 	use super::types::*;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Randomness, WithdrawReasons},
+		traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, TrailingZeroInput, UniqueSaturatedInto},
+		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -69,6 +69,10 @@ pub mod pallet {
 	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn treasurer)]
+	pub type Treasurer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
 	#[pallet::type_value]
 	pub fn DefaultSeasonId() -> SeasonId {
 		1
@@ -82,14 +86,18 @@ pub mod pallet {
 	#[pallet::getter(fn current_season_status)]
 	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn current_season_max_tier_avatars)]
+	pub type CurrentSeasonMaxTierAvatars<T: Config> = StorageValue<_, u32, ValueQuery>;
+
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn season_max_tier_forges)]
-	pub type SeasonMaxTierForges<T: Config> = StorageValue<_, u32, ValueQuery>;
+	#[pallet::getter(fn treasury)]
+	pub type Treasury<T: Config> = StorageMap<_, Identity, SeasonId, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
@@ -98,18 +106,22 @@ pub mod pallet {
 			mint: MintConfig {
 				open: true,
 				fees: MintFees {
-					one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-					three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-					six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+					one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
+					three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
+					six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
 				},
 				cooldown: 5_u8.into(),
 				free_mint_fee_multiplier: 1,
 				free_mint_transfer_fee: 1,
 			},
 			forge: ForgeConfig { open: true, min_sacrifices: 1, max_sacrifices: 4 },
-			trade: TradeConfig { open: true },
+			trade: TradeConfig {
+				open: true,
+				buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+			},
 		}
 	}
+
 	#[pallet::storage]
 	#[pallet::getter(fn global_configs)]
 	pub type GlobalConfigs<T: Config> =
@@ -140,8 +152,10 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A new organizer has been set.
+		/// An organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
+		/// A treasurer has been set.
+		TreasurerSet { treasurer: T::AccountId },
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -311,10 +325,19 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
-			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			let GlobalConfig { trade, .. } = Self::global_configs();
+			ensure!(trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
 
-			T::Currency::transfer(&buyer, &seller, price, ExistenceRequirement::KeepAlive)?;
+			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
+
+			let current_season_id = Self::current_season_id();
+			let season_id = match Self::seasons(current_season_id) {
+				Some(_) => current_season_id,
+				None => current_season_id.saturating_sub(1),
+			};
+			T::Currency::withdraw(&buyer, trade.buy_fee, WithdrawReasons::FEE, AllowDeath)?;
+			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(trade.buy_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
@@ -346,7 +369,15 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn upsert_season(
+		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+			Treasurer::<T>::put(&treasurer);
+			Self::deposit_event(Event::TreasurerSet { treasurer });
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn set_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
 			season: SeasonOf<T>,
@@ -505,24 +536,15 @@ pub mod pallet {
 			match mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(*count);
-					T::Currency::withdraw(
-						player,
-						fee,
-						WithdrawReasons::FEE,
-						ExistenceRequirement::KeepAlive,
-					)?;
+					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
+					Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(fee));
 				},
 				MintType::Free => {
 					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
-					FreeMints::<T>::try_mutate(
-						player,
-						|dest_player_free_mints| -> DispatchResult {
-							*dest_player_free_mints = dest_player_free_mints
-								.checked_sub(fee.unique_saturated_into())
-								.ok_or(Error::<T>::InsufficientFreeMints)?;
-							Ok(())
-						},
-					)?;
+					let free_mints = Self::free_mints(player)
+						.checked_sub(fee)
+						.ok_or(Error::<T>::InsufficientFreeMints)?;
+					FreeMints::<T>::insert(player, free_mints);
 				},
 			};
 
@@ -605,9 +627,9 @@ pub mod pallet {
 			}
 
 			if leader.min_tier::<T>()? == max_tier {
-				SeasonMaxTierForges::<T>::mutate(|season_max_tier_forges| {
-					*season_max_tier_forges = season_max_tier_forges.saturating_add(1);
-					if *season_max_tier_forges == season.max_tier_forges {
+				CurrentSeasonMaxTierAvatars::<T>::mutate(|max_tier_avatars| {
+					*max_tier_avatars = max_tier_avatars.saturating_add(1);
+					if *max_tier_avatars == season.max_tier_forges {
 						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
 					}
 				});
@@ -695,8 +717,7 @@ pub mod pallet {
 				status.early = false;
 				status.prematurely_ended = false;
 			});
-			SeasonMaxTierForges::<T>::put(0);
-
+			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
@@ -706,7 +727,7 @@ pub mod pallet {
 				status.early = false;
 				status.prematurely_ended = false;
 			});
-			SeasonMaxTierForges::<T>::put(0);
+			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
 		}
