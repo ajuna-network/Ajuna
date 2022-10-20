@@ -1112,6 +1112,22 @@ mod forging {
 	}
 
 	#[test]
+	fn forge_should_reject_unknown_season_calls() {
+		ExtBuilder::default()
+			.forge_min_sacrifices(1)
+			.forge_max_sacrifices(1)
+			.build()
+			.execute_with(|| {
+				CurrentSeasonId::<Test>::put(123);
+				CurrentSeasonStatus::<Test>::mutate(|status| status.active = true);
+				assert_noop!(
+					AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
+					Error::<Test>::UnknownSeason,
+				);
+			});
+	}
+
+	#[test]
 	fn forge_should_reject_unknown_avatars() {
 		let season = Season::default().end(99);
 		let min_sacrifices = 1;

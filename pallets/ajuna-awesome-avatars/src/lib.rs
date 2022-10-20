@@ -551,7 +551,7 @@ pub mod pallet {
 			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
@@ -568,9 +568,11 @@ pub mod pallet {
 				.map(|id| Self::ensure_ownership(player, id))
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-			for sac in sacrifices.clone() {
-				ensure!(sac.season_id == leader.season_id, Error::<T>::IncorrectAvatarSeason);
-			}
+			ensure!(leader.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
+			ensure!(
+				sacrifices.iter().all(|avatar| avatar.season_id == season_id),
+				Error::<T>::IncorrectAvatarSeason
+			);
 
 			let (mut unique_matched_indexes, matches) =
 				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
@@ -658,17 +660,17 @@ pub mod pallet {
 
 				// activate season
 				if !is_current_season_active && season.is_active(now) {
-					Self::on_start_season(current_season_id);
+					Self::start_season(current_season_id);
 				}
 
 				// deactivate season (and active if condition met)
 				if now > season.end {
-					Self::on_finish_season(current_season_id);
+					Self::finish_season(current_season_id);
 					season_deactivated = true;
 					let next_season_id = current_season_id.saturating_add(1);
 					if let Some(next_season) = Self::seasons(next_season_id) {
 						if next_season.is_active(now) {
-							Self::on_start_season(next_season_id);
+							Self::start_season(next_season_id);
 						}
 					}
 				}
@@ -689,7 +691,7 @@ pub mod pallet {
 			Ok(current_season_id)
 		}
 
-		fn on_start_season(season_id: SeasonId) {
+		fn start_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = true;
 				status.early = false;
@@ -700,7 +702,7 @@ pub mod pallet {
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
-		fn on_finish_season(season_id: SeasonId) {
+		fn finish_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = false;
 				status.early = false;
