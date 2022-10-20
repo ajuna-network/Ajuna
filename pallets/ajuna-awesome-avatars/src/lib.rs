@@ -266,16 +266,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let GlobalConfig { mint, .. } = Self::global_configs();
-			let sender_free_mints = FreeMints::<T>::get(&sender)
+			let sender_free_mints = Self::free_mints(&sender)
 				.checked_sub(
 					how_many
 						.checked_add(mint.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
-			let dest_free_mints = FreeMints::<T>::get(&dest)
-				.checked_add(how_many)
-				.ok_or(ArithmeticError::Overflow)?;
+			let dest_free_mints =
+				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
 
 			FreeMints::<T>::insert(&sender, sender_free_mints);
 			FreeMints::<T>::insert(&dest, dest_free_mints);
@@ -377,9 +376,8 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let dest_free_mints = FreeMints::<T>::get(&dest)
-				.checked_add(how_many)
-				.ok_or(ArithmeticError::Overflow)?;
+			let dest_free_mints =
+				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
 			FreeMints::<T>::insert(&dest, dest_free_mints);
 			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
 			Ok(())
@@ -389,7 +387,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
 			let maybe_organizer = ensure_signed(origin)?;
-			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
 			Ok(())
 		}
