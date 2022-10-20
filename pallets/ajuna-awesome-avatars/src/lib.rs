@@ -111,7 +111,10 @@ pub mod pallet {
 				free_mint_transfer_fee: 1,
 			},
 			forge: ForgeConfig { open: true, min_sacrifices: 1, max_sacrifices: 4 },
-			trade: TradeConfig { open: true },
+			trade: TradeConfig {
+				open: true,
+				buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+			},
 		}
 	}
 
@@ -316,10 +319,19 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
-			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			let GlobalConfig { trade, .. } = Self::global_configs();
+			ensure!(trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
 
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
+
+			let current_season_id = Self::current_season_id();
+			let season_id = match Self::seasons(current_season_id) {
+				Some(_) => current_season_id,
+				None => current_season_id.saturating_sub(1),
+			};
+			T::Currency::withdraw(&buyer, trade.buy_fee, WithdrawReasons::FEE, AllowDeath)?;
+			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(trade.buy_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids

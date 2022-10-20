@@ -115,6 +115,7 @@ pub struct ExtBuilder {
 	forge_min_sacrifices: Option<u8>,
 	forge_max_sacrifices: Option<u8>,
 	trade_open: bool,
+	trade_buy_fee: Option<MockBalance>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 }
@@ -134,6 +135,7 @@ impl Default for ExtBuilder {
 			mint_open: true,
 			forge_open: true,
 			trade_open: true,
+			trade_buy_fee: Default::default(),
 		}
 	}
 }
@@ -187,6 +189,10 @@ impl ExtBuilder {
 		self.trade_open = trade_open;
 		self
 	}
+	pub fn trade_buy_fee(mut self, trade_buy_fee: MockBalance) -> Self {
+		self.trade_buy_fee = Some(trade_buy_fee);
+		self
+	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
@@ -226,6 +232,10 @@ impl ExtBuilder {
 			}
 
 			GlobalConfigs::<Test>::mutate(|config| config.trade.open = self.trade_open);
+			if let Some(x) = self.trade_buy_fee {
+				GlobalConfigs::<Test>::mutate(|config| config.trade.buy_fee = x);
+			}
+
 			for (account_id, mint_amount) in self.free_mints {
 				FreeMints::<Test>::insert(account_id, mint_amount);
 			}
