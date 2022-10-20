@@ -35,7 +35,7 @@ pub mod pallet {
 	use super::types::*;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement, Randomness, WithdrawReasons},
+		traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
@@ -314,7 +314,7 @@ pub mod pallet {
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
 
-			T::Currency::transfer(&buyer, &seller, price, ExistenceRequirement::KeepAlive)?;
+			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
@@ -505,12 +505,7 @@ pub mod pallet {
 			match mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(*count);
-					T::Currency::withdraw(
-						player,
-						fee,
-						WithdrawReasons::FEE,
-						ExistenceRequirement::AllowDeath,
-					)?;
+					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 				},
 				MintType::Free => {
 					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
