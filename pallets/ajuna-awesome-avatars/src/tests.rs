@@ -1079,16 +1079,35 @@ mod forging {
 	}
 
 	#[test]
-	fn forge_should_reject_out_of_season_calls() {
+	fn forge_does_not_depend_on_the_season_open_or_closing() {
+		let season = Season::default().end(99);
+		let min_sacrifices = 1;
+		let max_sacrifices = 3;
+
 		ExtBuilder::default()
-			.forge_min_sacrifices(1)
-			.forge_max_sacrifices(1)
+			.seasons(vec![(1, season.clone())])
+			.mint_cooldown(0)
+			.free_mints(vec![(ALICE, 10)])
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
 			.build()
 			.execute_with(|| {
-				assert_noop!(
-					AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
-					Error::<Test>::OutOfSeason,
-				);
+				run_to_block(season.early_start + 1);
+				for _ in 0..4 {
+					assert_ok!(AAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					));
+					run_to_block(System::block_number() + 1);
+				}
+
+				run_to_block(season.end + 10);
+
+				assert_ok!(AAvatars::forge(
+					Origin::signed(ALICE),
+					AAvatars::owners(ALICE)[0],
+					AAvatars::owners(ALICE)[1..3].to_vec()
+				));
 			});
 	}
 
@@ -1259,6 +1278,53 @@ mod forging {
 					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
 					Error::<Test>::AvatarInTrade
 				);
+			});
+	}
+
+	#[test]
+	pub fn forge_should_reject_avatars_from_different_seasons() {
+		let season1 = Season::default().end(99);
+		let season2 = Season::default().early_start(100).start(101).end(199);
+		let min_sacrifices = 1;
+		let max_sacrifices = 3;
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season1.clone()), (2, season2.clone())])
+			.mint_cooldown(0)
+			.free_mints(vec![(ALICE, 10)])
+			.forge_min_sacrifices(min_sacrifices)
+			.forge_max_sacrifices(max_sacrifices)
+			.build()
+			.execute_with(|| {
+				run_to_block(season1.early_start + 1);
+				for _ in 0..max_sacrifices {
+					assert_ok!(AAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					));
+					run_to_block(System::block_number() + 1);
+				}
+				run_to_block(season2.start + 2);
+
+				for _ in 0..max_sacrifices {
+					assert_ok!(AAvatars::mint(
+						Origin::signed(ALICE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					));
+					run_to_block(System::block_number() + 1);
+				}
+				run_to_block(season2.end + 1);
+
+				for (player, leader, sacrifices) in [
+					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(ALICE)[2..5].to_vec()),
+					(ALICE, AAvatars::owners(ALICE)[0], AAvatars::owners(ALICE)[3..6].to_vec()),
+					(ALICE, AAvatars::owners(ALICE)[5], AAvatars::owners(ALICE)[0..2].to_vec()),
+				] {
+					assert_noop!(
+						AAvatars::forge(Origin::signed(player), leader, sacrifices),
+						Error::<Test>::IncorrectAvatarSeason,
+					);
+				}
 			});
 	}
 }

@@ -233,6 +233,8 @@ pub mod pallet {
 		LeaderSacrificed,
 		/// An avatar listed for trade is used to forge.
 		AvatarInTrade,
+		/// Tried to forge avatars from different seasons.
+		IncorrectAvatarSeason,
 	}
 
 	#[pallet::call]
@@ -264,16 +266,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let GlobalConfig { mint, .. } = Self::global_configs();
-			let sender_free_mints = FreeMints::<T>::get(&sender)
+			let sender_free_mints = Self::free_mints(&sender)
 				.checked_sub(
 					how_many
 						.checked_add(mint.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
-			let dest_free_mints = FreeMints::<T>::get(&dest)
-				.checked_add(how_many)
-				.ok_or(ArithmeticError::Overflow)?;
+			let dest_free_mints =
+				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
 
 			FreeMints::<T>::insert(&sender, sender_free_mints);
 			FreeMints::<T>::insert(&dest, dest_free_mints);
@@ -375,9 +376,8 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let dest_free_mints = FreeMints::<T>::get(&dest)
-				.checked_add(how_many)
-				.ok_or(ArithmeticError::Overflow)?;
+			let dest_free_mints =
+				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
 			FreeMints::<T>::insert(&dest, dest_free_mints);
 			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
 			Ok(())
@@ -387,7 +387,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
 			let maybe_organizer = ensure_signed(origin)?;
-			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
 			Ok(())
 		}
@@ -566,6 +566,12 @@ pub mod pallet {
 				.map(|id| Self::ensure_ownership(player, id))
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
+			ensure!(leader.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
+			ensure!(
+				sacrifices.iter().all(|avatar| avatar.season_id == season_id),
+				Error::<T>::IncorrectAvatarSeason
+			);
+
 			let (mut unique_matched_indexes, matches) =
 				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
 
@@ -652,17 +658,17 @@ pub mod pallet {
 
 				// activate season
 				if !is_current_season_active && season.is_active(now) {
-					Self::activate_season(current_season_id);
+					Self::start_season(current_season_id);
 				}
 
 				// deactivate season (and active if condition met)
 				if now > season.end {
-					Self::deactivate_season(current_season_id);
+					Self::finish_season(current_season_id);
 					season_deactivated = true;
 					let next_season_id = current_season_id.saturating_add(1);
 					if let Some(next_season) = Self::seasons(next_season_id) {
 						if next_season.is_active(now) {
-							Self::activate_season(next_season_id);
+							Self::start_season(next_season_id);
 						}
 					}
 				}
@@ -683,17 +689,18 @@ pub mod pallet {
 			Ok(current_season_id)
 		}
 
-		fn activate_season(season_id: SeasonId) {
+		fn start_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = true;
 				status.early = false;
 				status.prematurely_ended = false;
 			});
 			SeasonMaxTierForges::<T>::put(0);
+
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
-		fn deactivate_season(season_id: SeasonId) {
+		fn finish_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = false;
 				status.early = false;
