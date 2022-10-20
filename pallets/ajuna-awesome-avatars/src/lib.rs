@@ -102,9 +102,9 @@ pub mod pallet {
 			mint: MintConfig {
 				open: true,
 				fees: MintFees {
-					one: (1_000_000_000_000_u64 * 55 / 100).unique_saturated_into(),
-					three: (1_000_000_000_000_u64 * 50 / 100).unique_saturated_into(),
-					six: (1_000_000_000_000_u64 * 45 / 100).unique_saturated_into(),
+					one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
+					three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
+					six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
 				},
 				cooldown: 5_u8.into(),
 				free_mint_fee_multiplier: 1,
@@ -114,6 +114,7 @@ pub mod pallet {
 			trade: TradeConfig { open: true },
 		}
 	}
+
 	#[pallet::storage]
 	#[pallet::getter(fn global_configs)]
 	pub type GlobalConfigs<T: Config> =
