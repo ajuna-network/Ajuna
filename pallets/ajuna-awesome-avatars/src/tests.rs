@@ -106,14 +106,14 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_work() {
+	fn set_season_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				let season_1 = Season::default().early_start(1).start(5).end(10);
-				assert_ok!(AAvatars::upsert_season(Origin::signed(ALICE), 1, season_1.clone()));
+				assert_ok!(AAvatars::set_season(Origin::signed(ALICE), 1, season_1.clone()));
 				assert_eq!(AAvatars::seasons(1), Some(season_1.clone()));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedSeason {
 					season_id: 1,
@@ -121,7 +121,7 @@ mod season {
 				}));
 
 				let season_2 = Season::default().early_start(11).start(12).end(13);
-				assert_ok!(AAvatars::upsert_season(Origin::signed(ALICE), 2, season_2.clone()));
+				assert_ok!(AAvatars::set_season(Origin::signed(ALICE), 2, season_2.clone()));
 				assert_eq!(AAvatars::seasons(2), Some(season_2.clone()));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedSeason {
 					season_id: 2,
@@ -131,17 +131,17 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_non_organizer_calls() {
+	fn set_season_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(BOB), 7357, Season::default()),
+				AAvatars::set_season(Origin::signed(BOB), 7357, Season::default()),
 				DispatchError::BadOrigin
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_early_start_is_earlier_than_previous_season_end() {
+	fn set_season_should_reject_when_early_start_is_earlier_than_previous_season_end() {
 		let season_1 = Season::default();
 		ExtBuilder::default()
 			.organizer(ALICE)
@@ -152,7 +152,7 @@ mod season {
 					let season_2 = Season::default().early_start(i).start(i + 1).end(i + 2);
 					assert!(season_2.early_start <= season_1.end);
 					assert_noop!(
-						AAvatars::upsert_season(Origin::signed(ALICE), 2, season_2),
+						AAvatars::set_season(Origin::signed(ALICE), 2, season_2),
 						Error::<Test>::EarlyStartTooEarly
 					);
 				}
@@ -160,13 +160,13 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_early_start_is_earlier_than_or_equal_to_start() {
+	fn set_season_should_reject_when_early_start_is_earlier_than_or_equal_to_start() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for i in 3..6 {
 				let new_season = Season::default().early_start(i).start(3).end(10);
 				assert!(new_season.early_start >= new_season.start);
 				assert_noop!(
-					AAvatars::upsert_season(Origin::signed(ALICE), 1, new_season),
+					AAvatars::set_season(Origin::signed(ALICE), 1, new_season),
 					Error::<Test>::EarlyStartTooLate
 				);
 			}
@@ -174,26 +174,26 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_start_is_later_than_end() {
+	fn set_season_should_reject_when_start_is_later_than_end() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			let new_season = Season::default().early_start(11).start(12).end(10);
 			assert!(new_season.early_start < new_season.start);
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(ALICE), 1, new_season),
+				AAvatars::set_season(Origin::signed(ALICE), 1, new_season),
 				Error::<Test>::SeasonStartTooLate
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_rarity_tier_is_duplicated() {
+	fn set_season_should_reject_when_rarity_tier_is_duplicated() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for duplicated_rarity_tiers in [
 				vec![RarityTier::Common, RarityTier::Common],
 				vec![RarityTier::Common, RarityTier::Common, RarityTier::Legendary],
 			] {
 				assert_noop!(
-					AAvatars::upsert_season(
+					AAvatars::set_season(
 						Origin::signed(ALICE),
 						1,
 						Season::default().tiers(duplicated_rarity_tiers)
@@ -205,7 +205,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_sum_of_rarity_chance_is_incorrect() {
+	fn set_season_should_reject_when_sum_of_rarity_chance_is_incorrect() {
 		let tiers = vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary];
 		let season_0 = Season::default().tiers(tiers.clone());
 		let season_1 = Season::default().tiers(tiers);
@@ -216,7 +216,7 @@ mod season {
 					season_1.clone().p_single_mint(incorrect_percentages),
 				] {
 					assert_noop!(
-						AAvatars::upsert_season(Origin::signed(ALICE), 1, season),
+						AAvatars::set_season(Origin::signed(ALICE), 1, season),
 						Error::<Test>::IncorrectRarityPercentages
 					);
 				}
@@ -225,7 +225,7 @@ mod season {
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_season_to_update_ends_after_next_season_start() {
+	fn set_season_should_reject_when_season_to_update_ends_after_next_season_start() {
 		let season_1 = Season::default().early_start(1).start(5).end(10);
 		let season_2 = Season::default().early_start(11).start(15).end(20);
 
@@ -237,34 +237,34 @@ mod season {
 				let season_1_update = Season::default().early_start(1).start(5).end(14);
 				assert!(season_1_update.end > season_2.early_start);
 				assert_noop!(
-					AAvatars::upsert_season(Origin::signed(ALICE), 1, season_1_update),
+					AAvatars::set_season(Origin::signed(ALICE), 1, season_1_update),
 					Error::<Test>::SeasonEndTooLate
 				);
 			});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_season_id_underflow() {
+	fn set_season_should_reject_season_id_underflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(ALICE), SeasonId::MIN, Season::default()),
+				AAvatars::set_season(Origin::signed(ALICE), SeasonId::MIN, Season::default()),
 				ArithmeticError::Underflow
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_season_id_overflow() {
+	fn set_season_should_reject_season_id_overflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upsert_season(Origin::signed(ALICE), SeasonId::MAX, Season::default()),
+				AAvatars::set_season(Origin::signed(ALICE), SeasonId::MAX, Season::default()),
 				ArithmeticError::Overflow
 			);
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_out_of_bound_variations() {
+	fn set_season_should_reject_out_of_bound_variations() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for (season, error) in [
 				(Season::default().max_variations(0), Error::<Test>::MaxVariationsTooLow),
@@ -272,13 +272,13 @@ mod season {
 				(Season::default().max_variations(16), Error::<Test>::MaxVariationsTooHigh),
 				(Season::default().max_variations(100), Error::<Test>::MaxVariationsTooHigh),
 			] {
-				assert_noop!(AAvatars::upsert_season(Origin::signed(ALICE), 1, season), error);
+				assert_noop!(AAvatars::set_season(Origin::signed(ALICE), 1, season), error);
 			}
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_out_of_bound_components_bounds() {
+	fn set_season_should_reject_out_of_bound_components_bounds() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for (season, error) in [
 				(Season::default().max_components(0), Error::<Test>::MaxComponentsTooLow),
@@ -286,20 +286,20 @@ mod season {
 				(Season::default().max_components(33), Error::<Test>::MaxComponentsTooHigh),
 				(Season::default().max_components(100), Error::<Test>::MaxComponentsTooHigh),
 			] {
-				assert_noop!(AAvatars::upsert_season(Origin::signed(ALICE), 1, season), error);
+				assert_noop!(AAvatars::set_season(Origin::signed(ALICE), 1, season), error);
 			}
 		});
 	}
 
 	#[test]
-	fn upsert_season_should_reject_when_season_ids_are_not_sequential() {
+	fn set_season_should_reject_when_season_ids_are_not_sequential() {
 		ExtBuilder::default()
 			.organizer(ALICE)
 			.seasons(vec![(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AAvatars::upsert_season(Origin::signed(ALICE), 3, Season::default()),
+					AAvatars::set_season(Origin::signed(ALICE), 3, Season::default()),
 					Error::<Test>::NonSequentialSeasonId,
 				);
 			});

@@ -346,7 +346,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn upsert_season(
+		pub fn set_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
 			season: SeasonOf<T>,
