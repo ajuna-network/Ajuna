@@ -17,10 +17,31 @@
 use super::*;
 
 #[allow(unused)]
-use crate::Pallet as Template;
-use frame_benchmarking::{benchmarks, whitelisted_caller};
+use crate::{types::*, Pallet as AAvatars};
+use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 
+fn account<T: Config>(name: &'static str) -> T::AccountId {
+	let index = 0;
+	let seed = 0;
+	frame_benchmarking::account(name, index, seed)
+}
+
+fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
+
 benchmarks! {
-	impl_benchmark_test_suite!(Template, crate::mock::always_good_to_test(), crate::mock::Test);
+	issue_free_mints {
+		let caller = account::<T>("caller");
+		let to = account::<T>("to");
+		let how_many = MintCount::MAX;
+	}: _(RawOrigin::Signed(caller), to.clone(), how_many)
+	verify {
+		assert_last_event::<T>(Event::FreeMintsIssued { to, how_many }.into())
+	}
+
+	impl_benchmark_test_suite!(
+		AAvatars, crate::mock::ExtBuilder::default().build(), crate::mock::Test
+	);
 }
