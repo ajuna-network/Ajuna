@@ -36,6 +36,14 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
+	set_organizer {
+		let caller = account::<T>("caller");
+		let organizer = account::<T>("organizer");
+	}: _(RawOrigin::Signed(caller), organizer.clone())
+	verify {
+		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+	}
+
 	set_treasurer {
 		let caller = account::<T>("caller");
 		let treasurer = account::<T>("treasurer");
