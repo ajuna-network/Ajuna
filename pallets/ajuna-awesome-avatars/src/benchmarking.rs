@@ -20,6 +20,7 @@ use super::*;
 use crate::{types::*, Pallet as AAvatars};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
+use sp_runtime::traits::UniqueSaturatedFrom;
 
 fn account<T: Config>(name: &'static str) -> T::AccountId {
 	let index = 0;
@@ -32,6 +33,36 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
+	update_global_config {
+		let caller = account::<T>("caller");
+		let config = GlobalConfig {
+			max_avatars_per_player: u32::MAX,
+			mint: MintConfig {
+				open: true,
+				fees: MintFees {
+					one: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+					three: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				},
+				cooldown: T::BlockNumber::from(u32::MAX),
+				free_mint_fee_multiplier: MintCount::MAX,
+				free_mint_transfer_fee: MintCount::MAX,
+			},
+			forge: ForgeConfig {
+				open: true,
+				min_sacrifices: u8::MAX,
+				max_sacrifices: u8::MAX,
+			},
+			trade: TradeConfig {
+				open: true,
+				buy_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			}
+		};
+	}: _(RawOrigin::Signed(caller), config.clone())
+	verify {
+		assert_last_event::<T>(Event::UpdatedGlobalConfig(config).into())
+	}
+
 	issue_free_mints {
 		let caller = account::<T>("caller");
 		let to = account::<T>("to");
