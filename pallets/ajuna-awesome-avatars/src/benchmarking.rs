@@ -36,6 +36,14 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
+	set_treasurer {
+		let caller = account::<T>("caller");
+		let treasurer = account::<T>("treasurer");
+	}: _(RawOrigin::Signed(caller), treasurer.clone())
+	verify {
+		assert_last_event::<T>(Event::TreasurerSet { treasurer }.into())
+	}
+
 	set_season {
 		let caller = account::<T>("caller");
 		let season_id = SeasonId::MAX;
