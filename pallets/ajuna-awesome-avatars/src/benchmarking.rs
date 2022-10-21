@@ -17,8 +17,11 @@
 use super::*;
 
 #[allow(unused)]
-use crate::{types::*, Pallet as AAvatars};
-use frame_benchmarking::benchmarks;
+use crate::{
+	types::{RarityTier::*, *},
+	Pallet as AAvatars,
+};
+use frame_benchmarking::{benchmarks, vec};
 use frame_system::RawOrigin;
 use sp_runtime::traits::UniqueSaturatedFrom;
 
@@ -33,6 +36,27 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
+	set_season {
+		let caller = account::<T>("caller");
+		let season_id = SeasonId::MAX;
+		let season = Season {
+			name: [u8::MAX; 100].to_vec().try_into().unwrap(),
+			description: [u8::MAX; 1_000].to_vec().try_into().unwrap(),
+			early_start: T::BlockNumber::from(u32::MAX - 2),
+			start: T::BlockNumber::from(u32::MAX - 1),
+			end: T::BlockNumber::from(u32::MAX),
+			max_tier_forges: u32::MAX,
+			max_variations: u8::MAX,
+			max_components: u8::MAX,
+			tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
+			p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
+			p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
+		};
+	}: _(RawOrigin::Signed(caller), season_id, season.clone())
+	verify {
+		assert_last_event::<T>(Event::UpdatedSeason { season_id, season }.into())
+	}
+
 	update_global_config {
 		let caller = account::<T>("caller");
 		let config = GlobalConfig {
