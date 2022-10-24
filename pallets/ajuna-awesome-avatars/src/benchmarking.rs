@@ -31,11 +31,84 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 	frame_benchmarking::account(name, index, seed)
 }
 
+fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
+	CurrentSeasonId::<T>::put(1);
+	CurrentSeasonStatus::<T>::put(SeasonStatus {
+		active: true,
+		early: false,
+		prematurely_ended: false,
+	});
+	for i in 0..n {
+		Seasons::<T>::insert(
+			(i + 1) as SeasonId,
+			Season {
+				name: [u8::MAX; 100].to_vec().try_into().unwrap(),
+				description: [u8::MAX; 1_000].to_vec().try_into().unwrap(),
+				early_start: T::BlockNumber::from((i * 10 + 1) as u32),
+				start: T::BlockNumber::from((i * 10 + 5) as u32),
+				end: T::BlockNumber::from((i * 10 + 10) as u32),
+				max_tier_forges: u32::MAX,
+				max_variations: u8::MAX,
+				max_components: u8::MAX,
+				tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
+				p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
+				p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
+			},
+		);
+	}
+	frame_system::Pallet::<T>::set_block_number(
+		AAvatars::<T>::seasons(AAvatars::<T>::current_season_id()).unwrap().start,
+	);
+	Ok(())
+}
+
+fn create_avatars<T: Config>(name: &'static str, n: usize) -> Result<(), &'static str> {
+	create_seasons::<T>(3)?;
+
+	let player = account::<T>(name);
+	let season_id = 1;
+	FreeMints::<T>::insert(&player, n as MintCount);
+	for _ in 0..n {
+		AAvatars::<T>::do_mint(
+			&player,
+			&MintOption { mint_type: MintType::Free, count: MintPackSize::One },
+			season_id,
+		)?
+	}
+	Ok(())
+}
+
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
 benchmarks! {
+	mint_free {
+		let name = "player";
+		let n in 0 .. AAvatars::<T>::global_configs().max_avatars_per_player;
+		create_avatars::<T>(name, n as usize)?;
+
+		let caller = account::<T>(name);
+		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six };
+	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
+	verify {
+		let avatar_ids = AAvatars::<T>::owners(caller).to_vec();
+		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
+	}
+
+	mint_normal {
+		let name = "player";
+		let n in 0 .. AAvatars::<T>::global_configs().max_avatars_per_player;
+		create_avatars::<T>(name, n as usize)?;
+
+		let caller = account::<T>(name);
+		let mint_option = MintOption { mint_type: MintType::Normal, count: MintPackSize::Six };
+	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
+	verify {
+		let avatar_ids = AAvatars::<T>::owners(caller).to_vec();
+		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
+	}
+
 	set_organizer {
 		let caller = account::<T>("caller");
 		let organizer = account::<T>("organizer");
