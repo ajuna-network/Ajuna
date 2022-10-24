@@ -515,10 +515,11 @@ pub mod pallet {
 			let MintOption { mint_type, count } = mint_option;
 			let how_many = *count as usize;
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let is_batched = mint_option.count.is_batched();
 			let generated_avatar_ids = (0..how_many)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
-					let dna = Self::random_dna(&avatar_id, &season, how_many > 1)?;
+					let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
 					let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
 					let avatar = Avatar { season_id, dna, souls };
 					Avatars::<T>::insert(avatar_id, (&player, avatar));
