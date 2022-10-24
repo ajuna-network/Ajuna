@@ -258,7 +258,7 @@ pub struct MintFees<Balance> {
 }
 
 impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: MintPackSize) -> Balance {
+	pub fn fee_for(self, mint_count: &MintPackSize) -> Balance {
 		match mint_count {
 			MintPackSize::One => self.one,
 			MintPackSize::Three => self.three,

@@ -425,8 +425,8 @@ mod minting {
 					));
 					match mint_type {
 						MintType::Normal => {
-							initial_balance -= fees.fee_for(MintPackSize::One);
-							initial_treasury_balance += fees.fee_for(MintPackSize::One);
+							initial_balance -= fees.fee_for(&MintPackSize::One);
+							initial_treasury_balance += fees.fee_for(&MintPackSize::One);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
@@ -454,8 +454,8 @@ mod minting {
 					));
 					match mint_type {
 						MintType::Normal => {
-							initial_balance -= fees.fee_for(MintPackSize::Three);
-							initial_treasury_balance += fees.fee_for(MintPackSize::Three);
+							initial_balance -= fees.fee_for(&MintPackSize::Three);
+							initial_treasury_balance += fees.fee_for(&MintPackSize::Three);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);
@@ -483,8 +483,8 @@ mod minting {
 					));
 					match mint_type {
 						MintType::Normal => {
-							initial_balance -= fees.fee_for(MintPackSize::Six);
-							initial_treasury_balance += fees.fee_for(MintPackSize::Six);
+							initial_balance -= fees.fee_for(&MintPackSize::Six);
+							initial_treasury_balance += fees.fee_for(&MintPackSize::Six);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(AAvatars::treasury(1), initial_treasury_balance);

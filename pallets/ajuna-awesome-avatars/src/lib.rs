@@ -512,11 +512,9 @@ pub mod pallet {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
-			let MintOption { mint_type, count } = mint_option;
-			let how_many = *count as usize;
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let is_batched = mint_option.count.is_batched();
-			let generated_avatar_ids = (0..how_many)
+			let generated_avatar_ids = (0..mint_option.count as usize)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
@@ -534,14 +532,15 @@ pub mod pallet {
 				Error::<T>::MaxOwnershipReached
 			);
 
-			match mint_type {
+			match mint_option.mint_type {
 				MintType::Normal => {
-					let fee = mint.fees.fee_for(*count);
+					let fee = mint.fees.fee_for(&mint_option.count);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 					Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(fee));
 				},
 				MintType::Free => {
-					let fee = (*count as MintCount).saturating_mul(mint.free_mint_fee_multiplier);
+					let fee = (mint_option.count as MintCount)
+						.saturating_mul(mint.free_mint_fee_multiplier);
 					let free_mints = Self::free_mints(player)
 						.checked_sub(fee)
 						.ok_or(Error::<T>::InsufficientFreeMints)?;
