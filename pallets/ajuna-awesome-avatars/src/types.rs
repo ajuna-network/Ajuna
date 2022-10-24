@@ -244,6 +244,12 @@ impl Default for MintPackSize {
 	}
 }
 
+impl MintPackSize {
+	pub(crate) fn is_batched(&self) -> bool {
+		self != &Self::One
+	}
+}
+
 #[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintFees<Balance> {
 	pub one: Balance,
@@ -252,7 +258,7 @@ pub struct MintFees<Balance> {
 }
 
 impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: MintPackSize) -> Balance {
+	pub fn fee_for(self, mint_count: &MintPackSize) -> Balance {
 		match mint_count {
 			MintPackSize::One => self.one,
 			MintPackSize::Three => self.three,
