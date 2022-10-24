@@ -514,11 +514,6 @@ pub mod pallet {
 
 			let MintOption { mint_type, count } = mint_option;
 			let how_many = *count as usize;
-			let max_ownership = (max_avatars_per_player as usize)
-				.checked_sub(how_many)
-				.ok_or(ArithmeticError::Underflow)?;
-			ensure!(Self::owners(player).len() <= max_ownership, Error::<T>::MaxOwnershipReached);
-
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let generated_avatar_ids = (0..how_many)
 				.map(|_| {
@@ -528,10 +523,15 @@ pub mod pallet {
 					let avatar = Avatar { season_id, dna, souls };
 					Avatars::<T>::insert(avatar_id, (&player, avatar));
 					Owners::<T>::try_append(&player, avatar_id)
-						.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+						.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 					Ok(avatar_id)
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
+
+			ensure!(
+				Self::owners(&player).len() <= max_avatars_per_player as usize,
+				Error::<T>::MaxOwnershipReached
+			);
 
 			match mint_type {
 				MintType::Normal => {
