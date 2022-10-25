@@ -156,6 +156,18 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarPriceSet { avatar_id, price }.into())
 	}
 
+	remove_price {
+		let name = "player";
+		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
+		create_avatars::<T>(name, max_avatars)?;
+		let caller = account::<T>(name);
+		let avatar_id = AAvatars::<T>::owners(&caller)[0];
+		Trade::<T>::insert(&avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
+	}: _(RawOrigin::Signed(caller), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarPriceUnset { avatar_id }.into())
+	}
+
 	set_organizer {
 		let caller = account::<T>("caller");
 		let organizer = account::<T>("organizer");
