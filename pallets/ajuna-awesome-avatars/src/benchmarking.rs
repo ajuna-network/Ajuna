@@ -134,6 +134,16 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarForged { avatar_id, upgraded_components }.into())
 	}
 
+	transfer_free_mints {
+		let from = account::<T>("from");
+		let to = account::<T>("to");
+		let free_mint_transfer_fee = AAvatars::<T>::global_configs().mint.free_mint_transfer_fee;
+		let how_many = MintCount::MAX + free_mint_transfer_fee as MintCount;
+	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
+	verify {
+		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many }.into())
+	}
+
 	set_organizer {
 		let caller = account::<T>("caller");
 		let organizer = account::<T>("organizer");
