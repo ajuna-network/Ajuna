@@ -109,6 +109,31 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
+	forge {
+		let name = "player";
+		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
+		create_avatars::<T>(name, max_avatars)?;
+
+		let player = account::<T>(name);
+		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_id = avatar_ids[0];
+		let (_owner, original_avatar) = AAvatars::<T>::avatars(&avatar_id).unwrap();
+	}: _(RawOrigin::Signed(player), avatar_id, avatar_ids[1..5].to_vec())
+	verify {
+		let (_owner, upgraded_avatar) = AAvatars::<T>::avatars(&avatar_id).unwrap();
+		let original_tiers = original_avatar.dna.into_iter().map(|x| x >> 4);
+		let upgraded_tiers = upgraded_avatar.dna.into_iter().map(|x| x >> 4);
+		let upgraded_components = original_tiers.zip(upgraded_tiers).fold(
+			0, |mut count, (lhs, rhs)| {
+				if lhs != rhs {
+					count+=1;
+				}
+				count
+			}
+		);
+		assert_last_event::<T>(Event::AvatarForged { avatar_id, upgraded_components }.into())
+	}
+
 	set_organizer {
 		let caller = account::<T>("caller");
 		let organizer = account::<T>("organizer");
