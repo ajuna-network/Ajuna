@@ -163,7 +163,6 @@ mod create_mogwai {
 				BattleMogs::owners(owner).into_iter().next().expect("Should get mogwai id");
 
 			assert_eq!(BattleMogs::mogwai(mogwai_id).unwrap().id, mogwai_id);
-			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(owner));
 
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
 
@@ -219,7 +218,6 @@ mod remove_mogwai {
 			assert_ok!(BattleMogs::remove_mogwai(Origin::signed(account), mogwai_id));
 
 			assert_eq!(BattleMogs::mogwai(mogwai_id), None);
-			assert_eq!(BattleMogs::owner_of(mogwai_id), None);
 
 			assert_eq!(BattleMogs::all_mogwais_count(), 0);
 
@@ -259,7 +257,7 @@ mod transfer {
 
 			assert_ok!(BattleMogs::transfer(Origin::signed(founder), target, mogwai_id));
 
-			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(target));
+			assert_eq!(BattleMogs::mogwai(mogwai_id).unwrap().owner, target);
 
 			assert_eq!(BattleMogs::owned_mogwais_count(target), 1);
 			assert_eq!(BattleMogs::owned_mogwais_count(founder), 0);
@@ -408,7 +406,6 @@ mod sacrifice {
 			assert_ok!(BattleMogs::sacrifice(Origin::signed(account), mogwai_id));
 
 			assert_eq!(BattleMogs::mogwai(mogwai_id), None);
-			assert_eq!(BattleMogs::owner_of(mogwai_id), None);
 
 			assert_eq!(BattleMogs::all_mogwais_count(), 0);
 
@@ -543,10 +540,8 @@ mod sacrifice_into {
 			));
 
 			assert_eq!(BattleMogs::mogwai(mogwai_id_1), None);
-			assert_eq!(BattleMogs::owner_of(mogwai_id_1), None);
 
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
-
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 1);
 
 			assert_eq!(
@@ -666,6 +661,13 @@ mod sacrifice_into {
 			let mogwai_id_1 = create_mogwai(account);
 			let mogwai_id_2 = create_mogwai(account);
 
+			let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+			run_to_block(System::block_number() + time_till_hatch);
+
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id_1));
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id_2));
+
 			Mogwais::<Test>::mutate(mogwai_id_1, |maybe_mogwai| {
 				if let Some(ref mut mogwai) = maybe_mogwai {
 					mogwai.rarity = RarityType::Epic;
@@ -748,7 +750,7 @@ mod buy_mogwai {
 
 			assert_ok!(BattleMogs::set_price(Origin::signed(account), mogwai_id, sell_price));
 
-			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(account));
+			assert_eq!(BattleMogs::mogwai(mogwai_id).unwrap().owner, account);
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 1);
 			assert_eq!(BattleMogs::owned_mogwais_count(buyer), 0);
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
@@ -759,7 +761,7 @@ mod buy_mogwai {
 				buyer, account, mogwai_id, sell_price,
 			)));
 
-			assert_eq!(BattleMogs::owner_of(mogwai_id), Some(buyer));
+			assert_eq!(BattleMogs::mogwai(mogwai_id).unwrap().owner, buyer);
 			assert_eq!(BattleMogs::owned_mogwais_count(account), 0);
 			assert_eq!(BattleMogs::owned_mogwais_count(buyer), 1);
 			assert_eq!(BattleMogs::all_mogwais_count(), 1);
@@ -895,6 +897,12 @@ mod morph_mogwai {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = BOB;
 			let mogwai_id = create_mogwai(account);
+
+			let time_till_hatch = GameEventType::time_till(GameEventType::Hatch) as u64;
+
+			run_to_block(System::block_number() + time_till_hatch);
+
+			assert_ok!(BattleMogs::hatch_mogwai(Origin::signed(account), mogwai_id));
 
 			put_mogwai_on_sale(account, mogwai_id, 1000);
 

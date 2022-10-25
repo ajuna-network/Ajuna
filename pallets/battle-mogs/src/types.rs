@@ -20,7 +20,15 @@ use frame_support::codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, Debug, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
-pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType, PhaseType> {
+pub struct MogwaiStruct<
+	Hash,
+	BlockNumber,
+	Balance,
+	MogwaiGeneration,
+	RarityType,
+	PhaseType,
+	AccountId,
+> {
 	pub id: Hash,
 	pub dna: [[u8; 32]; 2],
 	//	pub state: u32,
@@ -30,6 +38,7 @@ pub struct MogwaiStruct<Hash, BlockNumber, Balance, MogwaiGeneration, RarityType
 	pub generation: MogwaiGeneration,
 	pub rarity: RarityType,
 	pub phase: PhaseType,
+	pub owner: AccountId,
 }
 
 #[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
