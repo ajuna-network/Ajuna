@@ -22,6 +22,7 @@ use crate::{
 	Pallet as AAvatars,
 };
 use frame_benchmarking::{benchmarks, vec};
+use frame_support::traits::Currency;
 use frame_system::RawOrigin;
 use sp_runtime::traits::UniqueSaturatedFrom;
 
@@ -166,6 +167,25 @@ benchmarks! {
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarPriceUnset { avatar_id }.into())
+	}
+
+	buy {
+		let (buyer_name, seller_name) = ("buyer", "seller");
+		let (buyer, seller) = (account::<T>(buyer_name), account::<T>(seller_name));
+		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
+		create_avatars::<T>(buyer_name, max_avatars - 1)?;
+		create_avatars::<T>(seller_name, max_avatars)?;
+
+		let buy_fee = AAvatars::<T>::global_configs().trade.buy_fee;
+		let sell_fee = BalanceOf::<T>::unique_saturated_from(u128::MAX / 2);
+		T::Currency::make_free_balance_be(&buyer, sell_fee + buy_fee);
+		T::Currency::make_free_balance_be(&seller, sell_fee);
+
+		let avatar_id = AAvatars::<T>::owners(&seller)[0];
+		Trade::<T>::insert(&avatar_id, sell_fee);
+	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer }.into())
 	}
 
 	set_organizer {
