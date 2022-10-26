@@ -114,7 +114,7 @@ pub mod pallet {
 				free_mint_fee_multiplier: 1,
 				free_mint_transfer_fee: 1,
 			},
-			forge: ForgeConfig { open: true, min_sacrifices: 1, max_sacrifices: 4 },
+			forge: ForgeConfig { open: true },
 			trade: TradeConfig {
 				open: true,
 				buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
@@ -561,17 +561,17 @@ pub mod pallet {
 			season_id: SeasonId,
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
-			ensure!(
-				sacrifice_ids.len() as u8 >= forge.min_sacrifices,
-				Error::<T>::TooFewSacrifices
-			);
-			ensure!(
-				sacrifice_ids.len() as u8 <= forge.max_sacrifices,
-				Error::<T>::TooManySacrifices
-			);
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			ensure!(
+				sacrifice_ids.len() as u8 >= season.min_sacrifices,
+				Error::<T>::TooFewSacrifices
+			);
+			ensure!(
+				sacrifice_ids.len() as u8 <= season.max_sacrifices,
+				Error::<T>::TooManySacrifices
+			);
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
@@ -602,7 +602,7 @@ pub mod pallet {
 			let mut upgraded_components = 0;
 
 			// all matches approx. 100%
-			let p = (MAX_PERCENTAGE / forge.max_sacrifices) * matches;
+			let p = (MAX_PERCENTAGE / season.max_sacrifices) * matches;
 			let rolls = sacrifices.len();
 			for hash in random_hash.iter().take(rolls) {
 				if let Some(first_matched_index) = unique_matched_indexes.pop_first() {

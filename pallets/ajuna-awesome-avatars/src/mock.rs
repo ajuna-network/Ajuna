@@ -112,8 +112,6 @@ pub struct ExtBuilder {
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
 	forge_open: bool,
-	forge_min_sacrifices: Option<u8>,
-	forge_max_sacrifices: Option<u8>,
 	trade_open: bool,
 	trade_buy_fee: Option<MockBalance>,
 	balances: Vec<(MockAccountId, MockBalance)>,
@@ -128,8 +126,6 @@ impl Default for ExtBuilder {
 			max_avatars_per_player: Default::default(),
 			mint_cooldown: Default::default(),
 			mint_fees: Default::default(),
-			forge_min_sacrifices: Default::default(),
-			forge_max_sacrifices: Default::default(),
 			balances: Default::default(),
 			free_mints: Default::default(),
 			mint_open: true,
@@ -177,14 +173,6 @@ impl ExtBuilder {
 		self.forge_open = forge_open;
 		self
 	}
-	pub fn forge_min_sacrifices(mut self, forge_min_sacrifices: u8) -> Self {
-		self.forge_min_sacrifices = Some(forge_min_sacrifices);
-		self
-	}
-	pub fn forge_max_sacrifices(mut self, forge_max_sacrifices: u8) -> Self {
-		self.forge_max_sacrifices = Some(forge_max_sacrifices);
-		self
-	}
 	pub fn trade_open(mut self, trade_open: bool) -> Self {
 		self.trade_open = trade_open;
 		self
@@ -223,15 +211,11 @@ impl ExtBuilder {
 				GlobalConfigs::<Test>::mutate(|config| config.mint.fees = x);
 			}
 
-			GlobalConfigs::<Test>::mutate(|config| config.forge.open = self.forge_open);
-			if let Some(x) = self.forge_min_sacrifices {
-				GlobalConfigs::<Test>::mutate(|config| config.forge.min_sacrifices = x);
-			}
-			if let Some(x) = self.forge_max_sacrifices {
-				GlobalConfigs::<Test>::mutate(|config| config.forge.max_sacrifices = x);
-			}
+			GlobalConfigs::<Test>::mutate(|config| {
+				config.forge.open = self.forge_open;
+				config.trade.open = self.trade_open;
+			});
 
-			GlobalConfigs::<Test>::mutate(|config| config.trade.open = self.trade_open);
 			if let Some(x) = self.trade_buy_fee {
 				GlobalConfigs::<Test>::mutate(|config| config.trade.buy_fee = x);
 			}
@@ -267,6 +251,8 @@ impl Default for Season<MockBlockNumber> {
 			max_tier_forges: 10,
 			max_variations: 2,
 			max_components: 2,
+			min_sacrifices: 1,
+			max_sacrifices: 4,
 			tiers: vec![
 				RarityTier::Common,
 				RarityTier::Uncommon,
@@ -306,6 +292,14 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn max_variations(mut self, max_variations: u8) -> Self {
 		self.max_variations = max_variations;
+		self
+	}
+	pub fn min_sacrifices(mut self, min_sacrifices: u8) -> Self {
+		self.min_sacrifices = min_sacrifices;
+		self
+	}
+	pub fn max_sacrifices(mut self, max_sacrifices: u8) -> Self {
+		self.max_sacrifices = max_sacrifices;
 		self
 	}
 	pub fn tiers(mut self, tiers: Vec<RarityTier>) -> Self {

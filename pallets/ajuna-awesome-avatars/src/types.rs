@@ -53,6 +53,8 @@ pub struct Season<BlockNumber> {
 	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
+	pub min_sacrifices: u8,
+	pub max_sacrifices: u8,
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
 	pub p_single_mint: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub p_batch_mint: BoundedVec<RarityPercent, ConstU32<5>>,
@@ -297,8 +299,6 @@ pub struct MintConfig<Balance, BlockNumber> {
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct ForgeConfig {
 	pub open: bool,
-	pub min_sacrifices: u8,
-	pub max_sacrifices: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
