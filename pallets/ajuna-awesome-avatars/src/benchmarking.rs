@@ -49,8 +49,8 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				start: T::BlockNumber::from((i * 10 + 5) as u32),
 				end: T::BlockNumber::from((i * 10 + 10) as u32),
 				max_tier_forges: u32::MAX,
-				max_variations: u8::MAX,
-				max_components: u8::MAX,
+				max_variations: 15,
+				max_components: 16,
 				tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
 				p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 				p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
@@ -74,7 +74,8 @@ fn create_avatars<T: Config>(name: &'static str, n: usize) -> Result<(), &'stati
 			&player,
 			&MintOption { mint_type: MintType::Free, count: MintPackSize::One },
 			season_id,
-		)?
+		)?;
+		LastMintedBlockNumbers::<T>::remove(&player);
 	}
 	Ok(())
 }
@@ -86,27 +87,34 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
 	mint_free {
 		let name = "player";
-		let n in 0 .. AAvatars::<T>::global_configs().max_avatars_per_player;
-		create_avatars::<T>(name, n as usize)?;
+		let n in 0 .. (AAvatars::<T>::global_configs().max_avatars_per_player - 6);
+		let n = n as usize;
+		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
+		FreeMints::<T>::insert(&caller, MintCount::MAX);
+
 		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
-		let avatar_ids = AAvatars::<T>::owners(caller).to_vec();
+		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
 	mint_normal {
 		let name = "player";
-		let n in 0 .. AAvatars::<T>::global_configs().max_avatars_per_player;
-		create_avatars::<T>(name, n as usize)?;
+		let n in 0 .. (AAvatars::<T>::global_configs().max_avatars_per_player - 6);
+		let n = n as usize;
+		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
+		let mint_fee = AAvatars::<T>::global_configs().mint.fees.fee_for(&MintPackSize::Six);
+		T::Currency::make_free_balance_be(&caller, mint_fee);
+
 		let mint_option = MintOption { mint_type: MintType::Normal, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
-		let avatar_ids = AAvatars::<T>::owners(caller).to_vec();
+		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
@@ -139,7 +147,8 @@ benchmarks! {
 		let from = account::<T>("from");
 		let to = account::<T>("to");
 		let free_mint_transfer_fee = AAvatars::<T>::global_configs().mint.free_mint_transfer_fee;
-		let how_many = MintCount::MAX + free_mint_transfer_fee as MintCount;
+		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
+		FreeMints::<T>::insert(&from, MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many }.into())
@@ -177,7 +186,7 @@ benchmarks! {
 		create_avatars::<T>(seller_name, max_avatars)?;
 
 		let buy_fee = AAvatars::<T>::global_configs().trade.buy_fee;
-		let sell_fee = BalanceOf::<T>::unique_saturated_from(u128::MAX / 2);
+		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
 		T::Currency::make_free_balance_be(&buyer, sell_fee + buy_fee);
 		T::Currency::make_free_balance_be(&seller, sell_fee);
 
@@ -206,6 +215,7 @@ benchmarks! {
 		let organizer = account::<T>("organizer");
 		Organizer::<T>::put(&organizer);
 
+		let season_id = 1;
 		let season = Season {
 			name: [u8::MAX; 100].to_vec().try_into().unwrap(),
 			description: [u8::MAX; 1_000].to_vec().try_into().unwrap(),
@@ -213,8 +223,8 @@ benchmarks! {
 			start: T::BlockNumber::from(u32::MAX - 1),
 			end: T::BlockNumber::from(u32::MAX),
 			max_tier_forges: u32::MAX,
-			max_variations: u8::MAX,
-			max_components: u8::MAX,
+			max_variations: 15,
+			max_components: 16,
 			tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
 			p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 			p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
