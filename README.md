@@ -62,11 +62,3 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
   # parachain with rococo-local relay chain
   docker-compose -f docker/parachain.yml up
   ```
-
-## Deploy
-
-- Using OnFinality:
-
-  ```bash
-  onf network bootstrap -f .onf/bajun-rococo-testnet.yml
-  ```
