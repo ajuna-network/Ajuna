@@ -3,7 +3,6 @@ authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 description = "Ajuna Network pallet board pallet"
 edition     = "2021"
 homepage    = "https://ajuna.io"
-license     = "Apache-2.0"
 name        = "pallet-ajuna-awesome-avatars"
 repository  = "https://github.com/ajuna-network/Ajuna"
 version     = "0.1.4"
