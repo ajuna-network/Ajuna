@@ -102,8 +102,8 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	fn validate_max_components<T: Config>(&self) -> DispatchResult {
 		ensure!(self.max_components > 1, Error::<T>::MaxComponentsTooLow);
 		ensure!(
-			// TODO: 32 must come from T::Hashing::len()
-			self.max_components.checked_mul(2).ok_or(ArithmeticError::Overflow)? <= 32,
+			self.max_components.checked_mul(2).ok_or(ArithmeticError::Overflow)? as usize <=
+				T::Hash::max_encoded_len(),
 			Error::<T>::MaxComponentsTooHigh
 		);
 		Ok(())
