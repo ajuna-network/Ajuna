@@ -18,7 +18,6 @@ use crate::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_runtime::ArithmeticError;
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 #[derive(
@@ -102,7 +101,7 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	fn validate_max_components<T: Config>(&self) -> DispatchResult {
 		ensure!(self.max_components > 1, Error::<T>::MaxComponentsTooLow);
 		ensure!(
-			self.max_components.checked_mul(2).ok_or(ArithmeticError::Overflow)? as usize <=
+			self.max_components.checked_mul(2).ok_or(Error::<T>::MaxComponentsTooHigh)? as usize <=
 				T::Hash::max_encoded_len(),
 			Error::<T>::MaxComponentsTooHigh
 		);
