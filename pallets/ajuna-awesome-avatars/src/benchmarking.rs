@@ -189,24 +189,23 @@ benchmarks! {
 	}
 
 	set_organizer {
-		let caller = account::<T>("caller");
 		let organizer = account::<T>("organizer");
-	}: _(RawOrigin::Signed(caller), organizer.clone())
+	}: _(RawOrigin::Root, organizer.clone())
 	verify {
 		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
 	}
 
 	set_treasurer {
-		let caller = account::<T>("caller");
 		let treasurer = account::<T>("treasurer");
-	}: _(RawOrigin::Signed(caller), treasurer.clone())
+	}: _(RawOrigin::Root, treasurer.clone())
 	verify {
 		assert_last_event::<T>(Event::TreasurerSet { treasurer }.into())
 	}
 
 	set_season {
-		let caller = account::<T>("caller");
-		let season_id = SeasonId::MAX;
+		let organizer = account::<T>("organizer");
+		Organizer::<T>::put(&organizer);
+
 		let season = Season {
 			name: [u8::MAX; 100].to_vec().try_into().unwrap(),
 			description: [u8::MAX; 1_000].to_vec().try_into().unwrap(),
@@ -220,13 +219,15 @@ benchmarks! {
 			p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 			p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
 		};
-	}: _(RawOrigin::Signed(caller), season_id, season.clone())
+	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {
 		assert_last_event::<T>(Event::UpdatedSeason { season_id, season }.into())
 	}
 
 	update_global_config {
-		let caller = account::<T>("caller");
+		let organizer = account::<T>("organizer");
+		Organizer::<T>::put(&organizer);
+
 		let config = GlobalConfig {
 			max_avatars_per_player: u32::MAX,
 			mint: MintConfig {
@@ -250,16 +251,18 @@ benchmarks! {
 				buy_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			}
 		};
-	}: _(RawOrigin::Signed(caller), config.clone())
+	}: _(RawOrigin::Signed(organizer), config.clone())
 	verify {
 		assert_last_event::<T>(Event::UpdatedGlobalConfig(config).into())
 	}
 
 	issue_free_mints {
-		let caller = account::<T>("caller");
+		let organizer = account::<T>("organizer");
+		Organizer::<T>::put(&organizer);
+
 		let to = account::<T>("to");
 		let how_many = MintCount::MAX;
-	}: _(RawOrigin::Signed(caller), to.clone(), how_many)
+	}: _(RawOrigin::Signed(organizer), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsIssued { to, how_many }.into())
 	}
