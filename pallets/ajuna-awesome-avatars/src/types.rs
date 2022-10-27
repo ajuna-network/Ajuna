@@ -18,7 +18,6 @@ use crate::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_runtime::ArithmeticError;
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 #[derive(
@@ -53,6 +52,8 @@ pub struct Season<BlockNumber> {
 	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
+	pub min_sacrifices: u8,
+	pub max_sacrifices: u8,
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
 	pub p_single_mint: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub p_batch_mint: BoundedVec<RarityPercent, ConstU32<5>>,
@@ -100,8 +101,8 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 	fn validate_max_components<T: Config>(&self) -> DispatchResult {
 		ensure!(self.max_components > 1, Error::<T>::MaxComponentsTooLow);
 		ensure!(
-			// TODO: 32 must come from T::Hashing::len()
-			self.max_components.checked_mul(2).ok_or(ArithmeticError::Overflow)? <= 32,
+			self.max_components.checked_mul(2).ok_or(Error::<T>::MaxComponentsTooHigh)? as usize <=
+				T::Hash::max_encoded_len(),
 			Error::<T>::MaxComponentsTooHigh
 		);
 		Ok(())
@@ -297,8 +298,6 @@ pub struct MintConfig<Balance, BlockNumber> {
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct ForgeConfig {
 	pub open: bool,
-	pub min_sacrifices: u8,
-	pub max_sacrifices: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
