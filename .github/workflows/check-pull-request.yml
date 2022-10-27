@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths:
-      - '**.rs'
-      - '**/Cargo.toml'
-      - '**/Cargo.lock'
-      - 'rust-toolchain.toml'
-      - 'rustfmt.toml'
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
   push:
     branches:
       - main
