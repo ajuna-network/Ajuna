@@ -60,8 +60,8 @@ sp-version = { default-features = false, git = "https://github.com/paritytech/su
 orml-vesting = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.27" }
 
 # Integritee pallet
-pallet-sidechain = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "polkadot-v0.9.27" }
-pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "polkadot-v0.9.27" }
+pallet-sidechain = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "sdk-v0.10.0-polkadot-v0.9.27" }
+pallet-teerex = { default-features = false, git = "https://github.com/integritee-network/pallets", branch = "sdk-v0.10.0-polkadot-v0.9.27" }
 
 # Ajuna pallets
 ajuna-common = { default-features = false, path = "../../ajuna-common" }
