@@ -224,17 +224,23 @@ pub mod pallet {
 		/// The mogwai isn't owned by the sender.
 		MogwaiNotOwned,
 
+		/// The mogwai is already owned by the sender.
+		MogwaiAlreadyOwned,
+
 		/// The mogwai hasn't the necessary rarity.
 		MogwaiBadRarity,
 
 		/// Same mogwai chosen for extrinsic.
 		MogwaiSame,
 
-		// Can't hatch mogwai.
+		/// Can't hatch mogwai.
 		MogwaiNoHatch,
 
-		/// Can't perform specified action while mogwai is on sale
+		/// Can't perform specified action while mogwai is on sale.
 		MogwaiIsOnSale,
+
+		/// The specified mogwai sells for more than what the sender wants to pay.
+		MogwaiNotAffordable,
 	}
 
 	#[pallet::call]
@@ -283,10 +289,8 @@ pub mod pallet {
 			let price = Pricing::config_update_price(index, update_value);
 			ensure!(price > 0, Error::<T>::PriceInvalid);
 
-			let organizer_opt = Self::organizer();
-			ensure!(organizer_opt.is_some(), Error::<T>::NoOrganizer);
-
-			Self::pay_founder(sender.clone(), organizer_opt.unwrap(), price.saturated_into())?;
+			let organizer = Self::organizer().ok_or(Error::<T>::NoOrganizer)?;
+			Self::pay_founder(sender.clone(), organizer, price.saturated_into())?;
 
 			game_config.parameters[usize::from(index)] = update_value;
 
@@ -398,7 +402,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfer mogwai to another account.
+		/// Transfer mogwai to another account. Mogwais on sale will be unlisted after transfer.
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -411,7 +415,11 @@ pub mod pallet {
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(to.clone()), Error::<T>::MaxMogwaisInAccount);
 
-			Self::transfer_from(sender.clone(), to.clone(), mogwai_id)?;
+			Self::transfer_unchecked(sender.clone(), to.clone(), mogwai_id)?;
+
+			if MogwaiPrices::<T>::contains_key(mogwai_id) {
+				MogwaiPrices::<T>::remove(mogwai_id);
+			}
 
 			// Emit an event.
 			Self::deposit_event(Event::MogwaiTransfered(sender, to, mogwai_id));
@@ -563,14 +571,10 @@ pub mod pallet {
 
 			let mogwai: MogwaiOf<T> =
 				Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
-			ensure!(mogwai.owner != sender, "You already own this mogwai");
+			ensure!(mogwai.owner != sender, Error::<T>::MogwaiAlreadyOwned);
 
 			let mogwai_price = Self::mogwai_prices(mogwai_id).unwrap();
-
-			ensure!(
-				mogwai_price <= max_price,
-				"You can't buy this mogwai, price exceeds your max price limit"
-			);
+			ensure!(mogwai_price <= max_price, Error::<T>::MogwaiNotAffordable);
 
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(sender.clone()), Error::<T>::MaxMogwaisInAccount);
@@ -582,15 +586,11 @@ pub mod pallet {
 				ExistenceRequirement::KeepAlive,
 			)?;
 
-			// Transfer the mogwai using `transfer_from()` including a proof of why it cannot fail
-			Self::transfer_from(mogwai.owner.clone(), sender.clone(), mogwai_id).expect(
-				"`owner` is shown to own the mogwai; \
-				`owner` must have greater than 0 mogwai, so transfer cannot cause underflow; \
-				`all_mogwai_count` shares the same type as `owned_mogwai_count` \
-				and minting ensure there won't ever be more than `max()` mogwais, \
-				which means transfer cannot cause an overflow; \
-				qed",
-			);
+			Self::transfer_unchecked(mogwai.owner.clone(), sender.clone(), mogwai_id)?;
+
+			if MogwaiPrices::<T>::contains_key(mogwai_id) {
+				MogwaiPrices::<T>::remove(mogwai_id);
+			}
 
 			// TODO: Do something with the results
 			let _ = Self::update_achievement_for(&sender, AccountAchievement::Buyer, 1);
@@ -720,7 +720,6 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Update nonce once used.
 	fn encode_and_update_nonce() -> Vec<u8> {
 		Nonce::<T>::mutate(|nonce| {
 			*nonce = nonce.wrapping_add(1);
@@ -729,11 +728,10 @@ impl<T: Config> Pallet<T> {
 		.encode()
 	}
 
-	///
 	fn generate_random_hash(phrase: &[u8], sender: T::AccountId) -> T::Hash {
 		let (seed, _) = T::Randomness::random(phrase);
-		let decoded_seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref()))
-			.expect("input is padded with zeroes; qed");
+		let decoded_seed =
+			<[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref())).unwrap_or_default();
 		(decoded_seed, &sender, Self::encode_and_update_nonce()).using_encoded(T::Hashing::hash)
 	}
 
@@ -798,21 +796,16 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		ensure!(!Mogwais::<T>::contains_key(&mogwai_id), Error::<T>::MogwaiAlreadyExists);
 
-		let new_owned_mogwais_count = Self::owned_mogwais_count(to)
-			.checked_add(1)
-			.ok_or("Overflow adding a new mogwai to account balance")?;
-
-		let new_all_mogwais_count = Self::all_mogwais_count()
-			.checked_add(1)
-			.ok_or("Overflow adding a new mogwai to total supply")?;
-
-		// Update maps.
 		Mogwais::<T>::insert(mogwai_id, new_mogwai);
 		Owners::<T>::try_mutate(to, |id_set| id_set.try_insert(mogwai_id))
 			.map_err(|_| Error::<T>::MaxMogwaisInAccount)?;
 
-		AllMogwaisCount::<T>::put(new_all_mogwais_count);
-		OwnedMogwaisCount::<T>::insert(to, new_owned_mogwais_count);
+		AllMogwaisCount::<T>::mutate(|count| {
+			*count = count.saturating_add(1);
+		});
+		OwnedMogwaisCount::<T>::mutate(&to, |count| {
+			*count = count.saturating_add(1);
+		});
 
 		Ok(())
 	}
@@ -821,70 +814,56 @@ impl<T: Config> Pallet<T> {
 	fn remove(from: T::AccountId, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 		ensure!(Mogwais::<T>::contains_key(&mogwai_id), Error::<T>::MogwaiDoesntExists);
 
-		let new_owned_mogwai_count = Self::owned_mogwais_count(&from)
-			.checked_sub(1)
-			.ok_or("Overflow removing an old mogwai from account balance")?;
-
-		let new_all_mogwais_count = Self::all_mogwais_count()
-			.checked_sub(1)
-			.ok_or("Overflow removing an old mogwai to total supply")?;
-
-		// Update maps.
 		Mogwais::<T>::remove(mogwai_id);
 
 		Owners::<T>::mutate(&from, |id_set| {
 			id_set.remove(&mogwai_id);
 		});
 
-		// remove storage entries
 		if MogwaiPrices::<T>::contains_key(mogwai_id) {
 			MogwaiPrices::<T>::remove(mogwai_id);
 		}
 
-		AllMogwaisCount::<T>::put(new_all_mogwais_count);
-		OwnedMogwaisCount::<T>::insert(&from, new_owned_mogwai_count);
+		AllMogwaisCount::<T>::mutate(|count| {
+			*count = count.saturating_sub(1);
+		});
+		OwnedMogwaisCount::<T>::mutate(&from, |count| {
+			*count = count.saturating_sub(1);
+		});
 
 		Ok(())
 	}
 
-	/// transfer from
-	fn transfer_from(
+	/// transfer mogwai between 'from' account to 'to' account, this method doesn't check for
+	/// the validity of the transfer so make sure both accounts can perform the transfer.
+	fn transfer_unchecked(
 		from: T::AccountId,
 		to: T::AccountId,
 		mogwai_id: MogwaiIdOf<T>,
 	) -> DispatchResult {
-		let mogwai: MogwaiOf<T> = Self::mogwai(mogwai_id).ok_or(Error::<T>::MogwaiDoesntExists)?;
-
-		ensure!(mogwai.owner == from, Error::<T>::MogwaiNotOwned);
-
-		let new_owned_mogwai_count_from = Self::owned_mogwais_count(&from)
-			.checked_sub(1)
-			.ok_or("Overflow removing a mogwai from account")?;
-		let new_owned_mogwai_count_to = Self::owned_mogwais_count(&to)
-			.checked_add(1)
-			.ok_or("Overflow adding a mogwai to account")?;
-
-		// Now we can remove this item by removing the last element
-		Mogwais::<T>::mutate(mogwai_id, |maybe_mogwai| {
-			if let Some(mogwai) = maybe_mogwai {
-				mogwai.owner = to.clone();
-			};
+		// Update the OwnedMogwaisCount for `from` and `to`
+		OwnedMogwaisCount::<T>::mutate(&from, |count| {
+			*count = count.saturating_sub(1);
+		});
+		OwnedMogwaisCount::<T>::mutate(&to, |count| {
+			*count = count.saturating_add(1);
 		});
 
-		// Update the OwnedMogwaisCount for `from` and `to`
-		OwnedMogwaisCount::<T>::insert(&from, new_owned_mogwai_count_from);
 		Owners::<T>::mutate(from, |id_set| {
 			id_set.remove(&mogwai_id);
 		});
 
-		OwnedMogwaisCount::<T>::insert(&to, new_owned_mogwai_count_to);
 		Owners::<T>::try_mutate(&to, |id_set| id_set.try_insert(mogwai_id))
 			.map_err(|_| Error::<T>::MaxMogwaisInAccount)?;
 
-		// remove storage entries
-		if MogwaiPrices::<T>::contains_key(mogwai_id) {
-			MogwaiPrices::<T>::remove(mogwai_id);
-		}
+		Mogwais::<T>::try_mutate(mogwai_id, |maybe_mogwai| {
+			if let Some(mogwai) = maybe_mogwai {
+				mogwai.owner = to;
+				Ok(())
+			} else {
+				Err(Error::<T>::MogwaiDoesntExists)
+			}
+		})?;
 
 		Ok(())
 	}
