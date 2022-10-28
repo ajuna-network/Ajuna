@@ -415,7 +415,7 @@ pub mod pallet {
 			// ensure that we have enough space
 			ensure!(Self::ensure_not_max_mogwais(to.clone()), Error::<T>::MaxMogwaisInAccount);
 
-			Self::transfer_from_unchecked(sender.clone(), to.clone(), mogwai_id)?;
+			Self::transfer_unchecked(sender.clone(), to.clone(), mogwai_id)?;
 
 			if MogwaiPrices::<T>::contains_key(mogwai_id) {
 				MogwaiPrices::<T>::remove(mogwai_id);
@@ -586,7 +586,7 @@ pub mod pallet {
 				ExistenceRequirement::KeepAlive,
 			)?;
 
-			Self::transfer_from_unchecked(mogwai.owner.clone(), sender.clone(), mogwai_id)?;
+			Self::transfer_unchecked(mogwai.owner.clone(), sender.clone(), mogwai_id)?;
 
 			if MogwaiPrices::<T>::contains_key(mogwai_id) {
 				MogwaiPrices::<T>::remove(mogwai_id);
@@ -834,10 +834,9 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// transfer mogwai between 'from' account to 'to' account, this method doesn't really check for
-	/// the validity of the transfer so make sure the transfer is valid before calling it,
-	/// additionally if the mogwai was on sale
-	fn transfer_from_unchecked(
+	/// transfer mogwai between 'from' account to 'to' account, this method doesn't check for
+	/// the validity of the transfer so make sure both accounts can perform the transfer.
+	fn transfer_unchecked(
 		from: T::AccountId,
 		to: T::AccountId,
 		mogwai_id: MogwaiIdOf<T>,
@@ -856,6 +855,15 @@ impl<T: Config> Pallet<T> {
 
 		Owners::<T>::try_mutate(&to, |id_set| id_set.try_insert(mogwai_id))
 			.map_err(|_| Error::<T>::MaxMogwaisInAccount)?;
+
+		Mogwais::<T>::try_mutate(mogwai_id, |maybe_mogwai| {
+			if let Some(mogwai) = maybe_mogwai {
+				mogwai.owner = to;
+				Ok(())
+			} else {
+				Err(Error::<T>::MogwaiDoesntExists)
+			}
+		})?;
 
 		Ok(())
 	}
