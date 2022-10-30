@@ -82,7 +82,7 @@ jobs:
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu]
-        runtime: [bajun]
+        runtime: [bajun, ajuna]
     steps:
       - uses: actions/checkout@v3
       - name: Build
