@@ -764,6 +764,7 @@ mod benches {
 		[pallet_preimage, PreImage]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
+		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
 	);
 }
 
