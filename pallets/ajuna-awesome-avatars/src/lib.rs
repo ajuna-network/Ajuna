@@ -29,10 +29,11 @@ mod tests;
 mod benchmarking;
 
 pub mod types;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::types::*;
+	use super::{types::*, weights::WeightInfo};
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
@@ -64,6 +65,7 @@ pub mod pallet {
 		type Currency: Currency<Self::AccountId>;
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 		type MaxAvatarsPerPlayer: Get<u32>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::storage]
@@ -253,7 +255,11 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000)]
+		#[pallet::weight({
+			let n = T::MaxAvatarsPerPlayer::get();
+			T::WeightInfo::mint_normal(n)
+				.max(T::WeightInfo::mint_free(n))
+		})]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let is_early_access = mint_option.mint_type == MintType::Free;
@@ -261,7 +267,7 @@ pub mod pallet {
 			Self::do_mint(&player, &mint_option, season_id)
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::forge(T::MaxAvatarsPerPlayer::get()))]
 		pub fn forge(
 			origin: OriginFor<T>,
 			leader: AvatarIdOf<T>,
@@ -272,7 +278,7 @@ pub mod pallet {
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
 			dest: T::AccountId,
@@ -297,7 +303,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
 			avatar_id: AvatarIdOf<T>,
@@ -311,7 +317,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
@@ -322,7 +328,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::buy(T::MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = Self::global_configs();
@@ -360,7 +366,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_organizer())]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 			Organizer::<T>::put(&organizer);
@@ -368,7 +374,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_treasurer())]
 		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 			Treasurer::<T>::put(&treasurer);
@@ -376,7 +382,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_season())]
 		pub fn set_season(
 			origin: OriginFor<T>,
 			season_id: SeasonId,
@@ -389,7 +395,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::update_global_config())]
 		pub fn update_global_config(
 			origin: OriginFor<T>,
 			new_global_config: GlobalConfigOf<T>,
@@ -400,7 +406,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
 			dest: T::AccountId,

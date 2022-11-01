@@ -605,6 +605,7 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Currency = Balances;
 	type Randomness = Randomness;
 	type MaxAvatarsPerPlayer = MaxAvatarsPerPlayer;
+	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
 parameter_types! {

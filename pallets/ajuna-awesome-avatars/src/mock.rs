@@ -107,6 +107,7 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Currency = Balances;
 	type Randomness = Randomness;
 	type MaxAvatarsPerPlayer = MockMaxAvatarsPerPlayer;
+	type WeightInfo = ();
 }
 
 pub struct ExtBuilder {
