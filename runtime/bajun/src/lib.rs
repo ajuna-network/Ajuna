@@ -597,7 +597,7 @@ impl pallet_collator_selection::Config for Runtime {
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
-	pub const MaxAvatarsPerPlayer: u32 = 1_000;
+	pub const MaxAvatarsPerPlayer: u32 = 100;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
