@@ -36,3 +36,20 @@ for PALLET in "${PALLETS[@]}"; do
     --header="./HEADER-AGPL" \
     --output="./runtime/${RUNTIME}/src/weights/${PALLET//-/_}.rs"
 done
+
+CUSTOM_PALLETS=(
+  "pallet-ajuna-awesome-avatars"
+)
+for PALLET in "${CUSTOM_PALLETS[@]}"; do
+  ./target/release/"${RUNTIME}"-para benchmark pallet \
+    --chain=dev \
+    --steps=50 \
+    --repeat=20 \
+    --pallet="${PALLET}" \
+    --extrinsic="*" \
+    --execution=wasm \
+    --wasm-execution=compiled \
+    --heap-pages=4096 \
+    --template="./.maintain/frame-weight-template.hbs" \
+    --output="./pallets/${PALLET#pallet-}/src/weights.rs"
+done

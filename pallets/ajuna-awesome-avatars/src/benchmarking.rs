@@ -122,7 +122,8 @@ benchmarks! {
 
 	forge {
 		let name = "player";
-		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
+		let n in 5 .. (T::MaxAvatarsPerPlayer::get());
+		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
 		let avatar_ids = AAvatars::<T>::owners(&player);
@@ -180,8 +181,9 @@ benchmarks! {
 	buy {
 		let (buyer_name, seller_name) = ("buyer", "seller");
 		let (buyer, seller) = (account::<T>(buyer_name), account::<T>(seller_name));
-		create_avatars::<T>(buyer_name, T::MaxAvatarsPerPlayer::get() - 1)?;
-		create_avatars::<T>(seller_name, T::MaxAvatarsPerPlayer::get())?;
+		let n in 1 .. (T::MaxAvatarsPerPlayer::get());
+		create_avatars::<T>(buyer_name, n- 1)?;
+		create_avatars::<T>(seller_name, n)?;
 
 		let buy_fee = AAvatars::<T>::global_configs().trade.buy_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);

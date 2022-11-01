@@ -605,6 +605,7 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Currency = Balances;
 	type Randomness = Randomness;
 	type MaxAvatarsPerPlayer = MaxAvatarsPerPlayer;
+	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
 parameter_types! {
@@ -764,6 +765,7 @@ mod benches {
 		[pallet_preimage, PreImage]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
+		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
 	);
 }
 
