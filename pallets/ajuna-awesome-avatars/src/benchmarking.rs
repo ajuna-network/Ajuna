@@ -22,7 +22,7 @@ use crate::{
 	Pallet as AAvatars,
 };
 use frame_benchmarking::{benchmarks, vec};
-use frame_support::traits::Currency;
+use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
 use sp_runtime::traits::UniqueSaturatedFrom;
 
@@ -65,7 +65,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	Ok(())
 }
 
-fn create_avatars<T: Config>(name: &'static str, n: usize) -> Result<(), &'static str> {
+fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static str> {
 	create_seasons::<T>(3)?;
 
 	let player = account::<T>(name);
@@ -89,8 +89,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
 	mint_free {
 		let name = "player";
-		let n in 0 .. (AAvatars::<T>::global_configs().max_avatars_per_player - 6);
-		let n = n as usize;
+		let n in 0 .. (T::MaxAvatarsPerPlayer::get() - 6);
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
@@ -99,14 +98,14 @@ benchmarks! {
 		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
+		let n = n as usize;
 		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
 	mint_normal {
 		let name = "player";
-		let n in 0 .. (AAvatars::<T>::global_configs().max_avatars_per_player - 6);
-		let n = n as usize;
+		let n in 0 .. (T::MaxAvatarsPerPlayer::get() - 6);
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
@@ -116,14 +115,14 @@ benchmarks! {
 		let mint_option = MintOption { mint_type: MintType::Normal, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
+		let n = n as usize;
 		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
 	forge {
 		let name = "player";
-		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
-		create_avatars::<T>(name, max_avatars)?;
+		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
 
 		let player = account::<T>(name);
 		let avatar_ids = AAvatars::<T>::owners(&player);
@@ -158,8 +157,7 @@ benchmarks! {
 
 	set_price {
 		let name = "player";
-		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
-		create_avatars::<T>(name, max_avatars)?;
+		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
@@ -170,8 +168,7 @@ benchmarks! {
 
 	remove_price {
 		let name = "player";
-		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
-		create_avatars::<T>(name, max_avatars)?;
+		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
 		Trade::<T>::insert(&avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
@@ -183,9 +180,8 @@ benchmarks! {
 	buy {
 		let (buyer_name, seller_name) = ("buyer", "seller");
 		let (buyer, seller) = (account::<T>(buyer_name), account::<T>(seller_name));
-		let max_avatars = AAvatars::<T>::global_configs().max_avatars_per_player as usize;
-		create_avatars::<T>(buyer_name, max_avatars - 1)?;
-		create_avatars::<T>(seller_name, max_avatars)?;
+		create_avatars::<T>(buyer_name, T::MaxAvatarsPerPlayer::get() - 1)?;
+		create_avatars::<T>(seller_name, T::MaxAvatarsPerPlayer::get())?;
 
 		let buy_fee = AAvatars::<T>::global_configs().trade.buy_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
@@ -243,7 +239,6 @@ benchmarks! {
 		Organizer::<T>::put(&organizer);
 
 		let config = GlobalConfig {
-			max_avatars_per_player: u32::MAX,
 			mint: MintConfig {
 				open: true,
 				fees: MintFees {

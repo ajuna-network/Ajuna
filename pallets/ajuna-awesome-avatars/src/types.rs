@@ -308,7 +308,6 @@ pub struct TradeConfig<Balance> {
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
-	pub max_avatars_per_player: u32,
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,
 	pub trade: TradeConfig<Balance>,

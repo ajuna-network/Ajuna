@@ -98,16 +98,20 @@ impl pallet_balances::Config for Test {
 
 impl pallet_randomness_collective_flip::Config for Test {}
 
+parameter_types! {
+	pub const MockMaxAvatarsPerPlayer: u32 = 21;
+}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type MaxAvatarsPerPlayer = MockMaxAvatarsPerPlayer;
 }
 
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
-	max_avatars_per_player: Option<u32>,
 	mint_open: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
@@ -123,7 +127,6 @@ impl Default for ExtBuilder {
 		Self {
 			organizer: Default::default(),
 			seasons: Default::default(),
-			max_avatars_per_player: Default::default(),
 			mint_cooldown: Default::default(),
 			mint_fees: Default::default(),
 			balances: Default::default(),
@@ -143,10 +146,6 @@ impl ExtBuilder {
 	}
 	pub fn seasons(mut self, seasons: Vec<(SeasonId, Season<MockBlockNumber>)>) -> Self {
 		self.seasons = seasons;
-		self
-	}
-	pub fn max_avatars_per_player(mut self, max_avatars_per_player: u32) -> Self {
-		self.max_avatars_per_player = Some(max_avatars_per_player);
 		self
 	}
 	pub fn mint_open(mut self, mint_open: bool) -> Self {
@@ -197,10 +196,6 @@ impl ExtBuilder {
 
 			for (season_id, season) in self.seasons {
 				Seasons::<Test>::insert(season_id, season);
-			}
-
-			if let Some(x) = self.max_avatars_per_player {
-				GlobalConfigs::<Test>::mutate(|config| config.max_avatars_per_player = x);
 			}
 
 			GlobalConfigs::<Test>::mutate(|config| config.mint.open = self.mint_open);
