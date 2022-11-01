@@ -63,6 +63,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: Currency<Self::AccountId>;
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+		type MaxAvatarsPerPlayer: Get<u32>;
 	}
 
 	#[pallet::storage]
@@ -102,7 +103,6 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
 		GlobalConfig {
-			max_avatars_per_player: 1_000,
 			mint: MintConfig {
 				open: true,
 				fees: MintFees {
@@ -500,7 +500,7 @@ pub mod pallet {
 			mint_option: &MintOption,
 			season_id: SeasonId,
 		) -> DispatchResult {
-			let GlobalConfig { max_avatars_per_player, mint, .. } = Self::global_configs();
+			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
 			ensure!(
 				!Self::current_season_status().prematurely_ended,
@@ -528,7 +528,7 @@ pub mod pallet {
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
 			ensure!(
-				Self::owners(&player).len() <= max_avatars_per_player as usize,
+				Self::owners(&player).len() <= T::MaxAvatarsPerPlayer::get() as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
