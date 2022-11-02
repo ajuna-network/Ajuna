@@ -115,6 +115,7 @@ pub mod pallet {
 				cooldown: 5_u8.into(),
 				free_mint_fee_multiplier: 1,
 				free_mint_transfer_fee: 1,
+				min_free_mint_transfer: 1,
 			},
 			forge: ForgeConfig { open: true },
 			trade: TradeConfig {
@@ -241,6 +242,8 @@ pub mod pallet {
 		MaxVariationsTooHigh,
 		/// The player has not enough free mints available.
 		InsufficientFreeMints,
+		/// Attempt to transfer free mints lower than the minimum allowed.
+		TooLowFreeMintTransfer,
 		/// Less than minimum allowed sacrifices are used for forging.
 		TooFewSacrifices,
 		/// More than maximum allowed sacrifices are used for forging.
@@ -286,6 +289,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let GlobalConfig { mint, .. } = Self::global_configs();
+			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMintTransfer);
 			let sender_free_mints = Self::free_mints(&sender)
 				.checked_sub(
 					how_many

@@ -80,6 +80,7 @@ pub struct MintConfig<Balance, BlockNumber> {
 	pub cooldown: BlockNumber,
 	pub free_mint_fee_multiplier: MintCount,
 	pub free_mint_transfer_fee: MintCount,
+	pub min_free_mint_transfer: MintCount,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]

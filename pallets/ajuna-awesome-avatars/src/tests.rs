@@ -761,6 +761,18 @@ mod minting {
 	}
 
 	#[test]
+	fn transfer_free_mints_should_reject_when_amount_is_lower_than_minimum_allowed() {
+		ExtBuilder::default().free_mints(vec![(ALICE, 11)]).build().execute_with(|| {
+			let transfer = 5;
+			GlobalConfigs::<Test>::mutate(|cfg| cfg.mint.min_free_mint_transfer = transfer + 1);
+			assert_noop!(
+				AAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, transfer),
+				Error::<Test>::TooLowFreeMintTransfer
+			);
+		});
+	}
+
+	#[test]
 	fn transfer_free_mints_should_reject_when_balance_is_insufficient() {
 		ExtBuilder::default().free_mints(vec![(ALICE, 7)]).build().execute_with(|| {
 			assert_noop!(

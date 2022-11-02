@@ -251,6 +251,7 @@ benchmarks! {
 				cooldown: T::BlockNumber::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
 				free_mint_transfer_fee: MintCount::MAX,
+				min_free_mint_transfer: MintCount::MAX,
 			},
 			forge: ForgeConfig { open: true },
 			trade: TradeConfig {
