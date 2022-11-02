@@ -411,7 +411,7 @@ mod minting {
 						MintType::Normal =>
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance),
 						MintType::Free =>
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints),
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints),
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
@@ -433,7 +433,7 @@ mod minting {
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::One as MintCount;
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints);
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints);
 						},
 					}
 					expected_nonce += expected_nonce_increment;
@@ -462,7 +462,7 @@ mod minting {
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Three as MintCount;
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints);
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints);
 						},
 					}
 					expected_nonce += expected_nonce_increment * 3;
@@ -491,7 +491,7 @@ mod minting {
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Six as MintCount;
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints);
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints);
 						},
 					}
 					expected_nonce += expected_nonce_increment * 6;
@@ -747,16 +747,16 @@ mod minting {
 				System::assert_last_event(mock::Event::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: BOB, how_many: 10 },
 				));
-				assert_eq!(AAvatars::free_mints(ALICE), 6);
-				assert_eq!(AAvatars::free_mints(BOB), 14);
+				assert_eq!(AAvatars::accounts(ALICE).free_mints, 6);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 14);
 
 				assert_ok!(AAvatars::transfer_free_mints(Origin::signed(ALICE), CHARLIE, 2));
 				System::assert_last_event(mock::Event::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: CHARLIE, how_many: 2 },
 				));
 
-				assert_eq!(AAvatars::free_mints(ALICE), 3);
-				assert_eq!(AAvatars::free_mints(CHARLIE), 2);
+				assert_eq!(AAvatars::accounts(ALICE).free_mints, 3);
+				assert_eq!(AAvatars::accounts(CHARLIE).free_mints, 2);
 			});
 	}
 
@@ -789,7 +789,7 @@ mod minting {
 			.free_mints(vec![(ALICE, 7)])
 			.build()
 			.execute_with(|| {
-				assert_eq!(AAvatars::free_mints(BOB), 0);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
 
 				assert_ok!(AAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 7));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::FreeMintsIssued {
@@ -797,7 +797,7 @@ mod minting {
 					how_many: 7,
 				}));
 
-				assert_eq!(AAvatars::free_mints(BOB), 7);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 7);
 
 				assert_ok!(AAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 3));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::FreeMintsIssued {
@@ -805,7 +805,7 @@ mod minting {
 					how_many: 3,
 				}));
 
-				assert_eq!(AAvatars::free_mints(BOB), 10);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 10);
 			});
 	}
 }

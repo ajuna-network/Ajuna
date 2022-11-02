@@ -145,8 +145,8 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn free_mints)]
-	pub type FreeMints<T: Config> = StorageMap<_, Identity, T::AccountId, MintCount, ValueQuery>;
+	#[pallet::getter(fn accounts)]
+	pub type Accounts<T: Config> = StorageMap<_, Identity, T::AccountId, AccountInfo, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn trade)]
@@ -284,26 +284,29 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
-			dest: T::AccountId,
+			to: T::AccountId,
 			how_many: MintCount,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+			let from = ensure_signed(origin)?;
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMintTransfer);
-			let sender_free_mints = Self::free_mints(&sender)
+			let sender_free_mints = Self::accounts(&from)
+				.free_mints
 				.checked_sub(
 					how_many
 						.checked_add(mint.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
-			let dest_free_mints =
-				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
+			let dest_free_mints = Self::accounts(&to)
+				.free_mints
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
 
-			FreeMints::<T>::insert(&sender, sender_free_mints);
-			FreeMints::<T>::insert(&dest, dest_free_mints);
+			Accounts::<T>::mutate(&from, |account| account.free_mints = sender_free_mints);
+			Accounts::<T>::mutate(&to, |account| account.free_mints = dest_free_mints);
 
-			Self::deposit_event(Event::FreeMintsTransferred { from: sender, to: dest, how_many });
+			Self::deposit_event(Event::FreeMintsTransferred { from, to, how_many });
 			Ok(())
 		}
 
@@ -413,14 +416,16 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
-			dest: T::AccountId,
+			to: T::AccountId,
 			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let dest_free_mints =
-				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
-			FreeMints::<T>::insert(&dest, dest_free_mints);
-			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
+			let new_free_mints = Self::accounts(&to)
+				.free_mints
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
+			Accounts::<T>::mutate(&to, |account| account.free_mints = new_free_mints);
+			Self::deposit_event(Event::FreeMintsIssued { to, how_many });
 			Ok(())
 		}
 	}
@@ -551,10 +556,11 @@ pub mod pallet {
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
-					let free_mints = Self::free_mints(player)
+					let free_mints = Self::accounts(&player)
+						.free_mints
 						.checked_sub(fee)
 						.ok_or(Error::<T>::InsufficientFreeMints)?;
-					FreeMints::<T>::insert(player, free_mints);
+					Accounts::<T>::mutate(&player, |account| account.free_mints = free_mints);
 				},
 			};
 

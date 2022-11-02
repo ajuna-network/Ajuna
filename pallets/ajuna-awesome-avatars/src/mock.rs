@@ -217,7 +217,7 @@ impl ExtBuilder {
 			}
 
 			for (account_id, mint_amount) in self.free_mints {
-				FreeMints::<Test>::insert(account_id, mint_amount);
+				Accounts::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
 			}
 		});
 		ext

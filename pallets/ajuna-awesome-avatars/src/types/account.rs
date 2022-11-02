@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod account;
-mod avatar;
-mod config;
-mod season;
+use super::MintCount;
+use frame_support::pallet_prelude::*;
 
-pub use account::*;
-pub use avatar::*;
-pub use config::*;
-pub use season::*;
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+pub struct AccountInfo {
+	pub free_mints: MintCount,
+}

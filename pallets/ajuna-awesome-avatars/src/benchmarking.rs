@@ -70,7 +70,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 
 	let player = account::<T>(name);
 	let season_id = 1;
-	FreeMints::<T>::insert(&player, n as MintCount);
+	Accounts::<T>::mutate(&player, |account| account.free_mints = n as MintCount);
 	for _ in 0..n {
 		AAvatars::<T>::do_mint(
 			&player,
@@ -93,7 +93,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		FreeMints::<T>::insert(&caller, MintCount::MAX);
+		Accounts::<T>::mutate(&caller, |account| account.free_mints =  MintCount::MAX);
 
 		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
@@ -150,7 +150,7 @@ benchmarks! {
 		let to = account::<T>("to");
 		let free_mint_transfer_fee = AAvatars::<T>::global_configs().mint.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
-		FreeMints::<T>::insert(&from, MintCount::MAX);
+		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many }.into())
