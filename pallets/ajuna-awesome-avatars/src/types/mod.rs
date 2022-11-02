@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+mod config;
 mod season;
+
+pub use config::*;
 pub use season::*;
 
 use crate::*;
@@ -22,8 +25,6 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
-
-pub type MintCount = u16;
 
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
@@ -127,86 +128,4 @@ impl Avatar {
 		let is_match = matches >= 3 || (matches >= 1 && mirrors >= mirrors_required);
 		(is_match, matching_indexes)
 	}
-}
-
-/// Number of avatars to be minted.
-#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
-pub enum MintPackSize {
-	One = 1,
-	Three = 3,
-	Six = 6,
-}
-
-impl Default for MintPackSize {
-	fn default() -> Self {
-		MintPackSize::One
-	}
-}
-
-impl MintPackSize {
-	pub(crate) fn is_batched(&self) -> bool {
-		self != &Self::One
-	}
-}
-
-#[derive(Copy, Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct MintFees<Balance> {
-	pub one: Balance,
-	pub three: Balance,
-	pub six: Balance,
-}
-
-impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: &MintPackSize) -> Balance {
-		match mint_count {
-			MintPackSize::One => self.one,
-			MintPackSize::Three => self.three,
-			MintPackSize::Six => self.six,
-		}
-	}
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
-pub enum MintType {
-	Free,
-	Normal,
-}
-
-impl Default for MintType {
-	fn default() -> Self {
-		MintType::Free
-	}
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
-pub struct MintOption {
-	pub mint_type: MintType,
-	pub count: MintPackSize,
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct MintConfig<Balance, BlockNumber> {
-	pub open: bool,
-	pub fees: MintFees<Balance>,
-	pub cooldown: BlockNumber,
-	pub free_mint_fee_multiplier: MintCount,
-	pub free_mint_transfer_fee: MintCount,
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct ForgeConfig {
-	pub open: bool,
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct TradeConfig<Balance> {
-	pub open: bool,
-	pub buy_fee: Balance,
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct GlobalConfig<Balance, BlockNumber> {
-	pub mint: MintConfig<Balance, BlockNumber>,
-	pub forge: ForgeConfig,
-	pub trade: TradeConfig<Balance>,
 }
