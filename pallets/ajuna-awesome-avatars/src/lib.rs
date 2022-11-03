@@ -49,7 +49,8 @@ pub mod pallet {
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
-	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, ConstU32<4_294_967_295>>;
+	pub(crate) type BoundedAvatarIdsOf<T> =
+		BoundedVec<AvatarIdOf<T>, <T as Config>::MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> =
 		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
