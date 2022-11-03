@@ -98,15 +98,10 @@ impl pallet_balances::Config for Test {
 
 impl pallet_randomness_collective_flip::Config for Test {}
 
-parameter_types! {
-	pub const MockMaxAvatarsPerPlayer: u32 = 21;
-}
-
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type MaxAvatarsPerPlayer = MockMaxAvatarsPerPlayer;
 	type WeightInfo = ();
 }
 

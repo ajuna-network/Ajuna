@@ -16,6 +16,16 @@
 
 use super::MintCount;
 use frame_support::pallet_prelude::*;
+use sp_runtime::traits::Get;
+
+const MAX_AVATARS_PER_PLAYER: u32 = 100;
+
+pub struct MaxAvatarsPerPlayer;
+impl Get<u32> for MaxAvatarsPerPlayer {
+	fn get() -> u32 {
+		MAX_AVATARS_PER_PLAYER
+	}
+}
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
 pub struct AccountInfo {

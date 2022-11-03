@@ -89,7 +89,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
 	mint_free {
 		let name = "player";
-		let n in 0 .. (T::MaxAvatarsPerPlayer::get() - 6);
+		let n in 0 .. (MaxAvatarsPerPlayer::get() - 6);
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
@@ -105,7 +105,7 @@ benchmarks! {
 
 	mint_normal {
 		let name = "player";
-		let n in 0 .. (T::MaxAvatarsPerPlayer::get() - 6);
+		let n in 0 .. (MaxAvatarsPerPlayer::get() - 6);
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
@@ -122,7 +122,7 @@ benchmarks! {
 
 	forge {
 		let name = "player";
-		let n in 5 .. (T::MaxAvatarsPerPlayer::get());
+		let n in 5 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
@@ -158,7 +158,7 @@ benchmarks! {
 
 	set_price {
 		let name = "player";
-		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
@@ -169,7 +169,7 @@ benchmarks! {
 
 	remove_price {
 		let name = "player";
-		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
 		Trade::<T>::insert(&avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
@@ -181,7 +181,7 @@ benchmarks! {
 	buy {
 		let (buyer_name, seller_name) = ("buyer", "seller");
 		let (buyer, seller) = (account::<T>(buyer_name), account::<T>(seller_name));
-		let n in 1 .. (T::MaxAvatarsPerPlayer::get());
+		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>(buyer_name, n- 1)?;
 		create_avatars::<T>(seller_name, n)?;
 

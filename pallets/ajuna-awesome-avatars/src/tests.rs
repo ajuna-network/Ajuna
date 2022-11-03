@@ -630,14 +630,16 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_when_max_ownership_has_reached() {
+		use sp_runtime::traits::Get;
+
 		let season = Season::default();
 		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
-			(0..MockMaxAvatarsPerPlayer::get() as usize)
+			(0..MaxAvatarsPerPlayer::get() as usize)
 				.map(|_| sp_core::H256::default())
 				.collect::<Vec<_>>(),
 		)
 		.unwrap();
-		assert_eq!(avatar_ids.len(), MockMaxAvatarsPerPlayer::get() as usize);
+		assert_eq!(avatar_ids.len(), MaxAvatarsPerPlayer::get() as usize);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])

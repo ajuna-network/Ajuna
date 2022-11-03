@@ -49,8 +49,7 @@ pub mod pallet {
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
-	pub(crate) type BoundedAvatarIdsOf<T> =
-		BoundedVec<AvatarIdOf<T>, <T as Config>::MaxAvatarsPerPlayer>;
+	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> =
 		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
@@ -65,7 +64,6 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: Currency<Self::AccountId>;
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
-		type MaxAvatarsPerPlayer: Get<u32>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -260,7 +258,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight({
-			let n = T::MaxAvatarsPerPlayer::get();
+			let n = MaxAvatarsPerPlayer::get();
 			T::WeightInfo::mint_normal(n)
 				.max(T::WeightInfo::mint_free(n))
 		})]
@@ -271,7 +269,7 @@ pub mod pallet {
 			Self::do_mint(&player, &mint_option, season_id)
 		}
 
-		#[pallet::weight(T::WeightInfo::forge(T::MaxAvatarsPerPlayer::get()))]
+		#[pallet::weight(T::WeightInfo::forge(MaxAvatarsPerPlayer::get()))]
 		pub fn forge(
 			origin: OriginFor<T>,
 			leader: AvatarIdOf<T>,
@@ -336,7 +334,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::buy(T::MaxAvatarsPerPlayer::get()))]
+		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = Self::global_configs();
@@ -356,7 +354,7 @@ pub mod pallet {
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
 				.try_push(avatar_id)
-				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 
 			let mut seller_avatar_ids = Self::owners(&seller);
 			seller_avatar_ids.retain(|x| x != &avatar_id);
@@ -538,15 +536,10 @@ pub mod pallet {
 					let avatar = Avatar { season_id, dna, souls };
 					Avatars::<T>::insert(avatar_id, (&player, avatar));
 					Owners::<T>::try_append(&player, avatar_id)
-						.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+						.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 					Ok(avatar_id)
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
-
-			ensure!(
-				Self::owners(&player).len() <= T::MaxAvatarsPerPlayer::get() as usize,
-				Error::<T>::MaxOwnershipReached
-			);
 
 			match mint_option.mint_type {
 				MintType::Normal => {
