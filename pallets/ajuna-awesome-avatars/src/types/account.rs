@@ -18,16 +18,42 @@ use super::MintCount;
 use frame_support::pallet_prelude::*;
 use sp_runtime::traits::Get;
 
-const MAX_AVATARS_PER_PLAYER: u32 = 100;
+const MAX_AVATARS_PER_PLAYER: isize = 100;
 
 pub struct MaxAvatarsPerPlayer;
 impl Get<u32> for MaxAvatarsPerPlayer {
 	fn get() -> u32 {
-		MAX_AVATARS_PER_PLAYER
+		MAX_AVATARS_PER_PLAYER as u32
+	}
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+pub enum StorageTier {
+	One = MAX_AVATARS_PER_PLAYER.saturating_div(4),
+	Two = MAX_AVATARS_PER_PLAYER.saturating_div(3),
+	Three = MAX_AVATARS_PER_PLAYER.saturating_div(2),
+	Four = MAX_AVATARS_PER_PLAYER.saturating_div(1),
+}
+
+impl Default for StorageTier {
+	fn default() -> Self {
+		Self::One
+	}
+}
+
+impl StorageTier {
+	pub(crate) fn upgrade(self) -> Self {
+		match self {
+			Self::One => Self::Two,
+			Self::Two => Self::Three,
+			Self::Three => Self::Four,
+			Self::Four => Self::Four,
+		}
 	}
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
 pub struct AccountInfo {
 	pub free_mints: MintCount,
+	pub storage_tier: StorageTier,
 }

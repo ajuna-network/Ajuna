@@ -70,7 +70,12 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 
 	let player = account::<T>(name);
 	let season_id = 1;
-	Accounts::<T>::mutate(&player, |account| account.free_mints = n as MintCount);
+
+	Accounts::<T>::mutate(&player, |account| {
+		account.free_mints = n as MintCount;
+		account.storage_tier = StorageTier::Four;
+	});
+
 	for _ in 0..n {
 		AAvatars::<T>::do_mint(
 			&player,
@@ -257,6 +262,9 @@ benchmarks! {
 			trade: TradeConfig {
 				open: true,
 				buy_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			},
+			account: AccountConfig {
+				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			}
 		};
 	}: _(RawOrigin::Signed(organizer), config.clone())

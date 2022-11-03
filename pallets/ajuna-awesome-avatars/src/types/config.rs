@@ -95,8 +95,14 @@ pub struct TradeConfig<Balance> {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct AccountConfig<Balance> {
+	pub storage_upgrade_fee: Balance,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,
 	pub trade: TradeConfig<Balance>,
+	pub account: AccountConfig<Balance>,
 }

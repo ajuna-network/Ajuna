@@ -121,6 +121,9 @@ pub mod pallet {
 				open: true,
 				buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
 			},
+			account: AccountConfig {
+				storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+			},
 		}
 	}
 
@@ -180,6 +183,8 @@ pub mod pallet {
 		AvatarPriceUnset { avatar_id: AvatarIdOf<T> },
 		/// Avatar has been traded.
 		AvatarTraded { avatar_id: AvatarIdOf<T>, from: T::AccountId, to: T::AccountId },
+		/// Storage tier has been upgraded.
+		StorageTierUpgraded,
 	}
 
 	#[pallet::error]
@@ -223,6 +228,8 @@ pub mod pallet {
 		PrematureSeasonEnd,
 		/// Max ownership reached.
 		MaxOwnershipReached,
+		/// Max storage tier reached.
+		MaxStorageTierReached,
 		/// Avatar belongs to someone else.
 		Ownership,
 		/// Incorrect DNA.
@@ -356,6 +363,11 @@ pub mod pallet {
 				.try_push(avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 
+			ensure!(
+				buyer_avatar_ids.len() <= Self::accounts(&buyer).storage_tier as usize,
+				Error::<T>::MaxOwnershipReached
+			);
+
 			let mut seller_avatar_ids = Self::owners(&seller);
 			seller_avatar_ids.retain(|x| x != &avatar_id);
 
@@ -369,6 +381,23 @@ pub mod pallet {
 			Trade::<T>::remove(&avatar_id);
 
 			Self::deposit_event(Event::AvatarTraded { avatar_id, from: seller, to: buyer });
+			Ok(())
+		}
+
+		#[pallet::weight(12_345)]
+		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			let storage_tier = Self::accounts(&player).storage_tier;
+			ensure!(storage_tier != StorageTier::Four, Error::<T>::MaxStorageTierReached);
+
+			let upgrade_fee = Self::global_configs().account.storage_upgrade_fee;
+			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
+
+			let season_id = Self::current_season_id();
+			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(upgrade_fee));
+
+			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
+			Self::deposit_event(Event::StorageTierUpgraded);
 			Ok(())
 		}
 
@@ -540,6 +569,11 @@ pub mod pallet {
 					Ok(avatar_id)
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
+
+			ensure!(
+				Self::owners(&player).len() <= Self::accounts(&player).storage_tier as usize,
+				Error::<T>::MaxOwnershipReached
+			);
 
 			match mint_option.mint_type {
 				MintType::Normal => {

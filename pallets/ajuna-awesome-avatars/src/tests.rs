@@ -1681,3 +1681,50 @@ mod trading {
 			});
 	}
 }
+
+mod account {
+	use super::*;
+
+	#[test]
+	fn upgrade_storage_should_work() {
+		let upgrade_fee = 12_345;
+
+		ExtBuilder::default()
+			.balances(vec![(ALICE, 3 * upgrade_fee)])
+			.build()
+			.execute_with(|| {
+				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
+
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
+				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
+				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
+				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
+			});
+	}
+
+	#[test]
+	fn upgrade_storage_should_reject_insufficient_balance() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::upgrade_storage(Origin::signed(ALICE)),
+				pallet_balances::Error::<Test>::InsufficientBalance
+			);
+		});
+	}
+
+	#[test]
+	fn upgrade_storage_should_reject_fully_upgraded_storage() {
+		ExtBuilder::default().build().execute_with(|| {
+			GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = 0);
+			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Four);
+
+			assert_noop!(
+				AAvatars::upgrade_storage(Origin::signed(ALICE)),
+				Error::<Test>::MaxStorageTierReached
+			);
+		});
+	}
+}
