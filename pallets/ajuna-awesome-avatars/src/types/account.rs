@@ -52,9 +52,13 @@ impl StorageTier {
 	}
 }
 
+pub type Stat = u32;
+
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
 pub struct Stats<BlockNumber> {
 	pub first_minted: BlockNumber,
+	pub bought: Stat,
+	pub sold: Stat,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]

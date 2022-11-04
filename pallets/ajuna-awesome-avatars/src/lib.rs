@@ -381,6 +381,9 @@ pub mod pallet {
 			});
 			Trade::<T>::remove(&avatar_id);
 
+			Accounts::<T>::mutate(&buyer, |account| account.stats.bought.saturating_inc());
+			Accounts::<T>::mutate(&seller, |account| account.stats.sold.saturating_inc());
+
 			Self::deposit_event(Event::AvatarTraded { avatar_id, from: seller, to: buyer });
 			Ok(())
 		}

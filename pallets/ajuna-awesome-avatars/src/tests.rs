@@ -1577,10 +1577,15 @@ mod trading {
 		let buy_fee = 54_321;
 		let alice_initial_bal = price + buy_fee + 20_849;
 		let bob_initial_bal = 103_598;
+		let charlie_initial_bal = MockExistentialDeposit::get() + buy_fee + 1357;
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, alice_initial_bal), (BOB, bob_initial_bal)])
+			.balances(vec![
+				(ALICE, alice_initial_bal),
+				(BOB, bob_initial_bal),
+				(CHARLIE, charlie_initial_bal),
+			])
 			.mint_fees(mint_fees)
 			.trade_buy_fee(buy_fee)
 			.build()
@@ -1591,9 +1596,9 @@ mod trading {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+					MintOption { count: MintPackSize::Three, mint_type: MintType::Normal }
 				));
-				treasury_balance += mint_fees.one;
+				treasury_balance += mint_fees.three;
 				assert_eq!(AAvatars::treasury(1), treasury_balance);
 
 				let owned_by_alice = AAvatars::owners(ALICE);
@@ -1605,7 +1610,7 @@ mod trading {
 
 				// check for balance transfer
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - buy_fee);
-				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.one);
+				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.three);
 				assert_eq!(AAvatars::treasury(1), treasury_balance + buy_fee);
 
 				// check for ownership transfer
@@ -1618,12 +1623,23 @@ mod trading {
 				// check for removal from trade storage
 				assert_eq!(AAvatars::trade(avatar_for_sale), None);
 
+				// check for account stats
+				assert_eq!(AAvatars::accounts(ALICE).stats.bought, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.sold, 1);
+
 				// check events
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarTraded {
 					avatar_id: avatar_for_sale,
 					from: BOB,
 					to: ALICE,
 				}));
+
+				// charlie buys from bob
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 1357));
+				assert_ok!(AAvatars::buy(Origin::signed(CHARLIE), avatar_for_sale));
+				assert_eq!(AAvatars::accounts(CHARLIE).stats.bought, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.sold, 2);
 			});
 	}
 
