@@ -1698,6 +1698,31 @@ mod trading {
 				);
 			});
 	}
+
+	#[test]
+	fn buy_should_reject_when_buyer_buys_its_own_avatar() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(BOB, MockExistentialDeposit::get())])
+			.free_mints(vec![(BOB, 1)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+				));
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 123));
+				assert_noop!(
+					AAvatars::buy(Origin::signed(BOB), avatar_for_sale),
+					Error::<Test>::AlreadyOwned
+				);
+			});
+	}
 }
 
 mod account {

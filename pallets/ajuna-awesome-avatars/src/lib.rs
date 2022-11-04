@@ -233,6 +233,8 @@ pub mod pallet {
 		MaxStorageTierReached,
 		/// Avatar belongs to someone else.
 		Ownership,
+		/// Attempt to buy his or her own avatar.
+		AlreadyOwned,
 		/// Incorrect DNA.
 		IncorrectDna,
 		/// Incorrect Avatar ID.
@@ -348,6 +350,7 @@ pub mod pallet {
 			let GlobalConfig { trade, .. } = Self::global_configs();
 			ensure!(trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
+			ensure!(buyer != seller, Error::<T>::AlreadyOwned);
 
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
