@@ -441,6 +441,7 @@ mod minting {
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
 					assert!(AAvatars::current_season_status().active);
+					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
 					System::assert_has_event(mock::Event::AAvatars(crate::Event::SeasonStarted(1)));
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: vec![AAvatars::owners(ALICE)[0]],
@@ -509,6 +510,7 @@ mod minting {
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
+					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
 					match mint_type {
 						MintType::Normal => {
 							// account is reaped, nonce and balance are reset to 0

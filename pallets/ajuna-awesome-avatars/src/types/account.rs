@@ -53,7 +53,13 @@ impl StorageTier {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
-pub struct AccountInfo {
+pub struct Stats<BlockNumber> {
+	pub first_minted: BlockNumber,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+pub struct AccountInfo<BlockNumber> {
 	pub free_mints: MintCount,
 	pub storage_tier: StorageTier,
+	pub stats: Stats<BlockNumber>,
 }

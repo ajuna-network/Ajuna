@@ -40,7 +40,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
+		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -148,7 +148,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type Accounts<T: Config> = StorageMap<_, Identity, T::AccountId, AccountInfo, ValueQuery>;
+	pub type Accounts<T: Config> =
+		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn trade)]
@@ -593,6 +594,11 @@ pub mod pallet {
 			};
 
 			LastMintedBlockNumbers::<T>::insert(&player, current_block);
+			Accounts::<T>::mutate(&player, |account| {
+				if account.stats.first_minted.is_zero() {
+					account.stats.first_minted = current_block;
+				}
+			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
 			Ok(())
