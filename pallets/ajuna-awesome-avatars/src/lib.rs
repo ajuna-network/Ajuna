@@ -604,6 +604,8 @@ pub mod pallet {
 				if account.stats.first_minted.is_zero() {
 					account.stats.first_minted = current_block;
 				}
+				account.stats.minted =
+					account.stats.minted.saturating_add(mint_option.count as Stat);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
