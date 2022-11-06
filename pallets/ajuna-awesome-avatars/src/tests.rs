@@ -394,6 +394,7 @@ mod minting {
 		let mut initial_treasury_balance = 0;
 		let mut initial_free_mints = 12;
 		let mut owned_avatar_count = 0;
+		let mut current_season_minted_count = 0;
 		let mut minted_count = 0;
 
 		ExtBuilder::default()
@@ -439,10 +440,13 @@ mod minting {
 					}
 					expected_nonce += expected_nonce_increment;
 					owned_avatar_count += 1;
-					minted_count += 1;
+					current_season_minted_count += 1;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
 					assert!(AAvatars::current_season_status().active);
 					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
 					System::assert_has_event(mock::Event::AAvatars(crate::Event::SeasonStarted(1)));
@@ -471,10 +475,13 @@ mod minting {
 					}
 					expected_nonce += expected_nonce_increment * 3;
 					owned_avatar_count += 3;
-					minted_count += 3;
+					current_season_minted_count += 3;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
 					assert!(AAvatars::current_season_status().active);
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: AAvatars::owners(ALICE)[1..=3].to_vec(),
@@ -502,10 +509,13 @@ mod minting {
 					}
 					expected_nonce += expected_nonce_increment * 6;
 					owned_avatar_count += 6;
-					minted_count += 6;
+					current_season_minted_count += 6;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
 					assert!(AAvatars::current_season_status().active);
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: AAvatars::owners(ALICE)[4..=9].to_vec(),
@@ -518,7 +528,18 @@ mod minting {
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
 					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
-					minted_count += 1;
+
+					// total minted count updates
+					minted_count += current_season_minted_count;
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+
+					// current season minted count resets
+					current_season_minted_count = 1;
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
+
 					match mint_type {
 						MintType::Normal => {
 							// account is reaped, nonce and balance are reset to 0

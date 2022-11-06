@@ -275,7 +275,10 @@ pub mod pallet {
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let is_early_access = mint_option.mint_type == MintType::Free;
-			let season_id = Self::toggle_season(is_early_access)?;
+			let (season_id, deactivated) = Self::toggle_season(is_early_access)?;
+			if deactivated {
+				Self::update_season_stats(&player);
+			}
 			Self::do_mint(&player, &mint_option, season_id)
 		}
 
@@ -286,7 +289,7 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let season_id = Self::toggle_season(false)?;
+			let (season_id, _deactivated) = Self::toggle_season(false)?;
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
@@ -604,8 +607,8 @@ pub mod pallet {
 				if account.stats.first_minted.is_zero() {
 					account.stats.first_minted = current_block;
 				}
-				account.stats.minted =
-					account.stats.minted.saturating_add(mint_option.count as Stat);
+				account.stats.current_season_minted =
+					account.stats.current_season_minted.saturating_add(mint_option.count as Stat);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -726,7 +729,7 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season(early_access: bool) -> Result<SeasonId, DispatchError> {
+		fn toggle_season(early_access: bool) -> Result<(SeasonId, bool), DispatchError> {
 			let current_season_id = Self::current_season_id();
 			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
@@ -768,7 +771,7 @@ pub mod pallet {
 				);
 			}
 
-			Ok(current_season_id)
+			Ok((current_season_id, season_deactivated))
 		}
 
 		fn start_season(season_id: SeasonId) {
@@ -790,6 +793,14 @@ pub mod pallet {
 			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
+		}
+
+		fn update_season_stats(who: &T::AccountId) {
+			Accounts::<T>::mutate(who, |account| {
+				account.stats.minted =
+					account.stats.minted.saturating_add(account.stats.current_season_minted);
+				account.stats.current_season_minted = Zero::zero();
+			});
 		}
 	}
 }
