@@ -839,7 +839,8 @@ mod forging {
 			.min_sacrifices(1)
 			.max_sacrifices(4);
 
-		let assert_dna =
+		let mut forged_count = 0;
+		let mut assert_dna =
 			|leader_id: &AvatarIdOf<Test>, expected_dna: Vec<u8>, insert_dna: Option<Vec<u8>>| {
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
@@ -862,6 +863,9 @@ mod forging {
 					AAvatars::owners(BOB)[1..=4].to_vec()
 				));
 				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
+
+				forged_count += 1;
+				assert_eq!(AAvatars::accounts(BOB).stats.forged, forged_count);
 			};
 
 		ExtBuilder::default()

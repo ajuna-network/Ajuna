@@ -703,6 +703,8 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
+			Accounts::<T>::mutate(&player, |account| account.stats.forged.saturating_inc());
+
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
 			Ok(())
 		}
