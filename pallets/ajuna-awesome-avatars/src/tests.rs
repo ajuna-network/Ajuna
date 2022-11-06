@@ -887,6 +887,7 @@ mod forging {
 
 				forged_count += 1;
 				assert_eq!(AAvatars::accounts(BOB).stats.forged, forged_count);
+				assert_eq!(AAvatars::accounts(BOB).stats.first_forged, season.start);
 			};
 
 		ExtBuilder::default()
