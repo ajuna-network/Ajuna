@@ -394,6 +394,8 @@ mod minting {
 		let mut initial_treasury_balance = 0;
 		let mut initial_free_mints = 12;
 		let mut owned_avatar_count = 0;
+		let mut current_season_minted_count = 0;
+		let mut minted_count = 0;
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season_1.clone()), (2, season_2)])
@@ -411,7 +413,7 @@ mod minting {
 						MintType::Normal =>
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance),
 						MintType::Free =>
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints),
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints),
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
@@ -433,14 +435,22 @@ mod minting {
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::One as MintCount;
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints);
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints);
 						},
 					}
 					expected_nonce += expected_nonce_increment;
 					owned_avatar_count += 1;
+					minted_count += 1;
+					current_season_minted_count += 1;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
 					assert!(AAvatars::current_season_status().active);
+					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
 					System::assert_has_event(mock::Event::AAvatars(crate::Event::SeasonStarted(1)));
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: vec![AAvatars::owners(ALICE)[0]],
@@ -462,13 +472,20 @@ mod minting {
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Three as MintCount;
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints);
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints);
 						},
 					}
 					expected_nonce += expected_nonce_increment * 3;
 					owned_avatar_count += 3;
+					minted_count += 3;
+					current_season_minted_count += 3;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
 					assert!(AAvatars::current_season_status().active);
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: AAvatars::owners(ALICE)[1..=3].to_vec(),
@@ -491,13 +508,20 @@ mod minting {
 						},
 						MintType::Free => {
 							initial_free_mints -= MintPackSize::Six as MintCount;
-							assert_eq!(AAvatars::free_mints(ALICE), initial_free_mints);
+							assert_eq!(AAvatars::accounts(ALICE).free_mints, initial_free_mints);
 						},
 					}
 					expected_nonce += expected_nonce_increment * 6;
 					owned_avatar_count += 6;
+					minted_count += 6;
+					current_season_minted_count += 6;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
 					assert!(AAvatars::current_season_status().active);
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: AAvatars::owners(ALICE)[4..=9].to_vec(),
@@ -509,6 +533,19 @@ mod minting {
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
+					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
+
+					// total minted count updates
+					minted_count += 1;
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+
+					// current season minted count resets
+					current_season_minted_count = 1;
+					assert_eq!(
+						AAvatars::accounts(ALICE).stats.current_season_minted,
+						current_season_minted_count
+					);
+
 					match mint_type {
 						MintType::Normal => {
 							// account is reaped, nonce and balance are reset to 0
@@ -630,14 +667,16 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_when_max_ownership_has_reached() {
+		use sp_runtime::traits::Get;
+
 		let season = Season::default();
 		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
-			(0..MockMaxAvatarsPerPlayer::get() as usize)
+			(0..MaxAvatarsPerPlayer::get() as usize)
 				.map(|_| sp_core::H256::default())
 				.collect::<Vec<_>>(),
 		)
 		.unwrap();
-		assert_eq!(avatar_ids.len(), MockMaxAvatarsPerPlayer::get() as usize);
+		assert_eq!(avatar_ids.len(), MaxAvatarsPerPlayer::get() as usize);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -747,17 +786,29 @@ mod minting {
 				System::assert_last_event(mock::Event::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: BOB, how_many: 10 },
 				));
-				assert_eq!(AAvatars::free_mints(ALICE), 6);
-				assert_eq!(AAvatars::free_mints(BOB), 14);
+				assert_eq!(AAvatars::accounts(ALICE).free_mints, 6);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 14);
 
 				assert_ok!(AAvatars::transfer_free_mints(Origin::signed(ALICE), CHARLIE, 2));
 				System::assert_last_event(mock::Event::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: CHARLIE, how_many: 2 },
 				));
 
-				assert_eq!(AAvatars::free_mints(ALICE), 3);
-				assert_eq!(AAvatars::free_mints(CHARLIE), 2);
+				assert_eq!(AAvatars::accounts(ALICE).free_mints, 3);
+				assert_eq!(AAvatars::accounts(CHARLIE).free_mints, 2);
 			});
+	}
+
+	#[test]
+	fn transfer_free_mints_should_reject_when_amount_is_lower_than_minimum_allowed() {
+		ExtBuilder::default().free_mints(vec![(ALICE, 11)]).build().execute_with(|| {
+			let transfer = 5;
+			GlobalConfigs::<Test>::mutate(|cfg| cfg.mint.min_free_mint_transfer = transfer + 1);
+			assert_noop!(
+				AAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, transfer),
+				Error::<Test>::TooLowFreeMintTransfer
+			);
+		});
 	}
 
 	#[test]
@@ -777,7 +828,7 @@ mod minting {
 			.free_mints(vec![(ALICE, 7)])
 			.build()
 			.execute_with(|| {
-				assert_eq!(AAvatars::free_mints(BOB), 0);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
 
 				assert_ok!(AAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 7));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::FreeMintsIssued {
@@ -785,7 +836,7 @@ mod minting {
 					how_many: 7,
 				}));
 
-				assert_eq!(AAvatars::free_mints(BOB), 7);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 7);
 
 				assert_ok!(AAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 3));
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::FreeMintsIssued {
@@ -793,7 +844,7 @@ mod minting {
 					how_many: 3,
 				}));
 
-				assert_eq!(AAvatars::free_mints(BOB), 10);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 10);
 			});
 	}
 }
@@ -815,7 +866,8 @@ mod forging {
 			.min_sacrifices(1)
 			.max_sacrifices(4);
 
-		let assert_dna =
+		let mut forged_count = 0;
+		let mut assert_dna =
 			|leader_id: &AvatarIdOf<Test>, expected_dna: Vec<u8>, insert_dna: Option<Vec<u8>>| {
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
@@ -838,6 +890,11 @@ mod forging {
 					AAvatars::owners(BOB)[1..=4].to_vec()
 				));
 				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
+
+				forged_count += 1;
+				assert_eq!(AAvatars::accounts(BOB).stats.forged, forged_count);
+				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, forged_count);
+				assert_eq!(AAvatars::accounts(BOB).stats.first_forged, season.start);
 			};
 
 		ExtBuilder::default()
@@ -907,6 +964,9 @@ mod forging {
 				));
 				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
 				assert!(!AAvatars::current_season_status().prematurely_ended);
+				assert_eq!(AAvatars::accounts(BOB).stats.forged, 8);
+				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, 0);
+				assert_eq!(AAvatars::accounts(BOB).stats.current_season_minted, 1);
 			});
 	}
 
@@ -1561,10 +1621,15 @@ mod trading {
 		let buy_fee = 54_321;
 		let alice_initial_bal = price + buy_fee + 20_849;
 		let bob_initial_bal = 103_598;
+		let charlie_initial_bal = MockExistentialDeposit::get() + buy_fee + 1357;
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, alice_initial_bal), (BOB, bob_initial_bal)])
+			.balances(vec![
+				(ALICE, alice_initial_bal),
+				(BOB, bob_initial_bal),
+				(CHARLIE, charlie_initial_bal),
+			])
 			.mint_fees(mint_fees)
 			.trade_buy_fee(buy_fee)
 			.build()
@@ -1575,9 +1640,9 @@ mod trading {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					Origin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+					MintOption { count: MintPackSize::Three, mint_type: MintType::Normal }
 				));
-				treasury_balance += mint_fees.one;
+				treasury_balance += mint_fees.three;
 				assert_eq!(AAvatars::treasury(1), treasury_balance);
 
 				let owned_by_alice = AAvatars::owners(ALICE);
@@ -1589,7 +1654,7 @@ mod trading {
 
 				// check for balance transfer
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - buy_fee);
-				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.one);
+				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.three);
 				assert_eq!(AAvatars::treasury(1), treasury_balance + buy_fee);
 
 				// check for ownership transfer
@@ -1602,12 +1667,23 @@ mod trading {
 				// check for removal from trade storage
 				assert_eq!(AAvatars::trade(avatar_for_sale), None);
 
+				// check for account stats
+				assert_eq!(AAvatars::accounts(ALICE).stats.bought, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.sold, 1);
+
 				// check events
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarTraded {
 					avatar_id: avatar_for_sale,
 					from: BOB,
 					to: ALICE,
 				}));
+
+				// charlie buys from bob
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 1357));
+				assert_ok!(AAvatars::buy(Origin::signed(CHARLIE), avatar_for_sale));
+				assert_eq!(AAvatars::accounts(CHARLIE).stats.bought, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.sold, 2);
 			});
 	}
 
@@ -1665,5 +1741,77 @@ mod trading {
 					pallet_balances::Error::<Test>::InsufficientBalance
 				);
 			});
+	}
+
+	#[test]
+	fn buy_should_reject_when_buyer_buys_its_own_avatar() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.balances(vec![(BOB, MockExistentialDeposit::get())])
+			.free_mints(vec![(BOB, 1)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				assert_ok!(AAvatars::mint(
+					Origin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+				));
+
+				let avatar_for_sale = AAvatars::owners(BOB)[0];
+				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 123));
+				assert_noop!(
+					AAvatars::buy(Origin::signed(BOB), avatar_for_sale),
+					Error::<Test>::AlreadyOwned
+				);
+			});
+	}
+}
+
+mod account {
+	use super::*;
+
+	#[test]
+	fn upgrade_storage_should_work() {
+		let upgrade_fee = 12_345;
+
+		ExtBuilder::default()
+			.balances(vec![(ALICE, 3 * upgrade_fee)])
+			.build()
+			.execute_with(|| {
+				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
+
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
+				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
+				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
+				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
+			});
+	}
+
+	#[test]
+	fn upgrade_storage_should_reject_insufficient_balance() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::upgrade_storage(Origin::signed(ALICE)),
+				pallet_balances::Error::<Test>::InsufficientBalance
+			);
+		});
+	}
+
+	#[test]
+	fn upgrade_storage_should_reject_fully_upgraded_storage() {
+		ExtBuilder::default().build().execute_with(|| {
+			GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = 0);
+			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Four);
+
+			assert_noop!(
+				AAvatars::upgrade_storage(Origin::signed(ALICE)),
+				Error::<Test>::MaxStorageTierReached
+			);
+		});
 	}
 }

@@ -70,7 +70,12 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 
 	let player = account::<T>(name);
 	let season_id = 1;
-	FreeMints::<T>::insert(&player, n as MintCount);
+
+	Accounts::<T>::mutate(&player, |account| {
+		account.free_mints = n as MintCount;
+		account.storage_tier = StorageTier::Four;
+	});
+
 	for _ in 0..n {
 		AAvatars::<T>::do_mint(
 			&player,
@@ -89,11 +94,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
 	mint_free {
 		let name = "player";
-		let n in 0 .. (T::MaxAvatarsPerPlayer::get() - 6);
+		let n in 0 .. (MaxAvatarsPerPlayer::get() - 6);
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		FreeMints::<T>::insert(&caller, MintCount::MAX);
+		Accounts::<T>::mutate(&caller, |account| account.free_mints =  MintCount::MAX);
 
 		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
@@ -105,7 +110,7 @@ benchmarks! {
 
 	mint_normal {
 		let name = "player";
-		let n in 0 .. (T::MaxAvatarsPerPlayer::get() - 6);
+		let n in 0 .. (MaxAvatarsPerPlayer::get() - 6);
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
@@ -122,7 +127,7 @@ benchmarks! {
 
 	forge {
 		let name = "player";
-		let n in 5 .. (T::MaxAvatarsPerPlayer::get());
+		let n in 5 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
@@ -150,7 +155,7 @@ benchmarks! {
 		let to = account::<T>("to");
 		let free_mint_transfer_fee = AAvatars::<T>::global_configs().mint.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
-		FreeMints::<T>::insert(&from, MintCount::MAX);
+		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many }.into())
@@ -158,7 +163,7 @@ benchmarks! {
 
 	set_price {
 		let name = "player";
-		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
@@ -169,7 +174,7 @@ benchmarks! {
 
 	remove_price {
 		let name = "player";
-		create_avatars::<T>(name, T::MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
 		Trade::<T>::insert(&avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
@@ -181,7 +186,7 @@ benchmarks! {
 	buy {
 		let (buyer_name, seller_name) = ("buyer", "seller");
 		let (buyer, seller) = (account::<T>(buyer_name), account::<T>(seller_name));
-		let n in 1 .. (T::MaxAvatarsPerPlayer::get());
+		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>(buyer_name, n- 1)?;
 		create_avatars::<T>(seller_name, n)?;
 
@@ -251,11 +256,15 @@ benchmarks! {
 				cooldown: T::BlockNumber::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
 				free_mint_transfer_fee: MintCount::MAX,
+				min_free_mint_transfer: MintCount::MAX,
 			},
 			forge: ForgeConfig { open: true },
 			trade: TradeConfig {
 				open: true,
 				buy_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			},
+			account: AccountConfig {
+				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			}
 		};
 	}: _(RawOrigin::Signed(organizer), config.clone())

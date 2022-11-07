@@ -40,7 +40,7 @@ pub mod pallet {
 	};
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use sp_runtime::{
-		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto},
+		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -49,7 +49,7 @@ pub mod pallet {
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
-	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, ConstU32<4_294_967_295>>;
+	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> =
 		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
@@ -64,7 +64,6 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: Currency<Self::AccountId>;
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
-		type MaxAvatarsPerPlayer: Get<u32>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -115,11 +114,15 @@ pub mod pallet {
 				cooldown: 5_u8.into(),
 				free_mint_fee_multiplier: 1,
 				free_mint_transfer_fee: 1,
+				min_free_mint_transfer: 1,
 			},
 			forge: ForgeConfig { open: true },
 			trade: TradeConfig {
 				open: true,
 				buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+			},
+			account: AccountConfig {
+				storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 			},
 		}
 	}
@@ -144,8 +147,9 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn free_mints)]
-	pub type FreeMints<T: Config> = StorageMap<_, Identity, T::AccountId, MintCount, ValueQuery>;
+	#[pallet::getter(fn accounts)]
+	pub type Accounts<T: Config> =
+		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn trade)]
@@ -180,6 +184,8 @@ pub mod pallet {
 		AvatarPriceUnset { avatar_id: AvatarIdOf<T> },
 		/// Avatar has been traded.
 		AvatarTraded { avatar_id: AvatarIdOf<T>, from: T::AccountId, to: T::AccountId },
+		/// Storage tier has been upgraded.
+		StorageTierUpgraded,
 	}
 
 	#[pallet::error]
@@ -223,8 +229,12 @@ pub mod pallet {
 		PrematureSeasonEnd,
 		/// Max ownership reached.
 		MaxOwnershipReached,
+		/// Max storage tier reached.
+		MaxStorageTierReached,
 		/// Avatar belongs to someone else.
 		Ownership,
+		/// Attempt to buy his or her own avatar.
+		AlreadyOwned,
 		/// Incorrect DNA.
 		IncorrectDna,
 		/// Incorrect Avatar ID.
@@ -241,6 +251,8 @@ pub mod pallet {
 		MaxVariationsTooHigh,
 		/// The player has not enough free mints available.
 		InsufficientFreeMints,
+		/// Attempt to transfer free mints lower than the minimum allowed.
+		TooLowFreeMintTransfer,
 		/// Less than minimum allowed sacrifices are used for forging.
 		TooFewSacrifices,
 		/// More than maximum allowed sacrifices are used for forging.
@@ -256,50 +268,60 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight({
-			let n = T::MaxAvatarsPerPlayer::get();
+			let n = MaxAvatarsPerPlayer::get();
 			T::WeightInfo::mint_normal(n)
 				.max(T::WeightInfo::mint_free(n))
 		})]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let is_early_access = mint_option.mint_type == MintType::Free;
-			let season_id = Self::toggle_season(is_early_access)?;
+			let (season_id, deactivated) = Self::toggle_season(is_early_access)?;
+			if deactivated {
+				Self::reset_seasonal_stats(&player);
+			}
 			Self::do_mint(&player, &mint_option, season_id)
 		}
 
-		#[pallet::weight(T::WeightInfo::forge(T::MaxAvatarsPerPlayer::get()))]
+		#[pallet::weight(T::WeightInfo::forge(MaxAvatarsPerPlayer::get()))]
 		pub fn forge(
 			origin: OriginFor<T>,
 			leader: AvatarIdOf<T>,
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let season_id = Self::toggle_season(false)?;
+			let (season_id, deactivated) = Self::toggle_season(false)?;
+			if deactivated {
+				Self::reset_seasonal_stats(&player);
+			}
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
 		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
-			dest: T::AccountId,
+			to: T::AccountId,
 			how_many: MintCount,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+			let from = ensure_signed(origin)?;
 			let GlobalConfig { mint, .. } = Self::global_configs();
-			let sender_free_mints = Self::free_mints(&sender)
+			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMintTransfer);
+			let sender_free_mints = Self::accounts(&from)
+				.free_mints
 				.checked_sub(
 					how_many
 						.checked_add(mint.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
-			let dest_free_mints =
-				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
+			let dest_free_mints = Self::accounts(&to)
+				.free_mints
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
 
-			FreeMints::<T>::insert(&sender, sender_free_mints);
-			FreeMints::<T>::insert(&dest, dest_free_mints);
+			Accounts::<T>::mutate(&from, |account| account.free_mints = sender_free_mints);
+			Accounts::<T>::mutate(&to, |account| account.free_mints = dest_free_mints);
 
-			Self::deposit_event(Event::FreeMintsTransferred { from: sender, to: dest, how_many });
+			Self::deposit_event(Event::FreeMintsTransferred { from, to, how_many });
 			Ok(())
 		}
 
@@ -328,12 +350,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::buy(T::MaxAvatarsPerPlayer::get()))]
+		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = Self::global_configs();
 			ensure!(trade.open, Error::<T>::TradeClosed);
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
+			ensure!(buyer != seller, Error::<T>::AlreadyOwned);
 
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
@@ -348,7 +371,12 @@ pub mod pallet {
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
 				.try_push(avatar_id)
-				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+
+			ensure!(
+				buyer_avatar_ids.len() <= Self::accounts(&buyer).storage_tier as usize,
+				Error::<T>::MaxOwnershipReached
+			);
 
 			let mut seller_avatar_ids = Self::owners(&seller);
 			seller_avatar_ids.retain(|x| x != &avatar_id);
@@ -362,7 +390,27 @@ pub mod pallet {
 			});
 			Trade::<T>::remove(&avatar_id);
 
+			Accounts::<T>::mutate(&buyer, |account| account.stats.bought.saturating_inc());
+			Accounts::<T>::mutate(&seller, |account| account.stats.sold.saturating_inc());
+
 			Self::deposit_event(Event::AvatarTraded { avatar_id, from: seller, to: buyer });
+			Ok(())
+		}
+
+		#[pallet::weight(12_345)]
+		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			let storage_tier = Self::accounts(&player).storage_tier;
+			ensure!(storage_tier != StorageTier::Four, Error::<T>::MaxStorageTierReached);
+
+			let upgrade_fee = Self::global_configs().account.storage_upgrade_fee;
+			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
+
+			let season_id = Self::current_season_id();
+			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(upgrade_fee));
+
+			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
+			Self::deposit_event(Event::StorageTierUpgraded);
 			Ok(())
 		}
 
@@ -409,14 +457,16 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
-			dest: T::AccountId,
+			to: T::AccountId,
 			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			let dest_free_mints =
-				Self::free_mints(&dest).checked_add(how_many).ok_or(ArithmeticError::Overflow)?;
-			FreeMints::<T>::insert(&dest, dest_free_mints);
-			Self::deposit_event(Event::FreeMintsIssued { to: dest, how_many });
+			let new_free_mints = Self::accounts(&to)
+				.free_mints
+				.checked_add(how_many)
+				.ok_or(ArithmeticError::Overflow)?;
+			Accounts::<T>::mutate(&to, |account| account.free_mints = new_free_mints);
+			Self::deposit_event(Event::FreeMintsIssued { to, how_many });
 			Ok(())
 		}
 	}
@@ -528,13 +578,13 @@ pub mod pallet {
 					let avatar = Avatar { season_id, dna, souls };
 					Avatars::<T>::insert(avatar_id, (&player, avatar));
 					Owners::<T>::try_append(&player, avatar_id)
-						.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+						.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 					Ok(avatar_id)
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
 			ensure!(
-				Self::owners(&player).len() <= T::MaxAvatarsPerPlayer::get() as usize,
+				Self::owners(&player).len() <= Self::accounts(&player).storage_tier as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
@@ -547,14 +597,24 @@ pub mod pallet {
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
-					let free_mints = Self::free_mints(player)
+					let free_mints = Self::accounts(&player)
+						.free_mints
 						.checked_sub(fee)
 						.ok_or(Error::<T>::InsufficientFreeMints)?;
-					FreeMints::<T>::insert(player, free_mints);
+					Accounts::<T>::mutate(&player, |account| account.free_mints = free_mints);
 				},
 			};
 
 			LastMintedBlockNumbers::<T>::insert(&player, current_block);
+			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+				if stats.first_minted.is_zero() {
+					stats.first_minted = current_block;
+				}
+
+				let count = mint_option.count as Stat;
+				stats.minted = stats.minted.saturating_add(count);
+				stats.current_season_minted = stats.current_season_minted.saturating_add(count);
+			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
 			Ok(())
@@ -651,6 +711,15 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
+			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+				if stats.first_forged.is_zero() {
+					stats.first_forged = <frame_system::Pallet<T>>::block_number();
+				}
+
+				stats.forged.saturating_inc();
+				stats.current_season_forged.saturating_inc();
+			});
+
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
 			Ok(())
 		}
@@ -672,7 +741,7 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season(early_access: bool) -> Result<SeasonId, DispatchError> {
+		fn toggle_season(early_access: bool) -> Result<(SeasonId, bool), DispatchError> {
 			let current_season_id = Self::current_season_id();
 			let mut season_deactivated = false;
 			if let Some(season) = Self::seasons(&current_season_id) {
@@ -714,7 +783,7 @@ pub mod pallet {
 				);
 			}
 
-			Ok(current_season_id)
+			Ok((current_season_id, season_deactivated))
 		}
 
 		fn start_season(season_id: SeasonId) {
@@ -736,6 +805,13 @@ pub mod pallet {
 			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
+		}
+
+		fn reset_seasonal_stats(who: &T::AccountId) {
+			Accounts::<T>::mutate(who, |account| {
+				account.stats.current_season_minted = Zero::zero();
+				account.stats.current_season_forged = Zero::zero();
+			});
 		}
 	}
 }

@@ -512,15 +512,10 @@ impl pallet_proxy::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
-parameter_types! {
-	pub const MaxAvatarsPerPlayer: u32 = 1_000;
-}
-
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type MaxAvatarsPerPlayer = MaxAvatarsPerPlayer;
 	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
