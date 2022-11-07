@@ -277,7 +277,7 @@ pub mod pallet {
 			let is_early_access = mint_option.mint_type == MintType::Free;
 			let (season_id, deactivated) = Self::toggle_season(is_early_access)?;
 			if deactivated {
-				Self::update_season_stats(&player);
+				Self::reset_seasonal_stats(&player);
 			}
 			Self::do_mint(&player, &mint_option, season_id)
 		}
@@ -291,7 +291,7 @@ pub mod pallet {
 			let player = ensure_signed(origin)?;
 			let (season_id, deactivated) = Self::toggle_season(false)?;
 			if deactivated {
-				Self::update_season_stats(&player);
+				Self::reset_seasonal_stats(&player);
 			}
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
@@ -606,12 +606,14 @@ pub mod pallet {
 			};
 
 			LastMintedBlockNumbers::<T>::insert(&player, current_block);
-			Accounts::<T>::mutate(&player, |account| {
-				if account.stats.first_minted.is_zero() {
-					account.stats.first_minted = current_block;
+			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+				if stats.first_minted.is_zero() {
+					stats.first_minted = current_block;
 				}
-				account.stats.current_season_minted =
-					account.stats.current_season_minted.saturating_add(mint_option.count as Stat);
+
+				let count = mint_option.count as Stat;
+				stats.minted = stats.minted.saturating_add(count);
+				stats.current_season_minted = stats.current_season_minted.saturating_add(count);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -709,11 +711,13 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
-			Accounts::<T>::mutate(&player, |account| {
-				if account.stats.first_forged.is_zero() {
-					account.stats.first_forged = <frame_system::Pallet<T>>::block_number();
+			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+				if stats.first_forged.is_zero() {
+					stats.first_forged = <frame_system::Pallet<T>>::block_number();
 				}
-				account.stats.current_season_forged.saturating_inc();
+
+				stats.forged.saturating_inc();
+				stats.current_season_forged.saturating_inc();
 			});
 
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
@@ -803,15 +807,8 @@ pub mod pallet {
 			Self::deposit_event(Event::SeasonFinished(season_id));
 		}
 
-		fn update_season_stats(who: &T::AccountId) {
+		fn reset_seasonal_stats(who: &T::AccountId) {
 			Accounts::<T>::mutate(who, |account| {
-				// update total counts
-				account.stats.minted =
-					account.stats.minted.saturating_add(account.stats.current_season_minted);
-				account.stats.forged =
-					account.stats.forged.saturating_add(account.stats.current_season_forged);
-
-				// reset seasonal counts
 				account.stats.current_season_minted = Zero::zero();
 				account.stats.current_season_forged = Zero::zero();
 			});

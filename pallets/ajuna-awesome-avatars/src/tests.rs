@@ -440,9 +440,11 @@ mod minting {
 					}
 					expected_nonce += expected_nonce_increment;
 					owned_avatar_count += 1;
+					minted_count += 1;
 					current_season_minted_count += 1;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
 					assert_eq!(
 						AAvatars::accounts(ALICE).stats.current_season_minted,
 						current_season_minted_count
@@ -475,9 +477,11 @@ mod minting {
 					}
 					expected_nonce += expected_nonce_increment * 3;
 					owned_avatar_count += 3;
+					minted_count += 3;
 					current_season_minted_count += 3;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
 					assert_eq!(
 						AAvatars::accounts(ALICE).stats.current_season_minted,
 						current_season_minted_count
@@ -509,9 +513,11 @@ mod minting {
 					}
 					expected_nonce += expected_nonce_increment * 6;
 					owned_avatar_count += 6;
+					minted_count += 6;
 					current_season_minted_count += 6;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
 					assert_eq!(
 						AAvatars::accounts(ALICE).stats.current_season_minted,
 						current_season_minted_count
@@ -530,7 +536,7 @@ mod minting {
 					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
 
 					// total minted count updates
-					minted_count += current_season_minted_count;
+					minted_count += 1;
 					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
 
 					// current season minted count resets
@@ -886,6 +892,7 @@ mod forging {
 				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
 
 				forged_count += 1;
+				assert_eq!(AAvatars::accounts(BOB).stats.forged, forged_count);
 				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, forged_count);
 				assert_eq!(AAvatars::accounts(BOB).stats.first_forged, season.start);
 			};
