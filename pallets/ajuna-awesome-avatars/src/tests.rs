@@ -886,7 +886,7 @@ mod forging {
 				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
 
 				forged_count += 1;
-				assert_eq!(AAvatars::accounts(BOB).stats.forged, forged_count);
+				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, forged_count);
 				assert_eq!(AAvatars::accounts(BOB).stats.first_forged, season.start);
 			};
 
@@ -957,6 +957,9 @@ mod forging {
 				));
 				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
 				assert!(!AAvatars::current_season_status().prematurely_ended);
+				assert_eq!(AAvatars::accounts(BOB).stats.forged, 8);
+				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, 0);
+				assert_eq!(AAvatars::accounts(BOB).stats.current_season_minted, 1);
 			});
 	}
 

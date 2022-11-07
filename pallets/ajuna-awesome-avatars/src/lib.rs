@@ -289,7 +289,10 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let (season_id, _deactivated) = Self::toggle_season(false)?;
+			let (season_id, deactivated) = Self::toggle_season(false)?;
+			if deactivated {
+				Self::update_season_stats(&player);
+			}
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
@@ -710,7 +713,7 @@ pub mod pallet {
 				if account.stats.first_forged.is_zero() {
 					account.stats.first_forged = <frame_system::Pallet<T>>::block_number();
 				}
-				account.stats.forged.saturating_inc();
+				account.stats.current_season_forged.saturating_inc();
 			});
 
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
@@ -802,9 +805,15 @@ pub mod pallet {
 
 		fn update_season_stats(who: &T::AccountId) {
 			Accounts::<T>::mutate(who, |account| {
+				// update total counts
 				account.stats.minted =
 					account.stats.minted.saturating_add(account.stats.current_season_minted);
+				account.stats.forged =
+					account.stats.forged.saturating_add(account.stats.current_season_forged);
+
+				// reset seasonal counts
 				account.stats.current_season_minted = Zero::zero();
+				account.stats.current_season_forged = Zero::zero();
 			});
 		}
 	}

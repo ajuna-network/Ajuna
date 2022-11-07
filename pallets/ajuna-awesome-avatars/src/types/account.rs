@@ -59,6 +59,7 @@ pub struct Stats<BlockNumber> {
 	pub first_minted: BlockNumber,
 	pub first_forged: BlockNumber,
 	pub current_season_minted: Stat,
+	pub current_season_forged: Stat,
 	pub minted: Stat,
 	pub forged: Stat,
 	pub bought: Stat,
