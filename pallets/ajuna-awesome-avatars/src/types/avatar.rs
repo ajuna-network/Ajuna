@@ -16,6 +16,7 @@
 
 use crate::*;
 use frame_support::pallet_prelude::*;
+use sp_runtime::traits::Saturating;
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 pub type SeasonId = u16;
@@ -49,7 +50,7 @@ impl Avatar {
 				}
 
 				// TODO: is u32 enough?
-				self.souls = self.souls.saturating_add(other.souls);
+				self.souls.saturating_accrue(other.souls);
 				(matched_components, matches)
 			},
 		))

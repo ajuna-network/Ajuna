@@ -361,7 +361,7 @@ pub mod pallet {
 				None => current_season_id.saturating_sub(1),
 			};
 			T::Currency::withdraw(&buyer, trade.buy_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(trade.buy_fee));
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade.buy_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
@@ -402,7 +402,7 @@ pub mod pallet {
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
 
 			let season_id = Self::current_season_id();
-			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(upgrade_fee));
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(upgrade_fee));
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
 			Self::deposit_event(Event::StorageTierUpgraded);
@@ -588,7 +588,7 @@ pub mod pallet {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
-					Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(fee));
+					Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(fee));
 				},
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
@@ -608,8 +608,8 @@ pub mod pallet {
 				stats.mint.last = current_block;
 
 				let count = mint_option.count as Stat;
-				stats.mint.total = stats.mint.total.saturating_add(count);
-				stats.mint.current_season = stats.mint.current_season.saturating_add(count);
+				stats.mint.total.saturating_accrue(count);
+				stats.mint.current_season.saturating_accrue(count);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -690,7 +690,7 @@ pub mod pallet {
 
 			if leader.min_tier::<T>()? == max_tier {
 				CurrentSeasonMaxTierAvatars::<T>::mutate(|max_tier_avatars| {
-					*max_tier_avatars = max_tier_avatars.saturating_add(1);
+					max_tier_avatars.saturating_inc();
 					if *max_tier_avatars == season.max_tier_forges {
 						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
 					}
