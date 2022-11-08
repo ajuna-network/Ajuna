@@ -55,15 +55,24 @@ impl StorageTier {
 pub type Stat = u32;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
-pub struct Stats<BlockNumber> {
-	pub first_minted: BlockNumber,
-	pub first_forged: BlockNumber,
-	pub current_season_minted: Stat,
-	pub current_season_forged: Stat,
-	pub minted: Stat,
-	pub forged: Stat,
+pub struct PlayStats<BlockNumber> {
+	pub total: Stat,
+	pub current_season: Stat,
+	pub first: BlockNumber,
+	pub last: BlockNumber,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+pub struct TradeStats {
 	pub bought: Stat,
 	pub sold: Stat,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+pub struct Stats<BlockNumber> {
+	pub mint: PlayStats<BlockNumber>,
+	pub forge: PlayStats<BlockNumber>,
+	pub trade: TradeStats,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]

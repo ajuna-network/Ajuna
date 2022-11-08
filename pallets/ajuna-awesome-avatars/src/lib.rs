@@ -142,11 +142,6 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn last_minted_block_numbers)]
-	pub type LastMintedBlockNumbers<T: Config> =
-		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
 	pub type Accounts<T: Config> =
 		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
@@ -390,8 +385,8 @@ pub mod pallet {
 			});
 			Trade::<T>::remove(&avatar_id);
 
-			Accounts::<T>::mutate(&buyer, |account| account.stats.bought.saturating_inc());
-			Accounts::<T>::mutate(&seller, |account| account.stats.sold.saturating_inc());
+			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
+			Accounts::<T>::mutate(&seller, |account| account.stats.trade.sold.saturating_inc());
 
 			Self::deposit_event(Event::AvatarTraded { avatar_id, from: seller, to: buyer });
 			Ok(())
@@ -564,7 +559,8 @@ pub mod pallet {
 			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
+			let last_block = Self::accounts(player).stats.mint.last;
+			if !last_block.is_zero() {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
@@ -605,15 +601,15 @@ pub mod pallet {
 				},
 			};
 
-			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
-				if stats.first_minted.is_zero() {
-					stats.first_minted = current_block;
+				if stats.mint.first.is_zero() {
+					stats.mint.first = current_block;
 				}
+				stats.mint.last = current_block;
 
 				let count = mint_option.count as Stat;
-				stats.minted = stats.minted.saturating_add(count);
-				stats.current_season_minted = stats.current_season_minted.saturating_add(count);
+				stats.mint.total = stats.mint.total.saturating_add(count);
+				stats.mint.current_season = stats.mint.current_season.saturating_add(count);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -712,12 +708,14 @@ pub mod pallet {
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
 			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
-				if stats.first_forged.is_zero() {
-					stats.first_forged = <frame_system::Pallet<T>>::block_number();
+				let current_block = <frame_system::Pallet<T>>::block_number();
+				if stats.forge.first.is_zero() {
+					stats.forge.first = current_block;
 				}
+				stats.forge.last = current_block;
 
-				stats.forged.saturating_inc();
-				stats.current_season_forged.saturating_inc();
+				stats.forge.total.saturating_inc();
+				stats.forge.current_season.saturating_inc();
 			});
 
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
@@ -809,8 +807,8 @@ pub mod pallet {
 
 		fn reset_seasonal_stats(who: &T::AccountId) {
 			Accounts::<T>::mutate(who, |account| {
-				account.stats.current_season_minted = Zero::zero();
-				account.stats.current_season_forged = Zero::zero();
+				account.stats.mint.current_season = Zero::zero();
+				account.stats.forge.current_season = Zero::zero();
 			});
 		}
 	}
