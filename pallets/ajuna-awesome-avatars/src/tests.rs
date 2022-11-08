@@ -444,13 +444,13 @@ mod minting {
 					current_season_minted_count += 1;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.mint.total, minted_count);
 					assert_eq!(
-						AAvatars::accounts(ALICE).stats.current_season_minted,
+						AAvatars::accounts(ALICE).stats.mint.current_season,
 						current_season_minted_count
 					);
 					assert!(AAvatars::current_season_status().active);
-					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
+					assert_eq!(AAvatars::accounts(ALICE).stats.mint.first, season_1.start);
 					System::assert_has_event(mock::Event::AAvatars(crate::Event::SeasonStarted(1)));
 					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
 						avatar_ids: vec![AAvatars::owners(ALICE)[0]],
@@ -481,9 +481,9 @@ mod minting {
 					current_season_minted_count += 3;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.mint.total, minted_count);
 					assert_eq!(
-						AAvatars::accounts(ALICE).stats.current_season_minted,
+						AAvatars::accounts(ALICE).stats.mint.current_season,
 						current_season_minted_count
 					);
 					assert!(AAvatars::current_season_status().active);
@@ -517,9 +517,9 @@ mod minting {
 					current_season_minted_count += 6;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(AAvatars::owners(ALICE).len(), owned_avatar_count);
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.mint.total, minted_count);
 					assert_eq!(
-						AAvatars::accounts(ALICE).stats.current_season_minted,
+						AAvatars::accounts(ALICE).stats.mint.current_season,
 						current_season_minted_count
 					);
 					assert!(AAvatars::current_season_status().active);
@@ -533,16 +533,16 @@ mod minting {
 						Origin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
-					assert_eq!(AAvatars::accounts(ALICE).stats.first_minted, season_1.start);
+					assert_eq!(AAvatars::accounts(ALICE).stats.mint.first, season_1.start);
 
 					// total minted count updates
 					minted_count += 1;
-					assert_eq!(AAvatars::accounts(ALICE).stats.minted, minted_count);
+					assert_eq!(AAvatars::accounts(ALICE).stats.mint.total, minted_count);
 
 					// current season minted count resets
 					current_season_minted_count = 1;
 					assert_eq!(
-						AAvatars::accounts(ALICE).stats.current_season_minted,
+						AAvatars::accounts(ALICE).stats.mint.current_season,
 						current_season_minted_count
 					);
 
@@ -892,9 +892,9 @@ mod forging {
 				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
 
 				forged_count += 1;
-				assert_eq!(AAvatars::accounts(BOB).stats.forged, forged_count);
-				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, forged_count);
-				assert_eq!(AAvatars::accounts(BOB).stats.first_forged, season.start);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.total, forged_count);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.current_season, forged_count);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.first, season.start);
 			};
 
 		ExtBuilder::default()
@@ -964,9 +964,9 @@ mod forging {
 				));
 				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
 				assert!(!AAvatars::current_season_status().prematurely_ended);
-				assert_eq!(AAvatars::accounts(BOB).stats.forged, 8);
-				assert_eq!(AAvatars::accounts(BOB).stats.current_season_forged, 0);
-				assert_eq!(AAvatars::accounts(BOB).stats.current_season_minted, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.total, 8);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.current_season, 0);
+				assert_eq!(AAvatars::accounts(BOB).stats.mint.current_season, 1);
 			});
 	}
 
@@ -1668,8 +1668,8 @@ mod trading {
 				assert_eq!(AAvatars::trade(avatar_for_sale), None);
 
 				// check for account stats
-				assert_eq!(AAvatars::accounts(ALICE).stats.bought, 1);
-				assert_eq!(AAvatars::accounts(BOB).stats.sold, 1);
+				assert_eq!(AAvatars::accounts(ALICE).stats.trade.bought, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.trade.sold, 1);
 
 				// check events
 				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarTraded {
@@ -1682,8 +1682,8 @@ mod trading {
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
 				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 1357));
 				assert_ok!(AAvatars::buy(Origin::signed(CHARLIE), avatar_for_sale));
-				assert_eq!(AAvatars::accounts(CHARLIE).stats.bought, 1);
-				assert_eq!(AAvatars::accounts(BOB).stats.sold, 2);
+				assert_eq!(AAvatars::accounts(CHARLIE).stats.trade.bought, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.trade.sold, 2);
 			});
 	}
 
