@@ -578,7 +578,7 @@ mod minting {
 
 					// reset for next iteration
 					System::set_block_number(0);
-					LastMintedBlockNumbers::<Test>::remove(ALICE);
+					Accounts::<Test>::mutate(ALICE, |account| account.stats.mint.last = 0);
 					Owners::<Test>::remove(ALICE);
 					CurrentSeasonStatus::<Test>::mutate(|status| status.active = false);
 					CurrentSeasonId::<Test>::set(1);
@@ -739,7 +739,7 @@ mod minting {
 
 					// reset for next iteration
 					System::set_block_number(0);
-					LastMintedBlockNumbers::<Test>::remove(ALICE);
+					Accounts::<Test>::mutate(ALICE, |account| account.stats.mint.last = 0);
 				}
 			});
 	}

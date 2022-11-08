@@ -59,6 +59,7 @@ pub struct PlayStats<BlockNumber> {
 	pub total: Stat,
 	pub current_season: Stat,
 	pub first: BlockNumber,
+	pub last: BlockNumber,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]

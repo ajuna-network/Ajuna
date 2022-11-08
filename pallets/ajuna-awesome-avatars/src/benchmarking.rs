@@ -24,7 +24,7 @@ use crate::{
 use frame_benchmarking::{benchmarks, vec};
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
-use sp_runtime::traits::UniqueSaturatedFrom;
+use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
 
 fn account<T: Config>(name: &'static str) -> T::AccountId {
 	let index = 0;
@@ -82,7 +82,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 			&MintOption { mint_type: MintType::Free, count: MintPackSize::One },
 			season_id,
 		)?;
-		LastMintedBlockNumbers::<T>::remove(&player);
+		Accounts::<T>::mutate(&player, |account| account.stats.mint.last = Zero::zero());
 	}
 	Ok(())
 }

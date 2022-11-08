@@ -142,11 +142,6 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn last_minted_block_numbers)]
-	pub type LastMintedBlockNumbers<T: Config> =
-		StorageMap<_, Identity, T::AccountId, T::BlockNumber, OptionQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
 	pub type Accounts<T: Config> =
 		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
@@ -564,7 +559,8 @@ pub mod pallet {
 			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			if let Some(last_block) = Self::last_minted_block_numbers(&player) {
+			let last_block = Self::accounts(player).stats.mint.last;
+			if !last_block.is_zero() {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
@@ -605,11 +601,11 @@ pub mod pallet {
 				},
 			};
 
-			LastMintedBlockNumbers::<T>::insert(&player, current_block);
 			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
+				stats.mint.last = current_block;
 
 				let count = mint_option.count as Stat;
 				stats.mint.total = stats.mint.total.saturating_add(count);
