@@ -87,6 +87,29 @@ jobs:
           command: test
           args: --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
+  coverage:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
+    name: Coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:0.22.0
+      options: --security-opt seccomp=unconfined
+    steps:
+      - uses: actions/checkout@v3
+      - name: Generate code coverage
+        run: |
+          cargo tarpaulin --no-fail-fast --workspace --out Xml \
+            --exclude \
+                ajuna-cli ajuna-node ajuna-primitives ajuna-rpc ajuna-service \
+                ajuna-runtime ajuna-solo-runtime bajun-runtime \
+            --exclude-files \
+                node/* rpc/* runtime/* \
+                benchmarking.rs weights.rs
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v3
+        with:
+          fail_ci_if_error: true
+
   notify:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: Notify on Slack
