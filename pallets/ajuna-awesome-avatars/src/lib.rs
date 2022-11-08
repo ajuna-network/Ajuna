@@ -708,9 +708,11 @@ pub mod pallet {
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
 			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+				let current_block = <frame_system::Pallet<T>>::block_number();
 				if stats.forge.first.is_zero() {
-					stats.forge.first = <frame_system::Pallet<T>>::block_number();
+					stats.forge.first = current_block;
 				}
+				stats.forge.last = current_block;
 
 				stats.forge.total.saturating_inc();
 				stats.forge.current_season.saturating_inc();
