@@ -256,6 +256,8 @@ impl Default for Season<MockBlockNumber> {
 			.unwrap(),
 			p_single_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
 			p_batch_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+			per_period: 10,
+			periods: 12,
 		}
 	}
 }
@@ -303,6 +305,14 @@ impl Season<MockBlockNumber> {
 	}
 	pub fn p_batch_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
 		self.p_batch_mint = percentages.try_into().unwrap();
+		self
+	}
+	pub fn per_period(mut self, per_period: MockBlockNumber) -> Self {
+		self.per_period = per_period;
+		self
+	}
+	pub fn periods(mut self, periods: u16) -> Self {
+		self.periods = periods;
 		self
 	}
 }

@@ -56,6 +56,8 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
 				p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 				p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
+				per_period: T::BlockNumber::from(10_u32),
+				periods: 12,
 			},
 		);
 	}
@@ -235,6 +237,8 @@ benchmarks! {
 			tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
 			p_single_mint: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 			p_batch_mint: vec![40, 30, 15, 10, 5].try_into().unwrap(),
+			per_period: T::BlockNumber::from(u32::MAX),
+			periods: u16::MAX,
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {

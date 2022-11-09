@@ -16,6 +16,7 @@
 
 use crate::*;
 use frame_support::pallet_prelude::*;
+use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto, Zero};
 use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
@@ -54,9 +55,11 @@ pub struct Season<BlockNumber> {
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
 	pub p_single_mint: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub p_batch_mint: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub per_period: BlockNumber,
+	pub periods: u16,
 }
 
-impl<BlockNumber: PartialOrd> Season<BlockNumber> {
+impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 	pub(crate) fn is_active(&self, now: BlockNumber) -> bool {
 		now >= self.start && now <= self.end
 	}
@@ -73,6 +76,18 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 		self.validate_tiers::<T>()?;
 		self.validate_percentages::<T>()?;
 		Ok(())
+	}
+
+	#[allow(dead_code)]
+	fn current_period(&self, now: &BlockNumber) -> u16 {
+		let cycles = now.checked_rem(&self.full_cycle()).unwrap_or_else(Zero::zero);
+		let current_period = if cycles.is_zero() { Zero::zero() } else { cycles / self.per_period };
+		current_period.unique_saturated_into()
+	}
+
+	#[allow(dead_code)]
+	fn full_cycle(&self) -> BlockNumber {
+		self.per_period.saturating_mul(self.periods.unique_saturated_into())
 	}
 
 	fn sort(&mut self) {
@@ -121,5 +136,59 @@ impl<BlockNumber: PartialOrd> Season<BlockNumber> {
 		ensure!(self.p_single_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
 		ensure!(self.p_batch_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
 		Ok(())
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn current_period_works() {
+		let per_period = 3;
+		let periods = 7;
+		let season = Season::default().per_period(per_period).periods(periods);
+
+		#[allow(clippy::erasing_op, clippy::identity_op)]
+		for (range, expected_period) in [
+			// first cycle
+			((0 * per_period)..(0 * per_period + per_period), 0),
+			((1 * per_period)..(1 * per_period + per_period), 1),
+			((2 * per_period)..(2 * per_period + per_period), 2),
+			((3 * per_period)..(3 * per_period + per_period), 3),
+			((4 * per_period)..(4 * per_period + per_period), 4),
+			((5 * per_period)..(5 * per_period + per_period), 5),
+			((6 * per_period)..(6 * per_period + per_period), 6),
+			// second cycle
+			((7 * per_period)..(7 * per_period + per_period), 0),
+			((8 * per_period)..(8 * per_period + per_period), 1),
+			((9 * per_period)..(9 * per_period + per_period), 2),
+			((10 * per_period)..(10 * per_period + per_period), 3),
+			((11 * per_period)..(11 * per_period + per_period), 4),
+			((12 * per_period)..(12 * per_period + per_period), 5),
+			((13 * per_period)..(13 * per_period + per_period), 6),
+			// third cycle
+			((14 * per_period)..(14 * per_period + per_period), 0),
+			((15 * per_period)..(15 * per_period + per_period), 1),
+			((16 * per_period)..(16 * per_period + per_period), 2),
+			((17 * per_period)..(17 * per_period + per_period), 3),
+			((18 * per_period)..(18 * per_period + per_period), 4),
+			((19 * per_period)..(19 * per_period + per_period), 5),
+			((20 * per_period)..(20 * per_period + per_period), 6),
+		] {
+			for now in range {
+				assert_eq!(season.current_period(&now), expected_period);
+			}
+		}
+	}
+
+	#[test]
+	fn current_periods_defaults_to_zero_when_divided_by_zero() {
+		for now in 0..10 {
+			for (per_period, periods) in [(0, 0), (0, 1), (1, 0)] {
+				let season = Season::default().per_period(per_period).periods(periods);
+				assert_eq!(season.current_period(&now), 0);
+			}
+		}
 	}
 }
