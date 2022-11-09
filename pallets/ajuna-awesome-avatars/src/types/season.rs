@@ -75,6 +75,7 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 		self.validate_max_components::<T>()?;
 		self.validate_tiers::<T>()?;
 		self.validate_percentages::<T>()?;
+		self.validate_periods::<T>()?;
 		Ok(())
 	}
 
@@ -137,11 +138,61 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 		ensure!(self.p_batch_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
 		Ok(())
 	}
+
+	fn validate_periods<T: Config>(&self) -> DispatchResult {
+		ensure!(
+			self.periods.is_zero() || (self.periods % self.max_variations as u16).is_zero(),
+			Error::<T>::PeriodsIndivisible
+		);
+		ensure!(
+			// TODO: is there more meaningful maximum for full cycle?
+			self.full_cycle() <= u16::MAX.unique_saturated_into(),
+			Error::<T>::PeriodConfigOverflow
+		);
+		Ok(())
+	}
 }
 
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::{mock::*, types::RarityTier::*};
+	use frame_support::{assert_err, assert_ok};
+
+	#[test]
+	fn validate_works() {
+		let mut season = Season::default()
+			.tiers(vec![Common, Rare, Legendary])
+			.p_single_mint(vec![10, 90])
+			.p_batch_mint(vec![20, 80])
+			.max_variations(5)
+			.per_period(10)
+			.periods(15);
+
+		for (mut season, error) in [
+			// block_numbers
+			(season.clone().early_start(10).start(0), Error::<Test>::EarlyStartTooLate),
+			(season.clone().start(10).end(0), Error::<Test>::SeasonStartTooLate),
+			// max_variations
+			(season.clone().max_variations(0), Error::<Test>::MaxVariationsTooLow),
+			(season.clone().max_variations(16), Error::<Test>::MaxVariationsTooHigh),
+			// max_components
+			(season.clone().max_components(0), Error::<Test>::MaxComponentsTooLow),
+			(season.clone().max_components(17), Error::<Test>::MaxComponentsTooHigh),
+			// tiers
+			(season.clone().tiers(vec![Common, Common]), Error::<Test>::DuplicatedRarityTier),
+			// percentages
+			(season.clone().p_single_mint(vec![1, 100]), Error::<Test>::IncorrectRarityPercentages),
+			(season.clone().p_batch_mint(vec![1, 100]), Error::<Test>::IncorrectRarityPercentages),
+			(season.clone().tiers(vec![Common]), Error::<Test>::TooManyRarityPercentages),
+			// periods
+			(season.clone().per_period(2).periods(u16::MAX), Error::<Test>::PeriodConfigOverflow),
+			(season.clone().periods(123).max_variations(7), Error::<Test>::PeriodsIndivisible),
+		] {
+			assert_err!(season.validate::<Test>(), error);
+		}
+		assert_ok!(season.validate::<Test>());
+	}
 
 	#[test]
 	fn current_period_works() {

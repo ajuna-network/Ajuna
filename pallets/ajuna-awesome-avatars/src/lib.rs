@@ -195,6 +195,10 @@ pub mod pallet {
 		SeasonStartTooLate,
 		/// The season ends after the new season has started.
 		SeasonEndTooLate,
+		/// The season's per period and periods configuration overflows.
+		PeriodConfigOverflow,
+		/// The season's periods configuration is indivisible by max variation.
+		PeriodsIndivisible,
 		/// The season doesn't exist.
 		UnknownSeason,
 		/// The avatar doesn't exist.
