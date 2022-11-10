@@ -16,7 +16,7 @@
 
 use crate::*;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::Saturating;
+use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 pub type SeasonId = u16;
@@ -120,5 +120,87 @@ impl Avatar {
 		let mirrors_required = (3_u8.saturating_sub(matches)) * 2;
 		let is_match = matches >= 3 || (matches >= 1 && mirrors >= mirrors_required);
 		(is_match, matching_indexes)
+	}
+
+	#[allow(dead_code)]
+	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
+		let mut current_period = season.current_period(now);
+		let mut last_variation = (self.dna.last().unwrap_or(&0) & 0b0000_1111) as u16;
+
+		current_period.saturating_inc();
+		last_variation.saturating_inc();
+
+		let max_variations = season.max_variations as u16;
+		let is_in_period = if last_variation == max_variations {
+			(current_period % max_variations).is_zero()
+		} else {
+			(current_period % max_variations) == last_variation
+		};
+
+		// TODO: [AAATAR-352]
+		if (current_period == last_variation) || is_in_period {
+			1
+		} else {
+			2
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::{mock::*, types::*};
+
+	#[test]
+	fn forge_multiplier_works() {
+		// | variation |      period |
+		// + --------- + ----------- +
+		// |         1 | 1, 4, 7, 10 |
+		// |         2 | 2, 5, 8, 11 |
+		// |         3 | 3, 6, 9, 12 |
+		let per_period = 4;
+		let periods = 3;
+		let max_variations = 3;
+
+		let season = Season::default()
+			.per_period(per_period)
+			.periods(periods)
+			.max_variations(max_variations);
+
+		let mut avatar = Avatar::default();
+
+		#[allow(clippy::erasing_op, clippy::identity_op)]
+		for (range, dna, expected_period, expected_multiplier) in [
+			// cycle 0, period 0, last_variation must be 0
+			((0 * per_period)..((0 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 0, 1),
+			((0 * per_period)..((0 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 0, 2),
+			((0 * per_period)..((0 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 0, 2),
+			// cycle 0, period 1, last_variation must be 1
+			((1 * per_period)..((1 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 1, 2),
+			((1 * per_period)..((1 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 1, 1),
+			((1 * per_period)..((1 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 1, 2),
+			// cycle 0, period 2, last_variation must be 2
+			((2 * per_period)..((2 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 2, 2),
+			((2 * per_period)..((2 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 2, 2),
+			((2 * per_period)..((2 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 2, 1),
+			// cycle 1, period 0, last_variation must be 0
+			((3 * per_period)..((3 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 0, 1),
+			((3 * per_period)..((3 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 0, 2),
+			((3 * per_period)..((3 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 0, 2),
+			// cycle 1, period 1, last_variation must be 1
+			((4 * per_period)..((4 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 1, 2),
+			((4 * per_period)..((4 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 1, 1),
+			((4 * per_period)..((4 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 1, 2),
+			// cycle 1, period 2, last_variation must be 2
+			((5 * per_period)..((5 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 2, 2),
+			((5 * per_period)..((5 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 2, 2),
+			((5 * per_period)..((5 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 2, 1),
+		] {
+			for now in range {
+				assert_eq!(season.current_period(&now), expected_period);
+
+				avatar.dna = dna.clone();
+				assert_eq!(avatar.forge_multiplier::<Test>(&season, &now), expected_multiplier);
+			}
+		}
 	}
 }

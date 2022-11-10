@@ -79,14 +79,12 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 		Ok(())
 	}
 
-	#[allow(dead_code)]
-	fn current_period(&self, now: &BlockNumber) -> u16 {
+	pub(crate) fn current_period(&self, now: &BlockNumber) -> u16 {
 		let cycles = now.checked_rem(&self.full_cycle()).unwrap_or_else(Zero::zero);
 		let current_period = if cycles.is_zero() { Zero::zero() } else { cycles / self.per_period };
 		current_period.unique_saturated_into()
 	}
 
-	#[allow(dead_code)]
 	fn full_cycle(&self) -> BlockNumber {
 		self.per_period.saturating_mul(self.periods.unique_saturated_into())
 	}
