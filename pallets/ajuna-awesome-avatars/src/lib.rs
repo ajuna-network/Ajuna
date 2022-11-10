@@ -667,13 +667,15 @@ pub mod pallet {
 			let random_hash = random_hash.as_ref();
 			let mut upgraded_components = 0;
 
-			// all matches approx. 100%
-			let p = (MAX_PERCENTAGE / season.max_sacrifices) * matches;
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let period_multiplier = leader.forge_multiplier::<T>(&season, &current_block);
+			let prob = (MAX_PERCENTAGE / (season.max_sacrifices * period_multiplier)) * matches;
+
 			let rolls = sacrifices.len();
 			for hash in random_hash.iter().take(rolls) {
 				if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
 					let roll = hash % MAX_PERCENTAGE;
-					if roll <= p {
+					if roll <= prob {
 						let nucleotide = leader.dna[first_matched_index];
 						let current_tier_index = season
 							.tiers
@@ -712,7 +714,6 @@ pub mod pallet {
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
 			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
-				let current_block = <frame_system::Pallet<T>>::block_number();
 				if stats.forge.first.is_zero() {
 					stats.forge.first = current_block;
 				}

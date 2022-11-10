@@ -122,8 +122,11 @@ impl Avatar {
 		(is_match, matching_indexes)
 	}
 
-	#[allow(dead_code)]
-	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
+	pub(crate) fn forge_multiplier<T: Config>(
+		&self,
+		season: &SeasonOf<T>,
+		now: &T::BlockNumber,
+	) -> u8 {
 		let mut current_period = season.current_period(now);
 		let mut last_variation = (self.dna.last().unwrap_or(&0) & 0b0000_1111) as u16;
 
