@@ -668,8 +668,7 @@ pub mod pallet {
 			let mut upgraded_components = 0;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			let period_multiplier = leader.forge_multiplier::<T>(&season, &current_block);
-			let prob = (MAX_PERCENTAGE / (season.max_sacrifices * period_multiplier)) * matches;
+			let prob = leader.forge_probability::<T>(&season, &current_block, matches);
 
 			let rolls = sacrifices.len();
 			for hash in random_hash.iter().take(rolls) {
