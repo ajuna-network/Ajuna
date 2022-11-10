@@ -153,6 +153,13 @@ impl Avatar {
 mod test {
 	use crate::{mock::*, types::*};
 
+	impl Avatar {
+		fn dna(mut self, dna: &[u8]) -> Self {
+			self.dna = Dna::try_from(dna.to_vec()).unwrap();
+			self
+		}
+	}
+
 	#[test]
 	fn forge_multiplier_works() {
 		// | variation |      period |
@@ -169,39 +176,37 @@ mod test {
 			.periods(periods)
 			.max_variations(max_variations);
 
-		let mut avatar = Avatar::default();
-
 		#[allow(clippy::erasing_op, clippy::identity_op)]
 		for (range, dna, expected_period, expected_multiplier) in [
 			// cycle 0, period 0, last_variation must be 0
-			((0 * per_period)..((0 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 0, 1),
-			((0 * per_period)..((0 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 0, 2),
-			((0 * per_period)..((0 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 0, 2),
+			((0 * per_period)..((0 + 1) * per_period), [7, 3, 5, 7, 0], 0, 1),
+			((0 * per_period)..((0 + 1) * per_period), [7, 3, 5, 7, 1], 0, 2),
+			((0 * per_period)..((0 + 1) * per_period), [7, 3, 5, 7, 2], 0, 2),
 			// cycle 0, period 1, last_variation must be 1
-			((1 * per_period)..((1 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 1, 2),
-			((1 * per_period)..((1 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 1, 1),
-			((1 * per_period)..((1 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 1, 2),
+			((1 * per_period)..((1 + 1) * per_period), [7, 3, 5, 7, 0], 1, 2),
+			((1 * per_period)..((1 + 1) * per_period), [7, 3, 5, 7, 1], 1, 1),
+			((1 * per_period)..((1 + 1) * per_period), [7, 3, 5, 7, 2], 1, 2),
 			// cycle 0, period 2, last_variation must be 2
-			((2 * per_period)..((2 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 2, 2),
-			((2 * per_period)..((2 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 2, 2),
-			((2 * per_period)..((2 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 2, 1),
+			((2 * per_period)..((2 + 1) * per_period), [7, 3, 5, 7, 0], 2, 2),
+			((2 * per_period)..((2 + 1) * per_period), [7, 3, 5, 7, 1], 2, 2),
+			((2 * per_period)..((2 + 1) * per_period), [7, 3, 5, 7, 2], 2, 1),
 			// cycle 1, period 0, last_variation must be 0
-			((3 * per_period)..((3 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 0, 1),
-			((3 * per_period)..((3 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 0, 2),
-			((3 * per_period)..((3 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 0, 2),
+			((3 * per_period)..((3 + 1) * per_period), [7, 3, 5, 7, 0], 0, 1),
+			((3 * per_period)..((3 + 1) * per_period), [7, 3, 5, 7, 1], 0, 2),
+			((3 * per_period)..((3 + 1) * per_period), [7, 3, 5, 7, 2], 0, 2),
 			// cycle 1, period 1, last_variation must be 1
-			((4 * per_period)..((4 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 1, 2),
-			((4 * per_period)..((4 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 1, 1),
-			((4 * per_period)..((4 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 1, 2),
+			((4 * per_period)..((4 + 1) * per_period), [7, 3, 5, 7, 0], 1, 2),
+			((4 * per_period)..((4 + 1) * per_period), [7, 3, 5, 7, 1], 1, 1),
+			((4 * per_period)..((4 + 1) * per_period), [7, 3, 5, 7, 2], 1, 2),
 			// cycle 1, period 2, last_variation must be 2
-			((5 * per_period)..((5 + 1) * per_period), Dna::try_from(vec![0_u8]).unwrap(), 2, 2),
-			((5 * per_period)..((5 + 1) * per_period), Dna::try_from(vec![1_u8]).unwrap(), 2, 2),
-			((5 * per_period)..((5 + 1) * per_period), Dna::try_from(vec![2_u8]).unwrap(), 2, 1),
+			((5 * per_period)..((5 + 1) * per_period), [7, 3, 5, 7, 0], 2, 2),
+			((5 * per_period)..((5 + 1) * per_period), [7, 3, 5, 7, 1], 2, 2),
+			((5 * per_period)..((5 + 1) * per_period), [7, 3, 5, 7, 2], 2, 1),
 		] {
 			for now in range {
 				assert_eq!(season.current_period(&now), expected_period);
 
-				avatar.dna = dna.clone();
+				let avatar = Avatar::default().dna(&dna);
 				assert_eq!(avatar.forge_multiplier::<Test>(&season, &now), expected_multiplier);
 			}
 		}

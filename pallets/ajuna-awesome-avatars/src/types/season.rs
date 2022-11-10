@@ -157,6 +157,92 @@ mod test {
 	use crate::{mock::*, types::RarityTier::*};
 	use frame_support::{assert_err, assert_ok};
 
+	impl Default for Season<MockBlockNumber> {
+		fn default() -> Self {
+			Self {
+				name: b"cool season".to_vec().try_into().unwrap(),
+				description: b"this is a really cool season".to_vec().try_into().unwrap(),
+				early_start: 1,
+				start: 2,
+				end: 3,
+				max_tier_forges: 10,
+				max_variations: 2,
+				max_components: 2,
+				min_sacrifices: 1,
+				max_sacrifices: 4,
+				tiers: vec![
+					RarityTier::Common,
+					RarityTier::Uncommon,
+					RarityTier::Rare,
+					RarityTier::Epic,
+					RarityTier::Legendary,
+					RarityTier::Mythical,
+				]
+				.try_into()
+				.unwrap(),
+				p_single_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+				p_batch_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+				per_period: 10,
+				periods: 12,
+			}
+		}
+	}
+
+	impl Season<MockBlockNumber> {
+		pub fn early_start(mut self, early_start: MockBlockNumber) -> Self {
+			self.early_start = early_start;
+			self
+		}
+		pub fn start(mut self, start: MockBlockNumber) -> Self {
+			self.start = start;
+			self
+		}
+		pub fn end(mut self, end: MockBlockNumber) -> Self {
+			self.end = end;
+			self
+		}
+		pub fn max_tier_forges(mut self, max_tier_forges: u32) -> Self {
+			self.max_tier_forges = max_tier_forges;
+			self
+		}
+		pub fn max_components(mut self, max_components: u8) -> Self {
+			self.max_components = max_components;
+			self
+		}
+		pub fn max_variations(mut self, max_variations: u8) -> Self {
+			self.max_variations = max_variations;
+			self
+		}
+		pub fn min_sacrifices(mut self, min_sacrifices: u8) -> Self {
+			self.min_sacrifices = min_sacrifices;
+			self
+		}
+		pub fn max_sacrifices(mut self, max_sacrifices: u8) -> Self {
+			self.max_sacrifices = max_sacrifices;
+			self
+		}
+		pub fn tiers(mut self, tiers: Vec<RarityTier>) -> Self {
+			self.tiers = tiers.try_into().unwrap();
+			self
+		}
+		pub fn p_single_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
+			self.p_single_mint = percentages.try_into().unwrap();
+			self
+		}
+		pub fn p_batch_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
+			self.p_batch_mint = percentages.try_into().unwrap();
+			self
+		}
+		pub fn per_period(mut self, per_period: MockBlockNumber) -> Self {
+			self.per_period = per_period;
+			self
+		}
+		pub fn periods(mut self, periods: u16) -> Self {
+			self.periods = periods;
+			self
+		}
+	}
+
 	#[test]
 	fn validate_works() {
 		let mut season = Season::default()
