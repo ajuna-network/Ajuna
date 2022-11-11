@@ -517,7 +517,7 @@ pub mod pallet {
 		) -> (u8, u8) {
 			let hash = hash.as_ref();
 			let random_tier = {
-				let random_prob = (hash[index] % MAX_PERCENTAGE) as u16;
+				let random_prob = hash[index] % MAX_PERCENTAGE;
 				let probs =
 					if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
 				let mut cumulative_sum = 0;
