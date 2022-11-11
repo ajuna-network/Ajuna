@@ -129,7 +129,7 @@ impl Avatar {
 		matches: u8,
 	) -> u8 {
 		let period_multiplier = self.forge_multiplier::<T>(season, now);
-		(MAX_PERCENTAGE / (season.max_sacrifices * period_multiplier)) * matches
+		((MAX_PERCENTAGE / season.max_sacrifices) * matches) / period_multiplier
 	}
 
 	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
@@ -199,9 +199,9 @@ mod test {
 		// not in period
 		let now = 2;
 		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 12);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 24);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 36);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 48);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 25);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 37);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 50);
 	}
 
 	#[test]
