@@ -517,13 +517,14 @@ pub mod pallet {
 		) -> (u8, u8) {
 			let hash = hash.as_ref();
 			let random_tier = {
-				let random_p = (hash[index] % MAX_PERCENTAGE) as u16;
-				let p = if batched_mint { &season.p_batch_mint } else { &season.p_single_mint };
+				let random_prob = (hash[index] % MAX_PERCENTAGE) as u16;
+				let probs =
+					if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
 				let mut cumulative_sum = 0;
 				let mut random_tier = season.tiers[0].clone() as u8;
-				for i in 0..p.len() {
-					let new_cumulative_sum = cumulative_sum + p[i];
-					if random_p >= cumulative_sum && random_p < new_cumulative_sum {
+				for i in 0..probs.len() {
+					let new_cumulative_sum = cumulative_sum + probs[i];
+					if random_prob >= cumulative_sum && random_prob < new_cumulative_sum {
 						random_tier = season.tiers[i].clone() as u8;
 						break
 					}
