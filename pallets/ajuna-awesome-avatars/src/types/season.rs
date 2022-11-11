@@ -55,6 +55,7 @@ pub struct Season<BlockNumber> {
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
 	pub single_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub batch_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub base_prob: RarityPercent,
 	pub per_period: BlockNumber,
 	pub periods: u16,
 }
@@ -188,6 +189,7 @@ mod test {
 				.unwrap(),
 				single_mint_probs: vec![50, 30, 15, 4, 1].try_into().unwrap(),
 				batch_mint_probs: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+				base_prob: 0,
 				per_period: 10,
 				periods: 12,
 			}
@@ -237,6 +239,10 @@ mod test {
 		}
 		pub fn batch_mint_probs(mut self, percentages: Vec<RarityPercent>) -> Self {
 			self.batch_mint_probs = percentages.try_into().unwrap();
+			self
+		}
+		pub fn base_prob(mut self, base_prob: RarityPercent) -> Self {
+			self.base_prob = base_prob;
 			self
 		}
 		pub fn per_period(mut self, per_period: MockBlockNumber) -> Self {
