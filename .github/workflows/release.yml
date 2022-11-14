@@ -151,9 +151,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        network_keys:
-          - "${{ secrets.ONF_BAJUN_NETWORK_KEY }}"
-          - "${{ secrets.ONF_AJUNA_NETWORK_KEY }}"
+        network_keys: [bajun, ajuna]
     steps:
       - uses: OnFinality-io/action-onf-release@v1
         with:
