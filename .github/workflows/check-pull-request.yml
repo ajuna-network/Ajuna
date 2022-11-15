@@ -21,6 +21,7 @@ concurrency:
 
 env:
   CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release' || '' }}
+  CARGO_TERM_COLOR: always
 
 jobs:
   fmt:
