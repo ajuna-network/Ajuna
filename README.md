@@ -11,8 +11,8 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
 
 ## Prerequisites
 
-- [Build dependencies](https://docs.substrate.io/v3/getting-started/installation/#1-build-dependencies)
 - [Rust](https://www.rust-lang.org/tools/install)
+- [Substrate environment](https://docs.substrate.io/install/)
 
 ## Build
 
