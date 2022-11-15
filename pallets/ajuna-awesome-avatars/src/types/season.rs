@@ -286,7 +286,14 @@ mod test {
 				season.clone().batch_mint_probs(vec![1, 100]),
 				Error::<Test>::IncorrectRarityPercentages,
 			),
-			(season.clone().tiers(vec![Common]), Error::<Test>::TooManyRarityPercentages),
+			(
+				season.clone().single_mint_probs(vec![1, 2, 97]),
+				Error::<Test>::TooManyRarityPercentages,
+			),
+			(
+				season.clone().batch_mint_probs(vec![1, 2, 97]),
+				Error::<Test>::TooManyRarityPercentages,
+			),
 			// periods
 			(season.clone().per_period(2).periods(u16::MAX), Error::<Test>::PeriodConfigOverflow),
 			(season.clone().periods(123).max_variations(7), Error::<Test>::PeriodsIndivisible),
