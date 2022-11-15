@@ -38,7 +38,7 @@ pub enum RarityTier {
 	Mythical = 5,
 }
 
-pub type RarityPercent = u16;
+pub type RarityPercent = u8;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
@@ -53,8 +53,9 @@ pub struct Season<BlockNumber> {
 	pub min_sacrifices: u8,
 	pub max_sacrifices: u8,
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
-	pub p_single_mint: BoundedVec<RarityPercent, ConstU32<5>>,
-	pub p_batch_mint: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub single_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub batch_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub base_prob: RarityPercent,
 	pub per_period: BlockNumber,
 	pub periods: u16,
 }
@@ -93,8 +94,8 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 		// tiers are sorted in ascending order
 		self.tiers.sort_by(|a, b| a.cmp(b));
 		// probabilities are sorted in descending order
-		self.p_single_mint.sort_by(|a, b| b.cmp(a));
-		self.p_batch_mint.sort_by(|a, b| b.cmp(a));
+		self.single_mint_probs.sort_by(|a, b| b.cmp(a));
+		self.batch_mint_probs.sort_by(|a, b| b.cmp(a));
 	}
 
 	fn validate_block_numbers<T: Config>(&self) -> DispatchResult {
@@ -128,12 +129,18 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 	}
 
 	fn validate_percentages<T: Config>(&self) -> DispatchResult {
-		let p_1 = self.p_single_mint.iter().sum::<RarityPercent>();
-		let p_2 = self.p_batch_mint.iter().sum::<RarityPercent>();
-		ensure!(p_1 == MAX_PERCENTAGE as u16, Error::<T>::IncorrectRarityPercentages);
-		ensure!(p_2 == MAX_PERCENTAGE as u16, Error::<T>::IncorrectRarityPercentages);
-		ensure!(self.p_single_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
-		ensure!(self.p_batch_mint.len() < self.tiers.len(), Error::<T>::TooManyRarityPercentages);
+		let p_1 = self.single_mint_probs.iter().sum::<RarityPercent>();
+		let p_2 = self.batch_mint_probs.iter().sum::<RarityPercent>();
+		ensure!(p_1 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
+		ensure!(p_2 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
+		ensure!(
+			self.single_mint_probs.len() < self.tiers.len(),
+			Error::<T>::TooManyRarityPercentages
+		);
+		ensure!(
+			self.batch_mint_probs.len() < self.tiers.len(),
+			Error::<T>::TooManyRarityPercentages
+		);
 		Ok(())
 	}
 
@@ -180,8 +187,9 @@ mod test {
 				]
 				.try_into()
 				.unwrap(),
-				p_single_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
-				p_batch_mint: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+				single_mint_probs: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+				batch_mint_probs: vec![50, 30, 15, 4, 1].try_into().unwrap(),
+				base_prob: 0,
 				per_period: 10,
 				periods: 12,
 			}
@@ -225,12 +233,16 @@ mod test {
 			self.tiers = tiers.try_into().unwrap();
 			self
 		}
-		pub fn p_single_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
-			self.p_single_mint = percentages.try_into().unwrap();
+		pub fn single_mint_probs(mut self, percentages: Vec<RarityPercent>) -> Self {
+			self.single_mint_probs = percentages.try_into().unwrap();
 			self
 		}
-		pub fn p_batch_mint(mut self, percentages: Vec<RarityPercent>) -> Self {
-			self.p_batch_mint = percentages.try_into().unwrap();
+		pub fn batch_mint_probs(mut self, percentages: Vec<RarityPercent>) -> Self {
+			self.batch_mint_probs = percentages.try_into().unwrap();
+			self
+		}
+		pub fn base_prob(mut self, base_prob: RarityPercent) -> Self {
+			self.base_prob = base_prob;
 			self
 		}
 		pub fn per_period(mut self, per_period: MockBlockNumber) -> Self {
@@ -247,8 +259,8 @@ mod test {
 	fn validate_works() {
 		let mut season = Season::default()
 			.tiers(vec![Common, Rare, Legendary])
-			.p_single_mint(vec![10, 90])
-			.p_batch_mint(vec![20, 80])
+			.single_mint_probs(vec![10, 90])
+			.batch_mint_probs(vec![20, 80])
 			.max_variations(5)
 			.per_period(10)
 			.periods(15);
@@ -266,9 +278,22 @@ mod test {
 			// tiers
 			(season.clone().tiers(vec![Common, Common]), Error::<Test>::DuplicatedRarityTier),
 			// percentages
-			(season.clone().p_single_mint(vec![1, 100]), Error::<Test>::IncorrectRarityPercentages),
-			(season.clone().p_batch_mint(vec![1, 100]), Error::<Test>::IncorrectRarityPercentages),
-			(season.clone().tiers(vec![Common]), Error::<Test>::TooManyRarityPercentages),
+			(
+				season.clone().single_mint_probs(vec![1, 100]),
+				Error::<Test>::IncorrectRarityPercentages,
+			),
+			(
+				season.clone().batch_mint_probs(vec![1, 100]),
+				Error::<Test>::IncorrectRarityPercentages,
+			),
+			(
+				season.clone().single_mint_probs(vec![1, 2, 97]),
+				Error::<Test>::TooManyRarityPercentages,
+			),
+			(
+				season.clone().batch_mint_probs(vec![1, 2, 97]),
+				Error::<Test>::TooManyRarityPercentages,
+			),
 			// periods
 			(season.clone().per_period(2).periods(u16::MAX), Error::<Test>::PeriodConfigOverflow),
 			(season.clone().periods(123).max_variations(7), Error::<Test>::PeriodsIndivisible),

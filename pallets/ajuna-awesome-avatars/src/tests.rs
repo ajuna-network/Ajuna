@@ -128,8 +128,8 @@ mod season {
 	fn season_validate_should_mutate_correctly() {
 		let mut season = Season::default()
 			.tiers(vec![RarityTier::Rare, RarityTier::Common, RarityTier::Epic])
-			.p_single_mint(vec![20, 80])
-			.p_batch_mint(vec![60, 40]);
+			.single_mint_probs(vec![20, 80])
+			.batch_mint_probs(vec![60, 40]);
 		assert_ok!(season.validate::<Test>());
 
 		// check for ascending order sort
@@ -139,8 +139,8 @@ mod season {
 		);
 
 		// check for descending order sort
-		assert_eq!(season.p_single_mint.to_vec(), vec![80, 20]);
-		assert_eq!(season.p_batch_mint.to_vec(), vec![60, 40]);
+		assert_eq!(season.single_mint_probs.to_vec(), vec![80, 20]);
+		assert_eq!(season.batch_mint_probs.to_vec(), vec![60, 40]);
 	}
 
 	#[test]
@@ -250,8 +250,8 @@ mod season {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for incorrect_percentages in [vec![12, 39], vec![123, 10], vec![83, 1, 43]] {
 				for season in [
-					season_0.clone().p_single_mint(incorrect_percentages.clone()),
-					season_1.clone().p_single_mint(incorrect_percentages),
+					season_0.clone().single_mint_probs(incorrect_percentages.clone()),
+					season_1.clone().single_mint_probs(incorrect_percentages),
 				] {
 					assert_noop!(
 						AAvatars::set_season(Origin::signed(ALICE), 1, season),
@@ -860,8 +860,8 @@ mod forging {
 			.early_start(0)
 			.start(1)
 			.tiers(vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
-			.p_single_mint(vec![100, 0])
-			.p_batch_mint(vec![100, 0])
+			.single_mint_probs(vec![100, 0])
+			.batch_mint_probs(vec![100, 0])
 			.per_period(1)
 			.periods(6)
 			.max_tier_forges(1)
@@ -985,7 +985,7 @@ mod forging {
 		let season = Season::default()
 			.end(99)
 			.tiers(tiers.clone())
-			.p_batch_mint(vec![100])
+			.batch_mint_probs(vec![100])
 			.max_components(max_components)
 			.max_variations(max_variations)
 			.min_sacrifices(min_sacrifices)
@@ -1081,7 +1081,7 @@ mod forging {
 		let season = Season::default()
 			.end(99)
 			.tiers(tiers.clone())
-			.p_batch_mint(vec![33, 33, 34])
+			.batch_mint_probs(vec![33, 33, 34])
 			.max_components(max_components)
 			.max_variations(max_variations)
 			.min_sacrifices(min_sacrifices)

@@ -129,7 +129,10 @@ impl Avatar {
 		matches: u8,
 	) -> u8 {
 		let period_multiplier = self.forge_multiplier::<T>(season, now);
-		((MAX_PERCENTAGE / season.max_sacrifices) * matches) / period_multiplier
+		// p = base_prob + (1 - base_prob) * (matches / max_sacrifices) * (1 / period_multiplier)
+		season.base_prob +
+			(((MAX_PERCENTAGE - season.base_prob) / season.max_sacrifices) * matches) /
+				period_multiplier
 	}
 
 	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
@@ -146,11 +149,10 @@ impl Avatar {
 			(current_period % max_variations) == last_variation
 		};
 
-		// TODO: [AAATAR-352]
 		if (current_period == last_variation) || is_in_period {
 			1
 		} else {
-			2
+			2 // TODO: move this to config
 		}
 	}
 }
@@ -185,7 +187,8 @@ mod test {
 			.per_period(per_period)
 			.periods(periods)
 			.max_variations(max_variations)
-			.max_sacrifices(max_sacrifices);
+			.max_sacrifices(max_sacrifices)
+			.base_prob(0);
 
 		let avatar = Avatar::default().dna(&[1, 3, 3, 7, 0]);
 
@@ -202,6 +205,22 @@ mod test {
 		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 25);
 		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 37);
 		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 50);
+
+		// increase base_prob to 10
+		let season = season.base_prob(10);
+		// in period
+		let now = 1;
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 32);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 54);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 76);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 98);
+
+		// not in period
+		let now = 2;
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 21);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 32);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 43);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 54);
 	}
 
 	#[test]
