@@ -13,7 +13,6 @@ A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready 
 
 - [Build dependencies](https://docs.substrate.io/v3/getting-started/installation/#1-build-dependencies)
 - [Rust](https://www.rust-lang.org/tools/install)
-- [OnFinality CLI](https://github.com/OnFinality-io/onf-cli#installation)
 
 ## Build
 
