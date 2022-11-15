@@ -9,7 +9,7 @@
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/ajuna/parachain-bajun?label=bajun%20network&logo=docker&sort=semver&style=plastic)](https://hub.docker.com/repository/docker/ajuna/parachain-bajun/tags?page=1&ordering=last_updated)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/ajuna/parachain-ajuna?label=ajuna%20network&logo=docker&sort=semver&style=plastic)](https://hub.docker.com/repository/docker/ajuna/parachain-ajuna/tags?page=1&ordering=last_updated)
 
-A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready for hacking :rocket:
+A game platform [parachain](https://wiki.polkadot.network/docs/learn-parachains) built with [Substrate](https://docs.substrate.io/).
 
 ## Prerequisites
 
