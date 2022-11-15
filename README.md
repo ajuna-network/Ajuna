@@ -6,6 +6,8 @@
 
 [![Build](https://github.com/ajuna-network/Ajuna/actions/workflows/check-pull-request.yml/badge.svg?branch=main)](https://github.com/ajuna-network/Ajuna/actions/workflows/check-pull-request.yml)
 [![codecov](https://codecov.io/gh/ajuna-network/Ajuna/branch/main/graph/badge.svg?token=V2Y88ZUD6C)](https://codecov.io/gh/ajuna-network/Ajuna)
+[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/ajuna/parachain-bajun?label=bajun%20network&logo=docker&sort=semver&style=plastic)](https://hub.docker.com/repository/docker/ajuna/parachain-bajun/tags?page=1&ordering=last_updated)
+[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/ajuna/parachain-ajuna?label=ajuna%20network&logo=docker&sort=semver&style=plastic)](https://hub.docker.com/repository/docker/ajuna/parachain-ajuna/tags?page=1&ordering=last_updated)
 
 A [Substrate](https://www.substrate.io/)-based blockchain implementation, ready for hacking :rocket:
 
