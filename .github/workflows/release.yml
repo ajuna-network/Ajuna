@@ -151,16 +151,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        network_keys:
-          - "${{ secrets.ONF_BAJUN_NETWORK_KEY }}"
-          - "${{ secrets.ONF_AJUNA_NETWORK_KEY }}"
+        runtime: [bajun, ajuna]
+        include:
+          - runtime: bajun
+            network_key: ONF_BAJUN_NETWORK_KEY
+          - runtime: ajuna
+            network_key: ONF_AJUNA_NETWORK_KEY
     steps:
       - uses: OnFinality-io/action-onf-release@v1
         with:
           onf-access-key: ${{ secrets.ONF_ACCESS_KEY }}
           onf-secret-key: ${{ secrets.ONF_SECRET_KEY }}
           onf-workspace-id: ${{ secrets.ONF_WORKSPACE_ID }}
-          onf-network-key: ${{ matrix.network_keys }}
+          onf-network-key: ${{ secrets[matrix.network_key] }}
           onf-sub-command: image
           onf-action: add
           image-version: ${{ needs.release-docker.outputs.image_tag }}

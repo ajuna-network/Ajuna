@@ -4,7 +4,7 @@ edition    = "2021"
 homepage   = "https://ajuna.io"
 name       = "ajuna-service"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.4"
+version    = "0.1.5"
 
 [dependencies]
 hex-literal  = "0.3.3"
