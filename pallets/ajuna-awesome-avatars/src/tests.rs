@@ -857,9 +857,13 @@ mod forging {
 	#[test]
 	fn forge_should_work() {
 		let season = Season::default()
+			.early_start(0)
+			.start(1)
 			.tiers(vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
 			.p_single_mint(vec![100, 0])
 			.p_batch_mint(vec![100, 0])
+			.per_period(1)
+			.periods(6)
 			.max_tier_forges(1)
 			.max_components(8)
 			.max_variations(6)

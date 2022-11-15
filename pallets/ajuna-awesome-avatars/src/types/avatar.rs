@@ -16,6 +16,7 @@
 
 use crate::*;
 use frame_support::pallet_prelude::*;
+use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 pub type SeasonId = u16;
@@ -49,7 +50,7 @@ impl Avatar {
 				}
 
 				// TODO: is u32 enough?
-				self.souls = self.souls.saturating_add(other.souls);
+				self.souls.saturating_accrue(other.souls);
 				(matched_components, matches)
 			},
 		))
@@ -119,5 +120,139 @@ impl Avatar {
 		let mirrors_required = (3_u8.saturating_sub(matches)) * 2;
 		let is_match = matches >= 3 || (matches >= 1 && mirrors >= mirrors_required);
 		(is_match, matching_indexes)
+	}
+
+	pub(crate) fn forge_probability<T: Config>(
+		&self,
+		season: &SeasonOf<T>,
+		now: &T::BlockNumber,
+		matches: u8,
+	) -> u8 {
+		let period_multiplier = self.forge_multiplier::<T>(season, now);
+		((MAX_PERCENTAGE / season.max_sacrifices) * matches) / period_multiplier
+	}
+
+	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
+		let mut current_period = season.current_period(now);
+		let mut last_variation = (self.dna.last().unwrap_or(&0) & 0b0000_1111) as u16;
+
+		current_period.saturating_inc();
+		last_variation.saturating_inc();
+
+		let max_variations = season.max_variations as u16;
+		let is_in_period = if last_variation == max_variations {
+			(current_period % max_variations).is_zero()
+		} else {
+			(current_period % max_variations) == last_variation
+		};
+
+		// TODO: [AAATAR-352]
+		if (current_period == last_variation) || is_in_period {
+			1
+		} else {
+			2
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::{mock::*, types::*};
+
+	impl Avatar {
+		fn dna(mut self, dna: &[u8]) -> Self {
+			self.dna = Dna::try_from(dna.to_vec()).unwrap();
+			self
+		}
+	}
+
+	#[test]
+	fn forge_probability_works() {
+		// | variation |  period |
+		// + --------- + ------- +
+		// |         1 |   1,  7 |
+		// |         2 |   2,  8 |
+		// |         3 |   3,  9 |
+		// |         4 |   4, 10 |
+		// |         5 |   5, 11 |
+		// |         6 |   6, 12 |
+		let per_period = 2;
+		let periods = 6;
+		let max_variations = 6;
+		let max_sacrifices = 4;
+
+		let season = Season::default()
+			.per_period(per_period)
+			.periods(periods)
+			.max_variations(max_variations)
+			.max_sacrifices(max_sacrifices);
+
+		let avatar = Avatar::default().dna(&[1, 3, 3, 7, 0]);
+
+		// in period
+		let now = 1;
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 25);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 50);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 75);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 100);
+
+		// not in period
+		let now = 2;
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 12);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 25);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 37);
+		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 50);
+	}
+
+	#[test]
+	fn forge_multiplier_works() {
+		// | variation |      period |
+		// + --------- + ----------- +
+		// |         1 | 1, 4, 7, 10 |
+		// |         2 | 2, 5, 8, 11 |
+		// |         3 | 3, 6, 9, 12 |
+		let per_period = 4;
+		let periods = 3;
+		let max_variations = 3;
+
+		let season = Season::default()
+			.per_period(per_period)
+			.periods(periods)
+			.max_variations(max_variations);
+
+		#[allow(clippy::erasing_op, clippy::identity_op)]
+		for (range, dna, expected_period, expected_multiplier) in [
+			// cycle 0, period 0, last_variation must be 0
+			((0 * per_period)..((0 + 1) * per_period), [7, 3, 5, 7, 0], 0, 1),
+			((0 * per_period)..((0 + 1) * per_period), [7, 3, 5, 7, 1], 0, 2),
+			((0 * per_period)..((0 + 1) * per_period), [7, 3, 5, 7, 2], 0, 2),
+			// cycle 0, period 1, last_variation must be 1
+			((1 * per_period)..((1 + 1) * per_period), [7, 3, 5, 7, 0], 1, 2),
+			((1 * per_period)..((1 + 1) * per_period), [7, 3, 5, 7, 1], 1, 1),
+			((1 * per_period)..((1 + 1) * per_period), [7, 3, 5, 7, 2], 1, 2),
+			// cycle 0, period 2, last_variation must be 2
+			((2 * per_period)..((2 + 1) * per_period), [7, 3, 5, 7, 0], 2, 2),
+			((2 * per_period)..((2 + 1) * per_period), [7, 3, 5, 7, 1], 2, 2),
+			((2 * per_period)..((2 + 1) * per_period), [7, 3, 5, 7, 2], 2, 1),
+			// cycle 1, period 0, last_variation must be 0
+			((3 * per_period)..((3 + 1) * per_period), [7, 3, 5, 7, 0], 0, 1),
+			((3 * per_period)..((3 + 1) * per_period), [7, 3, 5, 7, 1], 0, 2),
+			((3 * per_period)..((3 + 1) * per_period), [7, 3, 5, 7, 2], 0, 2),
+			// cycle 1, period 1, last_variation must be 1
+			((4 * per_period)..((4 + 1) * per_period), [7, 3, 5, 7, 0], 1, 2),
+			((4 * per_period)..((4 + 1) * per_period), [7, 3, 5, 7, 1], 1, 1),
+			((4 * per_period)..((4 + 1) * per_period), [7, 3, 5, 7, 2], 1, 2),
+			// cycle 1, period 2, last_variation must be 2
+			((5 * per_period)..((5 + 1) * per_period), [7, 3, 5, 7, 0], 2, 2),
+			((5 * per_period)..((5 + 1) * per_period), [7, 3, 5, 7, 1], 2, 2),
+			((5 * per_period)..((5 + 1) * per_period), [7, 3, 5, 7, 2], 2, 1),
+		] {
+			for now in range {
+				assert_eq!(season.current_period(&now), expected_period);
+
+				let avatar = Avatar::default().dna(&dna);
+				assert_eq!(avatar.forge_multiplier::<Test>(&season, &now), expected_multiplier);
+			}
+		}
 	}
 }

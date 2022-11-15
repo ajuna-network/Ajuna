@@ -195,6 +195,10 @@ pub mod pallet {
 		SeasonStartTooLate,
 		/// The season ends after the new season has started.
 		SeasonEndTooLate,
+		/// The season's per period and periods configuration overflows.
+		PeriodConfigOverflow,
+		/// The season's periods configuration is indivisible by max variation.
+		PeriodsIndivisible,
 		/// The season doesn't exist.
 		UnknownSeason,
 		/// The avatar doesn't exist.
@@ -361,7 +365,7 @@ pub mod pallet {
 				None => current_season_id.saturating_sub(1),
 			};
 			T::Currency::withdraw(&buyer, trade.buy_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(trade.buy_fee));
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade.buy_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
@@ -402,7 +406,7 @@ pub mod pallet {
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
 
 			let season_id = Self::current_season_id();
-			Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(upgrade_fee));
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(upgrade_fee));
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
 			Self::deposit_event(Event::StorageTierUpgraded);
@@ -588,7 +592,7 @@ pub mod pallet {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
-					Treasury::<T>::mutate(season_id, |bal| *bal = bal.saturating_add(fee));
+					Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(fee));
 				},
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
@@ -608,8 +612,8 @@ pub mod pallet {
 				stats.mint.last = current_block;
 
 				let count = mint_option.count as Stat;
-				stats.mint.total = stats.mint.total.saturating_add(count);
-				stats.mint.current_season = stats.mint.current_season.saturating_add(count);
+				stats.mint.total.saturating_accrue(count);
+				stats.mint.current_season.saturating_accrue(count);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -663,13 +667,14 @@ pub mod pallet {
 			let random_hash = random_hash.as_ref();
 			let mut upgraded_components = 0;
 
-			// all matches approx. 100%
-			let p = (MAX_PERCENTAGE / season.max_sacrifices) * matches;
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let prob = leader.forge_probability::<T>(&season, &current_block, matches);
+
 			let rolls = sacrifices.len();
 			for hash in random_hash.iter().take(rolls) {
 				if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
 					let roll = hash % MAX_PERCENTAGE;
-					if roll <= p {
+					if roll <= prob {
 						let nucleotide = leader.dna[first_matched_index];
 						let current_tier_index = season
 							.tiers
@@ -690,7 +695,7 @@ pub mod pallet {
 
 			if leader.min_tier::<T>()? == max_tier {
 				CurrentSeasonMaxTierAvatars::<T>::mutate(|max_tier_avatars| {
-					*max_tier_avatars = max_tier_avatars.saturating_add(1);
+					max_tier_avatars.saturating_inc();
 					if *max_tier_avatars == season.max_tier_forges {
 						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
 					}
@@ -708,7 +713,6 @@ pub mod pallet {
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
 			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
-				let current_block = <frame_system::Pallet<T>>::block_number();
 				if stats.forge.first.is_zero() {
 					stats.forge.first = current_block;
 				}
