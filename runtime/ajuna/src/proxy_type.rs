@@ -59,14 +59,15 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::System(..) |
 				Call::Scheduler(..) |
 				Call::Timestamp(..) |
-				// Specifically omitting Indices `transfer`, `force_transfer`
 				// Specifically omitting the entire Balances pallet
 				Call::Authorship(..) |
 				Call::Session(..) |
 				Call::Council(..) |
+				Call::CouncilMembership(..) |
 				Call::Treasury(..) |
-				Call::Vesting(orml_vesting::Call::vested_transfer{..}) |
-				// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+				Call::Vesting(orml_vesting::Call::claim{..}) |
+				Call::Vesting(orml_vesting::Call::claim_for{..}) |
+				// Specifically omitting Vesting `vested_transfer`, and `update_vesting_schedules`
 				Call::Utility(..) |
 				Call::Identity(..) |
 				Call::Proxy(..) |
