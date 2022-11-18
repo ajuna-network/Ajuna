@@ -100,8 +100,9 @@ impl pallet_balances::Config for Test {
 
 impl pallet_battle_mogs::Config for Test {
 	type Event = Event;
-	type Currency = pallet_balances::Pallet<Self>;
+	type Currency = Balances;
 	type Randomness = TestRandomness<Self>;
+	type WeightInfo = ();
 }
 
 #[derive(Default)]
@@ -147,4 +148,8 @@ pub fn run_to_block(n: u64) {
 
 		BattleMogs::on_initialize(System::block_number());
 	}
+}
+
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	ExtBuilder::default().build()
 }
