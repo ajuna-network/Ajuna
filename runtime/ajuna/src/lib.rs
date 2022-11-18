@@ -22,6 +22,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+mod proxy_type;
 mod weights;
 pub mod xcm_config;
 
@@ -35,7 +36,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
-
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -255,6 +255,12 @@ impl Contains<Call> for BaseCallFilter {
 			Call::System(_) |
 			Call::ParachainSystem(_) |
 			Call::Timestamp(_) |
+			Call::Multisig(_) |
+			Call::Utility(_) |
+			Call::Identity(_) |
+			Call::Proxy(_) |
+			Call::Scheduler(_) |
+			Call::PreImage(_) |
 			// monetary
 			Call::Balances(_) |
 			Call::Vesting(_) |
@@ -447,7 +453,7 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = ZeroPercent;
 	type BurnDestination = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -556,6 +562,128 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Runtime>;
 }
 
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 20 * AJUN + (bytes as Balance) * 1_000 * MICRO_AJUN
+}
+
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L1054-L1060
+parameter_types! {
+	/// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const DepositBase: Balance = deposit(1, 88);
+	/// Additional storage item size of 32 bytes.
+	pub const DepositFactor: Balance = deposit(0, 32);
+	pub const MaxSignatories: u16 = 10;
+}
+
+impl pallet_multisig::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type DepositBase = DepositBase;
+	type DepositFactor = DepositFactor;
+	type MaxSignatories = MaxSignatories;
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
+}
+
+impl pallet_utility::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
+}
+
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L621-L629
+parameter_types! {
+	// Minimum 4 CENTS/byte
+	pub const BasicDeposit: Balance = deposit(1, 258);
+	pub const FieldDeposit: Balance = deposit(0, 66);
+	pub const SubAccountDeposit: Balance = deposit(1, 53);
+	pub const MaxSubAccounts: u32 = 100;
+	pub const MaxAdditionalFields: u32 = 100;
+	pub const MaxRegistrars: u32 = 20;
+}
+
+impl pallet_identity::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type BasicDeposit = BasicDeposit;
+	type FieldDeposit = FieldDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = MaxSubAccounts;
+	type MaxAdditionalFields = MaxAdditionalFields;
+	type MaxRegistrars = MaxRegistrars;
+	type Slashed = Treasury;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type RegistrarOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
+}
+
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L1072-L1081
+parameter_types! {
+	// One storage item; key size 32, value size 8; .
+	pub const ProxyDepositBase: Balance = deposit(1, 8);
+	// Additional storage item size of 33 bytes.
+	pub const ProxyDepositFactor: Balance = deposit(0, 33);
+	pub const MaxProxies: u16 = 32;
+	pub const AnnouncementDepositBase: Balance = deposit(1, 8);
+	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
+	pub const MaxPending: u16 = 32;
+}
+
+impl pallet_proxy::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type ProxyType = proxy_type::ProxyType;
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type MaxProxies = MaxProxies;
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Runtime>;
+	type MaxPending = MaxPending;
+	type CallHasher = BlakeTwo256;
+	type AnnouncementDepositBase = AnnouncementDepositBase;
+	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
+
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L231-L236
+parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) *
+		RuntimeBlockWeights::get().max_block;
+	pub const MaxScheduledPerBlock: u32 = 50;
+	pub const NoPreimagePostponement: Option<u32> = Some(10);
+}
+
+impl pallet_scheduler::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type PalletsOrigin = OriginCaller;
+	type Call = Call;
+	type MaximumWeight = MaximumSchedulerWeight;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
+	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type WeightInfo = weights::pallet_scheduler::WeightInfo<Runtime>;
+	type PreimageProvider = PreImage;
+	type NoPreimagePostponement = NoPreimagePostponement;
+}
+
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L280-L284
+parameter_types! {
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::pallet_preimage::WeightInfo<Runtime>;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = PreimageMaxSize;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -570,11 +698,17 @@ construct_runtime!(
 		} = 1,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
+		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
+		Utility: pallet_utility = 5,
+		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 6,
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 7,
+		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 8,
+		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
 
 		// Monetary stuff.
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 11,
-		Vesting: orml_vesting = 12,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 16,
+		Vesting: orml_vesting = 17,
 
 		// Collator support. The order of these 4 are important and shall not change.
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 20,
@@ -608,11 +742,17 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
+		[pallet_multisig, Multisig]
+		[pallet_utility, Utility]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_treasury, Treasury]
 		[pallet_collective, Council]
 		[pallet_membership, CouncilMembership]
+		[pallet_identity, Identity]
+		[pallet_preimage, PreImage]
+		[pallet_proxy, Proxy]
+		[pallet_scheduler, Scheduler]
 	);
 }
 
