@@ -453,7 +453,7 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = ZeroPercent;
 	type BurnDestination = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
 }
 
 parameter_types! {
