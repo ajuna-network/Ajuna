@@ -35,13 +35,12 @@ use crate::Call;
 	TypeInfo,
 )]
 pub enum ProxyType {
-	Any = 0,
-	NonTransfer = 1,
-	Governance = 2,
-	Staking = 3,
-	// Skip 4 as it is now removed (was SudoBalances)
-	IdentityJudgement = 5,
-	CancelProxy = 6,
+	Any,
+	NonTransfer,
+	Governance,
+	Staking,
+	IdentityJudgement,
+	CancelProxy,
 }
 
 impl Default for ProxyType {

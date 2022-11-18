@@ -594,7 +594,6 @@ impl pallet_utility::Config for Runtime {
 
 // Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L621-L629
 parameter_types! {
-	// Minimum 4 CENTS/byte
 	pub const BasicDeposit: Balance = deposit(1, 258);
 	pub const FieldDeposit: Balance = deposit(0, 66);
 	pub const SubAccountDeposit: Balance = deposit(1, 53);

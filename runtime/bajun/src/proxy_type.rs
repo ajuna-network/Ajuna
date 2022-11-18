@@ -18,8 +18,9 @@ use codec::{Decode, Encode};
 use frame_support::{pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebug};
 use scale_info::TypeInfo;
 
-/// Proxy type enum lists the type of calls that are supported by the proxy
-/// pallet
+use crate::Call;
+
+/// The type used to represent the kinds of proxying allowed.
 #[derive(
 	Copy,
 	Clone,
@@ -27,15 +28,19 @@ use scale_info::TypeInfo;
 	PartialEq,
 	Ord,
 	PartialOrd,
-	MaxEncodedLen,
-	Decode,
 	Encode,
+	Decode,
 	RuntimeDebug,
+	MaxEncodedLen,
 	TypeInfo,
 )]
-
 pub enum ProxyType {
 	Any,
+	NonTransfer,
+	Governance,
+	Staking,
+	IdentityJudgement,
+	CancelProxy,
 }
 
 impl Default for ProxyType {
@@ -44,13 +49,51 @@ impl Default for ProxyType {
 	}
 }
 
-impl<Call> InstanceFilter<Call> for ProxyType {
-	fn filter(&self, _c: &Call) -> bool {
+impl InstanceFilter<Call> for ProxyType {
+	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
+			ProxyType::NonTransfer => matches!(
+				c,
+				Call::System(..) |
+				Call::Scheduler(..) |
+				Call::Timestamp(..) |
+				// Specifically omitting the entire Balances pallet
+				Call::Authorship(..) |
+				Call::Session(..) |
+				Call::Council(..) |
+				Call::CouncilMembership(..) |
+				Call::Treasury(..) |
+				Call::Vesting(orml_vesting::Call::claim{..}) |
+				Call::Vesting(orml_vesting::Call::claim_for{..}) |
+				// Specifically omitting Vesting `vested_transfer`, and `update_vesting_schedules`
+				Call::Utility(..) |
+				Call::Identity(..) |
+				Call::Proxy(..) |
+				Call::Multisig(..)
+			),
+			ProxyType::Governance => {
+				matches!(c, Call::Council(..) | Call::Treasury(..) | Call::Utility(..))
+			},
+			ProxyType::Staking => {
+				matches!(c, Call::Session(..) | Call::Utility(..))
+			},
+			ProxyType::IdentityJudgement => matches!(
+				c,
+				Call::Identity(pallet_identity::Call::provide_judgement { .. }) | Call::Utility(..)
+			),
+			ProxyType::CancelProxy => {
+				matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement { .. }))
+			},
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
-		self == &ProxyType::Any || self == o
+		match (self, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			(ProxyType::NonTransfer, _) => true,
+			_ => false,
+		}
 	}
 }
