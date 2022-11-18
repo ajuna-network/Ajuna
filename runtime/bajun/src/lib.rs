@@ -36,7 +36,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
-
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -492,35 +491,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 
 impl parachain_info::Config for Runtime {}
 
-pub const fn deposit(items: u32, bytes: u32) -> Balance {
-	items as Balance * 20 * BAJUN + (bytes as Balance) * 1_000 * MICRO_BAJUN
-}
-
-parameter_types! {
-	/// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const DepositBase: Balance = deposit(1, 88);
-	/// Additional storage item size of 32 bytes.
-	pub const DepositFactor: Balance = deposit(0, 32);
-	pub const MaxSignatories: u16 = 10;
-}
-
-impl pallet_multisig::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-	type Currency = Balances;
-	type DepositBase = DepositBase;
-	type DepositFactor = DepositFactor;
-	type MaxSignatories = MaxSignatories;
-	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
-}
-
-impl pallet_utility::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-	type PalletsOrigin = OriginCaller;
-	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
-}
-
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
@@ -594,22 +564,44 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Runtime>;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
-
-impl pallet_ajuna_awesome_avatars::Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
-	type Randomness = Randomness;
-	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 20 * BAJUN + (bytes as Balance) * 1_000 * MICRO_BAJUN
 }
 
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/kusama/src/lib.rs#L881-L887
 parameter_types! {
-	pub const BasicDeposit: Balance = BAJUN;
-	pub const FieldDeposit: Balance = 100 * MILLI_BAJUN;
-	pub const SubAccountDeposit: Balance = 300 * MILLI_BAJUN;
-	pub const MaxSubAccounts: u32 = 5;
-	pub const MaxAdditionalFields: u32 = 3;
-	pub const MaxRegistrars: u32 = 3;
+	/// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const DepositBase: Balance = deposit(1, 88);
+	/// Additional storage item size of 32 bytes.
+	pub const DepositFactor: Balance = deposit(0, 32);
+	pub const MaxSignatories: u16 = 100;
+}
+
+impl pallet_multisig::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type DepositBase = DepositBase;
+	type DepositFactor = DepositFactor;
+	type MaxSignatories = MaxSignatories;
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
+}
+
+impl pallet_utility::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
+}
+
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/kusama/src/lib.rs#L849-L857
+parameter_types! {
+	pub const BasicDeposit: Balance = deposit(1, 258);
+	pub const FieldDeposit: Balance = deposit(0, 66);
+	pub const SubAccountDeposit: Balance = deposit(1, 53);
+	pub const MaxSubAccounts: u32 = 100;
+	pub const MaxAdditionalFields: u32 = 100;
+	pub const MaxRegistrars: u32 = 20;
 }
 
 impl pallet_identity::Config for Runtime {
@@ -627,13 +619,16 @@ impl pallet_identity::Config for Runtime {
 	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
 }
 
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/kusama/src/lib.rs#L961-L970
 parameter_types! {
-	pub const ProxyDepositBase: Balance = BAJUN;
-	pub const ProxyDepositFactor: Balance = 500 * MILLI_BAJUN;
-	pub const MaxProxies: u32 = 5;
-	pub const MaxPending: u32 = 10;
-	pub const AnnouncementDepositBase: Balance = 200 * MILLI_BAJUN;
-	pub const AnnouncementDepositFactor: Balance = 100 * MILLI_BAJUN;
+	// One storage item; key size 32, value size 8; .
+	pub const ProxyDepositBase: Balance = deposit(1, 8);
+	// Additional storage item size of 33 bytes.
+	pub const ProxyDepositFactor: Balance = deposit(0, 33);
+	pub const MaxProxies: u16 = 32;
+	pub const AnnouncementDepositBase: Balance = deposit(1, 8);
+	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
+	pub const MaxPending: u16 = 32;
 }
 
 impl pallet_proxy::Config for Runtime {
@@ -651,10 +646,12 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L231-L236
 parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) *
+		RuntimeBlockWeights::get().max_block;
 	pub const MaxScheduledPerBlock: u32 = 50;
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
-	pub const NoPreimagePostponement: Option<u32> = Some(2);
+	pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -671,10 +668,11 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
+// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/kusama/src/lib.rs#L241-L245
 parameter_types! {
-	pub MaxSize: u32 = 50;
-	pub BaseDeposit: Balance = 100 * MILLI_BAJUN;
-	pub ByteDeposit: Balance = 10 * MILLI_BAJUN;
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub const PreimageByteDeposit: Balance = deposit(0, 1);
 }
 
 impl pallet_preimage::Config for Runtime {
@@ -682,9 +680,18 @@ impl pallet_preimage::Config for Runtime {
 	type WeightInfo = weights::pallet_preimage::WeightInfo<Runtime>;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type MaxSize = MaxSize;
-	type BaseDeposit = BaseDeposit;
-	type ByteDeposit = ByteDeposit;
+	type MaxSize = PreimageMaxSize;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
+}
+
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
+impl pallet_ajuna_awesome_avatars::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type Randomness = Randomness;
+	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -703,11 +710,10 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
 		Utility: pallet_utility = 5,
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 6,
-		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 7,
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 8,
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 9,
-		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 10,
+		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 6,
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 7,
+		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 8,
+		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
@@ -734,7 +740,8 @@ construct_runtime!(
 		CouncilMembership: pallet_membership::<Instance2> = 43,
 
 		// Indexes 50-59 should be reserved for our games.
-		AwesomeAvatars: pallet_ajuna_awesome_avatars = 50,
+		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 50,
+		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
 	}
 );
 
