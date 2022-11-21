@@ -99,10 +99,11 @@ pub type SignedExtra = (
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -248,35 +249,35 @@ parameter_types! {
 
 // Allow the following extrinsics only.
 pub struct BaseCallFilter;
-impl Contains<Call> for BaseCallFilter {
-	fn contains(call: &Call) -> bool {
+impl Contains<RuntimeCall> for BaseCallFilter {
+	fn contains(call: &RuntimeCall) -> bool {
 		match call {
 			// system
-			Call::System(_) |
-			Call::ParachainSystem(_) |
-			Call::Timestamp(_) |
-			Call::Multisig(_) |
-			Call::Utility(_) |
-			Call::Identity(_) |
-			Call::Proxy(_) |
-			Call::Scheduler(_) |
-			Call::PreImage(_) |
+			RuntimeCall::System(_) |
+			RuntimeCall::ParachainSystem(_) |
+			RuntimeCall::Timestamp(_) |
+			RuntimeCall::Multisig(_) |
+			RuntimeCall::Utility(_) |
+			RuntimeCall::Identity(_) |
+			RuntimeCall::Proxy(_) |
+			RuntimeCall::Scheduler(_) |
+			RuntimeCall::PreImage(_) |
 			// monetary
-			Call::Balances(_) |
-			Call::Vesting(_) |
+			RuntimeCall::Balances(_) |
+			RuntimeCall::Vesting(_) |
 			// collator support
-			Call::Authorship(_) |
-			Call::CollatorSelection(_) |
-			Call::Session(_) |
+			RuntimeCall::Authorship(_) |
+			RuntimeCall::CollatorSelection(_) |
+			RuntimeCall::Session(_) |
 			// xcm helpers
-			Call::XcmpQueue(_) |
-			Call::PolkadotXcm(_) |
-			Call::DmpQueue(_) |
+			RuntimeCall::XcmpQueue(_) |
+			RuntimeCall::PolkadotXcm(_) |
+			RuntimeCall::DmpQueue(_) |
 			// governance
-			Call::Sudo(_) |
-			Call::Treasury(_) |
-			Call::Council(_) |
-			Call::CouncilMembership(_) => true
+			RuntimeCall::Sudo(_) |
+			RuntimeCall::Treasury(_) |
+			RuntimeCall::Council(_) |
+			RuntimeCall::CouncilMembership(_) => true
 		}
 	}
 }
@@ -285,7 +286,7 @@ impl frame_system::Config for Runtime {
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	/// The aggregated dispatch type that is available for extrinsics.
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = AccountIdLookup<AccountId, ()>;
 	/// The index type for storing how many extrinsics an account has signed.
@@ -299,7 +300,7 @@ impl frame_system::Config for Runtime {
 	/// The header type.
 	type Header = generic::Header<BlockNumber, BlakeTwo256>;
 	/// The ubiquitous event type.
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	/// The ubiquitous origin type.
 	type Origin = Origin;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -332,8 +333,8 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_sudo::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 }
 
 parameter_types! {
@@ -368,7 +369,7 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type Balance = Balance;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type DustRemoval = NegativeImbalanceToTreasury;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
@@ -384,7 +385,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
@@ -408,7 +409,7 @@ type CouncilCollective = pallet_collective::Instance2;
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type MotionDuration = Weekly;
 	type MaxProposals = frame_support::traits::ConstU32<100>;
 	type MaxMembers = CouncilMaxMembers;
@@ -426,7 +427,7 @@ type EnsureRootOrAtLeastTwoThirdsCouncil = EitherOfDiverse<
 >;
 
 impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrMoreThanHalfCouncil;
 	type RemoveOrigin = EnsureRootOrMoreThanHalfCouncil;
 	type SwapOrigin = EnsureRootOrMoreThanHalfCouncil;
@@ -439,7 +440,7 @@ impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
 }
 impl pallet_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type MaxApprovals = frame_support::traits::ConstU32<100>;
 	type ApproveOrigin = EnsureRootOrMoreThanHalfCouncil;
@@ -461,7 +462,7 @@ parameter_types! {
 }
 
 impl orml_vesting::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureSigned<AccountId>;
@@ -476,7 +477,7 @@ parameter_types! {
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type DmpMessageHandler = DmpQueue;
@@ -492,7 +493,7 @@ impl parachain_info::Config for Runtime {}
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
 	type VersionWrapper = ();
@@ -503,7 +504,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 }
@@ -515,7 +516,7 @@ parameter_types! {
 }
 
 impl pallet_session::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
@@ -547,7 +548,7 @@ parameter_types! {
 pub type CollatorSelectionUpdateOrigin = EnsureRoot<AccountId>;
 
 impl pallet_collator_selection::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
 	type PotId = PotId;
@@ -566,7 +567,6 @@ pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	items as Balance * 20 * AJUN + (bytes as Balance) * 1_000 * MICRO_AJUN
 }
 
-// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L1054-L1060
 parameter_types! {
 	/// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
 	pub const DepositBase: Balance = deposit(1, 88);
@@ -576,8 +576,8 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
@@ -586,13 +586,12 @@ impl pallet_multisig::Config for Runtime {
 }
 
 impl pallet_utility::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type PalletsOrigin = OriginCaller;
 	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
 }
 
-// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L621-L629
 parameter_types! {
 	pub const BasicDeposit: Balance = deposit(1, 258);
 	pub const FieldDeposit: Balance = deposit(0, 66);
@@ -603,7 +602,7 @@ parameter_types! {
 }
 
 impl pallet_identity::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type BasicDeposit = BasicDeposit;
 	type FieldDeposit = FieldDeposit;
@@ -617,7 +616,6 @@ impl pallet_identity::Config for Runtime {
 	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
 }
 
-// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L1072-L1081
 parameter_types! {
 	// One storage item; key size 32, value size 8; .
 	pub const ProxyDepositBase: Balance = deposit(1, 8);
@@ -630,8 +628,8 @@ parameter_types! {
 }
 
 impl pallet_proxy::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type ProxyType = proxy_type::ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
@@ -644,7 +642,6 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L231-L236
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) *
 		RuntimeBlockWeights::get().max_block;
@@ -653,10 +650,10 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Origin = Origin;
 	type PalletsOrigin = OriginCaller;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
@@ -666,19 +663,16 @@ impl pallet_scheduler::Config for Runtime {
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
 
-// Reference: https://github.com/paritytech/polkadot/blob/v0.9.28/runtime/polkadot/src/lib.rs#L280-L284
 parameter_types! {
-	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
 	pub const PreimageByteDeposit: Balance = deposit(0, 1);
 }
 
 impl pallet_preimage::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_preimage::WeightInfo<Runtime>;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type MaxSize = PreimageMaxSize;
 	type BaseDeposit = PreimageBaseDeposit;
 	type ByteDeposit = PreimageByteDeposit;
 }

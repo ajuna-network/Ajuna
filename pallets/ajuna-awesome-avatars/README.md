@@ -47,7 +47,7 @@ parameter_types! {
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 ```
 
