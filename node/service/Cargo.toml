@@ -67,6 +67,7 @@ cumulus-primitives-core                 = { git = "https://github.com/paritytech
 cumulus-primitives-parachain-inherent   = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31", optional = true }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31", optional = true }
 cumulus-relay-chain-interface           = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31", optional = true }
+cumulus-relay-chain-minimal-node        = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31", optional = true }
 cumulus-relay-chain-rpc-interface       = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31", optional = true }
 
 [features]
@@ -98,6 +99,7 @@ para = [
     "cumulus-primitives-parachain-inherent",
     "cumulus-relay-chain-inprocess-interface",
     "cumulus-relay-chain-interface",
+    "cumulus-relay-chain-minimal-node",
     "cumulus-relay-chain-rpc-interface",
 ]
 solo = [ "ajuna-solo-runtime" ]
