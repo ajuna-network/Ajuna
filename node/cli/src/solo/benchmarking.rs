@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(feature = "solo")]
+use ajuna_primitives::{AccountId, Balance};
 use ajuna_service::{
 	ajuna_solo_runtime as runtime,
 	ajuna_solo_runtime::{BalancesCall, SystemCall},
 	solo::FullClient,
 };
-
-use ajuna_primitives::{AccountId, Balance};
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use sc_cli::Result;
 use sc_client_api::BlockBackend;

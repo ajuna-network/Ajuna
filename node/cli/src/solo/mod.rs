@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-fn main() -> ajuna_cli::Result<()> {
-	ajuna_cli::solo::run()
-}
+mod benchmarking;
+mod cli;
+mod command;
+
+pub use command::run;
