@@ -15,19 +15,17 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::para::cli::{Cli, RelayChainCli, Subcommand};
-use ajuna_service::para as service;
 #[cfg(feature = "ajuna")]
 use ajuna_service::{
 	ajuna_runtime::{self, Block as AjunaBlock, RuntimeApi as AjunaRuntimeApi},
-	chain_spec,
 	para::ajuna::{self, AjunaRuntimeExecutor},
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
 	bajun_runtime::{self, Block as BajunBlock, RuntimeApi as BajunRuntimeApi},
-	chain_spec,
 	para::bajun::{self, BajunRuntimeExecutor},
 };
+use ajuna_service::{chain_spec, para as service};
 use codec::Encode;
 use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
@@ -75,9 +73,9 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, St
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
 		if cfg!(feature = "bajun") {
-			return "Bajun Node".into()
+			"Bajun Node".into()
 		} else {
-			return "Ajuna Node".into()
+			"Ajuna Node".into()
 		}
 	}
 
@@ -107,13 +105,15 @@ impl SubstrateCli for Cli {
 
 	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
 		#[cfg(feature = "ajuna")]
-		{
+		if cfg!(feature = "ajuna") {
 			return &ajuna_runtime::VERSION
 		}
 		#[cfg(feature = "bajun")]
 		{
-			return &bajun_runtime::VERSION
+			&bajun_runtime::VERSION
 		}
+		#[cfg(not(feature = "bajun"))]
+		panic!("No runtime feature (bajun, ajuna) is enabled")
 	}
 }
 
@@ -199,6 +199,7 @@ macro_rules! construct_sync_run {
 }
 
 /// Parse command line arguments into service configuration.
+#[allow(unused_variables)]
 pub fn run() -> Result<()> {
 	let cli = Cli::from_args();
 
@@ -256,13 +257,15 @@ pub fn run() -> Result<()> {
 			let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
 			let state_version = Cli::native_runtime_version(&spec).state_version();
 			#[cfg(feature = "ajuna")]
-			{
+			if cfg!(feature = "ajuna") {
 				return runner.sync_run(|_config| cmd.run::<AjunaBlock>(&*spec, state_version))
 			}
 			#[cfg(feature = "bajun")]
 			{
-				return runner.sync_run(|_config| cmd.run::<BajunBlock>(&*spec, state_version))
+				runner.sync_run(|_config| cmd.run::<BajunBlock>(&*spec, state_version))
 			}
+			#[cfg(not(feature = "bajun"))]
+			panic!("No runtime feature (bajun, ajuna) is enabled")
 		},
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
@@ -277,17 +280,16 @@ pub fn run() -> Result<()> {
 			match cmd {
 				BenchmarkCmd::Pallet(cmd) =>
 					if cfg!(feature = "runtime-benchmarks") {
-						#[cfg(feature = "ajuna")]
-						{
-							return runner.sync_run(|config| {
+						match &runner.config().chain_spec {
+							#[cfg(feature = "ajuna")]
+							spec if spec.id().starts_with("ajuna") => runner.sync_run(|config| {
 								cmd.run::<AjunaBlock, AjunaRuntimeExecutor>(config)
-							})
-						}
-						#[cfg(feature = "bajun")]
-						{
-							return runner.sync_run(|config| {
+							}),
+							#[cfg(feature = "bajun")]
+							spec if spec.id().starts_with("bajun") => runner.sync_run(|config| {
 								cmd.run::<BajunBlock, BajunRuntimeExecutor>(config)
-							})
+							}),
+							_ => panic!("No runtime feature (bajun, ajuna) is enabled"),
 						}
 					} else {
 						Err("Benchmarking wasn't enabled when building the node. \
@@ -327,7 +329,7 @@ pub fn run() -> Result<()> {
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 					.map(|e| e.para_id)
-					.ok_or_else(|| "Could not find parachain ID in chain-spec.")?;
+					.ok_or("Could not find parachain ID in chain-spec.")?;
 
 				let polkadot_cli = RelayChainCli::new(
 					&config,
@@ -339,67 +341,63 @@ pub fn run() -> Result<()> {
 				let parachain_account =
 					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(&id);
 
+				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
+
+				let genesis_state = match &config.chain_spec {
+					#[cfg(feature = "ajuna")]
+					spec if spec.id().starts_with("ajuna") => {
+						let block: AjunaBlock =
+							generate_genesis_block(&*config.chain_spec, state_version)
+								.map_err(|e| format!("{:?}", e))?;
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
+					},
+
+					#[cfg(feature = "bajun")]
+					spec if spec.id().starts_with("bajun") => {
+						let block: BajunBlock =
+							generate_genesis_block(&*config.chain_spec, state_version)
+								.map_err(|e| format!("{:?}", e))?;
+						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
+					},
+					_ => panic!("No runtime feature (bajun, ajuna) is enabled"),
+				};
+
 				let tokio_handle = config.tokio_handle.clone();
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, tokio_handle)
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
-				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
+				info!("Parachain id: {:?}", id);
+				info!("Parachain Account: {}", parachain_account);
+				info!("Parachain genesis state: {}", genesis_state);
+				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
-				#[cfg(feature = "bajun")]
-				{
-					let block: BajunBlock =
-						generate_genesis_block(&*config.chain_spec, state_version)
-							.map_err(|e| format!("{:?}", e))?;
-					let genesis_state =
-						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
-
-					info!("Parachain id: {:?}", id);
-					info!("Parachain Account: {}", parachain_account);
-					info!("Parachain genesis state: {}", genesis_state);
-					info!(
-						"Is collating: {}",
-						if config.role.is_authority() { "yes" } else { "no" }
-					);
-
-					bajun::start_parachain_node(
-						config,
-						polkadot_config,
-						collator_options,
-						id,
-						hwbench,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into)
-				}
-
-				#[cfg(feature = "ajuna")]
-				{
-					let block: AjunaBlock =
-						generate_genesis_block(&*config.chain_spec, state_version)
-							.map_err(|e| format!("{:?}", e))?;
-					let genesis_state =
-						format!("0x{:?}", HexDisplay::from(&block.header().encode()));
-
-					info!("Parachain id: {:?}", id);
-					info!("Parachain Account: {}", parachain_account);
-					info!("Parachain genesis state: {}", genesis_state);
-					info!(
-						"Is collating: {}",
-						if config.role.is_authority() { "yes" } else { "no" }
-					);
-
-					ajuna::start_parachain_node(
-						config,
-						polkadot_config,
-						collator_options,
-						id,
-						hwbench,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into)
+				match &config.chain_spec {
+					#[cfg(feature = "ajuna")]
+					spec if spec.id().starts_with("ajuna") =>
+						return ajuna::start_parachain_node(
+							config,
+							polkadot_config,
+							collator_options,
+							id,
+							hwbench,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into),
+					#[cfg(feature = "bajun")]
+					spec if spec.id().starts_with("bajun") =>
+						return bajun::start_parachain_node(
+							config,
+							polkadot_config,
+							collator_options,
+							id,
+							hwbench,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into),
+					_ => panic!("No runtime feature (bajun, ajuna) is enabled"),
 				}
 			})
 		},
