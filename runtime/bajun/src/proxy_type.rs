@@ -18,7 +18,7 @@ use codec::{Decode, Encode};
 use frame_support::{pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebug};
 use scale_info::TypeInfo;
 
-use crate::Call;
+use crate::RuntimeCall;
 
 /// The type used to represent the kinds of proxying allowed.
 #[derive(
@@ -49,41 +49,45 @@ impl Default for ProxyType {
 	}
 }
 
-impl InstanceFilter<Call> for ProxyType {
-	fn filter(&self, c: &Call) -> bool {
+impl InstanceFilter<RuntimeCall> for ProxyType {
+	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => matches!(
 				c,
-				Call::System(..) |
-				Call::Scheduler(..) |
-				Call::Timestamp(..) |
+				RuntimeCall::System(..) |
+				RuntimeCall::Scheduler(..) |
+				RuntimeCall::Timestamp(..) |
 				// Specifically omitting the entire Balances pallet
-				Call::Authorship(..) |
-				Call::Session(..) |
-				Call::Council(..) |
-				Call::CouncilMembership(..) |
-				Call::Treasury(..) |
-				Call::Vesting(orml_vesting::Call::claim{..}) |
-				Call::Vesting(orml_vesting::Call::claim_for{..}) |
+				RuntimeCall::Authorship(..) |
+				RuntimeCall::Session(..) |
+				RuntimeCall::Council(..) |
+				RuntimeCall::CouncilMembership(..) |
+				RuntimeCall::Treasury(..) |
+				RuntimeCall::Vesting(orml_vesting::Call::claim{..}) |
+				RuntimeCall::Vesting(orml_vesting::Call::claim_for{..}) |
 				// Specifically omitting Vesting `vested_transfer`, and `update_vesting_schedules`
-				Call::Utility(..) |
-				Call::Identity(..) |
-				Call::Proxy(..) |
-				Call::Multisig(..)
+				RuntimeCall::Utility(..) |
+				RuntimeCall::Identity(..) |
+				RuntimeCall::Proxy(..) |
+				RuntimeCall::Multisig(..)
 			),
 			ProxyType::Governance => {
-				matches!(c, Call::Council(..) | Call::Treasury(..) | Call::Utility(..))
+				matches!(
+					c,
+					RuntimeCall::Council(..) | RuntimeCall::Treasury(..) | RuntimeCall::Utility(..)
+				)
 			},
 			ProxyType::Staking => {
-				matches!(c, Call::Session(..) | Call::Utility(..))
+				matches!(c, RuntimeCall::Session(..) | RuntimeCall::Utility(..))
 			},
 			ProxyType::IdentityJudgement => matches!(
 				c,
-				Call::Identity(pallet_identity::Call::provide_judgement { .. }) | Call::Utility(..)
+				RuntimeCall::Identity(pallet_identity::Call::provide_judgement { .. }) |
+					RuntimeCall::Utility(..)
 			),
 			ProxyType::CancelProxy => {
-				matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement { .. }))
+				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::reject_announcement { .. }))
 			},
 		}
 	}
