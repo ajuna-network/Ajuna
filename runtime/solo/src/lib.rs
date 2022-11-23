@@ -106,8 +106,11 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 	pub const BlockHashCount: BlockNumber = 2400;
 	/// We allow for 2 seconds of compute with a 6 second average block time.
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights
-		::with_sensible_defaults(2 * WEIGHT_PER_SECOND, NORMAL_DISPATCH_RATIO);
+	pub BlockWeights: frame_system::limits::BlockWeights =
+		frame_system::limits::BlockWeights::with_sensible_defaults(
+			(2u64 * WEIGHT_PER_SECOND).set_proof_size(u64::MAX),
+			NORMAL_DISPATCH_RATIO,
+		);
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 42; // TODO[PLAT-80]: 1337 for mainnet
@@ -343,11 +346,9 @@ parameter_types! {
 	pub const TwentyEightDays: BlockNumber = 28 * DAYS;
 	pub const ThreeDays: BlockNumber = 3 * DAYS;
 	pub const MinimumDeposit: Balance = 1;
-	pub const PreimageByteDeposit: Balance = 1;
 }
 
 impl pallet_democracy::Config for Runtime {
-	type Proposal = Call;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type EnactmentPeriod = ThirtyDays;
@@ -367,14 +368,15 @@ impl pallet_democracy::Config for Runtime {
 	type CancelProposalOrigin = EnsureAllCouncil;
 	type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
 	type CooloffPeriod = TwentyEightDays;
-	type PreimageByteDeposit = PreimageByteDeposit;
-	type OperationalPreimageOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
 	type Slash = Treasury;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MaxVotes = frame_support::traits::ConstU32<100>;
 	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
 	type MaxProposals = frame_support::traits::ConstU32<100>;
+	type Preimages = PreImage;
+	type MaxDeposits = frame_support::traits::ConstU32<100>;
+	type MaxBlacklisted = frame_support::traits::ConstU32<100>;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -445,10 +447,8 @@ parameter_types! {
 	// pub MaximumSchedulerWeight: Weight = 10_000_000;
 	pub const MaxScheduledPerBlock: u32 = 50;
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
-	pub const NoPreimagePostponement: Option<u32> = Some(2);
 }
 
-// TODO[PLAT-35]: actually understand these when review
 // Configure the runtime's implementation of the Scheduler pallet.
 impl pallet_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -460,8 +460,7 @@ impl pallet_scheduler::Config for Runtime {
 	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-	type PreimageProvider = ();
-	type NoPreimagePostponement = NoPreimagePostponement;
+	type Preimages = PreImage;
 }
 
 parameter_types! {
@@ -518,7 +517,7 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
+	type WeightInfo = ();
 }
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
@@ -551,7 +550,6 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaxSize: u32 = 50;
 	pub BaseDeposit: Balance = 100 * MILLI_AJUNS;
 	pub ByteDeposit: Balance = 10 * MILLI_AJUNS;
 }
@@ -561,7 +559,6 @@ impl pallet_preimage::Config for Runtime {
 	type WeightInfo = ();
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type MaxSize = MaxSize;
 	type BaseDeposit = BaseDeposit;
 	type ByteDeposit = ByteDeposit;
 }
