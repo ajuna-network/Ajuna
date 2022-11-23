@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(feature = "para")]
-pub mod para;
-#[cfg(feature = "solo")]
-pub mod solo;
+mod cli;
+mod command;
 
-pub use sc_cli::Result;
+pub use command::run;
