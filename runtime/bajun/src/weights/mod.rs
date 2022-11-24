@@ -36,4 +36,5 @@ pub mod pallet_scheduler;
 pub mod pallet_session;
 pub mod pallet_timestamp;
 pub mod pallet_treasury;
+pub mod pallet_uniques;
 pub mod pallet_utility;
