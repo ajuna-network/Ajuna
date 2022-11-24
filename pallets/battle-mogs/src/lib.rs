@@ -18,7 +18,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
-use std::{mem::MaybeUninit, ptr::copy_nonoverlapping};
+use sp_std::{mem::MaybeUninit, ptr::copy_nonoverlapping};
 
 use frame_support::{
 	codec::{Decode, Encode},
@@ -43,6 +43,7 @@ mod benchmarking;
 
 mod algorithm;
 mod types;
+pub mod weights;
 
 pub use algorithm::*;
 pub use types::*;
@@ -52,6 +53,7 @@ type BalanceOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
+	pub use crate::weights::WeightInfo;
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, BoundedBTreeSet};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::{Bounded, Saturating};
@@ -86,6 +88,9 @@ pub mod pallet {
 
 		/// Something that provides randomness in the runtime.
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+
+		/// The weight information of this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -246,7 +251,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set organizer, this is a sudo call.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_organizer())]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 
@@ -259,7 +264,7 @@ pub mod pallet {
 		}
 
 		/// Update configuration of this sender
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::update_config())]
 		pub fn update_config(
 			origin: OriginFor<T>,
 			index: u8,
@@ -304,7 +309,7 @@ pub mod pallet {
 		}
 
 		/// Set price of mogwai.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
 			mogwai_id: MogwaiIdOf<T>,
@@ -322,7 +327,7 @@ pub mod pallet {
 		}
 
 		/// Clear previously set mogwai price.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -338,7 +343,7 @@ pub mod pallet {
 		}
 
 		/// Create a new mogwai egg.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::create_mogwai())]
 		pub fn create_mogwai(origin: OriginFor<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -389,7 +394,7 @@ pub mod pallet {
 		}
 
 		/// Remove a given mogwai.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::remove_mogwai())]
 		pub fn remove_mogwai(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(sender == Self::organizer().unwrap(), Error::<T>::FounderAction);
@@ -403,7 +408,7 @@ pub mod pallet {
 		}
 
 		/// Transfer mogwai to another account. Mogwais on sale will be unlisted after transfer.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
+		#[pallet::weight(T::WeightInfo::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -428,7 +433,7 @@ pub mod pallet {
 		}
 
 		/// Hatch a mogwai egg
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::hatch_mogwai())]
 		pub fn hatch_mogwai(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -464,7 +469,7 @@ pub mod pallet {
 		}
 
 		/// Sacrifice mogwai to get some currency
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
+		#[pallet::weight(T::WeightInfo::sacrifice())]
 		pub fn sacrifice(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -482,7 +487,7 @@ pub mod pallet {
 				let max_intrinsic =
 					BalanceOf::<T>::max_value() - T::Currency::free_balance(&sender);
 
-				std::cmp::min(computed_intrinsic, max_intrinsic)
+				sp_std::cmp::min(computed_intrinsic, max_intrinsic)
 			};
 
 			Self::remove(sender.clone(), mogwai_id)?;
@@ -500,7 +505,7 @@ pub mod pallet {
 		}
 
 		/// Sacrifice mogwai to an other mogwai.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
+		#[pallet::weight(T::WeightInfo::sacrifice_into())]
 		pub fn sacrifice_into(
 			origin: OriginFor<T>,
 			mogwai_id_1: T::Hash,
@@ -559,7 +564,7 @@ pub mod pallet {
 		}
 
 		/// Buy a mogwai on sale
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::buy_mogwai())]
 		pub fn buy_mogwai(
 			origin: OriginFor<T>,
 			mogwai_id: MogwaiIdOf<T>,
@@ -603,7 +608,7 @@ pub mod pallet {
 		}
 
 		/// Morph a mogwai
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(6,1))]
+		#[pallet::weight(T::WeightInfo::morph_mogwai())]
 		pub fn morph_mogwai(origin: OriginFor<T>, mogwai_id: MogwaiIdOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -641,7 +646,7 @@ pub mod pallet {
 		}
 
 		/// Breed a mogwai with another
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		#[pallet::weight(T::WeightInfo::breed_mogwai())]
 		pub fn breed_mogwai(
 			origin: OriginFor<T>,
 			mogwai_id_1: T::Hash,

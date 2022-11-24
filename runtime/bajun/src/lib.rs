@@ -587,6 +587,7 @@ impl pallet_battle_mogs::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type Randomness = RandomnessCollectiveFlip;
+	type WeightInfo = pallet_battle_mogs::weights::AjunaWeight<Runtime>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -653,6 +654,7 @@ mod benches {
 		[pallet_treasury, Treasury]
 		[pallet_collective, Council]
 		[pallet_membership, CouncilMembership]
+		[pallet_battle_mogs, BattleMogs]
 	);
 }
 
