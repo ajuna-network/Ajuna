@@ -695,8 +695,6 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 parameter_types! {
 	pub const CollectionDeposit: Balance = MILLI_BAJUN;
 	pub const ItemDeposit: Balance = MICRO_BAJUN;
-	// NOTE: Below are same values as statemin{t,e}.
-	// See below bullet points for more info.
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
 	pub const ValueLimit: u32 = 64;
