@@ -70,7 +70,7 @@ pub fn parachain_build_import_queue(
 		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
 		block_import: client.clone(),
-		client: client.clone(),
+		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
