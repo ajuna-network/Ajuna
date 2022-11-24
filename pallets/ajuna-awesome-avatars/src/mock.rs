@@ -58,8 +58,8 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = MockIndex;
 	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
@@ -67,7 +67,7 @@ impl frame_system::Config for Test {
 	type AccountId = MockAccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -87,7 +87,7 @@ parameter_types! {
 impl pallet_balances::Config for Test {
 	type Balance = MockBalance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = MockExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
@@ -99,7 +99,7 @@ impl pallet_balances::Config for Test {
 impl pallet_randomness_collective_flip::Config for Test {}
 
 impl pallet_ajuna_awesome_avatars::Config for Test {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
 	type WeightInfo = ();
