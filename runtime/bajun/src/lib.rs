@@ -45,7 +45,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{Contains, Currency, EitherOfDiverse, Imbalance, OnUnbalanced},
+	traits::{AsEnsureOriginWithArg, Contains, Currency, EitherOfDiverse, Imbalance, OnUnbalanced},
 	weights::{
 		constants::WEIGHT_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -266,6 +266,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::Proxy(_) |
 			RuntimeCall::Scheduler(_) |
 			RuntimeCall::PreImage(_) |
+			RuntimeCall::Uniques(_) |
 			// monetary
 			RuntimeCall::Balances(_) |
 			RuntimeCall::Vesting(_) |
@@ -691,6 +692,38 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const CollectionDeposit: Balance = MILLI_BAJUN;
+	pub const ItemDeposit: Balance = MICRO_BAJUN;
+	pub const StringLimit: u32 = 128;
+	pub const KeyLimit: u32 = 32;
+	pub const ValueLimit: u32 = 64;
+	pub const MetadataDepositBase: Balance = deposit(1, 129);
+	pub const AttributeDepositBase: Balance = deposit(1, 0);
+	pub const DepositPerByte: Balance = deposit(0, 1);
+}
+
+impl pallet_uniques::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type CollectionId = u32;
+	type ItemId = u32;
+	type Currency = Balances;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = StringLimit;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type WeightInfo = weights::pallet_uniques::WeightInfo<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -711,6 +744,7 @@ construct_runtime!(
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 7,
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 8,
 		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 10,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
@@ -762,6 +796,7 @@ mod benches {
 		[pallet_membership, CouncilMembership]
 		[pallet_identity, Identity]
 		[pallet_preimage, PreImage]
+		[pallet_uniques, Uniques]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
