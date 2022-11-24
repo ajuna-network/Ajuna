@@ -21,6 +21,7 @@ concurrency:
 
 env:
   CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release' || '' }}
+  CARGO_TERM_COLOR: always
 
 jobs:
   fmt:
@@ -32,14 +33,11 @@ jobs:
       SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
 
-  check:
+  lint:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
-    name: Clippy and Check
+    name: Clippy
     runs-on: ubuntu-latest
     continue-on-error: false
     env:
@@ -56,14 +54,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all-features --all-targets ${{ env.CARGO_ARGS }}
+      - run: cargo clippy --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
 
   test:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
@@ -84,10 +75,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
+      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   coverage:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
