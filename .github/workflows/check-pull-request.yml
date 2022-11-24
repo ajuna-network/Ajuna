@@ -45,6 +45,7 @@ jobs:
     env:
       SKIP_WASM_BUILD: 1
     steps:
+      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
@@ -72,6 +73,7 @@ jobs:
     env:
       SKIP_WASM_BUILD: 1
     steps:
+      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
