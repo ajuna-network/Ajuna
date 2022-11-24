@@ -25,9 +25,9 @@ mod organizer {
 	fn set_organizer_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(AAvatars::organizer(), None);
-			assert_ok!(AAvatars::set_organizer(Origin::root(), HILDA));
+			assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), HILDA));
 			assert_eq!(AAvatars::organizer(), Some(HILDA), "Organizer should be Hilda");
-			System::assert_last_event(mock::Event::AAvatars(crate::Event::OrganizerSet {
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::OrganizerSet {
 				organizer: HILDA,
 			}));
 		});
@@ -37,7 +37,7 @@ mod organizer {
 	fn set_organizer_should_reject_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_organizer(Origin::signed(ALICE), HILDA),
+				AAvatars::set_organizer(RuntimeOrigin::signed(ALICE), HILDA),
 				DispatchError::BadOrigin
 			);
 		});
@@ -46,9 +46,9 @@ mod organizer {
 	#[test]
 	fn set_organizer_should_replace_existing_organizer() {
 		ExtBuilder::default().organizer(BOB).build().execute_with(|| {
-			assert_ok!(AAvatars::set_organizer(Origin::root(), FLORINA));
+			assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), FLORINA));
 			assert_eq!(AAvatars::organizer(), Some(FLORINA), "Organizer should be Florina");
-			System::assert_last_event(mock::Event::AAvatars(crate::Event::OrganizerSet {
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::OrganizerSet {
 				organizer: FLORINA,
 			}));
 		});
@@ -59,7 +59,7 @@ mod organizer {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(AAvatars::organizer(), None);
 			assert_noop!(
-				AAvatars::ensure_organizer(Origin::signed(DELTHEA)),
+				AAvatars::ensure_organizer(RuntimeOrigin::signed(DELTHEA)),
 				Error::<Test>::OrganizerNotSet
 			);
 		});
@@ -69,7 +69,7 @@ mod organizer {
 	fn ensure_organizer_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ERIN).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::ensure_organizer(Origin::signed(DELTHEA)),
+				AAvatars::ensure_organizer(RuntimeOrigin::signed(DELTHEA)),
 				DispatchError::BadOrigin
 			);
 		});
@@ -78,7 +78,7 @@ mod organizer {
 	#[test]
 	fn ensure_organizer_should_validate_newly_set_organizer() {
 		ExtBuilder::default().organizer(CHARLIE).build().execute_with(|| {
-			assert_ok!(AAvatars::ensure_organizer(Origin::signed(CHARLIE)));
+			assert_ok!(AAvatars::ensure_organizer(RuntimeOrigin::signed(CHARLIE)));
 		});
 	}
 }
@@ -90,9 +90,9 @@ mod treasurer {
 	fn set_treasurer_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(AAvatars::treasurer(), None);
-			assert_ok!(AAvatars::set_treasurer(Origin::root(), CHARLIE));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), CHARLIE));
 			assert_eq!(AAvatars::treasurer(), Some(CHARLIE));
-			System::assert_last_event(mock::Event::AAvatars(crate::Event::TreasurerSet {
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::TreasurerSet {
 				treasurer: CHARLIE,
 			}));
 		});
@@ -102,7 +102,7 @@ mod treasurer {
 	fn set_treasurer_should_reject_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_treasurer(Origin::signed(ALICE), CHARLIE),
+				AAvatars::set_treasurer(RuntimeOrigin::signed(ALICE), CHARLIE),
 				DispatchError::BadOrigin
 			);
 		});
@@ -111,10 +111,10 @@ mod treasurer {
 	#[test]
 	fn set_treasurer_should_replace_existing_treasurer() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(AAvatars::set_treasurer(Origin::root(), ALICE));
-			assert_ok!(AAvatars::set_treasurer(Origin::root(), BOB));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), ALICE));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), BOB));
 			assert_eq!(AAvatars::treasurer(), Some(BOB));
-			System::assert_last_event(mock::Event::AAvatars(crate::Event::TreasurerSet {
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::TreasurerSet {
 				treasurer: BOB,
 			}));
 		});
@@ -151,20 +151,18 @@ mod season {
 			.build()
 			.execute_with(|| {
 				let season_1 = Season::default().early_start(1).start(5).end(10);
-				assert_ok!(AAvatars::set_season(Origin::signed(ALICE), 1, season_1.clone()));
+				assert_ok!(AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, season_1.clone()));
 				assert_eq!(AAvatars::seasons(1), Some(season_1.clone()));
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedSeason {
-					season_id: 1,
-					season: season_1,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::UpdatedSeason { season_id: 1, season: season_1 },
+				));
 
 				let season_2 = Season::default().early_start(11).start(12).end(13);
-				assert_ok!(AAvatars::set_season(Origin::signed(ALICE), 2, season_2.clone()));
+				assert_ok!(AAvatars::set_season(RuntimeOrigin::signed(ALICE), 2, season_2.clone()));
 				assert_eq!(AAvatars::seasons(2), Some(season_2.clone()));
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedSeason {
-					season_id: 2,
-					season: season_2,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::UpdatedSeason { season_id: 2, season: season_2 },
+				));
 			});
 	}
 
@@ -172,7 +170,7 @@ mod season {
 	fn set_season_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_season(Origin::signed(BOB), 7357, Season::default()),
+				AAvatars::set_season(RuntimeOrigin::signed(BOB), 7357, Season::default()),
 				DispatchError::BadOrigin
 			);
 		});
@@ -190,7 +188,7 @@ mod season {
 					let season_2 = Season::default().early_start(i).start(i + 1).end(i + 2);
 					assert!(season_2.early_start <= season_1.end);
 					assert_noop!(
-						AAvatars::set_season(Origin::signed(ALICE), 2, season_2),
+						AAvatars::set_season(RuntimeOrigin::signed(ALICE), 2, season_2),
 						Error::<Test>::EarlyStartTooEarly
 					);
 				}
@@ -204,7 +202,7 @@ mod season {
 				let new_season = Season::default().early_start(i).start(3).end(10);
 				assert!(new_season.early_start >= new_season.start);
 				assert_noop!(
-					AAvatars::set_season(Origin::signed(ALICE), 1, new_season),
+					AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, new_season),
 					Error::<Test>::EarlyStartTooLate
 				);
 			}
@@ -217,7 +215,7 @@ mod season {
 			let new_season = Season::default().early_start(11).start(12).end(10);
 			assert!(new_season.early_start < new_season.start);
 			assert_noop!(
-				AAvatars::set_season(Origin::signed(ALICE), 1, new_season),
+				AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, new_season),
 				Error::<Test>::SeasonStartTooLate
 			);
 		});
@@ -232,7 +230,7 @@ mod season {
 			] {
 				assert_noop!(
 					AAvatars::set_season(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						1,
 						Season::default().tiers(duplicated_rarity_tiers)
 					),
@@ -254,7 +252,7 @@ mod season {
 					season_1.clone().single_mint_probs(incorrect_percentages),
 				] {
 					assert_noop!(
-						AAvatars::set_season(Origin::signed(ALICE), 1, season),
+						AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, season),
 						Error::<Test>::IncorrectRarityPercentages
 					);
 				}
@@ -275,7 +273,7 @@ mod season {
 				let season_1_update = Season::default().early_start(1).start(5).end(14);
 				assert!(season_1_update.end > season_2.early_start);
 				assert_noop!(
-					AAvatars::set_season(Origin::signed(ALICE), 1, season_1_update),
+					AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, season_1_update),
 					Error::<Test>::SeasonEndTooLate
 				);
 			});
@@ -285,7 +283,11 @@ mod season {
 	fn set_season_should_reject_season_id_underflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_season(Origin::signed(ALICE), SeasonId::MIN, Season::default()),
+				AAvatars::set_season(
+					RuntimeOrigin::signed(ALICE),
+					SeasonId::MIN,
+					Season::default()
+				),
 				ArithmeticError::Underflow
 			);
 		});
@@ -295,7 +297,11 @@ mod season {
 	fn set_season_should_reject_season_id_overflow() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_season(Origin::signed(ALICE), SeasonId::MAX, Season::default()),
+				AAvatars::set_season(
+					RuntimeOrigin::signed(ALICE),
+					SeasonId::MAX,
+					Season::default()
+				),
 				ArithmeticError::Overflow
 			);
 		});
@@ -310,7 +316,7 @@ mod season {
 				(Season::default().max_variations(16), Error::<Test>::MaxVariationsTooHigh),
 				(Season::default().max_variations(100), Error::<Test>::MaxVariationsTooHigh),
 			] {
-				assert_noop!(AAvatars::set_season(Origin::signed(ALICE), 1, season), error);
+				assert_noop!(AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, season), error);
 			}
 		});
 	}
@@ -324,7 +330,7 @@ mod season {
 				(Season::default().max_components(33), Error::<Test>::MaxComponentsTooHigh),
 				(Season::default().max_components(100), Error::<Test>::MaxComponentsTooHigh),
 			] {
-				assert_noop!(AAvatars::set_season(Origin::signed(ALICE), 1, season), error);
+				assert_noop!(AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, season), error);
 			}
 		});
 	}
@@ -337,7 +343,7 @@ mod season {
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AAvatars::set_season(Origin::signed(ALICE), 3, Season::default()),
+					AAvatars::set_season(RuntimeOrigin::signed(ALICE), 3, Season::default()),
 					Error::<Test>::NonSequentialSeasonId,
 				);
 			});
@@ -351,10 +357,13 @@ mod config {
 	fn update_global_config_should_work() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			let config = GlobalConfigOf::<Test>::default();
-			assert_ok!(AAvatars::update_global_config(Origin::signed(ALICE), config.clone()));
-			System::assert_last_event(mock::Event::AAvatars(crate::Event::UpdatedGlobalConfig(
-				config,
-			)));
+			assert_ok!(AAvatars::update_global_config(
+				RuntimeOrigin::signed(ALICE),
+				config.clone()
+			));
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::UpdatedGlobalConfig(config),
+			));
 		});
 	}
 
@@ -363,7 +372,7 @@ mod config {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
 				AAvatars::update_global_config(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					GlobalConfigOf::<Test>::default()
 				),
 				DispatchError::BadOrigin
@@ -422,7 +431,7 @@ mod minting {
 					// single mint
 					run_to_block(season_1.start);
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
 					match mint_type {
@@ -451,15 +460,19 @@ mod minting {
 					);
 					assert!(AAvatars::current_season_status().active);
 					assert_eq!(AAvatars::accounts(ALICE).stats.mint.first, season_1.start);
-					System::assert_has_event(mock::Event::AAvatars(crate::Event::SeasonStarted(1)));
-					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
-						avatar_ids: vec![AAvatars::owners(ALICE)[0]],
-					}));
+					System::assert_has_event(mock::RuntimeEvent::AAvatars(
+						crate::Event::SeasonStarted(1),
+					));
+					System::assert_last_event(mock::RuntimeEvent::AAvatars(
+						crate::Event::AvatarsMinted {
+							avatar_ids: vec![AAvatars::owners(ALICE)[0]],
+						},
+					));
 
 					// batch mint: three
 					run_to_block(System::block_number() + 1 + mint_cooldown);
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::Three, mint_type: mint_type.clone() }
 					));
 					match mint_type {
@@ -487,15 +500,17 @@ mod minting {
 						current_season_minted_count
 					);
 					assert!(AAvatars::current_season_status().active);
-					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
-						avatar_ids: AAvatars::owners(ALICE)[1..=3].to_vec(),
-					}));
+					System::assert_last_event(mock::RuntimeEvent::AAvatars(
+						crate::Event::AvatarsMinted {
+							avatar_ids: AAvatars::owners(ALICE)[1..=3].to_vec(),
+						},
+					));
 
 					// batch mint: six
 					run_to_block(System::block_number() + 1 + mint_cooldown);
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::Six, mint_type: mint_type.clone() }
 					));
 					match mint_type {
@@ -523,14 +538,16 @@ mod minting {
 						current_season_minted_count
 					);
 					assert!(AAvatars::current_season_status().active);
-					System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarsMinted {
-						avatar_ids: AAvatars::owners(ALICE)[4..=9].to_vec(),
-					}));
+					System::assert_last_event(mock::RuntimeEvent::AAvatars(
+						crate::Event::AvatarsMinted {
+							avatar_ids: AAvatars::owners(ALICE)[4..=9].to_vec(),
+						},
+					));
 
 					// check for season ending (we allow one extra mint before closing season)
 					run_to_block(season_1.end + 1);
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
 					assert_eq!(AAvatars::accounts(ALICE).stats.mint.first, season_1.start);
@@ -559,7 +576,7 @@ mod minting {
 					}
 					assert_noop!(
 						AAvatars::mint(
-							Origin::signed(ALICE),
+							RuntimeOrigin::signed(ALICE),
 							MintOption { count: MintPackSize::One, mint_type }
 						),
 						Error::<Test>::OutOfSeason
@@ -600,7 +617,10 @@ mod minting {
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for mint_type in [MintType::Normal, MintType::Free] {
 						assert_noop!(
-							AAvatars::mint(Origin::signed(ALICE), MintOption { count, mint_type }),
+							AAvatars::mint(
+								RuntimeOrigin::signed(ALICE),
+								MintOption { count, mint_type }
+							),
 							Error::<Test>::MintClosed
 						);
 					}
@@ -614,7 +634,7 @@ mod minting {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 				for mint_type in [MintType::Normal, MintType::Free] {
 					assert_noop!(
-						AAvatars::mint(Origin::none(), MintOption { count, mint_type }),
+						AAvatars::mint(RuntimeOrigin::none(), MintOption { count, mint_type }),
 						DispatchError::BadOrigin
 					);
 				}
@@ -635,13 +655,13 @@ mod minting {
 
 				assert_noop!(
 					AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 					),
 					Error::<Test>::OutOfSeason
 				);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(ALICE),
+					RuntimeOrigin::signed(ALICE),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				),);
 			});
@@ -657,7 +677,10 @@ mod minting {
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for mint_type in [MintType::Normal, MintType::Free] {
 						assert_noop!(
-							AAvatars::mint(Origin::signed(ALICE), MintOption { count, mint_type }),
+							AAvatars::mint(
+								RuntimeOrigin::signed(ALICE),
+								MintOption { count, mint_type }
+							),
 							Error::<Test>::OutOfSeason
 						);
 					}
@@ -689,7 +712,10 @@ mod minting {
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for mint_type in [MintType::Normal, MintType::Free] {
 						assert_noop!(
-							AAvatars::mint(Origin::signed(ALICE), MintOption { count, mint_type }),
+							AAvatars::mint(
+								RuntimeOrigin::signed(ALICE),
+								MintOption { count, mint_type }
+							),
 							Error::<Test>::MaxOwnershipReached
 						);
 					}
@@ -712,7 +738,7 @@ mod minting {
 				for mint_type in [MintType::Normal, MintType::Free] {
 					run_to_block(season.start + 1);
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 					));
 
@@ -720,7 +746,7 @@ mod minting {
 						run_to_block(System::block_number() + 1);
 						assert_noop!(
 							AAvatars::mint(
-								Origin::signed(ALICE),
+								RuntimeOrigin::signed(ALICE),
 								MintOption {
 									count: MintPackSize::One,
 									mint_type: mint_type.clone()
@@ -733,7 +759,7 @@ mod minting {
 					run_to_block(System::block_number() + 1);
 					assert_eq!(System::block_number(), (season.start + 1) + mint_cooldown);
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 					));
 
@@ -757,7 +783,7 @@ mod minting {
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AAvatars::mint(
-							Origin::signed(ALICE),
+							RuntimeOrigin::signed(ALICE),
 							MintOption { count: mint_count, mint_type: MintType::Normal }
 						),
 						pallet_balances::Error::<Test>::InsufficientBalance
@@ -767,7 +793,7 @@ mod minting {
 				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					assert_noop!(
 						AAvatars::mint(
-							Origin::signed(ALICE),
+							RuntimeOrigin::signed(ALICE),
 							MintOption { count: mint_count, mint_type: MintType::Free }
 						),
 						Error::<Test>::InsufficientFreeMints
@@ -782,15 +808,15 @@ mod minting {
 			.free_mints(vec![(ALICE, 17), (BOB, 4)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(AAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, 10));
-				System::assert_last_event(mock::Event::AAvatars(
+				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: BOB, how_many: 10 },
 				));
 				assert_eq!(AAvatars::accounts(ALICE).free_mints, 6);
 				assert_eq!(AAvatars::accounts(BOB).free_mints, 14);
 
-				assert_ok!(AAvatars::transfer_free_mints(Origin::signed(ALICE), CHARLIE, 2));
-				System::assert_last_event(mock::Event::AAvatars(
+				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), CHARLIE, 2));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: CHARLIE, how_many: 2 },
 				));
 
@@ -805,7 +831,7 @@ mod minting {
 			let transfer = 5;
 			GlobalConfigs::<Test>::mutate(|cfg| cfg.mint.min_free_mint_transfer = transfer + 1);
 			assert_noop!(
-				AAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, transfer),
+				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, transfer),
 				Error::<Test>::TooLowFreeMintTransfer
 			);
 		});
@@ -815,7 +841,7 @@ mod minting {
 	fn transfer_free_mints_should_reject_when_balance_is_insufficient() {
 		ExtBuilder::default().free_mints(vec![(ALICE, 7)]).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::transfer_free_mints(Origin::signed(ALICE), BOB, 10),
+				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10),
 				Error::<Test>::InsufficientFreeMints
 			);
 		});
@@ -830,19 +856,17 @@ mod minting {
 			.execute_with(|| {
 				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
 
-				assert_ok!(AAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 7));
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::FreeMintsIssued {
-					to: BOB,
-					how_many: 7,
-				}));
+				assert_ok!(AAvatars::issue_free_mints(RuntimeOrigin::signed(ALICE), BOB, 7));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::FreeMintsIssued { to: BOB, how_many: 7 },
+				));
 
 				assert_eq!(AAvatars::accounts(BOB).free_mints, 7);
 
-				assert_ok!(AAvatars::issue_free_mints(Origin::signed(ALICE), BOB, 3));
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::FreeMintsIssued {
-					to: BOB,
-					how_many: 3,
-				}));
+				assert_ok!(AAvatars::issue_free_mints(RuntimeOrigin::signed(ALICE), BOB, 3));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::FreeMintsIssued { to: BOB, how_many: 3 },
+				));
 
 				assert_eq!(AAvatars::accounts(BOB).free_mints, 10);
 			});
@@ -874,7 +898,7 @@ mod forging {
 		let mut assert_dna =
 			|leader_id: &AvatarIdOf<Test>, expected_dna: Vec<u8>, insert_dna: Option<Vec<u8>>| {
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
 				));
 
@@ -889,7 +913,7 @@ mod forging {
 				}
 
 				assert_ok!(AAvatars::forge(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					*leader_id,
 					AAvatars::owners(BOB)[1..=4].to_vec()
 				));
@@ -910,7 +934,7 @@ mod forging {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
 				let leader_id = AAvatars::owners(BOB)[0];
@@ -955,7 +979,7 @@ mod forging {
 				assert!(AAvatars::current_season_status().prematurely_ended);
 				assert_noop!(
 					AAvatars::mint(
-						Origin::signed(BOB),
+						RuntimeOrigin::signed(BOB),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					),
 					Error::<Test>::PrematureSeasonEnd
@@ -964,7 +988,7 @@ mod forging {
 				// trigger season end and assert for associated checks
 				run_to_block(season.end + 1);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
 				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
@@ -1000,7 +1024,7 @@ mod forging {
 				// prepare avatars to forge
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
 				));
 
@@ -1015,7 +1039,11 @@ mod forging {
 					.map(|id| AAvatars::avatars(id).unwrap().1)
 					.collect::<Vec<_>>();
 
-				assert_ok!(AAvatars::forge(Origin::signed(BOB), leader_id, sacrifice_ids.to_vec()));
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					leader_id,
+					sacrifice_ids.to_vec()
+				));
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
@@ -1052,10 +1080,9 @@ mod forging {
 				assert_eq!(original_leader.dna.to_vec()[1] >> 4, RarityTier::Common as u8);
 				assert_eq!(forged_leader.dna.to_vec()[0] >> 4, RarityTier::Legendary as u8);
 				assert_eq!(forged_leader.dna.to_vec()[1] >> 4, RarityTier::Legendary as u8);
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarForged {
-					avatar_id: leader_id,
-					upgraded_components: 2,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarForged { avatar_id: leader_id, upgraded_components: 2 },
+				));
 
 				// variations remain the same
 				assert_eq!(
@@ -1096,7 +1123,7 @@ mod forging {
 				// prepare avatars to forge
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
 				));
 
@@ -1108,7 +1135,11 @@ mod forging {
 				let original_leader = AAvatars::avatars(leader_id).unwrap().1;
 				let original_sacrifice = AAvatars::avatars(sacrifice_id).unwrap().1;
 
-				assert_ok!(AAvatars::forge(Origin::signed(BOB), leader_id, vec![sacrifice_id]));
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					leader_id,
+					vec![sacrifice_id]
+				));
 				let forged_leader = AAvatars::avatars(leader_id).unwrap().1;
 
 				// check the result of the compare method
@@ -1129,10 +1160,9 @@ mod forging {
 
 				// check DNAs are the same
 				assert_eq!(original_leader.dna, forged_leader.dna);
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarForged {
-					avatar_id: leader_id,
-					upgraded_components: 0,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarForged { avatar_id: leader_id, upgraded_components: 0 },
+				));
 			});
 	}
 
@@ -1147,7 +1177,7 @@ mod forging {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_noop!(
-					AAvatars::forge(Origin::signed(ALICE), H256::default(), Vec::new()),
+					AAvatars::forge(RuntimeOrigin::signed(ALICE), H256::default(), Vec::new()),
 					Error::<Test>::ForgeClosed,
 				);
 			});
@@ -1157,7 +1187,7 @@ mod forging {
 	fn forge_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::forge(Origin::none(), H256::default(), Vec::new()),
+				AAvatars::forge(RuntimeOrigin::none(), H256::default(), Vec::new()),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -1179,7 +1209,7 @@ mod forging {
 				for i in 0..min_sacrifices {
 					assert_noop!(
 						AAvatars::forge(
-							Origin::signed(ALICE),
+							RuntimeOrigin::signed(ALICE),
 							H256::default(),
 							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
 						),
@@ -1190,7 +1220,7 @@ mod forging {
 				for i in (max_sacrifices + 1)..(max_sacrifices + 5) {
 					assert_noop!(
 						AAvatars::forge(
-							Origin::signed(ALICE),
+							RuntimeOrigin::signed(ALICE),
 							H256::default(),
 							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
 						),
@@ -1218,7 +1248,7 @@ mod forging {
 				run_to_block(season.early_start + 1);
 				for _ in 0..4 {
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
 					run_to_block(System::block_number() + 1);
@@ -1227,7 +1257,7 @@ mod forging {
 				run_to_block(season.end + 10);
 
 				assert_ok!(AAvatars::forge(
-					Origin::signed(ALICE),
+					RuntimeOrigin::signed(ALICE),
 					AAvatars::owners(ALICE)[0],
 					AAvatars::owners(ALICE)[1..3].to_vec()
 				));
@@ -1240,7 +1270,11 @@ mod forging {
 			CurrentSeasonId::<Test>::put(123);
 			CurrentSeasonStatus::<Test>::mutate(|status| status.active = true);
 			assert_noop!(
-				AAvatars::forge(Origin::signed(ALICE), H256::default(), vec![H256::default()]),
+				AAvatars::forge(
+					RuntimeOrigin::signed(ALICE),
+					H256::default(),
+					vec![H256::default()]
+				),
 				Error::<Test>::UnknownSeason,
 			);
 		});
@@ -1264,7 +1298,7 @@ mod forging {
 				run_to_block(season.start);
 				for _ in 0..max_sacrifices {
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
 					run_to_block(System::block_number() + 1);
@@ -1277,7 +1311,7 @@ mod forging {
 					(owned_avatars[1], vec![H256::default(), owned_avatars[2]]),
 				] {
 					assert_noop!(
-						AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
+						AAvatars::forge(RuntimeOrigin::signed(ALICE), leader, sacrifices),
 						Error::<Test>::UnknownAvatar,
 					);
 				}
@@ -1303,7 +1337,7 @@ mod forging {
 				for player in [ALICE, BOB] {
 					for _ in 0..max_sacrifices {
 						assert_ok!(AAvatars::mint(
-							Origin::signed(player),
+							RuntimeOrigin::signed(player),
 							MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 						));
 						run_to_block(System::block_number() + 1);
@@ -1316,7 +1350,7 @@ mod forging {
 					(ALICE, AAvatars::owners(BOB)[0], AAvatars::owners(BOB)[1..2].to_vec()),
 				] {
 					assert_noop!(
-						AAvatars::forge(Origin::signed(player), leader, sacrifices),
+						AAvatars::forge(RuntimeOrigin::signed(player), leader, sacrifices),
 						Error::<Test>::Ownership,
 					);
 				}
@@ -1341,7 +1375,7 @@ mod forging {
 				run_to_block(season.start);
 				for _ in 0..max_sacrifices {
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
 					run_to_block(System::block_number() + 1);
@@ -1352,7 +1386,7 @@ mod forging {
 					(ALICE, AAvatars::owners(ALICE)[1], AAvatars::owners(ALICE)[0..2].to_vec()),
 				] {
 					assert_noop!(
-						AAvatars::forge(Origin::signed(player), leader, sacrifices),
+						AAvatars::forge(RuntimeOrigin::signed(player), leader, sacrifices),
 						Error::<Test>::LeaderSacrificed,
 					);
 				}
@@ -1373,32 +1407,32 @@ mod forging {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(ALICE),
+					RuntimeOrigin::signed(ALICE),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
 				));
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::Six, mint_type: MintType::Normal }
 				));
 
 				let leader = AAvatars::owners(ALICE)[0];
 				let sacrifices = AAvatars::owners(ALICE)[1..3].to_vec();
 
-				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), leader, price));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), leader, price));
 				assert_noop!(
-					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices.clone()),
+					AAvatars::forge(RuntimeOrigin::signed(ALICE), leader, sacrifices.clone()),
 					Error::<Test>::AvatarInTrade
 				);
 
-				assert_ok!(AAvatars::set_price(Origin::signed(ALICE), sacrifices[1], price));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), sacrifices[1], price));
 				assert_noop!(
-					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices.clone()),
+					AAvatars::forge(RuntimeOrigin::signed(ALICE), leader, sacrifices.clone()),
 					Error::<Test>::AvatarInTrade
 				);
 
-				assert_ok!(AAvatars::remove_price(Origin::signed(ALICE), leader));
+				assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(ALICE), leader));
 				assert_noop!(
-					AAvatars::forge(Origin::signed(ALICE), leader, sacrifices),
+					AAvatars::forge(RuntimeOrigin::signed(ALICE), leader, sacrifices),
 					Error::<Test>::AvatarInTrade
 				);
 			});
@@ -1428,7 +1462,7 @@ mod forging {
 				run_to_block(season1.early_start + 1);
 				for _ in 0..max_sacrifices {
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
 					run_to_block(System::block_number() + 1);
@@ -1437,7 +1471,7 @@ mod forging {
 
 				for _ in 0..max_sacrifices {
 					assert_ok!(AAvatars::mint(
-						Origin::signed(ALICE),
+						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
 					run_to_block(System::block_number() + 1);
@@ -1450,7 +1484,7 @@ mod forging {
 					(ALICE, AAvatars::owners(ALICE)[5], AAvatars::owners(ALICE)[0..2].to_vec()),
 				] {
 					assert_noop!(
-						AAvatars::forge(Origin::signed(player), leader, sacrifices),
+						AAvatars::forge(RuntimeOrigin::signed(player), leader, sacrifices),
 						Error::<Test>::IncorrectAvatarSeason,
 					);
 				}
@@ -1473,7 +1507,7 @@ mod trading {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 
@@ -1481,12 +1515,11 @@ mod trading {
 				let price = 7357;
 
 				assert_eq!(AAvatars::trade(avatar_for_sale), None);
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 				assert_eq!(AAvatars::trade(avatar_for_sale), Some(price));
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarPriceSet {
-					avatar_id: avatar_for_sale,
-					price,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarPriceSet { avatar_id: avatar_for_sale, price },
+				));
 			});
 	}
 
@@ -1494,7 +1527,7 @@ mod trading {
 	fn set_price_should_reject_when_trading_is_closed() {
 		ExtBuilder::default().trade_open(false).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_price(Origin::signed(ALICE), sp_core::H256::default(), 1),
+				AAvatars::set_price(RuntimeOrigin::signed(ALICE), sp_core::H256::default(), 1),
 				Error::<Test>::TradeClosed,
 			);
 		});
@@ -1504,7 +1537,7 @@ mod trading {
 	fn set_price_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_price(Origin::none(), sp_core::H256::default(), 1),
+				AAvatars::set_price(RuntimeOrigin::none(), sp_core::H256::default(), 1),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -1522,12 +1555,16 @@ mod trading {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 
 				assert_noop!(
-					AAvatars::set_price(Origin::signed(CHARLIE), AAvatars::owners(BOB)[0], 101),
+					AAvatars::set_price(
+						RuntimeOrigin::signed(CHARLIE),
+						AAvatars::owners(BOB)[0],
+						101
+					),
 					Error::<Test>::Ownership
 				);
 			});
@@ -1545,20 +1582,20 @@ mod trading {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
 				let price = 101;
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 
 				assert_eq!(AAvatars::trade(avatar_for_sale), Some(101));
-				assert_ok!(AAvatars::remove_price(Origin::signed(BOB), avatar_for_sale));
+				assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(BOB), avatar_for_sale));
 				assert_eq!(AAvatars::trade(avatar_for_sale), None);
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarPriceUnset {
-					avatar_id: avatar_for_sale,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarPriceUnset { avatar_id: avatar_for_sale },
+				));
 			});
 	}
 
@@ -1566,7 +1603,7 @@ mod trading {
 	fn remove_price_should_reject_when_trading_is_closed() {
 		ExtBuilder::default().trade_open(false).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::remove_price(Origin::signed(ALICE), sp_core::H256::default()),
+				AAvatars::remove_price(RuntimeOrigin::signed(ALICE), sp_core::H256::default()),
 				Error::<Test>::TradeClosed,
 			);
 		});
@@ -1576,7 +1613,7 @@ mod trading {
 	fn remove_price_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::remove_price(Origin::none(), sp_core::H256::default()),
+				AAvatars::remove_price(RuntimeOrigin::none(), sp_core::H256::default()),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -1594,15 +1631,15 @@ mod trading {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 123));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
 
 				assert_noop!(
-					AAvatars::remove_price(Origin::signed(CHARLIE), avatar_for_sale),
+					AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), avatar_for_sale),
 					Error::<Test>::Ownership
 				);
 			});
@@ -1612,7 +1649,7 @@ mod trading {
 	fn remove_price_should_reject_unlisted_avatar() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::remove_price(Origin::signed(CHARLIE), sp_core::H256::default()),
+				AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), sp_core::H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
 			);
 		});
@@ -1644,7 +1681,7 @@ mod trading {
 
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::Three, mint_type: MintType::Normal }
 				));
 				treasury_balance += mint_fees.three;
@@ -1654,8 +1691,8 @@ mod trading {
 				let owned_by_bob = AAvatars::owners(BOB);
 
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
-				assert_ok!(AAvatars::buy(Origin::signed(ALICE), avatar_for_sale));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
+				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(ALICE), avatar_for_sale));
 
 				// check for balance transfer
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - buy_fee);
@@ -1677,16 +1714,14 @@ mod trading {
 				assert_eq!(AAvatars::accounts(BOB).stats.trade.sold, 1);
 
 				// check events
-				System::assert_last_event(mock::Event::AAvatars(crate::Event::AvatarTraded {
-					avatar_id: avatar_for_sale,
-					from: BOB,
-					to: ALICE,
-				}));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarTraded { avatar_id: avatar_for_sale, from: BOB, to: ALICE },
+				));
 
 				// charlie buys from bob
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 1357));
-				assert_ok!(AAvatars::buy(Origin::signed(CHARLIE), avatar_for_sale));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 1357));
+				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(CHARLIE), avatar_for_sale));
 				assert_eq!(AAvatars::accounts(CHARLIE).stats.trade.bought, 1);
 				assert_eq!(AAvatars::accounts(BOB).stats.trade.sold, 2);
 			});
@@ -1696,7 +1731,7 @@ mod trading {
 	fn buy_should_reject_when_trading_is_closed() {
 		ExtBuilder::default().trade_open(false).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::buy(Origin::signed(ALICE), sp_core::H256::default()),
+				AAvatars::buy(RuntimeOrigin::signed(ALICE), sp_core::H256::default()),
 				Error::<Test>::TradeClosed,
 			);
 		});
@@ -1706,7 +1741,7 @@ mod trading {
 	fn buy_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::buy(Origin::none(), sp_core::H256::default()),
+				AAvatars::buy(RuntimeOrigin::none(), sp_core::H256::default()),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -1716,7 +1751,7 @@ mod trading {
 	fn buy_should_reject_unlisted_avatar() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::buy(Origin::signed(BOB), sp_core::H256::default()),
+				AAvatars::buy(RuntimeOrigin::signed(BOB), sp_core::H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
 			);
 		});
@@ -1735,14 +1770,14 @@ mod trading {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, price));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 				assert_noop!(
-					AAvatars::buy(Origin::signed(ALICE), avatar_for_sale),
+					AAvatars::buy(RuntimeOrigin::signed(ALICE), avatar_for_sale),
 					pallet_balances::Error::<Test>::InsufficientBalance
 				);
 			});
@@ -1760,14 +1795,14 @@ mod trading {
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
-					Origin::signed(BOB),
+					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
 
 				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(Origin::signed(BOB), avatar_for_sale, 123));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
 				assert_noop!(
-					AAvatars::buy(Origin::signed(BOB), avatar_for_sale),
+					AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_for_sale),
 					Error::<Test>::AlreadyOwned
 				);
 			});
@@ -1788,11 +1823,11 @@ mod account {
 				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
 
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
-				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
-				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
-				assert_ok!(AAvatars::upgrade_storage(Origin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
 			});
 	}
@@ -1801,7 +1836,7 @@ mod account {
 	fn upgrade_storage_should_reject_insufficient_balance() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::upgrade_storage(Origin::signed(ALICE)),
+				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
 				pallet_balances::Error::<Test>::InsufficientBalance
 			);
 		});
@@ -1814,7 +1849,7 @@ mod account {
 			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Four);
 
 			assert_noop!(
-				AAvatars::upgrade_storage(Origin::signed(ALICE)),
+				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
 				Error::<Test>::MaxStorageTierReached
 			);
 		});
