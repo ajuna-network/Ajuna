@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/*.yml"
       - "**/*.rs"
       - "**/Cargo.toml"
       - "**/Cargo.lock"
@@ -54,6 +55,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
       - run: cargo clippy --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
 
   test:
@@ -74,7 +76,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-
       - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   coverage:
