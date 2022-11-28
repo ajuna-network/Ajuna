@@ -396,7 +396,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(12_345)]
+		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let storage_tier = Self::accounts(&player).storage_tier;

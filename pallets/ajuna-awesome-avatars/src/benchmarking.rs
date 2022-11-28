@@ -205,6 +205,15 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer }.into())
 	}
 
+	upgrade_storage {
+		let player = account::<T>("player");
+		let upgrade_fee = AAvatars::<T>::global_configs().account.storage_upgrade_fee;
+		T::Currency::make_free_balance_be(&player, upgrade_fee);
+	}: _(RawOrigin::Signed(player))
+	verify {
+		assert_last_event::<T>(Event::StorageTierUpgraded.into())
+	}
+
 	set_organizer {
 		let organizer = account::<T>("organizer");
 	}: _(RawOrigin::Root, organizer.clone())
