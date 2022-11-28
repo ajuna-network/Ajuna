@@ -74,7 +74,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   coverage:
