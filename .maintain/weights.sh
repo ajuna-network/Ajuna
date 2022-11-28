@@ -38,7 +38,7 @@ for PALLET in "${PALLETS[@]}"; do
     --output="./runtime/${RUNTIME}/src/weights/${PALLET//-/_}.rs"
 done
 
-[ RUNTIME != "bajun" ] && exit 0
+[ "${RUNTIME}" != "bajun" ] && exit 0
 CUSTOM_PALLETS=(
   "pallet-ajuna-awesome-avatars"
 )
