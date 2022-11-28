@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 RUNTIME=${1?Either bajun or ajuna must be passed}
 
