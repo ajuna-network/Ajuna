@@ -61,7 +61,6 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     continue-on-error: false
-    needs: [lint]
     env:
       SKIP_WASM_BUILD: 1
     steps:
