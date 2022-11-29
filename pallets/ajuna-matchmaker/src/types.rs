@@ -76,10 +76,15 @@ impl<T: Config> MatchMaker for MatchMaking<T> {
 	}
 
 	fn clear_queue(bracket: Bracket) {
-		Players::<T>::iter_prefix_values(bracket).for_each(|account_id| {
-			PlayerQueue::<T>::remove(account_id);
-		});
-		Players::<T>::remove_prefix(bracket, None);
+		let limit = Players::<T>::iter_prefix_values(bracket)
+			.map(|account_id| {
+				PlayerQueue::<T>::remove(account_id);
+			})
+			.count() as u32;
+		let r = Players::<T>::clear_prefix(bracket, limit, None);
+		if r.maybe_cursor.is_some() {
+			Self::clear_queue(bracket)
+		}
 	}
 
 	fn is_queued(account_id: &Self::Player) -> bool {
