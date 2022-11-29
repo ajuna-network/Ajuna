@@ -97,22 +97,38 @@ jobs:
           sudo dpkg -i subwasm.deb
       - name: Run subwasm info
         run: |
-          echo "## ${{ matrix.runtime }}" > ${{ matrix.runtime }}-info.txt
-          echo "\`\`\`" >> ${{ matrix.runtime }}-info.txt
+          echo "\`\`\`" > ${{ matrix.runtime }}-info.txt
+          echo -e "${{ matrix.runtime }}-runtime:\n" >> ${{ matrix.runtime }}-info.txt
           subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }} \
             | sed -E 's/^Running subwasm.+$//' \
             | sed '/^$/d' \
             >> ${{ matrix.runtime }}-info.txt
           echo "\`\`\`" >> ${{ matrix.runtime }}-info.txt
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.runtime }}-artifact
+          path: |
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            ${{ matrix.runtime }}-info.txt
+          if-no-files-found: error
+
+  release-draft:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+      - run: |
+          echo "## Subwasm Info" > runtime-info.txt
+          cat **/*-info.txt >> runtime-info.txt
+          echo "---" >> runtime-info.txt
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
           generate_release_notes: true
           append_body: true
-          body_path: ${{ matrix.runtime }}-info.txt
-          files: |
-            ${{ steps.srtool_build.outputs.wasm_compressed }}
+          body_path: runtime-info.txt
+          files: "**/*_runtime.compact.compressed.wasm"
 
   release-docker:
     if: startsWith(github.ref, 'refs/tags/v')
