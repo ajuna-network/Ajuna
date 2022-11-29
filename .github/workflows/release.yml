@@ -81,13 +81,29 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu]
         runtime: [bajun, ajuna]
+    env:
+      SUBWASM_VERSION: v0.18.0
     steps:
       - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
-      - name: Build
-        run: cargo build --release -p ${{ matrix.runtime }}-runtime --target=${{ matrix.target }}
+      - id: srtool_build
+        uses: chevdor/srtool-actions@v0.6.0
+        with:
+          chain: ${{ matrix.runtime }}
+      - name: Install subwasm {{ env.SUBWASM_VERSION }}
+        run: |
+          wget https://github.com/chevdor/subwasm/releases/download/${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_${{ env.SUBWASM_VERSION }}.deb -O subwasm.deb
+          sudo dpkg -i subwasm.deb
+      - name: Run subwasm info
+        run: |
+          echo "## ${{ matrix.runtime }}" > ${{ matrix.runtime }}-info.txt
+          echo "\`\`\`" >> ${{ matrix.runtime }}-info.txt
+          subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }} \
+            | sed -E 's/^Running subwasm.+$//' \
+            | sed '/^$/d' \
+            >> ${{ matrix.runtime }}-info.txt
+          echo "\`\`\`" >> ${{ matrix.runtime }}-info.txt
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
