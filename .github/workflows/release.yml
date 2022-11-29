@@ -81,19 +81,54 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu]
         runtime: [bajun, ajuna]
+    env:
+      SUBWASM_VERSION: v0.18.0
     steps:
       - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
-      - name: Build
-        run: cargo build --release -p ${{ matrix.runtime }}-runtime --target=${{ matrix.target }}
+      - id: srtool_build
+        uses: chevdor/srtool-actions@v0.6.0
+        with:
+          chain: ${{ matrix.runtime }}
+      - name: Install subwasm {{ env.SUBWASM_VERSION }}
+        run: |
+          wget https://github.com/chevdor/subwasm/releases/download/${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_${{ env.SUBWASM_VERSION }}.deb -O subwasm.deb
+          sudo dpkg -i subwasm.deb
+      - name: Run subwasm info
+        run: |
+          echo "\`\`\`" > ${{ matrix.runtime }}-info.txt
+          echo -e "${{ matrix.runtime }}-runtime:\n" >> ${{ matrix.runtime }}-info.txt
+          subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }} \
+            | sed -E 's/^Running subwasm.+$//' \
+            | sed '/^$/d' \
+            >> ${{ matrix.runtime }}-info.txt
+          echo "\`\`\`" >> ${{ matrix.runtime }}-info.txt
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.runtime }}-artifact
+          path: |
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            ${{ matrix.runtime }}-info.txt
+          if-no-files-found: error
+
+  release-draft:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+      - run: |
+          echo "## Subwasm Info" > runtime-info.txt
+          cat **/*-info.txt >> runtime-info.txt
+          echo "---" >> runtime-info.txt
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
-          files: |
-            target/${{ matrix.target }}/release/wbuild/${{ matrix.runtime}}-runtime/${{ matrix.runtime}}_runtime.compact.compressed.wasm
+          generate_release_notes: true
+          append_body: true
+          body_path: runtime-info.txt
+          files: "**/*_runtime.compact.compressed.wasm"
 
   release-docker:
     if: startsWith(github.ref, 'refs/tags/v')
