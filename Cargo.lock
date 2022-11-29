@@ -5203,7 +5203,6 @@ dependencies = [
 name = "pallet-ajuna-matchmaker"
 version = "0.1.0"
 dependencies = [
- "ajuna-common",
  "frame-support",
  "frame-system",
  "parity-scale-codec",

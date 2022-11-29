@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{self as pallet_ajuna_matchmaker};
-use ajuna_common::Bracket;
+use crate::{self as pallet_ajuna_matchmaker, types::Bracket};
 use frame_support::parameter_types;
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;

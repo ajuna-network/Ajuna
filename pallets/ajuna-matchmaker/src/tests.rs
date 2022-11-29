@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{mock::*, MatchMaking};
-use ajuna_common::{Bracket, MatchMaker};
+use crate::{mock::*, types::*, MatchMaking};
 use frame_system::{EventRecord, Phase};
 
 fn queue_players_sorted(bracket: Bracket) -> Vec<u32> {
