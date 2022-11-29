@@ -108,8 +108,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           draft: true
+          generate_release_notes: true
+          append_body: true
+          body_path: ${{ matrix.runtime }}-info.txt
           files: |
-            target/${{ matrix.target }}/release/wbuild/${{ matrix.runtime}}-runtime/${{ matrix.runtime}}_runtime.compact.compressed.wasm
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
 
   release-docker:
     if: startsWith(github.ref, 'refs/tags/v')
