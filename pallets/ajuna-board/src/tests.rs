@@ -44,14 +44,14 @@ fn should_create_new_game() {
 		let board_id = 1;
 		// We can't start a board game without any players
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), board_id, BTreeSet::new()),
+			AjunaBoard::new_game(RuntimeOrigin::signed(ALICE), board_id, BTreeSet::new()),
 			Error::<Test>::NotEnoughPlayers
 		);
 
 		// We are limited to the number of players we can have
 		assert_noop!(
 			AjunaBoard::new_game(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				board_id,
 				BTreeSet::from([BOB, CHARLIE, ERIN])
 			),
@@ -60,18 +60,22 @@ fn should_create_new_game() {
 
 		// And trying to create a new game will fail
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), board_id, BTreeSet::from([BOB])),
+			AjunaBoard::new_game(RuntimeOrigin::signed(ALICE), board_id, BTreeSet::from([BOB])),
 			Error::<Test>::InvalidStateFromGame
 		);
 
 		// Create a new game with players; Alice, Bob and Charlie
 		assert_ok!(AjunaBoard::new_game(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			board_id,
 			BTreeSet::from([BOB, CHARLIE])
 		));
 		assert_noop!(
-			AjunaBoard::new_game(Origin::signed(ALICE), board_id, BTreeSet::from([BOB, CHARLIE])),
+			AjunaBoard::new_game(
+				RuntimeOrigin::signed(ALICE),
+				board_id,
+				BTreeSet::from([BOB, CHARLIE])
+			),
 			Error::<Test>::BoardExists
 		);
 
@@ -79,7 +83,7 @@ fn should_create_new_game() {
 		let new_board_id = board_id + 1;
 		assert_noop!(
 			AjunaBoard::new_game(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				new_board_id,
 				BTreeSet::from([BOB, CHARLIE])
 			),
@@ -101,7 +105,7 @@ fn should_create_new_game() {
 
 		assert_eq!(
 			last_event(),
-			mock::Event::AjunaBoard(crate::Event::GameCreated {
+			RuntimeEvent::AjunaBoard(crate::Event::GameCreated {
 				board_id,
 				players: vec![BOB, CHARLIE],
 			}),
@@ -110,11 +114,11 @@ fn should_create_new_game() {
 
 	new_test_ext().execute_with(|| {
 		assert_ok!(AjunaBoard::new_game(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BOARD_ID,
 			BTreeSet::from([BOB, CHARLIE])
 		));
-		System::assert_last_event(mock::Event::AjunaBoard(crate::Event::GameCreated {
+		System::assert_last_event(RuntimeEvent::AjunaBoard(crate::Event::GameCreated {
 			board_id: BOARD_ID,
 			players: vec![BOB, CHARLIE],
 		}));
@@ -135,7 +139,7 @@ fn should_create_new_game() {
 		];
 		for (players, board_id, expected_error) in tests_for_errors {
 			assert_noop!(
-				AjunaBoard::new_game(Origin::signed(ALICE), board_id, players),
+				AjunaBoard::new_game(RuntimeOrigin::signed(ALICE), board_id, players),
 				expected_error
 			);
 		}
@@ -146,13 +150,16 @@ fn should_create_new_game() {
 fn should_play_and_mutate_game_state() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(AjunaBoard::new_game(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BOARD_ID,
 			BTreeSet::from([BOB, CHARLIE])
 		));
 		let board_state_before = BoardStates::<Test>::get(BOARD_ID).unwrap();
 
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(CHARLIE), Turn::DropBomb(TEST_COORD)));
+		assert_ok!(AjunaBoard::play_turn(
+			RuntimeOrigin::signed(CHARLIE),
+			Turn::DropBomb(TEST_COORD)
+		));
 		let board_state_after = BoardStates::<Test>::get(BOARD_ID).unwrap();
 
 		assert_ne!(board_state_before.state.board, board_state_after.state.board);
@@ -166,19 +173,19 @@ fn should_play_turn_and_finish_game() {
 	new_test_ext().execute_with(|| {
 		Seed::<Test>::put(TEST_SEED);
 		assert_ok!(AjunaBoard::new_game(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BOARD_ID,
 			BTreeSet::from([BOB, ERIN])
 		));
 		assert_noop!(
-			AjunaBoard::play_turn(Origin::signed(ALICE), Turn::DropBomb(TEST_COORD)),
+			AjunaBoard::play_turn(RuntimeOrigin::signed(ALICE), Turn::DropBomb(TEST_COORD)),
 			Error::<Test>::NotPlaying
 		);
 
 		// Bomb phase
 		let play_drop_bomb = |coord: Coordinates| {
-			let _ = AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropBomb(coord));
-			let _ = AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropBomb(coord));
+			let _ = AjunaBoard::play_turn(RuntimeOrigin::signed(BOB), Turn::DropBomb(coord));
+			let _ = AjunaBoard::play_turn(RuntimeOrigin::signed(ERIN), Turn::DropBomb(coord));
 		};
 		play_drop_bomb(Coordinates::new(9, 9));
 		play_drop_bomb(Coordinates::new(8, 8));
@@ -188,8 +195,10 @@ fn should_play_turn_and_finish_game() {
 		let play_drop_stone = || {
 			let win_position = (Side::North, 0);
 			let lose_position = (Side::North, 9);
-			let _ = AjunaBoard::play_turn(Origin::signed(BOB), Turn::DropStone(win_position));
-			let _ = AjunaBoard::play_turn(Origin::signed(ERIN), Turn::DropStone(lose_position));
+			let _ =
+				AjunaBoard::play_turn(RuntimeOrigin::signed(BOB), Turn::DropStone(win_position));
+			let _ =
+				AjunaBoard::play_turn(RuntimeOrigin::signed(ERIN), Turn::DropStone(lose_position));
 		};
 		play_drop_stone();
 		play_drop_stone();
@@ -197,7 +206,7 @@ fn should_play_turn_and_finish_game() {
 		play_drop_stone();
 
 		// check if game has finished
-		System::assert_last_event(mock::Event::AjunaBoard(crate::Event::GameFinished {
+		System::assert_last_event(RuntimeEvent::AjunaBoard(crate::Event::GameFinished {
 			board_id: BOARD_ID,
 			winner: BOB,
 		}));
@@ -205,7 +214,7 @@ fn should_play_turn_and_finish_game() {
 		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
 
 		// finish game and check
-		assert_ok!(AjunaBoard::finish_game(Origin::signed(ALICE), BOARD_ID));
+		assert_ok!(AjunaBoard::finish_game(RuntimeOrigin::signed(ALICE), BOARD_ID));
 		assert!(BoardStates::<Test>::get(BOARD_ID).is_none());
 		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
 	})
@@ -215,26 +224,29 @@ fn should_play_turn_and_finish_game() {
 fn should_be_able_to_dispute_a_stale_board() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(AjunaBoard::new_game(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BOARD_ID,
 			BTreeSet::from([BOB, CHARLIE])
 		));
 
-		assert_ok!(AjunaBoard::play_turn(Origin::signed(CHARLIE), Turn::DropBomb(TEST_COORD)));
+		assert_ok!(AjunaBoard::play_turn(
+			RuntimeOrigin::signed(CHARLIE),
+			Turn::DropBomb(TEST_COORD)
+		));
 
 		// We shouldn't be able to dispute an active game
 		assert_noop!(
-			AjunaBoard::dispute_game(Origin::signed(ALICE), BOARD_ID),
+			AjunaBoard::dispute_game(RuntimeOrigin::signed(ALICE), BOARD_ID),
 			Error::<Test>::DisputeFailed
 		);
 
 		// Jump to the future when the game is now stale
 		System::set_block_number(IdleBoardTimeout::get() + 1);
 
-		assert_ok!(AjunaBoard::dispute_game(Origin::signed(ALICE), BOARD_ID));
+		assert_ok!(AjunaBoard::dispute_game(RuntimeOrigin::signed(ALICE), BOARD_ID));
 
 		// Some final checks that the dispute awarding the game actually awards and clears the game
-		System::assert_last_event(mock::Event::AjunaBoard(crate::Event::GameFinished {
+		System::assert_last_event(RuntimeEvent::AjunaBoard(crate::Event::GameFinished {
 			board_id: BOARD_ID,
 			winner: BOB,
 		}));
@@ -243,7 +255,7 @@ fn should_be_able_to_dispute_a_stale_board() {
 		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
 
 		// finish game and check
-		assert_ok!(AjunaBoard::finish_game(Origin::signed(ALICE), BOARD_ID));
+		assert_ok!(AjunaBoard::finish_game(RuntimeOrigin::signed(ALICE), BOARD_ID));
 		assert!(BoardStates::<Test>::get(BOARD_ID).is_none());
 		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
 	});

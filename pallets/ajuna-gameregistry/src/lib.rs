@@ -63,9 +63,11 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + From<Call<Self>>;
+		type Proposal: Parameter
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+			+ From<Call<Self>>;
 
 		type Scheduler: Named<Self::BlockNumber, Self::Proposal, Self::PalletsOrigin>;
 

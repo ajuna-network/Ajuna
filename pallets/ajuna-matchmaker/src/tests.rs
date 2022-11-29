@@ -49,7 +49,7 @@ fn enqueue_should_emit_events_correctly() {
 			System::events(),
 			vec![EventRecord {
 				phase: Phase::Initialization,
-				event: Event::Matchmaker(crate::Event::Queued(PLAYER_1)),
+				event: RuntimeEvent::Matchmaker(crate::Event::Queued(PLAYER_1)),
 				topics: vec![],
 			}]
 		);
@@ -110,7 +110,7 @@ fn try_match_should_emit_events_correctly() {
 			System::events(),
 			vec![EventRecord {
 				phase: Phase::Initialization,
-				event: Event::Matchmaker(crate::Event::Matched(vec![PLAYER_1, PLAYER_2])),
+				event: RuntimeEvent::Matchmaker(crate::Event::Matched(vec![PLAYER_1, PLAYER_2])),
 				topics: vec![],
 			}]
 		);
@@ -122,7 +122,7 @@ fn try_match_should_emit_events_correctly() {
 			System::events()[1..],
 			vec![EventRecord {
 				phase: Phase::Initialization,
-				event: Event::Matchmaker(crate::Event::Matched(vec![PLAYER_3, PLAYER_4])),
+				event: RuntimeEvent::Matchmaker(crate::Event::Matched(vec![PLAYER_3, PLAYER_4])),
 				topics: vec![],
 			}]
 		);

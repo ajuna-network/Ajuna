@@ -51,7 +51,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const SS58Prefix: u8 = 42;
 	pub BlockWeights: frame_system::limits::BlockWeights =
-		frame_system::limits::BlockWeights::simple_max(1_000_000);
+		frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1_000_000));
 }
 
 impl frame_system::Config for Test {
@@ -59,8 +59,8 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
@@ -68,7 +68,7 @@ impl frame_system::Config for Test {
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -83,21 +83,19 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
-	pub const NoPreimagePostponement: Option<u64> = Some(2);
 }
 
 impl pallet_scheduler::Config for Test {
-	type Event = Event;
-	type Origin = Origin;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<u64>;
 	type MaxScheduledPerBlock = ();
 	type WeightInfo = ();
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type PreimageProvider = ();
-	type NoPreimagePostponement = NoPreimagePostponement;
+	type Preimages = ();
 }
 
 pub type GameId = u32;
@@ -109,8 +107,8 @@ parameter_types! {
 }
 
 impl pallet_ajuna_gameregistry::Config for Test {
-	type Proposal = Call;
-	type Event = Event;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MatchMaker = MockMatchMaker;
@@ -125,7 +123,7 @@ impl pallet_ajuna_gameregistry::Config for Test {
 
 type EnsureSignedByAccount = EnsureSigned<<Test as frame_system::Config>::AccountId>;
 impl pallet_membership::Config for Test {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureSignedByAccount;
 	type RemoveOrigin = EnsureSignedByAccount;
 	type SwapOrigin = EnsureSignedByAccount;

@@ -38,7 +38,7 @@ fn players<Player: Decode + Ord>(how_many: u32) -> BTreeSet<Player> {
 	players
 }
 
-fn assert_last_event<T: Config>(event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(event: <T as Config>::RuntimeEvent) {
 	frame_system::Pallet::<T>::assert_last_event(event.into());
 }
 
@@ -63,8 +63,8 @@ fn create_and_play_until_win<T: Config>(board_id: T::BoardId, players: BTreeSet<
 	create_new_game::<T>(board_id, players.clone());
 
 	let mut players = players.into_iter();
-	let player_1: T::Origin = RawOrigin::Signed(players.next().unwrap()).into();
-	let player_2: T::Origin = RawOrigin::Signed(players.next().unwrap()).into();
+	let player_1: T::RuntimeOrigin = RawOrigin::Signed(players.next().unwrap()).into();
+	let player_2: T::RuntimeOrigin = RawOrigin::Signed(players.next().unwrap()).into();
 
 	let each_player_drops_bomb = |coord: Coordinates| {
 		let drop_bomb: T::PlayersTurn = Turn::DropBomb(coord).into();
