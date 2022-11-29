@@ -21,7 +21,6 @@ use codec::Codec;
 use frame_support::pallet_prelude::*;
 pub use pallet::*;
 use sp_std::collections::btree_set::BTreeSet;
-use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -34,7 +33,6 @@ mod tests;
 
 pub mod dot4gravity;
 pub mod guessing;
-pub mod weights;
 
 /// The state of the board game
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
@@ -91,7 +89,7 @@ pub mod pallet {
 		type IdleBoardTimeout: Get<BlockNumberFor<Self>>;
 
 		/// Weight information for extrinsics in this pallet.
-		type WeightInfo: WeightInfo;
+		type WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -163,7 +161,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Create a new game with a set of players.
 		/// Players are unique and would not yet be in an existing game
-		#[pallet::weight(T::WeightInfo::new_game())]
+		#[pallet::weight(12_345)]
 		pub fn new_game(
 			origin: OriginFor<T>,
 			board_id: T::BoardId,
@@ -233,7 +231,7 @@ pub mod pallet {
 		/// Play a turn in the game for signing player
 		/// If the turn produces a winner the state of the game will be removed and
 		/// `Event::GameFinished` would be deposited.
-		#[pallet::weight(T::WeightInfo::play_turn().max(T::WeightInfo::play_turn_until_finished()))]
+		#[pallet::weight(12_345)]
 		pub fn play_turn(origin: OriginFor<T>, turn: T::PlayersTurn) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let board_id = PlayerBoards::<T>::get(sender.clone()).ok_or(Error::<T>::NotPlaying)?;
@@ -261,7 +259,7 @@ pub mod pallet {
 		/// Finish a board game from the pallet
 		/// A board remains after finishing in BoardWinners.  Those players in that board are locked
 		/// until the game is finished
-		#[pallet::weight(T::WeightInfo::finish_game())]
+		#[pallet::weight(12_345)]
 		pub fn finish_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
 			// TODO if this is L2 do we really need to check the origin?
 			let _ = ensure_signed(origin)?;

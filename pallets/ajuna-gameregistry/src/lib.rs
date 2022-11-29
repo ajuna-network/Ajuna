@@ -21,7 +21,6 @@ use codec::{Decode, Encode};
 use frame_support::{sp_runtime::traits::Dispatchable, traits::schedule::Named, RuntimeDebug};
 pub use pallet::*;
 use sp_std::vec::Vec;
-use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -31,8 +30,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -96,7 +93,7 @@ pub mod pallet {
 		type MaxAcknowledgeBatch: Get<u32>;
 
 		/// Weight information for extrinsics in this pallet.
-		type WeightInfo: WeightInfo;
+		type WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -141,7 +138,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Queue sender for a game
 		/// We also use this as an opportunity to match a player and set off a runner for the game
-		#[pallet::weight(T::WeightInfo::queue())]
+		#[pallet::weight(12_345)]
 		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!Players::<T>::contains_key(who.clone()), Error::<T>::AlreadyPlaying);
@@ -172,7 +169,7 @@ pub mod pallet {
 		}
 
 		/// Drop game will remove the game from the registry
-		#[pallet::weight(T::WeightInfo::drop_game())]
+		#[pallet::weight(12_345)]
 		pub fn drop_game(origin: OriginFor<T>, game_id: T::GameId) -> DispatchResult {
 			let _who: T::AccountId = frame_system::ensure_signed(origin)?;
 			// Ensure this is signed by an observer
@@ -186,7 +183,7 @@ pub mod pallet {
 		}
 
 		/// Acknowledge a set of games
-		#[pallet::weight(T::WeightInfo::ack_game(game_ids.len() as u32))]
+		#[pallet::weight(12_345)]
 		pub fn ack_game(
 			origin: OriginFor<T>,
 			game_ids: Vec<T::GameId>,
@@ -231,7 +228,7 @@ pub mod pallet {
 		}
 
 		/// Finish game
-		#[pallet::weight(T::WeightInfo::finish_game())]
+		#[pallet::weight(12_345)]
 		pub fn finish_game(
 			origin: OriginFor<T>,
 			game_id: T::GameId,
