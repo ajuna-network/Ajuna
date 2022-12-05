@@ -1823,12 +1823,19 @@ mod account {
 				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
 
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 25);
+
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 50);
+
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 75);
+
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 100);
 			});
 	}
 

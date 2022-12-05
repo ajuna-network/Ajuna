@@ -29,10 +29,10 @@ impl Get<u32> for MaxAvatarsPerPlayer {
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
 pub enum StorageTier {
-	One = MAX_AVATARS_PER_PLAYER.saturating_div(4),
-	Two = MAX_AVATARS_PER_PLAYER.saturating_div(3),
-	Three = MAX_AVATARS_PER_PLAYER.saturating_div(2),
-	Four = MAX_AVATARS_PER_PLAYER.saturating_div(1),
+	One = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(1),
+	Two = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(2),
+	Three = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(3),
+	Four = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(4),
 }
 
 impl Default for StorageTier {
