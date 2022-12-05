@@ -20,27 +20,27 @@ frame-benchmarking = { default-features = false, git = "https://github.com/parit
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 frame-system = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-core = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32", optional = true }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32", optional = true }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 
-ajuna-common = { default-features = false, path = "../../ajuna-common" }
 pallet-ajuna-matchmaker = { default-features = false, path = "../ajuna-matchmaker" }
 
 [dev-dependencies]
 pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 
 [features]
 default = [ "std" ]
-runtime-benchmarks = [ "frame-benchmarking", "sp-core" ]
+runtime-benchmarks = [ "frame-benchmarking", "sp-core", "sp-runtime" ]
 std = [
-    "ajuna-common/std",
     "codec/std",
     "scale-info/std",
     "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
+    "sp-core/std",
+    "sp-runtime/std",
     "sp-std/std",
 ]
 try-runtime = [ "frame-support/try-runtime" ]

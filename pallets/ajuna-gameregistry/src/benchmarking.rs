@@ -16,10 +16,10 @@
 
 use super::*;
 use crate::Pallet as GameRegistry;
-use ajuna_common::{MatchMaker, Runner, RunnerState};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
+use pallet_ajuna_matchmaker::{MatchMaker, DEFAULT_BRACKET};
 use sp_core::H256;
 use sp_runtime::traits::TrailingZeroInput;
 use sp_std::vec;

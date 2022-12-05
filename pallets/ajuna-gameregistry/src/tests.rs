@@ -15,7 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{mock::*, *};
-use ajuna_common::{Runner, RunnerState};
 use core::default::Default;
 use frame_support::{assert_noop, assert_ok};
 
@@ -56,7 +55,7 @@ fn should_allow_game_to_be_acknowledged() {
 			vec![GLOBAL_IDENTIFIER],
 			Default::default()
 		));
-		assert_eq!(Registry::queued(), None);
+		assert_eq!(Registry::queued(), Some(vec![]));
 		let game = Game { players: vec![ALICE, BOB], tee_id: Some(TEE_ID), winner: None };
 		assert_eq!(
 			Some(RunnerState::Accepted(game.encode().into())),

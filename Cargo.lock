@@ -5127,7 +5127,6 @@ dependencies = [
 name = "pallet-ajuna-gameregistry"
 version = "0.1.0"
 dependencies = [
- "ajuna-common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

@@ -16,11 +16,22 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ajuna_common::DEFAULT_BRACKET;
-use codec::{Decode, Encode};
-use frame_support::{sp_runtime::traits::Dispatchable, traits::schedule::Named, RuntimeDebug};
 pub use pallet::*;
+
+use codec::{Decode, Encode, Input};
+use frame_support::{
+	dispatch::DispatchResult,
+	pallet_prelude::{Member, *},
+	sp_runtime::traits::{AtLeast32BitUnsigned, Dispatchable},
+	traits::{schedule::Named, Contains},
+	Parameter, RuntimeDebug,
+};
+use frame_system::pallet_prelude::*;
+use pallet_ajuna_matchmaker::{MatchMaker, DEFAULT_BRACKET, DEFAULT_PLAYERS};
 use sp_std::vec::Vec;
+
+mod types;
+use types::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -34,29 +45,6 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use ajuna_common::{
-		GetIdentifier, Identifier, MatchMaker, Runner, RunnerState, DEFAULT_PLAYERS,
-	};
-	use frame_support::{
-		dispatch::DispatchResult,
-		pallet_prelude::{Member, *},
-		traits::Contains,
-		Parameter,
-	};
-	use frame_system::pallet_prelude::*;
-
-	#[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug)]
-	pub struct Game<AccountId> {
-		pub tee_id: Option<AccountId>,
-		pub players: Vec<AccountId>,
-		pub winner: Option<AccountId>,
-	}
-
-	impl<AccountId> Game<AccountId> {
-		pub fn new(players: Vec<AccountId>) -> Self {
-			Game { tee_id: None, winner: None, players }
-		}
-	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

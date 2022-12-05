@@ -16,29 +16,32 @@
 
 use super::*;
 use crate as pallet_ajuna_gameregistry;
-
 use frame_support::{
 	construct_runtime, parameter_types, traits::EqualPrivilegeOnly, weights::Weight, BoundedVec,
 };
-
 use frame_system::{EnsureRoot, EnsureSigned};
+use pallet_ajuna_matchmaker::{Bracket, MatchMaker};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, Perbill,
 };
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+use sp_std::cell::RefCell;
 
 pub const TEE_ID: u64 = 7;
+pub const GLOBAL_IDENTIFIER: u32 = 1;
+pub const UNKNOWN_IDENTIFIER: &str = "Unknown identifier";
+
+pub type GameId = u32;
+type MockPlayer = u64;
 
 // Configure a mock runtime to test the pallet.
 construct_runtime!(
 	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+		Block = frame_system::mocking::MockBlock<Test>,
+		NodeBlock = frame_system::mocking::MockBlock<Test>,
+		UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
@@ -98,9 +101,104 @@ impl pallet_scheduler::Config for Test {
 	type Preimages = ();
 }
 
-pub type GameId = u32;
-ajuna_common::impl_mock_matchmaker!(u64);
-ajuna_common::impl_mock_runner!(GameId);
+thread_local! {
+	pub static PLAYERS: RefCell<Vec<MockPlayer>> = Default::default();
+}
+pub struct MockMatchMaker;
+impl MatchMaker for MockMatchMaker {
+	type Player = MockPlayer;
+
+	fn enqueue(account_id: Self::Player, _bracket: Bracket) -> bool {
+		if !Self::is_queued(&account_id) {
+			PLAYERS.with(|cell| cell.borrow_mut().push(account_id));
+			return true
+		}
+		false
+	}
+
+	fn clear_queue(_bracket: Bracket) {
+		PLAYERS.with(|cell| cell.borrow_mut().clear());
+	}
+
+	fn is_queued(account_id: &Self::Player) -> bool {
+		PLAYERS.with(|cell| cell.borrow().iter().any(|player| player == account_id))
+	}
+
+	fn queued_players(_bracket: Bracket) -> Vec<Self::Player> {
+		PLAYERS.with(|cell| cell.borrow().clone())
+	}
+
+	fn try_match(_bracket: Bracket, number_required: u8) -> Option<Vec<Self::Player>> {
+		let len = PLAYERS.with(|cell| cell.borrow().len());
+		if len < number_required as usize {
+			return None
+		}
+
+		PLAYERS.with(|cell| {
+			Some(cell.borrow_mut().iter().take(number_required as usize).cloned().collect())
+		})
+	}
+}
+
+pub struct MockGetIdentifier;
+impl GetIdentifier<u32> for MockGetIdentifier {
+	fn get_identifier() -> u32 {
+		GLOBAL_IDENTIFIER
+	}
+}
+
+pub struct MockRunner;
+thread_local! {
+	pub static STATE: RefCell<Option<RunnerState>> = RefCell::new(None);
+}
+
+impl Runner for MockRunner {
+	type RunnerId = u32;
+
+	fn create<G: GetIdentifier<Self::RunnerId>>(initial_state: State) -> Option<Self::RunnerId> {
+		STATE.with(|cell| *cell.borrow_mut() = Some(RunnerState::Queued(initial_state)));
+		G::get_identifier().into()
+	}
+
+	fn accept(identifier: &Self::RunnerId, new_state: Option<State>) -> DispatchResult {
+		if identifier == &GLOBAL_IDENTIFIER {
+			STATE.with(|cell| {
+				*cell.borrow_mut() = Some(RunnerState::Accepted(new_state.expect("some state")))
+			});
+			Ok(())
+		} else {
+			DispatchError::Other(UNKNOWN_IDENTIFIER).into()
+		}
+	}
+
+	fn finished(identifier: &Self::RunnerId, final_state: Option<State>) -> DispatchResult {
+		if identifier == &GLOBAL_IDENTIFIER {
+			STATE.with(|cell| {
+				*cell.borrow_mut() = Some(RunnerState::Finished(final_state.expect("some state")))
+			});
+			Ok(())
+		} else {
+			DispatchError::Other(UNKNOWN_IDENTIFIER).into()
+		}
+	}
+
+	fn remove(identifier: &Self::RunnerId) -> DispatchResult {
+		if identifier == &GLOBAL_IDENTIFIER {
+			STATE.with(|cell| *cell.borrow_mut() = None);
+			Ok(())
+		} else {
+			DispatchError::Other(UNKNOWN_IDENTIFIER).into()
+		}
+	}
+
+	fn get_state(identifier: &Self::RunnerId) -> Option<RunnerState> {
+		if identifier == &GLOBAL_IDENTIFIER {
+			STATE.with(|cell| (*cell.borrow()).clone())
+		} else {
+			None
+		}
+	}
+}
 
 parameter_types! {
 	pub MaxAcknowledgeBatch : u32 = 2;
