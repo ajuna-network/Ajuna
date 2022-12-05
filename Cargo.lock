@@ -119,16 +119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ajuna-common"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "scale-info",
- "sp-std",
-]
-
-[[package]]
 name = "ajuna-node"
 version = "0.1.7"
 dependencies = [
