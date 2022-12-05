@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use ajuna_common::{Finished, TurnBasedGame};
+use crate::{Finished, TurnBasedGame};
 use dot4gravity::Game as Dot4Gravity;
 pub use dot4gravity::{Coordinates, GameState, Side};
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, Parameter};
 use sp_std::borrow::ToOwned;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]

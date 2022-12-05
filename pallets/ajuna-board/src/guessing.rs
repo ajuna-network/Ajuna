@@ -3,8 +3,7 @@
 // It's a guessing game where a player has to guess the right number
 // Initial state will have this number
 
-use crate::{self as pallet_ajuna_board};
-use ajuna_common::TurnBasedGame;
+use crate::{self as pallet_ajuna_board, TurnBasedGame};
 use codec::{Decode, Encode};
 use frame_support::{pallet_prelude::MaxEncodedLen, RuntimeDebugNoBound};
 use scale_info::TypeInfo;

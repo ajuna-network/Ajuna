@@ -16,11 +16,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ajuna_common::{Finished, TurnBasedGame};
-use codec::Codec;
-use frame_support::pallet_prelude::*;
+use codec::{Codec, Decode, Encode};
+use frame_support::{log, pallet_prelude::*};
+use frame_system::{ensure_signed, pallet_prelude::*};
 pub use pallet::*;
-use sp_std::collections::btree_set::BTreeSet;
+use sp_runtime::traits::{AtLeast32BitUnsigned, BlockNumberProvider, Saturating};
+use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -33,36 +34,12 @@ mod tests;
 
 pub mod dot4gravity;
 pub mod guessing;
-
-/// The state of the board game
-#[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct BoardGame<BoardId, State, Players, Start> {
-	board_id: BoardId,
-	/// Players in the game
-	players: Players,
-	/// The current state of the game
-	pub state: State,
-	/// When the game started
-	pub started: Start,
-}
-
-impl<BoardId, State, Players, Start> BoardGame<BoardId, State, Players, Start> {
-	/// Create a BoardGame
-	fn new(board_id: BoardId, players: Players, state: State, started: Start) -> Self {
-		Self { board_id, players, state, started }
-	}
-}
+mod types;
+use types::*;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::log;
-	use frame_system::{
-		ensure_signed,
-		pallet_prelude::{BlockNumberFor, OriginFor},
-	};
-	use sp_runtime::traits::{AtLeast32BitUnsigned, BlockNumberProvider, Saturating};
-	use sp_std::vec::Vec;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

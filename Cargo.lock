@@ -5109,7 +5109,6 @@ dependencies = [
 name = "pallet-ajuna-board"
 version = "0.1.0"
 dependencies = [
- "ajuna-common",
  "dot4gravity",
  "frame-benchmarking",
  "frame-support",
