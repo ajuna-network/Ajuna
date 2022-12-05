@@ -84,3 +84,111 @@ where
 		Some(state.seed)
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	const THE_NUMBER: Guess = 42;
+	const MAX_PLAYERS: usize = 2;
+	const PLAYER_1: u32 = 1;
+	const PLAYER_2: u32 = 2;
+
+	type Guess = u32;
+	type Account = u32;
+
+	struct MockGame;
+
+	#[derive(Encode, Decode, Copy, Clone)]
+	struct MockGameState {
+		pub players: [Account; MAX_PLAYERS],
+		pub next_player: u8,
+		pub solution: Guess,
+		pub winner: Option<Account>,
+	}
+
+	impl TurnBasedGame for MockGame {
+		type Turn = Guess;
+		type Player = Account;
+		type State = MockGameState;
+
+		fn init(players: &[Self::Player], _seed: Option<u32>) -> Option<Self::State> {
+			match players.to_vec().try_into() {
+				Ok(players) => Some(MockGameState {
+					players,
+					next_player: 0,
+					solution: THE_NUMBER,
+					winner: None,
+				}),
+				_ => None,
+			}
+		}
+
+		fn get_last_player(state: &Self::State) -> Self::Player {
+			let next_player_index = (state.next_player as usize + 1) % state.players.len();
+			state.players[next_player_index]
+		}
+
+		fn get_next_player(state: &Self::State) -> Self::Player {
+			state.players[state.next_player as usize]
+		}
+
+		fn play_turn(
+			player: Self::Player,
+			state: Self::State,
+			turn: Self::Turn,
+		) -> Option<Self::State> {
+			if state.winner.is_some() ||
+				!state.players.contains(&player) ||
+				state.players[state.next_player as usize] != player
+			{
+				return None
+			}
+
+			let mut state = state;
+			state.next_player = (state.next_player + 1) % state.players.len() as u8;
+
+			if state.solution == turn {
+				state.winner = Some(player);
+			}
+
+			Some(state)
+		}
+
+		fn abort(state: Self::State, winner: Self::Player) -> Self::State {
+			let mut state = state;
+			state.winner = Some(winner);
+			state
+		}
+
+		fn is_finished(state: &Self::State) -> Finished<Self::Player> {
+			let winner = &state.winner;
+			match winner {
+				None => Finished::No,
+				Some(winner) => Finished::Winner(*winner),
+			}
+		}
+
+		fn seed(_state: &Self::State) -> Option<u32> {
+			None
+		}
+	}
+
+	#[test]
+	fn guessing_works() {
+		let state = MockGame::init(&[PLAYER_1, PLAYER_2], None).unwrap();
+		assert_eq!(MockGame::get_next_player(&state), PLAYER_1);
+
+		let state = MockGame::play_turn(PLAYER_1, state, 1).unwrap();
+		assert_eq!(MockGame::get_last_player(&state), PLAYER_1);
+		assert_eq!(MockGame::get_next_player(&state), PLAYER_2);
+
+		let state = MockGame::play_turn(PLAYER_2, state, THE_NUMBER).unwrap();
+		assert_eq!(MockGame::is_finished(&state), Finished::Winner(PLAYER_2));
+
+		// new game
+		let state = MockGame::init(&[PLAYER_1, PLAYER_2], None).unwrap();
+		let state = MockGame::abort(state, PLAYER_1);
+		assert_eq!(MockGame::is_finished(&state), Finished::Winner(PLAYER_1));
+	}
+}

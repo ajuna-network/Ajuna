@@ -35,6 +35,7 @@ impl<BoardId, State, Players, Start> BoardGame<BoardId, State, Players, Start> {
 	}
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Finished<Player> {
 	No,
 	Winner(Player),

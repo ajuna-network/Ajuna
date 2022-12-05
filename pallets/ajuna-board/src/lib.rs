@@ -33,7 +33,6 @@ mod mock;
 mod tests;
 
 pub mod dot4gravity;
-pub mod guessing;
 mod types;
 use types::*;
 
