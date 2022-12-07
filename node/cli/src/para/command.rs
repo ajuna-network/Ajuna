@@ -18,12 +18,12 @@ use crate::para::cli::{Cli, RelayChainCli, Subcommand};
 #[cfg(feature = "ajuna")]
 use ajuna_service::{
 	ajuna_runtime::{self, Block as AjunaBlock, RuntimeApi as AjunaRuntimeApi},
-	para::ajuna::{self, AjunaRuntimeExecutor},
+	para::AjunaRuntimeExecutor,
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
 	bajun_runtime::{self, Block as BajunBlock, RuntimeApi as BajunRuntimeApi},
-	para::bajun::{self, BajunRuntimeExecutor},
+	para::BajunRuntimeExecutor,
 };
 use ajuna_service::{chain_spec, para as service};
 use codec::Encode;
@@ -162,13 +162,13 @@ macro_rules! construct_async_run {
 			#[cfg(feature = "bajun")]
             let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
-                bajun::parachain_build_import_queue,
+                service::build_import_queue::<BajunRuntimeApi, BajunRuntimeExecutor>,
             )?;
 
 			#[cfg(feature = "ajuna")]
             let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
                 &$config,
-                ajuna::parachain_build_import_queue,
+                service::build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>,
             )?;
 
             let task_manager = $components.task_manager;
@@ -184,13 +184,13 @@ macro_rules! construct_sync_run {
 			#[cfg(feature = "bajun")]
             let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
                 &$config,
-                bajun::parachain_build_import_queue,
+                service::build_import_queue::<BajunRuntimeApi,BajunRuntimeExecutor>,
             )?;
 
 			#[cfg(feature = "ajuna")]
             let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
                 &$config,
-                ajuna::parachain_build_import_queue,
+                service::build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>,
             )?;
 
             { $( $code )* }
@@ -386,7 +386,7 @@ pub fn run() -> Result<()> {
 				match &config.chain_spec {
 					#[cfg(feature = "ajuna")]
 					spec if spec.id().starts_with("ajuna") =>
-						return ajuna::start_parachain_node(
+						return service::start_parachain_node::<AjunaRuntimeApi, AjunaRuntimeExecutor>(
 							config,
 							polkadot_config,
 							collator_options,
@@ -398,7 +398,7 @@ pub fn run() -> Result<()> {
 						.map_err(Into::into),
 					#[cfg(feature = "bajun")]
 					spec if spec.id().starts_with("bajun") =>
-						return bajun::start_parachain_node(
+						return service::start_parachain_node::<BajunRuntimeApi, BajunRuntimeExecutor>(
 							config,
 							polkadot_config,
 							collator_options,
