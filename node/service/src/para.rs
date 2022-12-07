@@ -50,6 +50,7 @@ type ParachainBlockImport<RuntimeApi, Executor> =
 	TParachainBlockImport<Arc<ParachainClient<RuntimeApi, Executor>>>;
 
 pub struct BajunRuntimeExecutor;
+#[cfg(feature = "bajun")]
 impl sc_executor::NativeExecutionDispatch for BajunRuntimeExecutor {
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
 
@@ -63,6 +64,7 @@ impl sc_executor::NativeExecutionDispatch for BajunRuntimeExecutor {
 }
 
 pub struct AjunaRuntimeExecutor;
+#[cfg(feature = "ajuna")]
 impl sc_executor::NativeExecutionDispatch for AjunaRuntimeExecutor {
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
 
