@@ -14,23 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::para::{ParachainBlockImport, ParachainClient};
 use std::sync::Arc;
 
-// rpc
-use jsonrpsee::RpcModule;
-
-use cumulus_client_cli::CollatorOptions;
-// Local Runtime Types
 use ajuna_primitives::Block;
 use bajun_runtime::RuntimeApi;
 
-// Cumulus Imports
+use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_primitives_core::ParaId;
-
-// Substrate Imports
-use sc_executor::NativeElseWasmExecutor;
-use sc_service::{Configuration, TFullClient, TaskManager};
+use sc_service::{Configuration, TaskManager};
 use sc_telemetry::TelemetryHandle;
 
 pub struct BajunRuntimeExecutor;
@@ -48,15 +41,13 @@ impl sc_executor::NativeExecutionDispatch for BajunRuntimeExecutor {
 
 /// Build the import queue for the parachain runtime.
 pub fn parachain_build_import_queue(
-	client: Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<BajunRuntimeExecutor>>>,
+	client: Arc<ParachainClient<RuntimeApi, BajunRuntimeExecutor>>,
+	block_import: ParachainBlockImport<RuntimeApi, BajunRuntimeExecutor>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<BajunRuntimeExecutor>>,
-	>,
+	sc_consensus::DefaultImportQueue<Block, ParachainClient<RuntimeApi, BajunRuntimeExecutor>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -69,7 +60,7 @@ pub fn parachain_build_import_queue(
 		_,
 		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import: client.clone(),
+		block_import,
 		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
@@ -96,18 +87,16 @@ pub async fn start_parachain_node(
 	collator_options: CollatorOptions,
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<BajunRuntimeExecutor>>>,
-)> {
-	crate::para::start_node_impl::<RuntimeApi, BajunRuntimeExecutor, _, _, _>(
+) -> sc_service::error::Result<(TaskManager, Arc<ParachainClient<RuntimeApi, BajunRuntimeExecutor>>)>
+{
+	crate::para::start_node_impl::<RuntimeApi, BajunRuntimeExecutor, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|_| Ok(RpcModule::new(())),
 		parachain_build_import_queue,
 		|client,
+		 block_import,
 		 prometheus_registry,
 		 telemetry,
 		 task_manager,
@@ -155,7 +144,7 @@ pub async fn start_parachain_node(
 							Ok((slot, timestamp, parachain_inherent))
 						}
 					},
-					block_import: client.clone(),
+					block_import,
 					para_client: client,
 					backoff_authoring_blocks: Option::<()>::None,
 					sync_oracle,
