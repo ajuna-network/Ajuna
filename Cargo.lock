@@ -141,6 +141,8 @@ dependencies = [
  "ajuna-primitives",
  "jsonrpsee",
  "pallet-transaction-payment-rpc",
+ "sc-client-api",
+ "sc-rpc",
  "sc-rpc-api",
  "sc-transaction-pool-api",
  "sp-api",

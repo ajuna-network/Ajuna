@@ -12,6 +12,8 @@ ajuna-primitives = { path = "../primitives" }
 jsonrpsee = { version = "0.15.1", features = ["server"] }
 
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sc-client-api                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sc-rpc                         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-rpc-api                     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-transaction-pool-api        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sp-api                         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
