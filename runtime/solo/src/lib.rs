@@ -25,7 +25,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use codec::Encode;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::KeyOwnerProofSystem,
+	traits::{AsEnsureOriginWithArg, KeyOwnerProofSystem},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_PER_SECOND},
 		IdentityFee, Weight,
@@ -251,6 +251,7 @@ impl pallet_assets::Config for Runtime {
 	type Balance = Balance;
 	type AssetId = AssetId;
 	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type AssetDeposit = AssetDeposit;
 	type AssetAccountDeposit = AssetAccountDeposit;
