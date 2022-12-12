@@ -38,22 +38,27 @@ impl Avatar {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes::<T>()?;
-		Ok(others.iter().fold(
+		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0),
 			|(mut matched_components, mut matches), other| {
-				let (is_match, matching_components) =
-					self.compare(other, &upgradable_indexes, max_variations, max_tier);
+				let sacrifice_tier = other.min_tier::<T>()?;
+				let leader_tier = self.min_tier::<T>()?;
 
-				if is_match {
-					matches += 1;
-					matched_components.extend(matching_components.iter());
+				if sacrifice_tier >= leader_tier {
+					let (is_match, matching_components) =
+						self.compare(other, &upgradable_indexes, max_variations, max_tier);
+
+					if is_match {
+						matches += 1;
+						matched_components.extend(matching_components.iter());
+					}
+
+					// TODO: is u32 enough?
+					self.souls.saturating_accrue(other.souls);
 				}
-
-				// TODO: is u32 enough?
-				self.souls.saturating_accrue(other.souls);
-				(matched_components, matches)
+				Ok((matched_components, matches))
 			},
-		))
+		)
 	}
 
 	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
