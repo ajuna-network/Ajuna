@@ -1,0 +1,39 @@
+[package]
+authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
+description = "Ajuna Network pallet used to handle the transformation of Game Assets into an NFT-ready format"
+edition     = "2021"
+homepage    = "https://ajuna.io"
+name        = "pallet-ajuna-nft-transfer"
+repository  = "https://github.com/ajuna-network/Ajuna"
+version     = "0.0.1"
+
+[package.metadata.docs.rs]
+targets = [ "x86_64-unknown-linux-gnu" ]
+
+[dependencies]
+codec        = { default-features = false, features = [ "derive", "max-encoded-len" ], package = "parity-scale-codec", version = "3.0.0" }
+scale-info   = { default-features = false, features = [ "derive" ], version = "2.1.1" }
+
+frame-support      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+frame-system       = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-runtime         = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-std             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-io              = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+
+[dev-dependencies]
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+pallet-uniques  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+
+[features]
+default = ["std"]
+runtime-benchmarks = [ "pallet-uniques/runtime-benchmarks" ]
+std = [
+	"codec/std",
+	"scale-info/std",
+	"frame-support/std",
+	"frame-system/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"sp-io/std",
+]
+try-runtime = ["frame-support/try-runtime"]

@@ -11,5 +11,6 @@ members = [
     "runtime/bajun",
     "runtime/ajuna",
     "pallets/ajuna-awesome-avatars",
+    "pallets/nft-transfer",
     "primitives",
 ]
