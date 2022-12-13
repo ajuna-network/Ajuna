@@ -5113,25 +5113,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ajuna-gameregistry"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "pallet-ajuna-matchmaker",
- "pallet-membership",
- "pallet-scheduler",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-ajuna-matchmaker"
 version = "0.1.0"
 dependencies = [
