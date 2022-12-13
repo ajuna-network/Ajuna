@@ -1167,6 +1167,67 @@ mod forging {
 	}
 
 	#[test]
+	fn forge_should_ignore_low_tier_sacrifices() {
+		let tiers = vec![RarityTier::Common, RarityTier::Rare, RarityTier::Legendary];
+		let season = Season::default()
+			.tiers(tiers.clone())
+			.single_mint_probs(vec![100, 0])
+			.batch_mint_probs(vec![100, 0])
+			.max_tier_forges(1)
+			.max_components(4)
+			.max_variations(6)
+			.min_sacrifices(1)
+			.max_sacrifices(4);
+
+		ExtBuilder::default()
+			.seasons(vec![(1, season.clone())])
+			.mint_cooldown(0)
+			.free_mints(vec![(ALICE, MintCount::MAX)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(ALICE),
+					MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
+				));
+				let leader_id = AAvatars::owners(ALICE)[0];
+				assert_eq!(
+					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
+					vec![0x04, 0x03, 0x05, 0x01]
+				);
+				assert_eq!(
+					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
+					Ok(tiers[0].clone() as u8),
+				);
+
+				// mutate the DNA of leader to make it a tier higher
+				let mut leader_avatar = AAvatars::avatars(leader_id).unwrap();
+				leader_avatar.1.dna = leader_avatar
+					.1
+					.dna
+					.iter()
+					.map(|x| ((tiers[1].clone() as u8) << 4) | (x & 0b0000_1111))
+					.collect::<Vec<_>>()
+					.try_into()
+					.unwrap();
+				Avatars::<Test>::insert(leader_id, &leader_avatar);
+				assert_eq!(
+					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
+					Ok(tiers[1].clone() as u8),
+				);
+
+				// forging doesn't take effect
+				let sacrifice_ids = &AAvatars::owners(ALICE)[1..5];
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(ALICE),
+					leader_id,
+					sacrifice_ids.to_vec()
+				));
+				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna, leader_avatar.1.dna);
+			});
+	}
+
+	#[test]
 	fn forge_should_reject_when_forging_is_closed() {
 		let season = Season::default().min_sacrifices(0);
 
