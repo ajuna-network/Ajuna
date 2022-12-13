@@ -34,7 +34,7 @@ pub struct BracketRange {
 }
 
 /// A matchmaker trait which groups players as accounts in brackets
-pub trait MatchMaker {
+pub trait Matchmaker {
 	/// The identifier for player
 	type Player;
 
@@ -56,8 +56,8 @@ pub trait MatchMaker {
 	fn try_match(bracket: Bracket, number_required: u8) -> Option<Vec<Self::Player>>;
 }
 
-pub struct MatchMaking<T>(PhantomData<T>);
-impl<T: Config> MatchMaker for MatchMaking<T> {
+pub struct Matchmaking<T>(PhantomData<T>);
+impl<T: Config> Matchmaker for Matchmaking<T> {
 	type Player = T::AccountId;
 
 	fn enqueue(account_id: Self::Player, bracket: Bracket) -> bool {

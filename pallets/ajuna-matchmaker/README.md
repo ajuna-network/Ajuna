@@ -11,7 +11,7 @@ This pallet acts by matching an arbitrary number of players to play each other. 
 
 ### Traits
 
-This pallet implements the `MatchMaker` trait
+This pallet implements the `Matchmaker` trait
 
 ### Pallets
 
@@ -49,7 +49,7 @@ impl pallet_matchmaker::Config for Test {
 and include it in your `construct_runtime!` macro:
 
 ```rust
-MatchMaker: pallet_ajuna_matchmaker::{Pallet, Storage, Event<T>},
+Matchmaker: pallet_ajuna_matchmaker::{Pallet, Storage, Event<T>},
 ```
 
 ### Genesis Configuration
