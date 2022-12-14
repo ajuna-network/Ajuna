@@ -1,11 +1,11 @@
 [package]
 authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
-description = "Ajuna Network pallet board pallet"
+description = "Ajuna Network pallet used to handle the transformation of Game Assets into an NFT-ready format"
 edition     = "2021"
 homepage    = "https://ajuna.io"
-name        = "pallet-ajuna-awesome-avatars"
+name        = "pallet-ajuna-nft-transfer"
 repository  = "https://github.com/ajuna-network/Ajuna"
-version     = "0.1.7"
+version     = "0.0.1"
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
@@ -14,7 +14,6 @@ targets = [ "x86_64-unknown-linux-gnu" ]
 codec        = { default-features = false, features = [ "derive", "max-encoded-len" ], package = "parity-scale-codec", version = "3.0.0" }
 scale-info   = { default-features = false, features = [ "derive" ], version = "2.1.1" }
 
-frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", optional = true }
 frame-support      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 frame-system       = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sp-runtime         = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
@@ -22,21 +21,19 @@ sp-std             = { default-features = false, git = "https://github.com/parit
 sp-io              = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 
 [dev-dependencies]
-pallet-balances                   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
-pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
-sp-core                           = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+pallet-uniques  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 
 [features]
-default = [ "std" ]
-runtime-benchmarks = [ "frame-benchmarking" ]
+default = ["std"]
+runtime-benchmarks = [ "pallet-uniques/runtime-benchmarks" ]
 std = [
-    "codec/std",
-    "scale-info/std",
-    "frame-benchmarking/std",
-    "frame-support/std",
-    "frame-system/std",
-    "sp-runtime/std",
-    "sp-std/std",
-    "sp-io/std",
+	"codec/std",
+	"scale-info/std",
+	"frame-support/std",
+	"frame-system/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"sp-io/std",
 ]
-try-runtime = [ "frame-support/try-runtime" ]
+try-runtime = ["frame-support/try-runtime"]
