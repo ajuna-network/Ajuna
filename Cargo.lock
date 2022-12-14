@@ -5083,21 +5083,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ajuna-nft-transfer"
-version = "0.0.1"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-balances",
- "pallet-uniques",
- "parity-scale-codec",
- "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-ajuna-board"
 version = "0.1.0"
 dependencies = [
@@ -5123,6 +5108,21 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ajuna-nft-transfer"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-uniques",
+ "parity-scale-codec",
+ "scale-info",
  "sp-io",
  "sp-runtime",
  "sp-std",
