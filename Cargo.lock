@@ -5103,7 +5103,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
+ "pallet-ajuna-matchmaker",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

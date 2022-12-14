@@ -33,8 +33,9 @@ frame_support::construct_runtime!(
 		NodeBlock = MockBlock<Test>,
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AjunaBoard: pallet_ajuna_board::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		AjunaMatchmaker: pallet_ajuna_matchmaker,
+		AjunaBoard: pallet_ajuna_board,
 	}
 );
 
@@ -70,35 +71,28 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_ajuna_matchmaker::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+}
+
 parameter_types! {
-	pub const MaxNumberOfPlayers: u8 = 2;
-	pub const IdleBoardTimeout: u64 = 10;
+	pub const Players: u8 = 2;
 }
 
 impl pallet_ajuna_board::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type Matchmaker = pallet_ajuna_matchmaker::Matchmaking<Self>;
 	type BoardId = u32;
 	type PlayersTurn = crate::dot4gravity::Turn;
 	type GameState = crate::dot4gravity::GameState<MockAccountId>;
 	type Game = crate::dot4gravity::Game<MockAccountId>;
-	type MaxNumberOfPlayers = MaxNumberOfPlayers;
-	type IdleBoardTimeout = IdleBoardTimeout;
-	type WeightInfo = ();
+	type Players = Players;
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let config = GenesisConfig { system: Default::default() };
-
 	let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
-
-	ext.execute_with(|| {
-		System::set_block_number(1);
-	});
-
+	ext.execute_with(|| System::set_block_number(1));
 	ext
-}
-
-pub fn last_event() -> RuntimeEvent {
-	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
 }

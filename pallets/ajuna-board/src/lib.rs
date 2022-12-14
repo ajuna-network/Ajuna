@@ -17,11 +17,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Codec, Decode, Encode};
-use frame_support::{log, pallet_prelude::*};
+use frame_support::pallet_prelude::*;
 use frame_system::{ensure_signed, pallet_prelude::*};
 pub use pallet::*;
+use pallet_ajuna_matchmaker::{Matchmaker, DEFAULT_BRACKET};
 use sp_runtime::traits::{AtLeast32BitUnsigned, BlockNumberProvider, Saturating};
-use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+use sp_std::vec::Vec;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -43,6 +44,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type Matchmaker: Matchmaker<Player = Self::AccountId>;
 		/// Board id
 		type BoardId: Copy + Default + AtLeast32BitUnsigned + Parameter + MaxEncodedLen;
 		/// A Turn for the game
@@ -55,17 +57,9 @@ pub mod pallet {
 			Turn = Self::PlayersTurn,
 			State = Self::GameState,
 		>;
-		// TODO: consider adding MinNumberOfPlayers to return before Game::init fails
-		/// Maximum number of players
+		/// Number of players required for a game.
 		#[pallet::constant]
-		type MaxNumberOfPlayers: Get<u32>;
-
-		/// Timeout in blocks we allow a game to be idle
-		#[pallet::constant]
-		type IdleBoardTimeout: Get<BlockNumberFor<Self>>;
-
-		/// Weight information for extrinsics in this pallet.
-		type WeightInfo;
+		type Players: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -76,54 +70,35 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Game has been created
-		GameCreated { board_id: T::BoardId, players: Vec<T::AccountId> },
+		GameCreated {
+			board_id: T::BoardId,
+			players: Vec<T::AccountId>,
+		},
 		/// Game has finished with the winner
-		GameFinished { board_id: T::BoardId, winner: T::AccountId },
+		GameFinished {
+			board_id: T::BoardId,
+			winner: T::AccountId,
+		},
+
+		NoMatchFound,
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Not enough players for the game
-		NotEnoughPlayers,
-		/// Duplicate player found
-		DuplicatePlayer,
-		/// Too many players
-		TooManyPlayers,
-		/// Invalid state from game
-		InvalidStateFromGame,
-		/// Player not playing
-		NotPlaying,
-		/// Invalid turn played
+		InvalidGameState,
 		InvalidTurn,
-		/// Invalid board
-		InvalidBoard,
-		/// Player already in game
-		PlayerAlreadyInGame,
-		/// Board already exists
-		BoardExists,
-		/// A dispute failed
-		DisputeFailed,
+		InvalidPlayers,
+		NotPlaying,
+		AlreadyInGame,
+		AlreadyQueued,
+		UnknownBoard,
 	}
 
-	type BoundedPlayersOf<T> =
-		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::MaxNumberOfPlayers>;
-
-	pub(crate) type BoardGameOf<T> = BoardGame<
-		<T as Config>::BoardId,
-		<T as Config>::GameState,
-		BoundedPlayersOf<T>,
-		BlockNumberFor<T>,
-	>;
-
-	type PlayersOf<T> = BTreeSet<<T as frame_system::Config>::AccountId>;
-
-	/// Board states by board id
 	#[pallet::storage]
-	pub type BoardStates<T: Config> = StorageMap<_, Identity, T::BoardId, BoardGameOf<T>>;
+	pub type NextBoardId<T: Config> = StorageValue<_, T::BoardId, ValueQuery>;
 
-	/// The board winners by board id
 	#[pallet::storage]
-	pub type BoardWinners<T: Config> = StorageMap<_, Identity, T::BoardId, T::AccountId>;
+	pub type BoardGames<T: Config> = StorageMap<_, Identity, T::BoardId, BoardGameOf<T>>;
 
 	/// Players in boards
 	#[pallet::storage]
@@ -135,153 +110,58 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create a new game with a set of players.
-		/// Players are unique and would not yet be in an existing game
 		#[pallet::weight(12_345)]
-		pub fn new_game(
-			origin: OriginFor<T>,
-			board_id: T::BoardId,
-			players: PlayersOf<T>,
-		) -> DispatchResult {
-			// TODO - This could be a whitelist based on a custom origin
-			// There is potentially more than one attack vector here as anyone could assign any
-			// account to a board and hence block them from playing in a legitimate game
-			// As this would be ran in L2 we may want to check that we are in L2??
-			let _ = ensure_signed(origin)?;
-			log::debug!(
-				"New game to be created with board id {:?} and players {:?}",
-				board_id,
-				players
-			);
-
-			// Ensure we have players
-			ensure!(!players.is_empty(), Error::<T>::NotEnoughPlayers);
-			ensure!(!BoardStates::<T>::contains_key(board_id), Error::<T>::BoardExists);
-
-			let player_len = players.len();
-			let players = BoundedPlayersOf::<T>::try_from(
-				players
-					.iter()
-					// Ensure that this player isn't already in a game
-					.filter(|player| !PlayerBoards::<T>::contains_key(player))
-					.cloned()
-					.collect::<Vec<T::AccountId>>(),
-			)
-			.map_err(|_| Error::<T>::TooManyPlayers)?;
-
-			// If we have new players this will be the same based on the filter
-			ensure!(player_len == players.len(), Error::<T>::PlayerAlreadyInGame);
-
-			let seed = Seed::<T>::get();
-			let state = T::Game::init(&players, seed).ok_or(Error::<T>::InvalidStateFromGame)?;
-
-			players.iter().for_each(|player| {
-				PlayerBoards::<T>::insert(player, board_id);
-			});
-
-			Self::seed_for_next(&state);
-
-			let board_game = BoardGameOf::<T>::new(
-				board_id,
-				players.clone(),
-				state,
-				frame_system::Pallet::<T>::current_block_number(),
-			);
-
-			BoardStates::<T>::insert(board_id, board_game);
-
-			Self::deposit_event(Event::GameCreated {
-				board_id,
-				players: players.clone().into_inner(),
-			});
-
-			log::info!(
-				"New game created with board id {:?} and players {:?}",
-				board_id,
-				players.into_inner()
-			);
-
+		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			ensure!(T::Matchmaker::enqueue(player, DEFAULT_BRACKET), Error::<T>::AlreadyQueued);
+			if let Some(players) = T::Matchmaker::try_match(DEFAULT_BRACKET, T::Players::get()) {
+				Self::create_game(players)?;
+			};
 			Ok(())
 		}
 
-		/// Play a turn in the game for signing player
-		/// If the turn produces a winner the state of the game will be removed and
-		/// `Event::GameFinished` would be deposited.
 		#[pallet::weight(12_345)]
-		pub fn play_turn(origin: OriginFor<T>, turn: T::PlayersTurn) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			let board_id = PlayerBoards::<T>::get(sender.clone()).ok_or(Error::<T>::NotPlaying)?;
+		pub fn play(origin: OriginFor<T>, turn: T::PlayersTurn) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			let board_id = PlayerBoards::<T>::get(&player).ok_or(Error::<T>::NotPlaying)?;
 
-			BoardStates::<T>::mutate(board_id, |maybe_board_game| match maybe_board_game {
-				Some(board_game) => {
-					board_game.state =
-						T::Game::play_turn(sender.clone(), board_game.state.clone(), turn)
-							.ok_or(Error::<T>::InvalidTurn)?;
+			let mut board_game = BoardGames::<T>::get(board_id).ok_or(Error::<T>::UnknownBoard)?;
+			let new_state = T::Game::play_turn(player, board_game.state, turn)
+				.ok_or(Error::<T>::InvalidTurn)?;
 
-					log::debug!("Turn played for board id {:?} by player {:?}", board_id, sender);
-
-					if let Finished::Winner::<T::AccountId>(winner) =
-						T::Game::is_finished(&board_game.state)
-					{
-						Self::declare_winner(&board_id, &winner);
-					}
-
-					Ok(())
-				},
-				None => Err(Error::<T>::InvalidBoard.into()),
-			})
-		}
-
-		/// Finish a board game from the pallet
-		/// A board remains after finishing in BoardWinners.  Those players in that board are locked
-		/// until the game is finished
-		#[pallet::weight(12_345)]
-		pub fn finish_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
-			// TODO if this is L2 do we really need to check the origin?
-			let _ = ensure_signed(origin)?;
-
-			log::debug!("Finish game requested for board id {:?}", board_id);
-
-			// Free players to play another game
-			BoardStates::<T>::get(board_id)
-				.ok_or(Error::<T>::InvalidBoard)?
-				.players
-				.iter()
-				.for_each(|player| {
-					PlayerBoards::<T>::remove(player);
-				});
-			// Unlock board
-			BoardStates::<T>::remove(board_id);
-			// Clear winner
-			BoardWinners::<T>::remove(board_id);
-
-			log::debug!("Finish game completed for board id {:?}", board_id);
-			for (player, board_id) in PlayerBoards::<T>::iter() {
-				log::debug!("Remaining board {:?} for player {:?}", board_id, player);
+			if let Finished::Winner::<T::AccountId>(winner) = T::Game::is_finished(&new_state) {
+				Self::finish_game(board_id, winner)?;
+			} else {
+				board_game.state = new_state;
+				BoardGames::<T>::insert(board_id, board_game);
 			}
-
-			Ok(())
-		}
-
-		/// Dispute a board a prevent players leaving stale boards. After the `IdleBoardTimeout` a
-		/// board maybe disputed and then awarded to the player awaiting their turn
-		#[pallet::weight(10_000)]
-		pub fn dispute_game(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-			let board = BoardStates::<T>::get(board_id).ok_or(Error::<T>::InvalidBoard)?;
-			let timeout_block_number = board.started.saturating_add(T::IdleBoardTimeout::get());
-			let current_block_number = frame_system::Pallet::<T>::current_block_number();
-			ensure!(timeout_block_number <= current_block_number, Error::<T>::DisputeFailed);
-
-			let winner = T::Game::get_last_player(&board.state);
-			Self::declare_winner(&board_id, &winner);
-
 			Ok(())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
+	fn create_game(players: Vec<PlayerOf<T>>) -> DispatchResult {
+		for player in &players {
+			ensure!(PlayerBoards::<T>::get(player).is_none(), Error::<T>::AlreadyInGame);
+		}
+
+		let board_id = NextBoardId::<T>::get();
+		let seed = Seed::<T>::get();
+		let state = T::Game::init(&players, seed).ok_or(Error::<T>::InvalidGameState)?;
+		Self::seed_for_next(&state);
+
+		let bounded_players = players.clone().try_into().map_err(|_| Error::<T>::InvalidPlayers)?;
+		let now = frame_system::Pallet::<T>::current_block_number();
+		let board_game = BoardGameOf::<T>::new(board_id, bounded_players, state, now);
+
+		players.iter().for_each(|player| PlayerBoards::<T>::insert(player, board_id));
+		BoardGames::<T>::insert(board_id, board_game);
+		NextBoardId::<T>::mutate(|board_id| board_id.saturating_inc());
+		Self::deposit_event(Event::GameCreated { board_id, players });
+		Ok(())
+	}
+
 	fn seed_for_next(game_state: &T::GameState) {
 		match T::Game::seed(game_state) {
 			Some(seed) => Seed::<T>::put(seed),
@@ -289,14 +169,11 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn declare_winner(
-		board_id: &T::BoardId,
-		winner: &<<T as Config>::Game as TurnBasedGame>::Player,
-	) {
-		// Cache result in storage, this would be cleared on `flush_winner`
-		BoardWinners::<T>::insert(board_id, winner.clone());
-		Self::deposit_event(Event::GameFinished { board_id: *board_id, winner: winner.clone() });
-
-		log::info!("Declared winner for board id {:?} as player {:?}", *board_id, winner);
+	fn finish_game(board_id: T::BoardId, winner: PlayerOf<T>) -> DispatchResult {
+		let board_game = BoardGames::<T>::take(board_id).ok_or(Error::<T>::UnknownBoard)?;
+		// board_game.players.iter().for_each(|player| PlayerBoards::<T>::remove(player));
+		board_game.players.iter().for_each(PlayerBoards::<T>::remove);
+		Self::deposit_event(Event::GameFinished { board_id, winner });
+		Ok(())
 	}
 }

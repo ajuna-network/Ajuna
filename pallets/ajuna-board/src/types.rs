@@ -16,6 +16,16 @@
 
 use super::*;
 
+pub(crate) type PlayerOf<T> = <<T as Config>::Game as TurnBasedGame>::Player;
+pub(crate) type BoundedPlayersOf<T> =
+	BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::Players>;
+pub(crate) type BoardGameOf<T> = BoardGame<
+	<T as Config>::BoardId,
+	<T as Config>::GameState,
+	BoundedPlayersOf<T>,
+	BlockNumberFor<T>,
+>;
+
 /// The state of the board game
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub struct BoardGame<BoardId, State, Players, Start> {

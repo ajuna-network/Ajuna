@@ -1,14 +1,17 @@
 # Ajuna Network Pallet Board
 
-The Board Game pallet provides an implementation of a turn based board game. The game logic for the board game is implemented with the trait `TurnBasedGame` and provided as part of the configuration of this pallet.  Extrinsics are used in the creation and playing of a game with state being temporarily stored on chain.  The creation and playing of the game are delegated, after being gated by the pallet, to the core game logic.
+The Board Game pallet provides an implementation of a turn based board game. The game logic for the board game is implemented with the trait `TurnBasedGame` and provided as part of the configuration of this pallet. Extrinsics are used in the creation and playing of a game with state being temporarily stored on chain. The creation and playing of the game are delegated, after being gated by the pallet, to the core game logic.
 
 ## Purpose
+
 Validation and state management of board games
 
 ## Dependencies
+
 `ajuna-common` crate
 
 ### Traits
+
 In order to use the pallet an implementation of `TurnBasedGame` would need to provided in the configuration.
 
 ## Installation
@@ -37,7 +40,7 @@ You should implement its trait with something like:
 ```rust
 impl pallet_ajuna_board::Config for Test {
 	type Event = Event;
-	type MaxNumberOfPlayers = MaxNumberOfPlayers;
+	type Players = Players;
 	type BoardId = u32;
 	type PlayersTurn = u32;
 	type GameState = GameState;
@@ -49,6 +52,15 @@ impl pallet_ajuna_board::Config for Test {
 and include it in your `construct_runtime!` macro:
 
 ```rust
+construct_runtime!(
+  pub enum Runtime where
+    Block = Block,
+    NodeBlock = Block,
+    UncheckedExtrinsic = UncheckedExtrinsic,
+  {
+    AjunaBoard: pallet_ajuna_board,
+  }
+);
 ```
 
 ### Genesis Configuration

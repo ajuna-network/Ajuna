@@ -19,10 +19,9 @@ use frame_support::{assert_noop, assert_ok};
 
 const ALICE: u32 = 1;
 const BOB: u32 = 2;
-const CHARLIE: u32 = 3;
 const ERIN: u32 = 5;
 
-const BOARD_ID: u32 = 1;
+const BOARD_ID: u32 = 0;
 const TEST_COORD: Coordinates = Coordinates::new(0, 0);
 // The seed below generates the following board, where o is empty and x is block:
 // [o, o, o, o, o, o, o, o, o, o],
@@ -38,225 +37,85 @@ const TEST_COORD: Coordinates = Coordinates::new(0, 0);
 const TEST_SEED: u32 = 7357;
 
 #[test]
-fn should_create_new_game() {
+fn queue_works() {
 	new_test_ext().execute_with(|| {
-		// Board ids start at 1, hence the first game will be 1
-		let board_id = 1;
-		// We can't start a board game without any players
-		assert_noop!(
-			AjunaBoard::new_game(RuntimeOrigin::signed(ALICE), board_id, BTreeSet::new()),
-			Error::<Test>::NotEnoughPlayers
-		);
-
-		// We are limited to the number of players we can have
-		assert_noop!(
-			AjunaBoard::new_game(
-				RuntimeOrigin::signed(ALICE),
-				board_id,
-				BTreeSet::from([BOB, CHARLIE, ERIN])
-			),
-			Error::<Test>::TooManyPlayers
-		);
-
-		// And trying to create a new game will fail
-		assert_noop!(
-			AjunaBoard::new_game(RuntimeOrigin::signed(ALICE), board_id, BTreeSet::from([BOB])),
-			Error::<Test>::InvalidStateFromGame
-		);
-
-		// Create a new game with players; Alice, Bob and Charlie
-		assert_ok!(AjunaBoard::new_game(
-			RuntimeOrigin::signed(ALICE),
-			board_id,
-			BTreeSet::from([BOB, CHARLIE])
+		assert_ok!(AjunaBoard::queue(RuntimeOrigin::signed(ALICE)));
+		System::assert_last_event(RuntimeEvent::AjunaMatchmaker(
+			pallet_ajuna_matchmaker::Event::Queued(ALICE),
 		));
-		assert_noop!(
-			AjunaBoard::new_game(
-				RuntimeOrigin::signed(ALICE),
-				board_id,
-				BTreeSet::from([BOB, CHARLIE])
-			),
-			Error::<Test>::BoardExists
-		);
-
-		// Try to create a new game with same players
-		let new_board_id = board_id + 1;
-		assert_noop!(
-			AjunaBoard::new_game(
-				RuntimeOrigin::signed(ALICE),
-				new_board_id,
-				BTreeSet::from([BOB, CHARLIE])
-			),
-			Error::<Test>::PlayerAlreadyInGame
-		);
-
-		// Confirm the board game we have created is what we intended
-		let board_game = BoardStates::<Test>::get(board_id).expect("board_id should exist");
-
-		assert_eq!(
-			board_game.players.into_inner(),
-			[BOB, CHARLIE],
-			"we should have the following players; Bob and Charlie"
-		);
-
-		assert!(PlayerBoards::<Test>::contains_key(BOB), "Bob should be on the board");
-		assert!(PlayerBoards::<Test>::contains_key(CHARLIE), "Charlie should be on the board");
-		assert!(!PlayerBoards::<Test>::contains_key(ALICE), "Alice should not be on the board");
-
-		assert_eq!(
-			last_event(),
-			RuntimeEvent::AjunaBoard(crate::Event::GameCreated {
-				board_id,
-				players: vec![BOB, CHARLIE],
-			}),
-		);
+		assert_noop!(AjunaBoard::queue(RuntimeOrigin::signed(ALICE)), Error::<Test>::AlreadyQueued);
 	});
+}
 
+#[test]
+fn queue_creates_game_on_successful_match() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(AjunaBoard::new_game(
-			RuntimeOrigin::signed(ALICE),
-			BOARD_ID,
-			BTreeSet::from([BOB, CHARLIE])
+		// nothing persisted before matchmaking
+		assert!(PlayerBoards::<Test>::get(ALICE).is_none());
+		assert!(PlayerBoards::<Test>::get(BOB).is_none());
+		assert!(BoardGames::<Test>::get(BOARD_ID).is_none());
+		assert_eq!(NextBoardId::<Test>::get(), BOARD_ID);
+
+		// queue twice to matchmake
+		assert_ok!(AjunaBoard::queue(RuntimeOrigin::signed(ALICE)));
+		assert_ok!(AjunaBoard::queue(RuntimeOrigin::signed(BOB)));
+
+		let players = vec![ALICE, BOB];
+		System::assert_has_event(RuntimeEvent::AjunaMatchmaker(
+			pallet_ajuna_matchmaker::Event::Matched(players.clone()),
 		));
 		System::assert_last_event(RuntimeEvent::AjunaBoard(crate::Event::GameCreated {
 			board_id: BOARD_ID,
-			players: vec![BOB, CHARLIE],
+			players,
 		}));
-		assert!(BoardStates::<Test>::contains_key(BOARD_ID));
-		assert!(Seed::<Test>::get().is_some());
 
-		let tests_for_errors = vec![
-			(BTreeSet::from([BOB, CHARLIE]), BOARD_ID, Error::<Test>::BoardExists),
-			(BTreeSet::from([ALICE, BOB]), 11, Error::<Test>::PlayerAlreadyInGame),
-			(BTreeSet::from([ALICE, CHARLIE]), 22, Error::<Test>::PlayerAlreadyInGame),
-			// TODO: should we early reject with NotEnoughPlayer?
-			(BTreeSet::from([ALICE]), 33, Error::<Test>::InvalidStateFromGame),
-			// TODO: should we early reject with NotEnoughPlayer?
-			(BTreeSet::from([BOB]), 44, Error::<Test>::PlayerAlreadyInGame),
-			(BTreeSet::from([CHARLIE]), 44, Error::<Test>::PlayerAlreadyInGame),
-			// TODO: should we early reject with TooManyPlayers?
-			(BTreeSet::from([ALICE, BOB, CHARLIE]), 55, Error::<Test>::PlayerAlreadyInGame),
-		];
-		for (players, board_id, expected_error) in tests_for_errors {
-			assert_noop!(
-				AjunaBoard::new_game(RuntimeOrigin::signed(ALICE), board_id, players),
-				expected_error
-			);
-		}
+		assert!(PlayerBoards::<Test>::get(ALICE).is_some());
+		assert!(PlayerBoards::<Test>::get(BOB).is_some());
+		assert!(BoardGames::<Test>::get(BOARD_ID).is_some());
+		assert_eq!(NextBoardId::<Test>::get(), BOARD_ID + 1);
 	});
 }
 
 #[test]
-fn should_play_and_mutate_game_state() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(AjunaBoard::new_game(
-			RuntimeOrigin::signed(ALICE),
-			BOARD_ID,
-			BTreeSet::from([BOB, CHARLIE])
-		));
-		let board_state_before = BoardStates::<Test>::get(BOARD_ID).unwrap();
-
-		assert_ok!(AjunaBoard::play_turn(
-			RuntimeOrigin::signed(CHARLIE),
-			Turn::DropBomb(TEST_COORD)
-		));
-		let board_state_after = BoardStates::<Test>::get(BOARD_ID).unwrap();
-
-		assert_ne!(board_state_before.state.board, board_state_after.state.board);
-		assert_eq!(board_state_before.state.bombs, [(BOB, 3), (CHARLIE, 3)]);
-		assert_eq!(board_state_after.state.bombs, [(BOB, 3), (CHARLIE, 3 - 1)]);
-	});
-}
-
-#[test]
-fn should_play_turn_and_finish_game() {
+fn play_works() {
 	new_test_ext().execute_with(|| {
 		Seed::<Test>::put(TEST_SEED);
-		assert_ok!(AjunaBoard::new_game(
-			RuntimeOrigin::signed(ALICE),
-			BOARD_ID,
-			BTreeSet::from([BOB, ERIN])
-		));
+		assert_ok!(AjunaBoard::queue(RuntimeOrigin::signed(BOB)));
+		assert_ok!(AjunaBoard::queue(RuntimeOrigin::signed(ERIN)));
 		assert_noop!(
-			AjunaBoard::play_turn(RuntimeOrigin::signed(ALICE), Turn::DropBomb(TEST_COORD)),
+			AjunaBoard::play(RuntimeOrigin::signed(ALICE), Turn::DropBomb(TEST_COORD)),
 			Error::<Test>::NotPlaying
 		);
 
 		// Bomb phase
-		let play_drop_bomb = |coord: Coordinates| {
-			let _ = AjunaBoard::play_turn(RuntimeOrigin::signed(BOB), Turn::DropBomb(coord));
-			let _ = AjunaBoard::play_turn(RuntimeOrigin::signed(ERIN), Turn::DropBomb(coord));
+		let drop_bomb = |coord: Coordinates| {
+			let _ = AjunaBoard::play(RuntimeOrigin::signed(BOB), Turn::DropBomb(coord));
+			let _ = AjunaBoard::play(RuntimeOrigin::signed(ERIN), Turn::DropBomb(coord));
 		};
-		play_drop_bomb(Coordinates::new(9, 9));
-		play_drop_bomb(Coordinates::new(8, 8));
-		play_drop_bomb(Coordinates::new(7, 7));
+		drop_bomb(Coordinates::new(9, 9));
+		drop_bomb(Coordinates::new(8, 8));
+		drop_bomb(Coordinates::new(7, 7));
 
 		// Play phase
-		let play_drop_stone = || {
-			let win_position = (Side::North, 0);
-			let lose_position = (Side::North, 9);
-			let _ =
-				AjunaBoard::play_turn(RuntimeOrigin::signed(BOB), Turn::DropStone(win_position));
-			let _ =
-				AjunaBoard::play_turn(RuntimeOrigin::signed(ERIN), Turn::DropStone(lose_position));
+		let drop_stone = || {
+			let win = (Side::North, 0);
+			let loss = (Side::North, 9);
+			let _ = AjunaBoard::play(RuntimeOrigin::signed(BOB), Turn::DropStone(win));
+			let _ = AjunaBoard::play(RuntimeOrigin::signed(ERIN), Turn::DropStone(loss));
 		};
-		play_drop_stone();
-		play_drop_stone();
-		play_drop_stone();
-		play_drop_stone();
+		drop_stone();
+		drop_stone();
+		drop_stone();
+		drop_stone();
 
 		// check if game has finished
 		System::assert_last_event(RuntimeEvent::AjunaBoard(crate::Event::GameFinished {
 			board_id: BOARD_ID,
 			winner: BOB,
 		}));
-		assert_eq!(BoardWinners::<Test>::get(BOARD_ID), Some(BOB));
 		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
-
-		// finish game and check
-		assert_ok!(AjunaBoard::finish_game(RuntimeOrigin::signed(ALICE), BOARD_ID));
-		assert!(BoardStates::<Test>::get(BOARD_ID).is_none());
-		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
+		assert!(PlayerBoards::<Test>::get(ALICE).is_none());
+		assert!(PlayerBoards::<Test>::get(BOB).is_none());
+		assert!(BoardGames::<Test>::get(BOARD_ID).is_none());
 	})
-}
-
-#[test]
-fn should_be_able_to_dispute_a_stale_board() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(AjunaBoard::new_game(
-			RuntimeOrigin::signed(ALICE),
-			BOARD_ID,
-			BTreeSet::from([BOB, CHARLIE])
-		));
-
-		assert_ok!(AjunaBoard::play_turn(
-			RuntimeOrigin::signed(CHARLIE),
-			Turn::DropBomb(TEST_COORD)
-		));
-
-		// We shouldn't be able to dispute an active game
-		assert_noop!(
-			AjunaBoard::dispute_game(RuntimeOrigin::signed(ALICE), BOARD_ID),
-			Error::<Test>::DisputeFailed
-		);
-
-		// Jump to the future when the game is now stale
-		System::set_block_number(IdleBoardTimeout::get() + 1);
-
-		assert_ok!(AjunaBoard::dispute_game(RuntimeOrigin::signed(ALICE), BOARD_ID));
-
-		// Some final checks that the dispute awarding the game actually awards and clears the game
-		System::assert_last_event(RuntimeEvent::AjunaBoard(crate::Event::GameFinished {
-			board_id: BOARD_ID,
-			winner: BOB,
-		}));
-
-		assert_eq!(BoardWinners::<Test>::get(BOARD_ID), Some(BOB));
-		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
-
-		// finish game and check
-		assert_ok!(AjunaBoard::finish_game(RuntimeOrigin::signed(ALICE), BOARD_ID));
-		assert!(BoardStates::<Test>::get(BOARD_ID).is_none());
-		assert!(BoardWinners::<Test>::get(BOARD_ID).is_none());
-	});
 }
