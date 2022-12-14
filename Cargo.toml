@@ -4,13 +4,8 @@ panic = "unwind"
 [workspace]
 members = [
     "node",
-    "node/cli",
-    "node/service",
     "rpc",
-    "runtime/solo",
-    "runtime/bajun",
-    "runtime/ajuna",
-    "pallets/ajuna-awesome-avatars",
-    "pallets/nft-transfer",
+    "runtime/*",
+    "pallets/*",
     "primitives",
 ]
