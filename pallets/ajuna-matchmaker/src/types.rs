@@ -53,7 +53,7 @@ pub trait Matchmaker {
 	/// Try to get a match using bracket specifying groups size.  A number of players up to
 	/// `number_required` will be returned based on availability in the bracket. The players would
 	/// be removed from the bracket and queue
-	fn try_match(bracket: Bracket, number_required: u8) -> Option<Vec<Self::Player>>;
+	fn try_match(bracket: Bracket, number_required: u32) -> Option<Vec<Self::Player>>;
 }
 
 pub struct Matchmaking<T>(PhantomData<T>);
@@ -95,7 +95,7 @@ impl<T: Config> Matchmaker for Matchmaking<T> {
 		Players::<T>::iter_prefix_values(bracket).collect()
 	}
 
-	fn try_match(bracket: Bracket, number_required: u8) -> Option<Vec<Self::Player>> {
+	fn try_match(bracket: Bracket, number_required: u32) -> Option<Vec<Self::Player>> {
 		if Players::<T>::iter_prefix_values(bracket).count() < number_required as usize {
 			return None
 		}

@@ -237,7 +237,7 @@ fn matchmaking_should_be_fifo() {
 		}
 
 		for i in (0..total_players).step_by(players_per_game as usize) {
-			let matched = Matchmaking::<Test>::try_match(BRACKET_0, players_per_game as u8);
+			let matched = Matchmaking::<Test>::try_match(BRACKET_0, players_per_game);
 			let expected_match = (i..(i + players_per_game)).collect();
 			assert_eq!(matched, Some(expected_match));
 		}
