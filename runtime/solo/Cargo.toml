@@ -68,6 +68,8 @@ orml-vesting = { default-features = false, git = "https://github.com/ajuna-netwo
 # Ajuna pallets
 ajuna-primitives             = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+pallet-ajuna-board           = { default-features = false, path = "../../pallets/ajuna-board" }
+pallet-ajuna-matchmaker      = { default-features = false, path = "../../pallets/ajuna-matchmaker" }
 
 [features]
 default = [ "std" ]
@@ -126,4 +128,7 @@ std = [
     "sp-transaction-pool/std",
     "sp-version/std",
     "orml-vesting/std",
+    "pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-board/std",
+    "pallet-ajuna-matchmaker/std",
 ]

@@ -293,6 +293,8 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-board",
+ "pallet-ajuna-matchmaker",
  "pallet-asset-tx-payment",
  "pallet-assets",
  "pallet-aura",
