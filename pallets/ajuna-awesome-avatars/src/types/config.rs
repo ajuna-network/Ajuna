@@ -36,6 +36,7 @@ impl MintPackSize {
 	}
 }
 
+/// Minting fee per pack of avatars.
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Copy, Debug, Default, PartialEq)]
 pub struct MintFees<Balance> {
 	pub one: Balance,
@@ -55,7 +56,9 @@ impl<Balance> MintFees<Balance> {
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
 pub enum MintType {
+	/// Mint using free mint credits.
 	Free,
+	/// Normal minting consuming currency.
 	Normal,
 }
 
@@ -65,9 +68,12 @@ impl Default for MintType {
 	}
 }
 
+/// Minting options
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
 pub struct MintOption {
+	/// Type of minting.
 	pub mint_type: MintType,
+	/// Number of avatars to mint.
 	pub count: MintPackSize,
 }
 

@@ -14,6 +14,44 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+//! # Ajuna Awesome Avatars
+//!
+//! The Awesome Ajuna Avatars is a collective game based on the Heroes of Ajuna.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Error`]
+//! - [`Event`]
+//! - [`Pallet`]
+//!
+//! ## Overview
+//!
+//!
+//! ## Interface
+//!
+//! ### Dispatchable Functions
+//!
+//! Some dispatchable functions can be called only from the organizer.
+//!
+//! * `mint` - Create a new AAA.
+//! * `forge` - Sacrifice a batch of avatars in order to improve a leader.
+//! * `transfer_free_mints` - Send free mints to another player.
+//! * `set_price` - Assign a price to an avatar.
+//! * `remove_price` - Remove the price of an avatar.
+//! * `buy` - Buy an avatar.
+//! * `upgrade_storage` -
+//! * `set_organizer` - Set the game organizer.
+//! * `set_treasurer` - Set the treasurer.
+//! * `set_season` - Add a new season.
+//! * `update_global_config` - Update the configuration.
+//! * `issue_free_mints` - Give a number of free mints to a player.
+//!
+//! ### Public Functions
+//!
+//! * `do_forge` - Forge avatar.
+//! * `do_mint` - Mint avatar.
+//! * `ensure_season` - Given a season id and a season, validate them.
+
 #![feature(map_first_last)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -80,6 +118,7 @@ pub mod pallet {
 		1
 	}
 
+	/// Contains the identifier of the current season.
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_id)]
 	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultSeasonId>;
@@ -266,6 +305,12 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Issue a new avatar.
+		///
+		/// Emits `AvatarsMinted` event when successful.
+		///
+		/// Weight: `O(n)` where:
+		/// - `n = max avatars per player`
 		#[pallet::weight({
 			let n = MaxAvatarsPerPlayer::get();
 			T::WeightInfo::mint_normal(n)
@@ -281,6 +326,15 @@ pub mod pallet {
 			Self::do_mint(&player, &mint_option, season_id)
 		}
 
+		/// Forge an avatar.
+		///
+		/// This action can enhance the skills of an avatar by consuming a batch of avatars.
+		/// The minimum and maximum number of avatars that can be utilized for forging is
+		/// defined in the season configuration.
+		///
+		/// Emits `AvatarForged` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::forge(MaxAvatarsPerPlayer::get()))]
 		pub fn forge(
 			origin: OriginFor<T>,
@@ -295,6 +349,11 @@ pub mod pallet {
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
+		/// Transfer free mints to a given account.
+		///
+		/// Emits `FreeMintsTransferred` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
@@ -324,6 +383,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set the price of a given avatar.
+		///
+		/// Only allowed while trade period is open.
+		///
+		/// Emits `AvatarPriceSet` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
@@ -338,6 +404,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Remove the price of a given avatar.
+		///
+		/// Only allowed while trade period is open.
+		///
+		/// Emits `AvatarPriceUnset` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
@@ -349,6 +422,16 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Buy the given avatar.
+		///
+		/// It consumes tokens for the trade operation. The avatar will be owned by the
+		/// player after the transaction.
+		///
+		/// Only allowed while trade period is open.
+		///
+		/// Emits `AvatarTraded` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
@@ -396,6 +479,11 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Upgrade storage.
+		///
+		/// Emits `StorageTierUpgraded` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -413,6 +501,17 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set game organizer.
+		///
+		/// The organizer account is like an admin, allowed to perform certain operations
+		/// related with the game configuration like `set_season`, `ensure_free_mint` and
+		/// `update_global_config`.
+		///
+		/// It can only be set by a root account.
+		///
+		/// Emits `OrganizerSet` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::set_organizer())]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -421,6 +520,15 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set treasurer.
+		///
+		/// This is an additional treasury.
+		///
+		/// It can only be set by a root account.
+		///
+		/// Emits `TreasurerSet` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::set_treasurer())]
 		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -429,6 +537,15 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set season.
+		///
+		/// Creates a new season. The new season can overlap with the already existing.
+		///
+		/// It can only be set by an organizer account.
+		///
+		/// Emits `UpdatedSeason` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::set_season())]
 		pub fn set_season(
 			origin: OriginFor<T>,
@@ -442,6 +559,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Update global configuration.
+		///
+		/// It can only be called by an organizer account.
+		///
+		/// Emits `UpdatedGlobalConfig` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::update_global_config())]
 		pub fn update_global_config(
 			origin: OriginFor<T>,
@@ -453,6 +577,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Issue free mints.
+		///
+		/// It can only be called by an organizer account.
+		///
+		/// Emits `FreeMintsIssued` event when successful.
+		///
+		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
@@ -471,6 +602,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Check that the origin is an organizer account.
 		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
@@ -478,6 +610,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Validates a new season.
 		pub(crate) fn ensure_season(
 			season_id: &SeasonId,
 			mut season: SeasonOf<T>,
@@ -551,6 +684,7 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
+		/// Mint a new avatar.
 		pub(crate) fn do_mint(
 			player: &T::AccountId,
 			mint_option: &MintOption,
@@ -621,6 +755,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Enhance an avatar using a batch of avatars.
 		pub(crate) fn do_forge(
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
