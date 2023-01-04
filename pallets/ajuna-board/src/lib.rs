@@ -92,6 +92,7 @@ pub mod pallet {
 		AlreadyInGame,
 		AlreadyQueued,
 		UnknownBoard,
+		BoardInUse,
 	}
 
 	#[pallet::storage]
@@ -137,6 +138,30 @@ pub mod pallet {
 			}
 			Ok(())
 		}
+
+		#[pallet::weight(12_345)]
+		pub fn clear_board(origin: OriginFor<T>, board_id: T::BoardId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			BoardGames::<T>::try_mutate_exists(board_id, |maybe_board_game| {
+				if let Some(board_game) = maybe_board_game {
+					ensure!(
+						board_game
+							.players
+							.iter()
+							.all(|player| PlayerBoards::<T>::get(player) != Some(board_id)),
+						Error::<T>::BoardInUse
+					);
+
+					*maybe_board_game = None;
+
+					Ok(())
+				} else {
+					Err(Error::<T>::UnknownBoard)
+				}
+			})
+			.map_err(|err| err.into())
+		}
 	}
 }
 
@@ -170,9 +195,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn finish_game(board_id: T::BoardId, winner: PlayerOf<T>) -> DispatchResult {
-		let board_game = BoardGames::<T>::take(board_id).ok_or(Error::<T>::UnknownBoard)?;
-		// board_game.players.iter().for_each(|player| PlayerBoards::<T>::remove(player));
-		board_game.players.iter().for_each(PlayerBoards::<T>::remove);
+		BoardGames::<T>::get(board_id)
+			.ok_or(Error::<T>::UnknownBoard)?
+			.players
+			.iter()
+			.for_each(PlayerBoards::<T>::remove);
 		Self::deposit_event(Event::GameFinished { board_id, winner });
 		Ok(())
 	}
