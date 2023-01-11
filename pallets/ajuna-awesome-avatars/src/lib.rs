@@ -403,7 +403,7 @@ pub mod pallet {
 			let seller = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			let _ = Self::ensure_ownership(&seller, &avatar_id)?;
-			Trade::<T>::insert(&avatar_id, &price);
+			Trade::<T>::insert(avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
 		}
@@ -422,7 +422,7 @@ pub mod pallet {
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_for_trade(&avatar_id)?;
 			Self::ensure_ownership(&seller, &avatar_id)?;
-			Trade::<T>::remove(&avatar_id);
+			Trade::<T>::remove(avatar_id);
 			Self::deposit_event(Event::AvatarPriceUnset { avatar_id });
 			Ok(())
 		}
@@ -471,12 +471,12 @@ pub mod pallet {
 
 			Owners::<T>::mutate(&buyer, |avatar_ids| *avatar_ids = buyer_avatar_ids);
 			Owners::<T>::mutate(&seller, |avatar_ids| *avatar_ids = seller_avatar_ids);
-			Avatars::<T>::mutate(&avatar_id, |maybe_avatar| {
+			Avatars::<T>::mutate(avatar_id, |maybe_avatar| {
 				if let Some((owner, _)) = maybe_avatar {
 					*owner = buyer.clone();
 				}
 			});
-			Trade::<T>::remove(&avatar_id);
+			Trade::<T>::remove(avatar_id);
 
 			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
 			Accounts::<T>::mutate(&seller, |account| account.stats.trade.sold.saturating_inc());
@@ -731,7 +731,7 @@ pub mod pallet {
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
 			ensure!(
-				Self::owners(&player).len() <= Self::accounts(&player).storage_tier as usize,
+				Self::owners(player).len() <= Self::accounts(player).storage_tier as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
@@ -744,15 +744,15 @@ pub mod pallet {
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
-					let free_mints = Self::accounts(&player)
+					let free_mints = Self::accounts(player)
 						.free_mints
 						.checked_sub(fee)
 						.ok_or(Error::<T>::InsufficientFreeMints)?;
-					Accounts::<T>::mutate(&player, |account| account.free_mints = free_mints);
+					Accounts::<T>::mutate(player, |account| account.free_mints = free_mints);
 				},
 			};
 
-			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
@@ -860,7 +860,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
-			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
 				if stats.forge.first.is_zero() {
 					stats.forge.first = current_block;
 				}
@@ -894,7 +894,7 @@ pub mod pallet {
 		fn toggle_season(early_access: bool) -> Result<(SeasonId, bool), DispatchError> {
 			let current_season_id = Self::current_season_id();
 			let mut season_deactivated = false;
-			if let Some(season) = Self::seasons(&current_season_id) {
+			if let Some(season) = Self::seasons(current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
 				let is_current_season_active = Self::current_season_status().active;
 
