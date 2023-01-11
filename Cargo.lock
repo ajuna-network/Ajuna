@@ -95,6 +95,7 @@ dependencies = [
  "frame-benchmarking-cli",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "futures",
  "log",
  "pallet-asset-tx-payment",
  "parity-scale-codec",
