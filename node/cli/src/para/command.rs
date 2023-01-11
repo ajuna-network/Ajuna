@@ -160,16 +160,10 @@ macro_rules! construct_async_run {
 		let runner = $cli.create_runner($cmd)?;
 		runner.async_run(|$config| {
 			#[cfg(feature = "bajun")]
-            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
-                &$config,
-                service::build_import_queue::<BajunRuntimeApi, BajunRuntimeExecutor>,
-            )?;
+            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&$config)?;
 
 			#[cfg(feature = "ajuna")]
-            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
-                &$config,
-                service::build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>,
-            )?;
+            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor>(&$config)?;
 
             let task_manager = $components.task_manager;
             { $( $code )* }.map(|v| (v, task_manager))
@@ -182,16 +176,10 @@ macro_rules! construct_sync_run {
 		let runner = $cli.create_runner($cmd)?;
 		runner.sync_run(|$config| {
 			#[cfg(feature = "bajun")]
-            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
-                &$config,
-                service::build_import_queue::<BajunRuntimeApi,BajunRuntimeExecutor>,
-            )?;
+            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&$config)?;
 
 			#[cfg(feature = "ajuna")]
-            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
-                &$config,
-                service::build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>,
-            )?;
+            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor>(&$config)?;
 
             { $( $code )* }
 		})
