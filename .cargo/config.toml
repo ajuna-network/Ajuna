@@ -14,6 +14,7 @@ build-ajuna-rococo     = [ "build-ajuna", "--features", "rococo-native" ]
 
 [target.'cfg(feature = "cargo-clippy")']
 rustflags = [
+    "-Aclippy::derive_partial_eq_without_eq",
     "-Aclippy::too_many_arguments",
     "-Aclippy::type_complexity",
     "-Aclippy::unnecessary_cast",
