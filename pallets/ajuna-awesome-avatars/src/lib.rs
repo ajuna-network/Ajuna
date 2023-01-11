@@ -311,6 +311,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(n)` where:
 		/// - `n = max avatars per player`
+		#[pallet::call_index(0)]
 		#[pallet::weight({
 			let n = MaxAvatarsPerPlayer::get();
 			T::WeightInfo::mint_normal(n)
@@ -335,6 +336,7 @@ pub mod pallet {
 		/// Emits `AvatarForged` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::forge(MaxAvatarsPerPlayer::get()))]
 		pub fn forge(
 			origin: OriginFor<T>,
@@ -354,6 +356,7 @@ pub mod pallet {
 		/// Emits `FreeMintsTransferred` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
@@ -390,6 +393,7 @@ pub mod pallet {
 		/// Emits `AvatarPriceSet` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
@@ -411,6 +415,7 @@ pub mod pallet {
 		/// Emits `AvatarPriceUnset` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
@@ -432,6 +437,7 @@ pub mod pallet {
 		/// Emits `AvatarTraded` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
@@ -484,6 +490,7 @@ pub mod pallet {
 		/// Emits `StorageTierUpgraded` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -512,6 +519,7 @@ pub mod pallet {
 		/// Emits `OrganizerSet` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::set_organizer())]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -529,6 +537,7 @@ pub mod pallet {
 		/// Emits `TreasurerSet` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(8)]
 		#[pallet::weight(T::WeightInfo::set_treasurer())]
 		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -546,6 +555,7 @@ pub mod pallet {
 		/// Emits `UpdatedSeason` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(9)]
 		#[pallet::weight(T::WeightInfo::set_season())]
 		pub fn set_season(
 			origin: OriginFor<T>,
@@ -566,6 +576,7 @@ pub mod pallet {
 		/// Emits `UpdatedGlobalConfig` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::update_global_config())]
 		pub fn update_global_config(
 			origin: OriginFor<T>,
@@ -584,6 +595,7 @@ pub mod pallet {
 		/// Emits `FreeMintsIssued` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(11)]
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,

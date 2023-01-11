@@ -110,6 +110,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(12_345)]
 		pub fn queue(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -120,6 +121,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(12_345)]
 		pub fn play(origin: OriginFor<T>, turn: T::PlayersTurn) -> DispatchResult {
 			let player = ensure_signed(origin)?;
