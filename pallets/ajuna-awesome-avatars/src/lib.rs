@@ -776,6 +776,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(forge.open, Error::<T>::ForgeClosed);
+			ensure!(
+				!Self::current_season_status().prematurely_ended,
+				Error::<T>::PrematureSeasonEnd
+			);
 
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			ensure!(

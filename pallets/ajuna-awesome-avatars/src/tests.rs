@@ -880,6 +880,7 @@ mod forging {
 
 	#[test]
 	fn forge_should_work() {
+		let max_tier_forges = 11;
 		let season = Season::default()
 			.early_start(0)
 			.start(1)
@@ -888,7 +889,7 @@ mod forging {
 			.batch_mint_probs(vec![100, 0])
 			.per_period(1)
 			.periods(6)
-			.max_tier_forges(1)
+			.max_tier_forges(max_tier_forges)
 			.max_components(8)
 			.max_variations(6)
 			.min_sacrifices(1)
@@ -969,33 +970,35 @@ mod forging {
 					vec![0x43, 0x44, 0x40, 0x43, 0x13, 0x15, 0x15, 0x11],
 					Some(vec![0x14, 0x15, 0x11, 0x14, 0x14, 0x16, 0x16, 0x12]),
 				);
-				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
+				CurrentSeasonMaxTierAvatars::<Test>::set(max_tier_forges - 1);
 				assert_dna(
 					&leader_id,
 					vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x45, 0x45, 0x41],
 					Some(vec![0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x12]),
 				);
-				assert_eq!(AAvatars::current_season_max_tier_avatars(), 1);
+				assert_eq!(AAvatars::current_season_max_tier_avatars(), max_tier_forges);
 				assert!(AAvatars::current_season_status().prematurely_ended);
 				assert_noop!(
-					AAvatars::mint(
+					AAvatars::forge(
 						RuntimeOrigin::signed(BOB),
-						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+						leader_id,
+						AAvatars::owners(BOB)[1..=4].to_vec()
 					),
 					Error::<Test>::PrematureSeasonEnd
 				);
 
 				// trigger season end and assert for associated checks
 				run_to_block(season.end + 1);
-				assert_ok!(AAvatars::mint(
+				assert_ok!(AAvatars::forge(
 					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
-				));
+					AAvatars::owners(BOB)[1],
+					AAvatars::owners(BOB)[2..=5].to_vec()
+				),);
 				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
 				assert!(!AAvatars::current_season_status().prematurely_ended);
-				assert_eq!(AAvatars::accounts(BOB).stats.forge.total, 8);
-				assert_eq!(AAvatars::accounts(BOB).stats.forge.current_season, 0);
-				assert_eq!(AAvatars::accounts(BOB).stats.mint.current_season, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.total, 9);
+				assert_eq!(AAvatars::accounts(BOB).stats.forge.current_season, 1);
+				assert_eq!(AAvatars::accounts(BOB).stats.mint.current_season, 0);
 			});
 	}
 
