@@ -1,7 +1,7 @@
 version: "3"
 services:
   bootnode:
-    image: parity/polkadot:v0.9.19
+    image: parity/polkadot:v0.9.36
     volumes:
       - ./data/relay/bootnode:/data
       - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -22,7 +22,7 @@ services:
         ipv4_address: 172.40.1.0
 
   relay-alice:
-    image: parity/polkadot:v0.9.19
+    image: parity/polkadot:v0.9.36
     volumes:
       - ./data/relay/alice:/data
       - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -44,7 +44,7 @@ services:
       - bootnode
 
   relay-bob:
-    image: parity/polkadot:v0.9.19
+    image: parity/polkadot:v0.9.36
     volumes:
       - ./data/relay/bob:/data
       - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
