@@ -27,7 +27,7 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{AsEnsureOriginWithArg, KeyOwnerProofSystem},
 	weights::{
-		constants::{RocksDbWeight, WEIGHT_PER_SECOND},
+		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		IdentityFee, Weight,
 	},
 	PalletId,
@@ -108,7 +108,7 @@ parameter_types! {
 	/// We allow for 2 seconds of compute with a 6 second average block time.
 	pub BlockWeights: frame_system::limits::BlockWeights =
 		frame_system::limits::BlockWeights::with_sensible_defaults(
-			(2u64 * WEIGHT_PER_SECOND).set_proof_size(u64::MAX),
+			Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
 			NORMAL_DISPATCH_RATIO,
 		);
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
@@ -250,6 +250,7 @@ impl pallet_assets::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type AssetId = AssetId;
+	type AssetIdParameter = codec::Compact<u32>;
 	type Currency = Balances;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ForceOrigin = EnsureRoot<AccountId>;
@@ -262,6 +263,7 @@ impl pallet_assets::Config for Runtime {
 	type Freezer = ();
 	type Extra = ();
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
+	type RemoveItemsLimit = frame_support::traits::ConstU32<1000>;
 }
 
 type BalanceToAssetConverter = BalanceToAssetBalance<Balances, Runtime, OneToOneConversion>;

@@ -168,7 +168,7 @@ pub mod pallet {
 				)?;
 			}
 
-			let next_id = NextItemId::<T>::mutate(&collection_id, |item| {
+			let next_id = NextItemId::<T>::mutate(collection_id, |item| {
 				let next_id = *item;
 				item.saturating_inc();
 				next_id
@@ -176,8 +176,8 @@ pub mod pallet {
 
 			T::NFTHelper::mint_into(&collection_id, &next_id, &owner)?;
 			AttributeStorage::<T>::insert(
-				&(collection_id, next_id),
-				&Asset::get_asset_code(),
+				(collection_id, next_id),
+				Asset::get_asset_code(),
 				encoded_asset,
 			);
 			LockItemStatus::<T>::insert(collection_id, next_id, NFTStatus::Stored);
@@ -201,19 +201,19 @@ pub mod pallet {
 			ensure!(nft_owner.is_some(), Error::<T>::NFTNotFound);
 			ensure!(nft_owner.unwrap() == owner, Error::<T>::NFTNotOwned);
 			ensure!(
-				LockItemStatus::<T>::get(&collection_id, &nft_id) == Some(NFTStatus::Stored),
+				LockItemStatus::<T>::get(collection_id, nft_id) == Some(NFTStatus::Stored),
 				Error::<T>::NFTOutsideOfChain
 			);
 
 			let encoded_nft_data =
-				AttributeStorage::<T>::take((collection_id, nft_id), &Asset::get_asset_code())
+				AttributeStorage::<T>::take((collection_id, nft_id), Asset::get_asset_code())
 					.ok_or(Error::<T>::NFTAttributeMissing)?;
 
 			let asset = Asset::decode_from(encoded_nft_data.into_inner())
 				.map_err(|_| Error::<T>::AssetRestoreFailure)?;
 
 			T::NFTHelper::burn(&collection_id, &nft_id, Some(&owner))?;
-			LockItemStatus::<T>::remove(&collection_id, &nft_id);
+			LockItemStatus::<T>::remove(collection_id, nft_id);
 
 			Self::deposit_event(Event::<T>::AssetRestored {
 				collection_id,

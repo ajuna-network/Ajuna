@@ -1,7 +1,7 @@
 version: "3"
 services:
   bootnode:
-    image: parity/polkadot:v0.9.19
+    image: parity/polkadot:v0.9.36
     volumes:
       - ./data/relay/bootnode:/data
       - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -22,7 +22,7 @@ services:
         ipv4_address: 172.40.1.0
 
   relay-alice:
-    image: parity/polkadot:v0.9.19
+    image: parity/polkadot:v0.9.36
     volumes:
       - ./data/relay/alice:/data
       - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -44,7 +44,7 @@ services:
       - bootnode
 
   relay-bob:
-    image: parity/polkadot:v0.9.19
+    image: parity/polkadot:v0.9.36
     volumes:
       - ./data/relay/bob:/data
       - ./../resources/bajun/rococo-local/rococo-custom-2-raw.json:/rococo-custom-2-raw.json
@@ -138,15 +138,15 @@ services:
       - relay-bob
 
   insert-key:
-    image: ubuntu:20.04
+    image: curlimages/curl:7.87.0
     volumes:
       - ./../resources/bajun/rococo-local/collator-1-insert-key.json:/collator-1-insert-key.json
       - ./../resources/bajun/rococo-local/collator-2-insert-key.json:/collator-2-insert-key.json
     command:
-      - /bin/bash
+      - /bin/sh
       - -c
       - |
-        apt-get -qq update && apt-get -qq -y install curl
+        sleep 60
         curl -X POST -H "Content-Type: application/json" -d @collator-1-insert-key.json http://172.40.1.3:8833 --connect-timeout 10 --max-time 5
         curl -X POST -H "Content-Type: application/json" -d @collator-2-insert-key.json http://172.40.1.4:8834 --connect-timeout 10 --max-time 5
     depends_on:

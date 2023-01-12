@@ -311,6 +311,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(n)` where:
 		/// - `n = max avatars per player`
+		#[pallet::call_index(0)]
 		#[pallet::weight({
 			let n = MaxAvatarsPerPlayer::get();
 			T::WeightInfo::mint_normal(n)
@@ -335,6 +336,7 @@ pub mod pallet {
 		/// Emits `AvatarForged` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::forge(MaxAvatarsPerPlayer::get()))]
 		pub fn forge(
 			origin: OriginFor<T>,
@@ -354,6 +356,7 @@ pub mod pallet {
 		/// Emits `FreeMintsTransferred` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
@@ -390,6 +393,7 @@ pub mod pallet {
 		/// Emits `AvatarPriceSet` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
@@ -399,7 +403,7 @@ pub mod pallet {
 			let seller = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			let _ = Self::ensure_ownership(&seller, &avatar_id)?;
-			Trade::<T>::insert(&avatar_id, &price);
+			Trade::<T>::insert(avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
 		}
@@ -411,13 +415,14 @@ pub mod pallet {
 		/// Emits `AvatarPriceUnset` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_for_trade(&avatar_id)?;
 			Self::ensure_ownership(&seller, &avatar_id)?;
-			Trade::<T>::remove(&avatar_id);
+			Trade::<T>::remove(avatar_id);
 			Self::deposit_event(Event::AvatarPriceUnset { avatar_id });
 			Ok(())
 		}
@@ -432,6 +437,7 @@ pub mod pallet {
 		/// Emits `AvatarTraded` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
@@ -465,12 +471,12 @@ pub mod pallet {
 
 			Owners::<T>::mutate(&buyer, |avatar_ids| *avatar_ids = buyer_avatar_ids);
 			Owners::<T>::mutate(&seller, |avatar_ids| *avatar_ids = seller_avatar_ids);
-			Avatars::<T>::mutate(&avatar_id, |maybe_avatar| {
+			Avatars::<T>::mutate(avatar_id, |maybe_avatar| {
 				if let Some((owner, _)) = maybe_avatar {
 					*owner = buyer.clone();
 				}
 			});
-			Trade::<T>::remove(&avatar_id);
+			Trade::<T>::remove(avatar_id);
 
 			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
 			Accounts::<T>::mutate(&seller, |account| account.stats.trade.sold.saturating_inc());
@@ -484,6 +490,7 @@ pub mod pallet {
 		/// Emits `StorageTierUpgraded` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -512,6 +519,7 @@ pub mod pallet {
 		/// Emits `OrganizerSet` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::set_organizer())]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -529,6 +537,7 @@ pub mod pallet {
 		/// Emits `TreasurerSet` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(8)]
 		#[pallet::weight(T::WeightInfo::set_treasurer())]
 		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -546,6 +555,7 @@ pub mod pallet {
 		/// Emits `UpdatedSeason` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(9)]
 		#[pallet::weight(T::WeightInfo::set_season())]
 		pub fn set_season(
 			origin: OriginFor<T>,
@@ -566,6 +576,7 @@ pub mod pallet {
 		/// Emits `UpdatedGlobalConfig` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::update_global_config())]
 		pub fn update_global_config(
 			origin: OriginFor<T>,
@@ -584,6 +595,7 @@ pub mod pallet {
 		/// Emits `FreeMintsIssued` event when successful.
 		///
 		/// Weight: `O(1)`
+		#[pallet::call_index(11)]
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
@@ -719,7 +731,7 @@ pub mod pallet {
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
 			ensure!(
-				Self::owners(&player).len() <= Self::accounts(&player).storage_tier as usize,
+				Self::owners(player).len() <= Self::accounts(player).storage_tier as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
@@ -732,15 +744,15 @@ pub mod pallet {
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
-					let free_mints = Self::accounts(&player)
+					let free_mints = Self::accounts(player)
 						.free_mints
 						.checked_sub(fee)
 						.ok_or(Error::<T>::InsufficientFreeMints)?;
-					Accounts::<T>::mutate(&player, |account| account.free_mints = free_mints);
+					Accounts::<T>::mutate(player, |account| account.free_mints = free_mints);
 				},
 			};
 
-			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
@@ -848,7 +860,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
-			Accounts::<T>::mutate(&player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
 				if stats.forge.first.is_zero() {
 					stats.forge.first = current_block;
 				}
@@ -882,7 +894,7 @@ pub mod pallet {
 		fn toggle_season(early_access: bool) -> Result<(SeasonId, bool), DispatchError> {
 			let current_season_id = Self::current_season_id();
 			let mut season_deactivated = false;
-			if let Some(season) = Self::seasons(&current_season_id) {
+			if let Some(season) = Self::seasons(current_season_id) {
 				let now = <frame_system::Pallet<T>>::block_number();
 				let is_current_season_active = Self::current_season_status().active;
 

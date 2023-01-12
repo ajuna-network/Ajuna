@@ -136,10 +136,10 @@ benchmarks! {
 		let player = account::<T>(name);
 		let avatar_ids = AAvatars::<T>::owners(&player);
 		let avatar_id = avatar_ids[0];
-		let (_owner, original_avatar) = AAvatars::<T>::avatars(&avatar_id).unwrap();
+		let (_owner, original_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
 	}: _(RawOrigin::Signed(player), avatar_id, avatar_ids[1..5].to_vec())
 	verify {
-		let (_owner, upgraded_avatar) = AAvatars::<T>::avatars(&avatar_id).unwrap();
+		let (_owner, upgraded_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
 		let original_tiers = original_avatar.dna.into_iter().map(|x| x >> 4);
 		let upgraded_tiers = upgraded_avatar.dna.into_iter().map(|x| x >> 4);
 		let upgraded_components = original_tiers.zip(upgraded_tiers).fold(
@@ -180,7 +180,7 @@ benchmarks! {
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&caller)[0];
-		Trade::<T>::insert(&avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
+		Trade::<T>::insert(avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarPriceUnset { avatar_id }.into())
@@ -199,7 +199,7 @@ benchmarks! {
 		T::Currency::make_free_balance_be(&seller, sell_fee);
 
 		let avatar_id = AAvatars::<T>::owners(&seller)[0];
-		Trade::<T>::insert(&avatar_id, sell_fee);
+		Trade::<T>::insert(avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer }.into())
