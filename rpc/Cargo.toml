@@ -4,7 +4,7 @@ edition    = "2021"
 homepage   = "https://ajuna.io"
 name       = "ajuna-rpc"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.7"
+version    = "0.1.8"
 
 [dependencies]
 ajuna-primitives = { path = "../primitives" }
