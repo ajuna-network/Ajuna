@@ -127,10 +127,6 @@ pub mod pallet {
 	#[pallet::getter(fn current_season_status)]
 	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn current_season_max_tier_avatars)]
-	pub type CurrentSeasonMaxTierAvatars<T: Config> = StorageValue<_, u32, ValueQuery>;
-
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -842,10 +838,10 @@ pub mod pallet {
 			}
 
 			if leader.min_tier::<T>()? == max_tier {
-				CurrentSeasonMaxTierAvatars::<T>::mutate(|max_tier_avatars| {
-					max_tier_avatars.saturating_inc();
-					if *max_tier_avatars == season.max_tier_forges {
-						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
+				CurrentSeasonStatus::<T>::mutate(|status| {
+					status.max_tier_avatars.saturating_inc();
+					if status.max_tier_avatars == season.max_tier_forges {
+						status.prematurely_ended = true;
 					}
 				});
 			}
@@ -941,8 +937,8 @@ pub mod pallet {
 				status.active = true;
 				status.early = false;
 				status.prematurely_ended = false;
+				status.max_tier_avatars = Zero::zero();
 			});
-			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			Self::deposit_event(Event::SeasonStarted(season_id));
 		}
 
@@ -951,8 +947,8 @@ pub mod pallet {
 				status.active = false;
 				status.early = false;
 				status.prematurely_ended = false;
+				status.max_tier_avatars = Zero::zero();
 			});
-			CurrentSeasonMaxTierAvatars::<T>::put(0);
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
 		}

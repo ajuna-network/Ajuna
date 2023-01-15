@@ -38,6 +38,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 		active: true,
 		early: false,
 		prematurely_ended: false,
+		max_tier_avatars: 0,
 	});
 	for i in 0..n {
 		Seasons::<T>::insert(

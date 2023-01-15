@@ -24,6 +24,7 @@ pub struct SeasonStatus {
 	pub active: bool,
 	pub early: bool,
 	pub prematurely_ended: bool,
+	pub max_tier_avatars: u32,
 }
 
 #[derive(

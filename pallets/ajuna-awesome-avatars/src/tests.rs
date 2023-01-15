@@ -969,13 +969,13 @@ mod forging {
 					vec![0x43, 0x44, 0x40, 0x43, 0x13, 0x15, 0x15, 0x11],
 					Some(vec![0x14, 0x15, 0x11, 0x14, 0x14, 0x16, 0x16, 0x12]),
 				);
-				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 0);
 				assert_dna(
 					&leader_id,
 					vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x45, 0x45, 0x41],
 					Some(vec![0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x12]),
 				);
-				assert_eq!(AAvatars::current_season_max_tier_avatars(), 1);
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 1);
 				assert!(AAvatars::current_season_status().prematurely_ended);
 				assert_noop!(
 					AAvatars::mint(
@@ -991,7 +991,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
-				assert_eq!(AAvatars::current_season_max_tier_avatars(), 0);
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 0);
 				assert!(!AAvatars::current_season_status().prematurely_ended);
 				assert_eq!(AAvatars::accounts(BOB).stats.forge.total, 8);
 				assert_eq!(AAvatars::accounts(BOB).stats.forge.current_season, 0);
