@@ -35,8 +35,8 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	CurrentSeasonId::<T>::put(1);
 	CurrentSeasonStatus::<T>::put(SeasonStatus {
-		active: true,
 		early: false,
+		active: true,
 		prematurely_ended: false,
 		max_tier_avatars: 0,
 	});

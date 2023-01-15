@@ -21,8 +21,8 @@ use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct SeasonStatus {
-	pub active: bool,
 	pub early: bool,
+	pub active: bool,
 	pub prematurely_ended: bool,
 	pub max_tier_avatars: u32,
 }

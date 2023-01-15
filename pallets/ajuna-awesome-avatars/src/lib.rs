@@ -934,8 +934,8 @@ pub mod pallet {
 
 		fn start_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
-				status.active = true;
 				status.early = false;
+				status.active = true;
 				status.prematurely_ended = false;
 				status.max_tier_avatars = Zero::zero();
 			});
@@ -944,8 +944,8 @@ pub mod pallet {
 
 		fn finish_season(season_id: SeasonId) {
 			CurrentSeasonStatus::<T>::mutate(|status| {
-				status.active = false;
 				status.early = false;
+				status.active = false;
 				status.prematurely_ended = false;
 				status.max_tier_avatars = Zero::zero();
 			});
