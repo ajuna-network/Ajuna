@@ -182,6 +182,11 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn season_stats)]
+	pub type SeasonStats<T: Config> =
+		StorageDoubleMap<_, Identity, SeasonId, Identity, T::AccountId, SeasonInfo, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn trade)]
 	pub type Trade<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, BalanceOf<T>, OptionQuery>;
 
@@ -273,6 +278,8 @@ pub mod pallet {
 		IncorrectDna,
 		/// Incorrect Avatar ID.
 		IncorrectAvatarId,
+		/// Incorrect season ID.
+		IncorrectSeasonId,
 		/// The player must wait cooldown period.
 		MintCooldown,
 		/// The season's max components value is less than the minimum allowed (1).
@@ -316,9 +323,9 @@ pub mod pallet {
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let is_early_access = mint_option.mint_type == MintType::Free;
-			let (season_id, deactivated) = Self::toggle_season(is_early_access)?;
+			let (mut season_id, deactivated) = Self::toggle_season(is_early_access)?;
 			if deactivated {
-				Self::reset_seasonal_stats(&player);
+				season_id.saturating_inc();
 			}
 			Self::do_mint(&player, &mint_option, season_id)
 		}
@@ -340,10 +347,7 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let (season_id, deactivated) = Self::toggle_season(false)?;
-			if deactivated {
-				Self::reset_seasonal_stats(&player);
-			}
+			let (season_id, _deactivated) = Self::toggle_season(false)?;
 			Self::do_forge(&player, &leader, &sacrifices, season_id)
 		}
 
@@ -748,15 +752,20 @@ pub mod pallet {
 				},
 			};
 
-			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
 				stats.mint.last = current_block;
-
-				let count = mint_option.count as Stat;
-				stats.mint.total.saturating_accrue(count);
-				stats.mint.current_season.saturating_accrue(count);
+				stats
+					.mint
+					.seasons_participated
+					.try_insert(season_id)
+					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+				Ok(())
+			})?;
+			SeasonStats::<T>::mutate(season_id, player, |info| {
+				info.minted.saturating_accrue(generated_avatar_ids.len() as Stat);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -856,15 +865,19 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
-			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
 				if stats.forge.first.is_zero() {
 					stats.forge.first = current_block;
 				}
 				stats.forge.last = current_block;
-
-				stats.forge.total.saturating_inc();
-				stats.forge.current_season.saturating_inc();
-			});
+				stats
+					.forge
+					.seasons_participated
+					.try_insert(season_id)
+					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+				Ok(())
+			})?;
+			SeasonStats::<T>::mutate(season_id, player, |info| info.forged.saturating_inc());
 
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
 			Ok(())
@@ -951,13 +964,6 @@ pub mod pallet {
 			});
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
 			Self::deposit_event(Event::SeasonFinished(season_id));
-		}
-
-		fn reset_seasonal_stats(who: &T::AccountId) {
-			Accounts::<T>::mutate(who, |account| {
-				account.stats.mint.current_season = Zero::zero();
-				account.stats.forge.current_season = Zero::zero();
-			});
 		}
 	}
 }
