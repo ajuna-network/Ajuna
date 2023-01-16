@@ -77,7 +77,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-
-      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 2
+      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   coverage:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
