@@ -127,10 +127,6 @@ pub mod pallet {
 	#[pallet::getter(fn current_season_status)]
 	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn current_season_max_tier_avatars)]
-	pub type CurrentSeasonMaxTierAvatars<T: Config> = StorageValue<_, u32, ValueQuery>;
-
 	/// Storage for the seasons.
 	#[pallet::storage]
 	#[pallet::getter(fn seasons)]
@@ -184,6 +180,11 @@ pub mod pallet {
 	#[pallet::getter(fn accounts)]
 	pub type Accounts<T: Config> =
 		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn season_stats)]
+	pub type SeasonStats<T: Config> =
+		StorageDoubleMap<_, Identity, SeasonId, Identity, T::AccountId, SeasonInfo, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn trade)]
@@ -277,6 +278,8 @@ pub mod pallet {
 		IncorrectDna,
 		/// Incorrect Avatar ID.
 		IncorrectAvatarId,
+		/// Incorrect season ID.
+		IncorrectSeasonId,
 		/// The player must wait cooldown period.
 		MintCooldown,
 		/// The season's max components value is less than the minimum allowed (1).
@@ -303,6 +306,26 @@ pub mod pallet {
 		IncorrectAvatarSeason,
 	}
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			let current_season_id = Self::current_season_id();
+			let mut weight = T::DbWeight::get().reads(1);
+
+			if let Some(current_season) = Self::seasons(current_season_id) {
+				weight.saturating_accrue(T::DbWeight::get().reads(1));
+
+				if now <= current_season.end {
+					Self::start_season(&mut weight, now, current_season_id, &current_season);
+				} else {
+					Self::finish_season(&mut weight, now, current_season_id);
+				}
+			}
+
+			weight
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Issue a new avatar.
@@ -319,12 +342,7 @@ pub mod pallet {
 		})]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let is_early_access = mint_option.mint_type == MintType::Free;
-			let (season_id, deactivated) = Self::toggle_season(is_early_access)?;
-			if deactivated {
-				Self::reset_seasonal_stats(&player);
-			}
-			Self::do_mint(&player, &mint_option, season_id)
+			Self::do_mint(&player, &mint_option)
 		}
 
 		/// Forge an avatar.
@@ -344,11 +362,7 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let (season_id, deactivated) = Self::toggle_season(false)?;
-			if deactivated {
-				Self::reset_seasonal_stats(&player);
-			}
-			Self::do_forge(&player, &leader, &sacrifices, season_id)
+			Self::do_forge(&player, &leader, &sacrifices)
 		}
 
 		/// Transfer free mints to a given account.
@@ -697,16 +711,15 @@ pub mod pallet {
 		}
 
 		/// Mint a new avatar.
-		pub(crate) fn do_mint(
-			player: &T::AccountId,
-			mint_option: &MintOption,
-			season_id: SeasonId,
-		) -> DispatchResult {
+		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
+
+			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
+			ensure!(!early_ended, Error::<T>::PrematureSeasonEnd);
 			ensure!(
-				!Self::current_season_status().prematurely_ended,
-				Error::<T>::PrematureSeasonEnd
+				active || (mint_option.mint_type == MintType::Free && early),
+				Error::<T>::OutOfSeason
 			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -715,6 +728,7 @@ pub mod pallet {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
+			let season_id = Self::current_season_id();
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let is_batched = mint_option.count.is_batched();
 			let generated_avatar_ids = (0..mint_option.count as usize)
@@ -752,15 +766,20 @@ pub mod pallet {
 				},
 			};
 
-			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
 				stats.mint.last = current_block;
-
-				let count = mint_option.count as Stat;
-				stats.mint.total.saturating_accrue(count);
-				stats.mint.current_season.saturating_accrue(count);
+				stats
+					.mint
+					.seasons_participated
+					.try_insert(season_id)
+					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+				Ok(())
+			})?;
+			SeasonStats::<T>::mutate(season_id, player, |info| {
+				info.minted.saturating_accrue(generated_avatar_ids.len() as Stat);
 			});
 
 			Self::deposit_event(Event::AvatarsMinted { avatar_ids: generated_avatar_ids });
@@ -772,12 +791,19 @@ pub mod pallet {
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
 			sacrifice_ids: &[AvatarIdOf<T>],
-			season_id: SeasonId,
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let mut season_id = Self::current_season_id();
+			let season = match Self::seasons(season_id) {
+				Some(season) => season,
+				None => {
+					season_id.saturating_dec();
+					Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?
+				},
+			};
+
 			ensure!(
 				sacrifice_ids.len() as u8 >= season.min_sacrifices,
 				Error::<T>::TooFewSacrifices
@@ -842,10 +868,10 @@ pub mod pallet {
 			}
 
 			if leader.min_tier::<T>()? == max_tier {
-				CurrentSeasonMaxTierAvatars::<T>::mutate(|max_tier_avatars| {
-					max_tier_avatars.saturating_inc();
-					if *max_tier_avatars == season.max_tier_forges {
-						CurrentSeasonStatus::<T>::mutate(|status| status.prematurely_ended = true);
+				CurrentSeasonStatus::<T>::mutate(|status| {
+					status.max_tier_avatars.saturating_inc();
+					if status.max_tier_avatars == season.max_tier_forges {
+						status.early_ended = true;
 					}
 				});
 			}
@@ -860,15 +886,19 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
-			Accounts::<T>::mutate(player, |AccountInfo { stats, .. }| {
+			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
 				if stats.forge.first.is_zero() {
 					stats.forge.first = current_block;
 				}
 				stats.forge.last = current_block;
-
-				stats.forge.total.saturating_inc();
-				stats.forge.current_season.saturating_inc();
-			});
+				stats
+					.forge
+					.seasons_participated
+					.try_insert(season_id)
+					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+				Ok(())
+			})?;
+			SeasonStats::<T>::mutate(season_id, player, |info| info.forged.saturating_inc());
 
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
 			Ok(())
@@ -891,77 +921,45 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn toggle_season(early_access: bool) -> Result<(SeasonId, bool), DispatchError> {
-			let current_season_id = Self::current_season_id();
-			let mut season_deactivated = false;
-			if let Some(season) = Self::seasons(current_season_id) {
-				let now = <frame_system::Pallet<T>>::block_number();
-				let is_current_season_active = Self::current_season_status().active;
+		fn start_season(
+			weight: &mut Weight,
+			block_number: T::BlockNumber,
+			season_id: SeasonId,
+			season: &SeasonOf<T>,
+		) {
+			let is_current_season_active = Self::current_season_status().active;
+			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-				// activate early season
-				if !is_current_season_active && season.is_early(now) {
-					CurrentSeasonStatus::<T>::mutate(|status| status.early = true);
-				}
+			if !is_current_season_active {
+				CurrentSeasonStatus::<T>::mutate(|status| {
+					status.early = season.is_early(block_number);
+					status.active = season.is_active(block_number);
 
-				// activate season
-				if !is_current_season_active && season.is_active(now) {
-					Self::start_season(current_season_id);
-				}
-
-				// deactivate season (and active if condition met)
-				if now > season.end {
-					Self::finish_season(current_season_id);
-					season_deactivated = true;
-					let next_season_id = current_season_id.saturating_add(1);
-					if let Some(next_season) = Self::seasons(next_season_id) {
-						if next_season.is_active(now) {
-							Self::start_season(next_season_id);
-						}
+					if season.is_active(block_number) {
+						Self::deposit_event(Event::SeasonStarted(season_id));
 					}
-				}
-			}
+				});
 
-			// Failed extrinsics roll back storage changes as they're atomic, meaning it's
-			// impossible to deactivate a season and check for out of season inside the same
-			// extrinsic (since deactivation will be rolled back). Hence this condition is required
-			// to allow for one extra mint / forge to happen when a season is deactivated.
-			if !season_deactivated {
-				let SeasonStatus { early, active, .. } = Self::current_season_status();
-				ensure!(
-					if early_access { early || active } else { active },
-					Error::<T>::OutOfSeason
-				);
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
-
-			Ok((current_season_id, season_deactivated))
 		}
 
-		fn start_season(season_id: SeasonId) {
+		fn finish_season(weight: &mut Weight, block_number: T::BlockNumber, season_id: SeasonId) {
+			let next_season_id = season_id.saturating_add(1);
+
 			CurrentSeasonStatus::<T>::mutate(|status| {
-				status.active = true;
 				status.early = false;
-				status.prematurely_ended = false;
-			});
-			CurrentSeasonMaxTierAvatars::<T>::put(0);
-			Self::deposit_event(Event::SeasonStarted(season_id));
-		}
-
-		fn finish_season(season_id: SeasonId) {
-			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.active = false;
-				status.early = false;
-				status.prematurely_ended = false;
+				status.early_ended = false;
+				status.max_tier_avatars = Zero::zero();
 			});
-			CurrentSeasonMaxTierAvatars::<T>::put(0);
-			CurrentSeasonId::<T>::put(season_id.saturating_add(1));
+			CurrentSeasonId::<T>::put(next_season_id);
 			Self::deposit_event(Event::SeasonFinished(season_id));
-		}
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-		fn reset_seasonal_stats(who: &T::AccountId) {
-			Accounts::<T>::mutate(who, |account| {
-				account.stats.mint.current_season = Zero::zero();
-				account.stats.forge.current_season = Zero::zero();
-			});
+			if let Some(next_season) = Self::seasons(next_season_id) {
+				Self::start_season(weight, block_number, next_season_id, &next_season);
+			}
 		}
 	}
 }

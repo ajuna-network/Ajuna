@@ -35,9 +35,10 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	CurrentSeasonId::<T>::put(1);
 	CurrentSeasonStatus::<T>::put(SeasonStatus {
-		active: true,
 		early: false,
-		prematurely_ended: false,
+		active: true,
+		early_ended: false,
+		max_tier_avatars: 0,
 	});
 	for i in 0..n {
 		Seasons::<T>::insert(
@@ -72,7 +73,6 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	create_seasons::<T>(3)?;
 
 	let player = account::<T>(name);
-	let season_id = 1;
 
 	Accounts::<T>::mutate(&player, |account| {
 		account.free_mints = n as MintCount;
@@ -83,7 +83,6 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 		AAvatars::<T>::do_mint(
 			&player,
 			&MintOption { mint_type: MintType::Free, count: MintPackSize::One },
-			season_id,
 		)?;
 		Accounts::<T>::mutate(&player, |account| account.stats.mint.last = Zero::zero());
 	}

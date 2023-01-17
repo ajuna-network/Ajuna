@@ -19,11 +19,12 @@ use frame_support::pallet_prelude::*;
 use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto, Zero};
 use sp_std::vec::Vec;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Debug, Default, PartialEq)]
 pub struct SeasonStatus {
-	pub active: bool,
 	pub early: bool,
-	pub prematurely_ended: bool,
+	pub active: bool,
+	pub early_ended: bool,
+	pub max_tier_avatars: u32,
 }
 
 #[derive(
@@ -169,9 +170,9 @@ mod test {
 			Self {
 				name: b"cool season".to_vec().try_into().unwrap(),
 				description: b"this is a really cool season".to_vec().try_into().unwrap(),
-				early_start: 1,
-				start: 2,
-				end: 3,
+				early_start: 2,
+				start: 3,
+				end: 4,
 				max_tier_forges: 10,
 				max_variations: 2,
 				max_components: 2,

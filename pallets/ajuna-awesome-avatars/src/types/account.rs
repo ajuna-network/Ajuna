@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::MintCount;
+use super::{MintCount, SeasonId};
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::Get;
+use sp_runtime::{traits::Get, BoundedBTreeSet};
 
 const MAX_AVATARS_PER_PLAYER: isize = 100;
 
@@ -52,14 +52,20 @@ impl StorageTier {
 	}
 }
 
+pub struct MaxSeasons;
+impl Get<u32> for MaxSeasons {
+	fn get() -> u32 {
+		1_000
+	}
+}
+
 pub type Stat = u32;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
 pub struct PlayStats<BlockNumber> {
-	pub total: Stat,
-	pub current_season: Stat,
 	pub first: BlockNumber,
 	pub last: BlockNumber,
+	pub seasons_participated: BoundedBTreeSet<SeasonId, MaxSeasons>,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
@@ -80,4 +86,10 @@ pub struct AccountInfo<BlockNumber> {
 	pub free_mints: MintCount,
 	pub storage_tier: StorageTier,
 	pub stats: Stats<BlockNumber>,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+pub struct SeasonInfo {
+	pub minted: Stat,
+	pub forged: Stat,
 }
