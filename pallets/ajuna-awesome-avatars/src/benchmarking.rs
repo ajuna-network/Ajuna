@@ -73,7 +73,6 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	create_seasons::<T>(3)?;
 
 	let player = account::<T>(name);
-	let season_id = 1;
 
 	Accounts::<T>::mutate(&player, |account| {
 		account.free_mints = n as MintCount;
@@ -84,7 +83,6 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 		AAvatars::<T>::do_mint(
 			&player,
 			&MintOption { mint_type: MintType::Free, count: MintPackSize::One },
-			season_id,
 		)?;
 		Accounts::<T>::mutate(&player, |account| account.stats.mint.last = Zero::zero());
 	}
