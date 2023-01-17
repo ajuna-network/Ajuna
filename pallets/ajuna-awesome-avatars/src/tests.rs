@@ -1477,33 +1477,40 @@ mod forging {
 	}
 
 	#[test]
-	fn forge_should_ignore_active_season_status() {
-		let min_sacrifices = 1;
-		let max_sacrifices = 3;
-		let season =
-			Season::default().min_sacrifices(min_sacrifices).max_sacrifices(max_sacrifices);
+	fn forge_should_not_be_interrupted_by_season_status() {
+		let season_1 = Season::default().early_start(5).start(10).end(20);
+		let season_2 = Season::default().early_start(30).start(40).end(50);
+		let seasons = vec![(1, season_1.clone()), (2, season_2.clone())];
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(seasons)
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, 12)])
+			.free_mints(vec![(ALICE, 100)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.early_start + 1);
-				for _ in 0..2 {
+				Accounts::<Test>::mutate(ALICE, |info| info.storage_tier = StorageTier::Four);
+
+				run_to_block(season_1.early_start);
+				for _ in 0..33 {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
-						MintOption { count: MintPackSize::Six, mint_type: MintType::Free }
+						MintOption { count: MintPackSize::Three, mint_type: MintType::Free }
 					));
 				}
 
-				run_to_block(season.end + 10);
-
-				assert_ok!(AAvatars::forge(
-					RuntimeOrigin::signed(ALICE),
-					AAvatars::owners(ALICE)[0],
-					AAvatars::owners(ALICE)[1..3].to_vec()
-				));
+				for iter in [
+					season_1.early_start..season_1.end, // block 5..19
+					season_1.end..season_2.early_start, // block 20..29
+				] {
+					for n in iter {
+						run_to_block(n);
+						assert_ok!(AAvatars::forge(
+							RuntimeOrigin::signed(ALICE),
+							AAvatars::owners(ALICE)[0],
+							AAvatars::owners(ALICE)[1..3].to_vec()
+						));
+					}
+				}
 			});
 	}
 

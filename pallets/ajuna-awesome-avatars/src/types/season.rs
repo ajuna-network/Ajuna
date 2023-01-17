@@ -26,6 +26,11 @@ pub struct SeasonStatus {
 	pub early_ended: bool,
 	pub max_tier_avatars: u32,
 }
+impl SeasonStatus {
+	pub(crate) fn is_in_season(&self) -> bool {
+		self.early || self.active || self.early_ended
+	}
+}
 
 #[derive(
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
@@ -253,6 +258,29 @@ mod test {
 		pub fn periods(mut self, periods: u16) -> Self {
 			self.periods = periods;
 			self
+		}
+	}
+
+	#[test]
+	fn is_in_season_works() {
+		assert!(!SeasonStatus {
+			early: false,
+			active: false,
+			early_ended: false,
+			max_tier_avatars: 0
+		}
+		.is_in_season());
+
+		for season_status in [
+			SeasonStatus { early: true, active: false, early_ended: false, max_tier_avatars: 0 },
+			SeasonStatus { early: false, active: true, early_ended: false, max_tier_avatars: 1 },
+			SeasonStatus { early: false, active: false, early_ended: true, max_tier_avatars: 2 },
+			SeasonStatus { early: false, active: true, early_ended: true, max_tier_avatars: 3 },
+			SeasonStatus { early: true, active: false, early_ended: true, max_tier_avatars: 4 },
+			SeasonStatus { early: true, active: true, early_ended: false, max_tier_avatars: 5 },
+			SeasonStatus { early: true, active: true, early_ended: true, max_tier_avatars: 6 },
+		] {
+			assert!(season_status.is_in_season());
 		}
 	}
 

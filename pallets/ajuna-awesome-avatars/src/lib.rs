@@ -797,8 +797,8 @@ pub mod pallet {
 
 			let mut season_id = Self::current_season_id();
 			let season = match Self::seasons(season_id) {
-				Some(season) => season,
-				None => {
+				Some(season) if Self::current_season_status().is_in_season() => season,
+				_ => {
 					season_id.saturating_dec();
 					Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?
 				},
