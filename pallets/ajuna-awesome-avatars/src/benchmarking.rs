@@ -37,7 +37,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	CurrentSeasonStatus::<T>::put(SeasonStatus {
 		early: false,
 		active: true,
-		prematurely_ended: false,
+		early_ended: false,
 		max_tier_avatars: 0,
 	});
 	for i in 0..n {

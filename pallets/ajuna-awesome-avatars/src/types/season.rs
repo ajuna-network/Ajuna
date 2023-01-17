@@ -23,7 +23,7 @@ use sp_std::vec::Vec;
 pub struct SeasonStatus {
 	pub early: bool,
 	pub active: bool,
-	pub prematurely_ended: bool,
+	pub early_ended: bool,
 	pub max_tier_avatars: u32,
 }
 

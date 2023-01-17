@@ -704,10 +704,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
-			ensure!(
-				!Self::current_season_status().prematurely_ended,
-				Error::<T>::PrematureSeasonEnd
-			);
+			ensure!(!Self::current_season_status().early_ended, Error::<T>::PrematureSeasonEnd);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let last_block = Self::accounts(player).stats.mint.last;
@@ -850,7 +847,7 @@ pub mod pallet {
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();
 					if status.max_tier_avatars == season.max_tier_forges {
-						status.prematurely_ended = true;
+						status.early_ended = true;
 					}
 				});
 			}
@@ -949,7 +946,7 @@ pub mod pallet {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.early = false;
 				status.active = true;
-				status.prematurely_ended = false;
+				status.early_ended = false;
 				status.max_tier_avatars = Zero::zero();
 			});
 			Self::deposit_event(Event::SeasonStarted(season_id));
@@ -959,7 +956,7 @@ pub mod pallet {
 			CurrentSeasonStatus::<T>::mutate(|status| {
 				status.early = false;
 				status.active = false;
-				status.prematurely_ended = false;
+				status.early_ended = false;
 				status.max_tier_avatars = Zero::zero();
 			});
 			CurrentSeasonId::<T>::put(season_id.saturating_add(1));

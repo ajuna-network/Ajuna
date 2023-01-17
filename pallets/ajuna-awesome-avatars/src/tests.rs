@@ -992,7 +992,7 @@ mod forging {
 					Some(vec![0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x12]),
 				);
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 1);
-				assert!(AAvatars::current_season_status().prematurely_ended);
+				assert!(AAvatars::current_season_status().early_ended);
 				assert_noop!(
 					AAvatars::mint(
 						RuntimeOrigin::signed(BOB),
@@ -1012,7 +1012,7 @@ mod forging {
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 0);
-				assert!(!AAvatars::current_season_status().prematurely_ended);
+				assert!(!AAvatars::current_season_status().early_ended);
 
 				// check stats for season 2
 				assert_eq!(AAvatars::season_stats(2, BOB).forged, 0);
