@@ -1188,17 +1188,14 @@ mod forging {
 	fn forge_should_work_for_matches() {
 		let max_components = 5;
 		let max_variations = 3;
-		let min_sacrifices = 1;
-		let max_sacrifices = 2;
 		let tiers = vec![RarityTier::Common, RarityTier::Legendary];
 		let season = Season::default()
-			.end(99)
 			.tiers(tiers.clone())
 			.batch_mint_probs(vec![100])
 			.max_components(max_components)
 			.max_variations(max_variations)
-			.min_sacrifices(min_sacrifices)
-			.max_sacrifices(max_sacrifices);
+			.min_sacrifices(1)
+			.max_sacrifices(2);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -1284,20 +1281,15 @@ mod forging {
 
 	#[test]
 	fn forge_should_work_for_non_matches() {
-		let max_components = 10;
-		let max_variations = 12;
-		let min_sacrifices = 1;
-		let max_sacrifices = 5;
 		let tiers =
 			vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Rare, RarityTier::Legendary];
 		let season = Season::default()
-			.end(99)
 			.tiers(tiers.clone())
 			.batch_mint_probs(vec![33, 33, 34])
-			.max_components(max_components)
-			.max_variations(max_variations)
-			.min_sacrifices(min_sacrifices)
-			.max_sacrifices(max_sacrifices);
+			.max_components(10)
+			.max_variations(12)
+			.min_sacrifices(1)
+			.max_sacrifices(5);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -1333,7 +1325,7 @@ mod forging {
 					original_leader.compare(
 						&original_sacrifice,
 						&upgradable_indexes,
-						max_variations,
+						season.max_variations,
 						tiers[tiers.len() - 1].clone() as u8
 					),
 					(false, BTreeSet::new())
@@ -1441,10 +1433,7 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_out_of_bound_sacrifices() {
-		let min_sacrifices = 3;
-		let max_sacrifices = 5;
-		let season =
-			Season::default().min_sacrifices(min_sacrifices).max_sacrifices(max_sacrifices);
+		let season = Season::default().min_sacrifices(3).max_sacrifices(5);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -1452,7 +1441,7 @@ mod forging {
 			.execute_with(|| {
 				run_to_block(season.start);
 
-				for i in 0..min_sacrifices {
+				for i in 0..season.min_sacrifices {
 					assert_noop!(
 						AAvatars::forge(
 							RuntimeOrigin::signed(ALICE),
@@ -1463,7 +1452,7 @@ mod forging {
 					);
 				}
 
-				for i in (max_sacrifices + 1)..(max_sacrifices + 5) {
+				for i in (season.max_sacrifices + 1)..(season.max_sacrifices + 5) {
 					assert_noop!(
 						AAvatars::forge(
 							RuntimeOrigin::signed(ALICE),
@@ -1532,12 +1521,7 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_unknown_avatars() {
-		let min_sacrifices = 1;
-		let max_sacrifices = 3;
-		let season = Season::default()
-			.end(99)
-			.min_sacrifices(min_sacrifices)
-			.max_sacrifices(max_sacrifices);
+		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -1546,12 +1530,11 @@ mod forging {
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-				for _ in 0..max_sacrifices {
+				for _ in 0..season.max_sacrifices {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
-					run_to_block(System::block_number() + 1);
 				}
 
 				let owned_avatars = AAvatars::owners(ALICE);
@@ -1570,12 +1553,7 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_incorrect_ownership() {
-		let min_sacrifices = 1;
-		let max_sacrifices = 3;
-		let season = Season::default()
-			.end(99)
-			.min_sacrifices(min_sacrifices)
-			.max_sacrifices(max_sacrifices);
+		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -1585,12 +1563,11 @@ mod forging {
 			.execute_with(|| {
 				run_to_block(season.start);
 				for player in [ALICE, BOB] {
-					for _ in 0..max_sacrifices {
+					for _ in 0..season.max_sacrifices {
 						assert_ok!(AAvatars::mint(
 							RuntimeOrigin::signed(player),
 							MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 						));
-						run_to_block(System::block_number() + 1);
 					}
 				}
 
@@ -1609,12 +1586,7 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_leader_in_sacrifice() {
-		let min_sacrifices = 1;
-		let max_sacrifices = 3;
-		let season = Season::default()
-			.end(99)
-			.min_sacrifices(min_sacrifices)
-			.max_sacrifices(max_sacrifices);
+		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
 			.seasons(vec![(1, season.clone())])
@@ -1623,12 +1595,11 @@ mod forging {
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-				for _ in 0..max_sacrifices {
+				for _ in 0..season.max_sacrifices {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 					));
-					run_to_block(System::block_number() + 1);
 				}
 
 				for (player, leader, sacrifices) in [
@@ -1693,7 +1664,9 @@ mod forging {
 		let min_sacrifices = 1;
 		let max_sacrifices = 3;
 		let season1 = Season::default()
-			.end(99)
+			.early_start(5)
+			.start(45)
+			.end(98)
 			.min_sacrifices(min_sacrifices)
 			.max_sacrifices(max_sacrifices);
 		let season2 = Season::default()
