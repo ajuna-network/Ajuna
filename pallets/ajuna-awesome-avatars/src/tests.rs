@@ -129,7 +129,7 @@ mod season {
 		let season_1 = Season::default().early_start(2).start(3).end(4);
 		let season_2 = Season::default().early_start(5).start(7).end(10);
 		let season_3 = Season::default().early_start(23).start(37).end(53);
-		let seasons = vec![(1, season_1.clone()), (2, season_2.clone()), (3, season_3.clone())];
+		let seasons = &[(1, season_1.clone()), (2, season_2.clone()), (3, season_3.clone())];
 
 		ExtBuilder::default().seasons(seasons).build().execute_with(|| {
 			// Check default values at block 1
@@ -272,9 +272,9 @@ mod season {
 	#[test]
 	fn season_validate_should_mutate_correctly() {
 		let mut season = Season::default()
-			.tiers(vec![RarityTier::Rare, RarityTier::Common, RarityTier::Epic])
-			.single_mint_probs(vec![20, 80])
-			.batch_mint_probs(vec![60, 40]);
+			.tiers(&[RarityTier::Rare, RarityTier::Common, RarityTier::Epic])
+			.single_mint_probs(&[20, 80])
+			.batch_mint_probs(&[60, 40]);
 		assert_ok!(season.validate::<Test>());
 
 		// check for ascending order sort
@@ -292,7 +292,7 @@ mod season {
 	fn set_season_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![(1, Season::default())])
+			.seasons(&[(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				let season_1 = Season::default().early_start(1).start(5).end(10);
@@ -326,7 +326,7 @@ mod season {
 		let season_1 = Season::default();
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![(1, season_1.clone())])
+			.seasons(&[(1, season_1.clone())])
 			.build()
 			.execute_with(|| {
 				for i in 0..season_1.end {
@@ -377,7 +377,7 @@ mod season {
 					AAvatars::set_season(
 						RuntimeOrigin::signed(ALICE),
 						1,
-						Season::default().tiers(duplicated_rarity_tiers)
+						Season::default().tiers(&duplicated_rarity_tiers)
 					),
 					Error::<Test>::DuplicatedRarityTier
 				);
@@ -387,14 +387,14 @@ mod season {
 
 	#[test]
 	fn set_season_should_reject_when_sum_of_rarity_chance_is_incorrect() {
-		let tiers = vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary];
-		let season_0 = Season::default().tiers(tiers.clone());
+		let tiers = &[RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary];
+		let season_0 = Season::default().tiers(tiers);
 		let season_1 = Season::default().tiers(tiers);
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			for incorrect_percentages in [vec![12, 39], vec![123, 10], vec![83, 1, 43]] {
 				for season in [
-					season_0.clone().single_mint_probs(incorrect_percentages.clone()),
-					season_1.clone().single_mint_probs(incorrect_percentages),
+					season_0.clone().single_mint_probs(&incorrect_percentages),
+					season_1.clone().single_mint_probs(&incorrect_percentages),
 				] {
 					assert_noop!(
 						AAvatars::set_season(RuntimeOrigin::signed(ALICE), 1, season),
@@ -412,7 +412,7 @@ mod season {
 
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![(1, season_1), (2, season_2.clone())])
+			.seasons(&[(1, season_1), (2, season_2.clone())])
 			.build()
 			.execute_with(|| {
 				let season_1_update = Season::default().early_start(1).start(5).end(14);
@@ -484,7 +484,7 @@ mod season {
 	fn set_season_should_reject_when_season_ids_are_not_sequential() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.seasons(vec![(1, Season::default())])
+			.seasons(&[(1, Season::default())])
 			.build()
 			.execute_with(|| {
 				assert_noop!(
@@ -544,11 +544,11 @@ mod minting {
 		let mut initial_free_mints = 12;
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season_1.clone()), (2, season_2)])
+			.seasons(&[(1, season_1.clone()), (2, season_2)])
 			.mint_fees(fees)
 			.mint_cooldown(mint_cooldown)
-			.balances(vec![(ALICE, initial_balance)])
-			.free_mints(vec![(ALICE, initial_free_mints)])
+			.balances(&[(ALICE, initial_balance)])
+			.free_mints(&[(ALICE, initial_free_mints)])
 			.build()
 			.execute_with(|| {
 				for mint_type in [MintType::Normal, MintType::Free] {
@@ -755,7 +755,7 @@ mod minting {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_open(false)
 			.build()
 			.execute_with(|| {
@@ -793,8 +793,8 @@ mod minting {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.free_mints(vec![(ALICE, 10)])
-			.seasons(vec![(1, season.clone())])
+			.free_mints(&[(ALICE, 10)])
+			.seasons(&[(1, season.clone())])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start);
@@ -816,8 +816,8 @@ mod minting {
 	#[test]
 	fn mint_should_reject_when_season_is_inactive() {
 		ExtBuilder::default()
-			.balances(vec![(ALICE, 1_234_567_890_123_456)])
-			.free_mints(vec![(ALICE, 10)])
+			.balances(&[(ALICE, 1_234_567_890_123_456)])
+			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
@@ -848,9 +848,9 @@ mod minting {
 		assert_eq!(avatar_ids.len(), MaxAvatarsPerPlayer::get() as usize);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, 1_234_567_890_123_456)])
-			.free_mints(vec![(ALICE, 10)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_234_567_890_123_456)])
+			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -875,10 +875,10 @@ mod minting {
 		let mint_cooldown = 7;
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(mint_cooldown)
-			.balances(vec![(ALICE, 1_234_567_890_123_456)])
-			.free_mints(vec![(ALICE, 10)])
+			.balances(&[(ALICE, 1_234_567_890_123_456)])
+			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				for mint_type in [MintType::Normal, MintType::Free] {
@@ -920,38 +920,35 @@ mod minting {
 	fn mint_should_reject_when_balance_is_insufficient() {
 		let season = Season::default();
 
-		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
 
-				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-					assert_noop!(
-						AAvatars::mint(
-							RuntimeOrigin::signed(ALICE),
-							MintOption { count: mint_count, mint_type: MintType::Normal }
-						),
-						pallet_balances::Error::<Test>::InsufficientBalance
-					);
-				}
+			for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+				assert_noop!(
+					AAvatars::mint(
+						RuntimeOrigin::signed(ALICE),
+						MintOption { count: mint_count, mint_type: MintType::Normal }
+					),
+					pallet_balances::Error::<Test>::InsufficientBalance
+				);
+			}
 
-				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-					assert_noop!(
-						AAvatars::mint(
-							RuntimeOrigin::signed(ALICE),
-							MintOption { count: mint_count, mint_type: MintType::Free }
-						),
-						Error::<Test>::InsufficientFreeMints
-					);
-				}
-			});
+			for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+				assert_noop!(
+					AAvatars::mint(
+						RuntimeOrigin::signed(ALICE),
+						MintOption { count: mint_count, mint_type: MintType::Free }
+					),
+					Error::<Test>::InsufficientFreeMints
+				);
+			}
+		});
 	}
 
 	#[test]
 	fn transfer_free_mints_should_work() {
 		ExtBuilder::default()
-			.free_mints(vec![(ALICE, 17), (BOB, 4)])
+			.free_mints(&[(ALICE, 17), (BOB, 4)])
 			.build()
 			.execute_with(|| {
 				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10));
@@ -973,7 +970,7 @@ mod minting {
 
 	#[test]
 	fn transfer_free_mints_should_reject_when_amount_is_lower_than_minimum_allowed() {
-		ExtBuilder::default().free_mints(vec![(ALICE, 11)]).build().execute_with(|| {
+		ExtBuilder::default().free_mints(&[(ALICE, 11)]).build().execute_with(|| {
 			let transfer = 5;
 			GlobalConfigs::<Test>::mutate(|cfg| cfg.mint.min_free_mint_transfer = transfer + 1);
 			assert_noop!(
@@ -985,7 +982,7 @@ mod minting {
 
 	#[test]
 	fn transfer_free_mints_should_reject_when_balance_is_insufficient() {
-		ExtBuilder::default().free_mints(vec![(ALICE, 7)]).build().execute_with(|| {
+		ExtBuilder::default().free_mints(&[(ALICE, 7)]).build().execute_with(|| {
 			assert_noop!(
 				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10),
 				Error::<Test>::InsufficientFreeMints
@@ -997,7 +994,7 @@ mod minting {
 	fn issue_free_mints_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.free_mints(vec![(ALICE, 7)])
+			.free_mints(&[(ALICE, 7)])
 			.build()
 			.execute_with(|| {
 				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
@@ -1027,9 +1024,9 @@ mod forging {
 	#[test]
 	fn forge_should_work() {
 		let season = Season::default()
-			.tiers(vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
-			.single_mint_probs(vec![100, 0])
-			.batch_mint_probs(vec![100, 0])
+			.tiers(&[RarityTier::Common, RarityTier::Uncommon, RarityTier::Legendary])
+			.single_mint_probs(&[100, 0])
+			.batch_mint_probs(&[100, 0])
 			.per_period(1)
 			.periods(6)
 			.max_tier_forges(1)
@@ -1084,9 +1081,9 @@ mod forging {
 			};
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(0)
-			.free_mints(vec![(BOB, MintCount::MAX)])
+			.free_mints(&[(BOB, MintCount::MAX)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -1188,19 +1185,19 @@ mod forging {
 	fn forge_should_work_for_matches() {
 		let max_components = 5;
 		let max_variations = 3;
-		let tiers = vec![RarityTier::Common, RarityTier::Legendary];
+		let tiers = &[RarityTier::Common, RarityTier::Legendary];
 		let season = Season::default()
-			.tiers(tiers.clone())
-			.batch_mint_probs(vec![100])
+			.tiers(tiers)
+			.batch_mint_probs(&[100])
 			.max_components(max_components)
 			.max_variations(max_variations)
 			.min_sacrifices(1)
 			.max_sacrifices(2);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(1)
-			.free_mints(vec![(BOB, 10)])
+			.free_mints(&[(BOB, 10)])
 			.build()
 			.execute_with(|| {
 				// prepare avatars to forge
@@ -1282,19 +1279,19 @@ mod forging {
 	#[test]
 	fn forge_should_work_for_non_matches() {
 		let tiers =
-			vec![RarityTier::Common, RarityTier::Uncommon, RarityTier::Rare, RarityTier::Legendary];
+			&[RarityTier::Common, RarityTier::Uncommon, RarityTier::Rare, RarityTier::Legendary];
 		let season = Season::default()
-			.tiers(tiers.clone())
-			.batch_mint_probs(vec![33, 33, 34])
+			.tiers(tiers)
+			.batch_mint_probs(&[33, 33, 34])
 			.max_components(10)
 			.max_variations(12)
 			.min_sacrifices(1)
 			.max_sacrifices(5);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(1)
-			.free_mints(vec![(BOB, 10)])
+			.free_mints(&[(BOB, 10)])
 			.build()
 			.execute_with(|| {
 				// prepare avatars to forge
@@ -1345,11 +1342,11 @@ mod forging {
 
 	#[test]
 	fn forge_should_ignore_low_tier_sacrifices() {
-		let tiers = vec![RarityTier::Common, RarityTier::Rare, RarityTier::Legendary];
+		let tiers = &[RarityTier::Common, RarityTier::Rare, RarityTier::Legendary];
 		let season = Season::default()
-			.tiers(tiers.clone())
-			.single_mint_probs(vec![100, 0])
-			.batch_mint_probs(vec![100, 0])
+			.tiers(tiers)
+			.single_mint_probs(&[100, 0])
+			.batch_mint_probs(&[100, 0])
 			.max_tier_forges(1)
 			.max_components(4)
 			.max_variations(6)
@@ -1357,9 +1354,9 @@ mod forging {
 			.max_sacrifices(4);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, MintCount::MAX)])
+			.free_mints(&[(ALICE, MintCount::MAX)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -1409,7 +1406,7 @@ mod forging {
 		let season = Season::default().min_sacrifices(0);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.forge_open(false)
 			.build()
 			.execute_with(|| {
@@ -1435,46 +1432,43 @@ mod forging {
 	fn forge_should_reject_out_of_bound_sacrifices() {
 		let season = Season::default().min_sacrifices(3).max_sacrifices(5);
 
-		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
 
-				for i in 0..season.min_sacrifices {
-					assert_noop!(
-						AAvatars::forge(
-							RuntimeOrigin::signed(ALICE),
-							H256::default(),
-							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
-						),
-						Error::<Test>::TooFewSacrifices,
-					);
-				}
+			for i in 0..season.min_sacrifices {
+				assert_noop!(
+					AAvatars::forge(
+						RuntimeOrigin::signed(ALICE),
+						H256::default(),
+						(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
+					),
+					Error::<Test>::TooFewSacrifices,
+				);
+			}
 
-				for i in (season.max_sacrifices + 1)..(season.max_sacrifices + 5) {
-					assert_noop!(
-						AAvatars::forge(
-							RuntimeOrigin::signed(ALICE),
-							H256::default(),
-							(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
-						),
-						Error::<Test>::TooManySacrifices,
-					);
-				}
-			});
+			for i in (season.max_sacrifices + 1)..(season.max_sacrifices + 5) {
+				assert_noop!(
+					AAvatars::forge(
+						RuntimeOrigin::signed(ALICE),
+						H256::default(),
+						(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
+					),
+					Error::<Test>::TooManySacrifices,
+				);
+			}
+		});
 	}
 
 	#[test]
 	fn forge_should_not_be_interrupted_by_season_status() {
 		let season_1 = Season::default().early_start(5).start(10).end(20);
 		let season_2 = Season::default().early_start(30).start(40).end(50);
-		let seasons = vec![(1, season_1.clone()), (2, season_2.clone())];
+		let seasons = &[(1, season_1.clone()), (2, season_2.clone())];
 
 		ExtBuilder::default()
 			.seasons(seasons)
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, 100)])
+			.free_mints(&[(ALICE, 100)])
 			.build()
 			.execute_with(|| {
 				Accounts::<Test>::mutate(ALICE, |info| info.storage_tier = StorageTier::Four);
@@ -1524,9 +1518,9 @@ mod forging {
 		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, 10)])
+			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -1556,9 +1550,9 @@ mod forging {
 		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, 10), (BOB, 10)])
+			.free_mints(&[(ALICE, 10), (BOB, 10)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -1589,9 +1583,9 @@ mod forging {
 		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
+			.seasons(&[(1, season.clone())])
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, 10)])
+			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -1621,8 +1615,8 @@ mod forging {
 		let initial_balance = 6 + MockExistentialDeposit::get();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, initial_balance), (BOB, 6 + initial_balance)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, initial_balance), (BOB, 6 + initial_balance)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -1677,9 +1671,9 @@ mod forging {
 			.max_sacrifices(max_sacrifices);
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season1.clone()), (2, season2.clone())])
+			.seasons(&[(1, season1.clone()), (2, season2.clone())])
 			.mint_cooldown(0)
-			.free_mints(vec![(ALICE, 10)])
+			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season1.early_start + 1);
@@ -1723,8 +1717,8 @@ mod trading {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(BOB, 999)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(BOB, 999)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -1771,8 +1765,8 @@ mod trading {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(BOB, 999)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(BOB, 999)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -1798,8 +1792,8 @@ mod trading {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(BOB, 999)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(BOB, 999)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -1847,8 +1841,8 @@ mod trading {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(BOB, 999)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(BOB, 999)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -1889,8 +1883,8 @@ mod trading {
 		let charlie_initial_bal = MockExistentialDeposit::get() + buy_fee + 1357;
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![
+			.seasons(&[(1, season.clone())])
+			.balances(&[
 				(ALICE, alice_initial_bal),
 				(BOB, bob_initial_bal),
 				(CHARLIE, charlie_initial_bal),
@@ -1986,8 +1980,8 @@ mod trading {
 		let price = 310_984;
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(ALICE, price - 1), (BOB, 999)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, price - 1), (BOB, 999)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
@@ -2011,9 +2005,9 @@ mod trading {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(vec![(1, season.clone())])
-			.balances(vec![(BOB, MockExistentialDeposit::get())])
-			.free_mints(vec![(BOB, 1)])
+			.seasons(&[(1, season.clone())])
+			.balances(&[(BOB, MockExistentialDeposit::get())])
+			.free_mints(&[(BOB, 1)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -2040,7 +2034,7 @@ mod account {
 		let upgrade_fee = 12_345;
 
 		ExtBuilder::default()
-			.balances(vec![(ALICE, 3 * upgrade_fee)])
+			.balances(&[(ALICE, 3 * upgrade_fee)])
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);

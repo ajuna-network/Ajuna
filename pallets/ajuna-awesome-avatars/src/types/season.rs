@@ -235,16 +235,16 @@ mod test {
 			self.max_sacrifices = max_sacrifices;
 			self
 		}
-		pub fn tiers(mut self, tiers: Vec<RarityTier>) -> Self {
-			self.tiers = tiers.try_into().unwrap();
+		pub fn tiers(mut self, tiers: &[RarityTier]) -> Self {
+			self.tiers = tiers.to_vec().try_into().unwrap();
 			self
 		}
-		pub fn single_mint_probs(mut self, percentages: Vec<RarityPercent>) -> Self {
-			self.single_mint_probs = percentages.try_into().unwrap();
+		pub fn single_mint_probs(mut self, percentages: &[RarityPercent]) -> Self {
+			self.single_mint_probs = percentages.to_vec().try_into().unwrap();
 			self
 		}
-		pub fn batch_mint_probs(mut self, percentages: Vec<RarityPercent>) -> Self {
-			self.batch_mint_probs = percentages.try_into().unwrap();
+		pub fn batch_mint_probs(mut self, percentages: &[RarityPercent]) -> Self {
+			self.batch_mint_probs = percentages.to_vec().try_into().unwrap();
 			self
 		}
 		pub fn base_prob(mut self, base_prob: RarityPercent) -> Self {
@@ -287,9 +287,9 @@ mod test {
 	#[test]
 	fn validate_works() {
 		let mut season = Season::default()
-			.tiers(vec![Common, Rare, Legendary])
-			.single_mint_probs(vec![10, 90])
-			.batch_mint_probs(vec![20, 80])
+			.tiers(&[Common, Rare, Legendary])
+			.single_mint_probs(&[10, 90])
+			.batch_mint_probs(&[20, 80])
 			.max_variations(5)
 			.per_period(10)
 			.periods(15);
@@ -305,24 +305,18 @@ mod test {
 			(season.clone().max_components(0), Error::<Test>::MaxComponentsTooLow),
 			(season.clone().max_components(17), Error::<Test>::MaxComponentsTooHigh),
 			// tiers
-			(season.clone().tiers(vec![Common, Common]), Error::<Test>::DuplicatedRarityTier),
+			(season.clone().tiers(&[Common, Common]), Error::<Test>::DuplicatedRarityTier),
 			// percentages
 			(
-				season.clone().single_mint_probs(vec![1, 100]),
+				season.clone().single_mint_probs(&[1, 100]),
 				Error::<Test>::IncorrectRarityPercentages,
 			),
+			(season.clone().batch_mint_probs(&[1, 100]), Error::<Test>::IncorrectRarityPercentages),
 			(
-				season.clone().batch_mint_probs(vec![1, 100]),
-				Error::<Test>::IncorrectRarityPercentages,
-			),
-			(
-				season.clone().single_mint_probs(vec![1, 2, 97]),
+				season.clone().single_mint_probs(&[1, 2, 97]),
 				Error::<Test>::TooManyRarityPercentages,
 			),
-			(
-				season.clone().batch_mint_probs(vec![1, 2, 97]),
-				Error::<Test>::TooManyRarityPercentages,
-			),
+			(season.clone().batch_mint_probs(&[1, 2, 97]), Error::<Test>::TooManyRarityPercentages),
 			// periods
 			(season.clone().per_period(2).periods(u16::MAX), Error::<Test>::PeriodConfigOverflow),
 			(season.clone().periods(123).max_variations(7), Error::<Test>::PeriodsIndivisible),
