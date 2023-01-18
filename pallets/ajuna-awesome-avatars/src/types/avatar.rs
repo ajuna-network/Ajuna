@@ -164,7 +164,11 @@ mod test {
 	use crate::{mock::*, types::*};
 
 	impl Avatar {
-		fn dna(mut self, dna: &[u8]) -> Self {
+		pub(crate) fn season_id(mut self, season_id: SeasonId) -> Self {
+			self.season_id = season_id;
+			self
+		}
+		pub(crate) fn dna(mut self, dna: &[u8]) -> Self {
 			self.dna = Dna::try_from(dna.to_vec()).unwrap();
 			self
 		}
