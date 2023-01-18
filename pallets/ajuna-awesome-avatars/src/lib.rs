@@ -877,8 +877,21 @@ pub mod pallet {
 			}
 
 			if leader.min_tier::<T>()? == max_tier {
+				let sacrificed_max_tiered_avatars =
+					sacrifice_ids.iter().try_fold::<_, _, Result<u32, DispatchError>>(
+						0,
+						|mut counter, id| {
+							let (_, avatar) = Self::avatars(id).ok_or(Error::<T>::UnknownAvatar)?;
+							if avatar.min_tier::<T>()? == max_tier {
+								counter.saturating_inc()
+							}
+							Ok(counter)
+						},
+					)?;
+
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();
+					status.max_tier_avatars.saturating_reduce(sacrificed_max_tiered_avatars);
 					if status.max_tier_avatars == season.max_tier_forges {
 						status.early_ended = true;
 					}
