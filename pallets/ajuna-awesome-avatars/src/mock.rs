@@ -140,8 +140,8 @@ impl ExtBuilder {
 		self.organizer = Some(organizer);
 		self
 	}
-	pub fn seasons(mut self, seasons: Vec<(SeasonId, Season<MockBlockNumber>)>) -> Self {
-		self.seasons = seasons;
+	pub fn seasons(mut self, seasons: &[(SeasonId, Season<MockBlockNumber>)]) -> Self {
+		self.seasons = seasons.to_vec();
 		self
 	}
 	pub fn mint_open(mut self, mint_open: bool) -> Self {
@@ -152,16 +152,16 @@ impl ExtBuilder {
 		self.mint_cooldown = Some(mint_cooldown);
 		self
 	}
-	pub fn balances(mut self, balances: Vec<(MockAccountId, MockBalance)>) -> Self {
-		self.balances = balances;
+	pub fn balances(mut self, balances: &[(MockAccountId, MockBalance)]) -> Self {
+		self.balances = balances.to_vec();
 		self
 	}
 	pub fn mint_fees(mut self, mint_fees: MintFees<MockBalance>) -> Self {
 		self.mint_fees = Some(mint_fees);
 		self
 	}
-	pub fn free_mints(mut self, free_mints: Vec<(MockAccountId, MintCount)>) -> Self {
-		self.free_mints = free_mints;
+	pub fn free_mints(mut self, free_mints: &[(MockAccountId, MintCount)]) -> Self {
+		self.free_mints = free_mints.to_vec();
 		self
 	}
 	pub fn forge_open(mut self, forge_open: bool) -> Self {
