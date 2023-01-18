@@ -887,11 +887,11 @@ pub mod pallet {
 
 			Avatars::<T>::insert(leader_id, (player, leader));
 			sacrifice_ids.iter().for_each(Avatars::<T>::remove);
-			let remaining_avatar_ids = Owners::<T>::take(player)
+			let remaining_avatar_ids: BoundedAvatarIdsOf<T> = Owners::<T>::take(player)
 				.into_iter()
 				.filter(|avatar_id| !sacrifice_ids.contains(avatar_id))
-				.collect::<Vec<_>>();
-			let remaining_avatar_ids = BoundedAvatarIdsOf::<T>::try_from(remaining_avatar_ids)
+				.collect::<Vec<_>>()
+				.try_into()
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 
