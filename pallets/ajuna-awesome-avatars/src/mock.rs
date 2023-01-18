@@ -17,13 +17,12 @@
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU16, ConstU64, Hooks},
+	traits::{ConstU16, ConstU64, GenesisBuild, Hooks},
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
 };
 
 pub type MockAccountId = u32;
@@ -178,12 +177,15 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		let config = GenesisConfig {
-			system: Default::default(),
-			balances: BalancesConfig { balances: self.balances },
-		};
+		let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+		pallet_balances::GenesisConfig::<Test> { balances: self.balances }
+			.assimilate_storage(&mut t)
+			.unwrap();
+		pallet_ajuna_awesome_avatars::GenesisConfig::<Test>::default()
+			.assimilate_storage(&mut t)
+			.unwrap();
 
-		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
+		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext.execute_with(|| {
 			if let Some(organizer) = self.organizer {

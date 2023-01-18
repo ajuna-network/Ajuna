@@ -113,15 +113,10 @@ pub mod pallet {
 	#[pallet::getter(fn treasurer)]
 	pub type Treasurer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
-	#[pallet::type_value]
-	pub fn DefaultSeasonId() -> SeasonId {
-		1
-	}
-
 	/// Contains the identifier of the current season.
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_id)]
-	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery, DefaultSeasonId>;
+	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_status)]
@@ -136,36 +131,9 @@ pub mod pallet {
 	#[pallet::getter(fn treasury)]
 	pub type Treasury<T: Config> = StorageMap<_, Identity, SeasonId, BalanceOf<T>, ValueQuery>;
 
-	#[pallet::type_value]
-	pub fn DefaultGlobalConfig<T: Config>() -> GlobalConfigOf<T> {
-		GlobalConfig {
-			mint: MintConfig {
-				open: true,
-				fees: MintFees {
-					one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
-					three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
-					six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
-				},
-				cooldown: 5_u8.into(),
-				free_mint_fee_multiplier: 1,
-				free_mint_transfer_fee: 1,
-				min_free_mint_transfer: 1,
-			},
-			forge: ForgeConfig { open: true },
-			trade: TradeConfig {
-				open: true,
-				buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
-			},
-			account: AccountConfig {
-				storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
-			},
-		}
-	}
-
 	#[pallet::storage]
 	#[pallet::getter(fn global_configs)]
-	pub type GlobalConfigs<T: Config> =
-		StorageValue<_, GlobalConfigOf<T>, ValueQuery, DefaultGlobalConfig<T>>;
+	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfigOf<T>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn avatars)]
@@ -189,6 +157,47 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn trade)]
 	pub type Trade<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, BalanceOf<T>, OptionQuery>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		_phantom: sp_std::marker::PhantomData<T>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig { _phantom: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			CurrentSeasonId::<T>::put(1);
+			GlobalConfigs::<T>::put(GlobalConfig {
+				mint: MintConfig {
+					open: true,
+					fees: MintFees {
+						one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
+						three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
+						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
+					},
+					cooldown: 5_u8.into(),
+					free_mint_fee_multiplier: 1,
+					free_mint_transfer_fee: 1,
+					min_free_mint_transfer: 1,
+				},
+				forge: ForgeConfig { open: true },
+				trade: TradeConfig {
+					open: true,
+					buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+				},
+				account: AccountConfig {
+					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+				},
+			});
+		}
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
