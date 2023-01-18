@@ -21,7 +21,7 @@ use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
-pub type SoulCount = u32; // TODO: is u32 enough?
+pub type SoulCount = u32;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
 pub struct Avatar {
@@ -52,10 +52,8 @@ impl Avatar {
 						matches += 1;
 						matched_components.extend(matching_components.iter());
 					}
-
-					// TODO: is u32 enough?
-					self.souls.saturating_accrue(other.souls);
 				}
+				self.souls.saturating_accrue(other.souls);
 				Ok((matched_components, matches))
 			},
 		)
