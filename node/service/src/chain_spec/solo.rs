@@ -202,5 +202,6 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		council_membership: Default::default(),
 		treasury: Default::default(),
 		democracy: Default::default(),
+		awesome_avatars: Default::default(),
 	}
 }
