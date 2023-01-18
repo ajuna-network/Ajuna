@@ -38,12 +38,11 @@ impl Avatar {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes::<T>()?;
+		let leader_tier = self.min_tier::<T>()?;
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0),
 			|(mut matched_components, mut matches), other| {
 				let sacrifice_tier = other.min_tier::<T>()?;
-				let leader_tier = self.min_tier::<T>()?;
-
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
 						self.compare(other, &upgradable_indexes, max_variations, max_tier);
