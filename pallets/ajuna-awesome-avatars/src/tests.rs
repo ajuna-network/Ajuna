@@ -1057,11 +1057,19 @@ mod forging {
 					})
 				}
 
-				assert_ok!(AAvatars::forge(
-					RuntimeOrigin::signed(BOB),
-					*leader_id,
-					AAvatars::owners(BOB)[1..=4].to_vec()
-				));
+				let original_leader_souls = AAvatars::avatars(leader_id).unwrap().1.souls;
+				let sacrifice_ids = AAvatars::owners(BOB)[1..=4].to_vec();
+				let sacrifice_souls = sacrifice_ids
+					.iter()
+					.map(|id| AAvatars::avatars(id).unwrap().1.souls)
+					.sum::<SoulCount>();
+				assert_ne!(sacrifice_souls, 0);
+
+				assert_ok!(AAvatars::forge(RuntimeOrigin::signed(BOB), *leader_id, sacrifice_ids));
+				assert_eq!(
+					AAvatars::avatars(leader_id).unwrap().1.souls,
+					original_leader_souls + sacrifice_souls
+				);
 				assert_eq!(AAvatars::avatars(leader_id).unwrap().1.dna.to_vec(), expected_dna);
 
 				forged_count += 1;
