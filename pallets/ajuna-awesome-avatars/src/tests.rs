@@ -1190,6 +1190,86 @@ mod forging {
 	}
 
 	#[test]
+	fn forge_should_update_max_tier_avatars() {
+		let season = Season::default()
+			.tiers(&[RarityTier::Common, RarityTier::Legendary])
+			.max_components(8)
+			.max_variations(6)
+			.max_tier_forges(5);
+
+		let create_avatar = |avatar_id_seed: u8, dna: &[u8]| -> AvatarIdOf<Test> {
+			let avatar = Avatar::default().season_id(1).dna(dna);
+			if avatar.min_tier::<Test>().unwrap() == RarityTier::Legendary as u8 {
+				CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
+			}
+
+			let avatar_id = H256::from([avatar_id_seed; 32]);
+			Avatars::<Test>::insert(avatar_id, (BOB, avatar));
+			Owners::<Test>::try_append(BOB, avatar_id).unwrap();
+
+			avatar_id
+		};
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.mint_cooldown(0)
+			.free_mints(&[(BOB, MintCount::MAX)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start);
+
+				let mut max_tier_avatars = 0;
+				let common_avatar_ids = [
+					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x02]),
+					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+				];
+
+				// `max_tier_avatars` increases when a legendary is forged
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					common_avatar_ids[0],
+					common_avatar_ids[1..].to_vec()
+				));
+				max_tier_avatars += 1;
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_eq!(AAvatars::owners(BOB).len(), 4 - 3);
+
+				// `max_tier_avatars` decreases when legendaries are sacrificed
+				let legendary_avatar_ids = [
+					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+				];
+				max_tier_avatars += 4;
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					legendary_avatar_ids[0],
+					legendary_avatar_ids[1..].to_vec()
+				));
+				max_tier_avatars -= 3;
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_eq!(AAvatars::owners(BOB).len(), (4 - 3) + (4 - 3));
+				assert_eq!(
+					AAvatars::accounts(BOB)
+						.stats
+						.forge
+						.seasons_participated
+						.into_iter()
+						.collect::<Vec<_>>(),
+					vec![1]
+				);
+
+				// NOTE: BOB forged twice so the seasonal forged count is 2
+				assert_eq!(AAvatars::season_stats(1, BOB).forged, 2);
+			});
+	}
+
+	#[test]
 	fn forge_should_work_for_matches() {
 		let max_components = 5;
 		let max_variations = 3;
