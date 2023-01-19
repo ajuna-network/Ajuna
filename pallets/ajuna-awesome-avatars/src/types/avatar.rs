@@ -38,12 +38,11 @@ impl Avatar {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes::<T>()?;
+		let leader_tier = self.min_tier::<T>()?;
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0),
 			|(mut matched_components, mut matches), other| {
 				let sacrifice_tier = other.min_tier::<T>()?;
-				let leader_tier = self.min_tier::<T>()?;
-
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
 						self.compare(other, &upgradable_indexes, max_variations, max_tier);
@@ -165,7 +164,11 @@ mod test {
 	use crate::{mock::*, types::*};
 
 	impl Avatar {
-		fn dna(mut self, dna: &[u8]) -> Self {
+		pub(crate) fn season_id(mut self, season_id: SeasonId) -> Self {
+			self.season_id = season_id;
+			self
+		}
+		pub(crate) fn dna(mut self, dna: &[u8]) -> Self {
 			self.dna = Dna::try_from(dna.to_vec()).unwrap();
 			self
 		}

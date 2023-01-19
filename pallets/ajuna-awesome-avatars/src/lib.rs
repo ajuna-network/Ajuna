@@ -831,6 +831,8 @@ pub mod pallet {
 			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
 
 			let mut leader = Self::ensure_ownership(player, leader_id)?;
+			let before_leader_tier = leader.min_tier::<T>()?;
+
 			let sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
 			let sacrifices = sacrifice_ids
 				.iter()
@@ -876,9 +878,25 @@ pub mod pallet {
 				}
 			}
 
-			if leader.min_tier::<T>()? == max_tier {
+			let after_leader_tier = leader.min_tier::<T>()?;
+			if after_leader_tier == max_tier {
+				let sacrificed_max_tiered_avatars =
+					sacrifice_ids.iter().try_fold::<_, _, Result<u32, DispatchError>>(
+						0,
+						|mut counter, id| {
+							let (_, avatar) = Self::avatars(id).ok_or(Error::<T>::UnknownAvatar)?;
+							if avatar.min_tier::<T>()? == max_tier {
+								counter.saturating_inc()
+							}
+							Ok(counter)
+						},
+					)?;
+
 				CurrentSeasonStatus::<T>::mutate(|status| {
-					status.max_tier_avatars.saturating_inc();
+					if before_leader_tier < after_leader_tier {
+						status.max_tier_avatars.saturating_inc();
+					}
+					status.max_tier_avatars.saturating_reduce(sacrificed_max_tiered_avatars);
 					if status.max_tier_avatars == season.max_tier_forges {
 						status.early_ended = true;
 					}
@@ -887,11 +905,11 @@ pub mod pallet {
 
 			Avatars::<T>::insert(leader_id, (player, leader));
 			sacrifice_ids.iter().for_each(Avatars::<T>::remove);
-			let remaining_avatar_ids = Owners::<T>::take(player)
+			let remaining_avatar_ids: BoundedAvatarIdsOf<T> = Owners::<T>::take(player)
 				.into_iter()
 				.filter(|avatar_id| !sacrifice_ids.contains(avatar_id))
-				.collect::<Vec<_>>();
-			let remaining_avatar_ids = BoundedAvatarIdsOf::<T>::try_from(remaining_avatar_ids)
+				.collect::<Vec<_>>()
+				.try_into()
 				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
 			Owners::<T>::insert(player, remaining_avatar_ids);
 

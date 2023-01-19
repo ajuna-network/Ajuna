@@ -1037,7 +1037,7 @@ mod forging {
 
 		let mut forged_count = 0;
 		let mut assert_dna =
-			|leader_id: &AvatarIdOf<Test>, expected_dna: Vec<u8>, insert_dna: Option<Vec<u8>>| {
+			|leader_id: &AvatarIdOf<Test>, expected_dna: &[u8], insert_dna: Option<&[u8]>| {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption { count: MintPackSize::Three, mint_type: MintType::Free }
@@ -1051,7 +1051,7 @@ mod forging {
 					AAvatars::owners(BOB)[1..=4].iter().for_each(|id| {
 						Avatars::<Test>::mutate(id, |maybe_avatar| {
 							if let Some((_, avatar)) = maybe_avatar {
-								avatar.dna = dna.clone().try_into().unwrap();
+								avatar.dna = dna.to_vec().try_into().unwrap();
 							}
 						});
 					})
@@ -1102,67 +1102,67 @@ mod forging {
 				let leader_id = AAvatars::owners(BOB)[0];
 				assert_eq!(
 					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
-					vec![0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01]
+					&[0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01]
 				);
 
 				// 1st mutation
-				assert_dna(&leader_id, vec![0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01], None);
-				assert_dna(&leader_id, vec![0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, &[0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, &[0x03, 0x04, 0x00, 0x03, 0x03, 0x05, 0x05, 0x01], None);
 
 				// 2nd mutation
-				assert_dna(&leader_id, vec![0x03, 0x14, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
-				assert_dna(&leader_id, vec![0x03, 0x14, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, &[0x03, 0x14, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, &[0x03, 0x14, 0x00, 0x03, 0x13, 0x05, 0x05, 0x01], None);
 
 				// 3rd mutation
-				assert_dna(&leader_id, vec![0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x01], None);
-				assert_dna(&leader_id, vec![0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, &[0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x01], None);
+				assert_dna(&leader_id, &[0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x01], None);
 
 				// 4th mutation
-				assert_dna(&leader_id, vec![0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x11], None);
-				assert_dna(&leader_id, vec![0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x11], None);
+				assert_dna(&leader_id, &[0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x11], None);
+				assert_dna(&leader_id, &[0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x05, 0x11], None);
 
 				// 5th mutation: force 4th,  6th and 7th components' variations to be similar
 				assert_dna(
 					&leader_id,
-					vec![0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x15, 0x11],
-					Some(vec![0x13, 0x14, 0x10, 0x02, 0x13, 0x04, 0x04, 0x11]),
+					&[0x13, 0x14, 0x10, 0x03, 0x13, 0x05, 0x15, 0x11],
+					Some(&[0x13, 0x14, 0x10, 0x02, 0x13, 0x04, 0x04, 0x11]),
 				);
 
 				// 6th mutation: force 4th, 6th, 7th components' variations to be similar
 				assert_dna(
 					&leader_id,
-					vec![0x13, 0x14, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11],
-					Some(vec![0x13, 0x14, 0x10, 0x04, 0x13, 0x06, 0x15, 0x11]),
+					&[0x13, 0x14, 0x10, 0x13, 0x13, 0x15, 0x15, 0x11],
+					Some(&[0x13, 0x14, 0x10, 0x04, 0x13, 0x06, 0x15, 0x11]),
 				);
 
 				// force highest tier mint and assert for associated checks
 				assert_dna(
 					&leader_id,
-					vec![0x43, 0x14, 0x40, 0x43, 0x13, 0x15, 0x15, 0x11],
-					Some(vec![0x14, 0x15, 0x11, 0x14, 0x14, 0x16, 0x16, 0x12]),
+					&[0x43, 0x14, 0x40, 0x43, 0x13, 0x15, 0x15, 0x11],
+					Some(&[0x14, 0x15, 0x11, 0x14, 0x14, 0x16, 0x16, 0x12]),
 				);
 				assert_dna(
 					&leader_id,
-					vec![0x43, 0x14, 0x40, 0x43, 0x13, 0x15, 0x15, 0x41],
-					Some(vec![0x43, 0x15, 0x40, 0x13, 0x16, 0x16, 0x16, 0x12]),
+					&[0x43, 0x14, 0x40, 0x43, 0x13, 0x15, 0x15, 0x41],
+					Some(&[0x43, 0x15, 0x40, 0x13, 0x16, 0x16, 0x16, 0x12]),
 				);
 				assert_dna(
 					&leader_id,
-					vec![0x43, 0x44, 0x40, 0x43, 0x13, 0x15, 0x15, 0x41],
-					Some(vec![0x43, 0x15, 0x40, 0x43, 0x14, 0x16, 0x16, 0x41]),
+					&[0x43, 0x44, 0x40, 0x43, 0x13, 0x15, 0x15, 0x41],
+					Some(&[0x43, 0x15, 0x40, 0x43, 0x14, 0x16, 0x16, 0x41]),
 				);
 				assert_dna(
 					&leader_id,
-					vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x15, 0x45, 0x41],
-					Some(vec![0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x41]),
+					&[0x43, 0x44, 0x40, 0x43, 0x43, 0x15, 0x45, 0x41],
+					Some(&[0x43, 0x44, 0x40, 0x43, 0x14, 0x16, 0x16, 0x41]),
 				);
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 0);
 
 				// fully upgraded
 				assert_dna(
 					&leader_id,
-					vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x45, 0x45, 0x41],
-					Some(vec![0x43, 0x44, 0x40, 0x43, 0x43, 0x16, 0x45, 0x41]),
+					&[0x43, 0x44, 0x40, 0x43, 0x43, 0x45, 0x45, 0x41],
+					Some(&[0x43, 0x44, 0x40, 0x43, 0x43, 0x16, 0x45, 0x41]),
 				);
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 1);
 				assert!(AAvatars::current_season_status().early_ended);
@@ -1190,15 +1190,93 @@ mod forging {
 	}
 
 	#[test]
+	fn forge_should_update_max_tier_avatars() {
+		let season = Season::default()
+			.tiers(&[RarityTier::Common, RarityTier::Legendary])
+			.max_components(8)
+			.max_variations(6)
+			.max_tier_forges(5);
+
+		let create_avatar = |avatar_id_seed: u8, dna: &[u8]| -> AvatarIdOf<Test> {
+			let avatar = Avatar::default().season_id(1).dna(dna);
+			if avatar.min_tier::<Test>().unwrap() == RarityTier::Legendary as u8 {
+				CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
+			}
+
+			let avatar_id = H256::from([avatar_id_seed; 32]);
+			Avatars::<Test>::insert(avatar_id, (BOB, avatar));
+			Owners::<Test>::try_append(BOB, avatar_id).unwrap();
+
+			avatar_id
+		};
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.mint_cooldown(0)
+			.free_mints(&[(BOB, MintCount::MAX)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start);
+
+				let mut max_tier_avatars = 0;
+				let common_avatar_ids = [
+					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x02]),
+					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+				];
+
+				// `max_tier_avatars` increases when a legendary is forged
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					common_avatar_ids[0],
+					common_avatar_ids[1..].to_vec()
+				));
+				max_tier_avatars += 1;
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_eq!(AAvatars::owners(BOB).len(), 4 - 3);
+
+				// `max_tier_avatars` decreases when legendaries are sacrificed
+				let legendary_avatar_ids = [
+					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+				];
+				max_tier_avatars += 4;
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					legendary_avatar_ids[0],
+					legendary_avatar_ids[1..].to_vec()
+				));
+				max_tier_avatars -= 3;
+				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+				assert_eq!(AAvatars::owners(BOB).len(), (4 - 3) + (4 - 3));
+				assert_eq!(
+					AAvatars::accounts(BOB)
+						.stats
+						.forge
+						.seasons_participated
+						.into_iter()
+						.collect::<Vec<_>>(),
+					vec![1]
+				);
+
+				// NOTE: BOB forged twice so the seasonal forged count is 2
+				assert_eq!(AAvatars::season_stats(1, BOB).forged, 2);
+			});
+	}
+
+	#[test]
 	fn forge_should_work_for_matches() {
-		let max_components = 5;
-		let max_variations = 3;
 		let tiers = &[RarityTier::Common, RarityTier::Legendary];
 		let season = Season::default()
 			.tiers(tiers)
 			.batch_mint_probs(&[100])
-			.max_components(max_components)
-			.max_variations(max_variations)
+			.max_components(5)
+			.max_variations(3)
 			.min_sacrifices(1)
 			.max_sacrifices(2);
 
@@ -1243,7 +1321,7 @@ mod forging {
 						original_leader.compare(
 							sacrifice,
 							&upgradable_indexes,
-							max_variations,
+							season.max_variations,
 							tiers[tiers.len() - 1].clone() as u8
 						),
 						result
@@ -1278,8 +1356,8 @@ mod forging {
 				);
 				// other components remain the same
 				assert_eq!(
-					original_leader.dna[2..max_components as usize],
-					forged_leader.dna[2..max_components as usize]
+					original_leader.dna[2..season.max_components as usize],
+					forged_leader.dna[2..season.max_components as usize]
 				);
 			});
 	}
@@ -1375,7 +1453,7 @@ mod forging {
 				let leader_id = AAvatars::owners(ALICE)[0];
 				assert_eq!(
 					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
-					vec![0x04, 0x03, 0x05, 0x01]
+					&[0x04, 0x03, 0x05, 0x01]
 				);
 				assert_eq!(
 					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
