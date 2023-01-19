@@ -1051,7 +1051,7 @@ mod forging {
 					AAvatars::owners(BOB)[1..=4].iter().for_each(|id| {
 						Avatars::<Test>::mutate(id, |maybe_avatar| {
 							if let Some((_, avatar)) = maybe_avatar {
-								avatar.dna = dna.to_vec().clone().try_into().unwrap();
+								avatar.dna = dna.to_vec().try_into().unwrap();
 							}
 						});
 					})
