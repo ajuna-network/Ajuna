@@ -1251,7 +1251,7 @@ mod forging {
 					legendary_avatar_ids[0],
 					legendary_avatar_ids[1..].to_vec()
 				));
-				max_tier_avatars -= 3;
+				max_tier_avatars += 1;
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
 				assert_eq!(AAvatars::owners(BOB).len(), (4 - 3) + (4 - 3));
 				assert_eq!(
