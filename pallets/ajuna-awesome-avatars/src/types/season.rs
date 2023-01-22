@@ -363,6 +363,9 @@ mod test {
 				assert_eq!(season.current_period(&now), expected_period);
 			}
 		}
+
+		let season = Season::default().per_period(20).periods(12);
+		assert_eq!(season.current_period(&15_792), 9);
 	}
 
 	#[test]
