@@ -1021,6 +1021,83 @@ mod forging {
 	use sp_runtime::testing::H256;
 	use sp_std::collections::btree_set::BTreeSet;
 
+	fn create_avatar(avatar_id_seed: u8, dna: &[u8]) -> AvatarIdOf<Test> {
+		let avatar = Avatar::default().season_id(1).dna(dna);
+		if avatar.min_tier::<Test>().unwrap() == RarityTier::Legendary as u8 {
+			CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
+		}
+
+		let avatar_id = H256::from([avatar_id_seed; 32]);
+		Avatars::<Test>::insert(avatar_id, (BOB, avatar));
+		Owners::<Test>::try_append(BOB, avatar_id).unwrap();
+
+		avatar_id
+	}
+
+	#[test]
+	fn forge_works_for_season_1() {
+		let season = Season::default()
+			.early_start(100)
+			.start(200)
+			.end(150_000)
+			.max_tier_forges(100)
+			.max_variations(6)
+			.max_components(11)
+			.min_sacrifices(1)
+			.max_sacrifices(4)
+			.tiers(&[RarityTier::Common, RarityTier::Rare, RarityTier::Legendary])
+			.single_mint_probs(&[95, 5])
+			.batch_mint_probs(&[80, 20])
+			.base_prob(20)
+			.per_period(20)
+			.periods(12);
+
+		let expected_upgraded_components = |dna_1: &[u8], dna_2: &[u8]| -> usize {
+			dna_1.iter().zip(dna_2).filter(|(left, right)| left != right).count()
+		};
+
+		ExtBuilder::default()
+			.seasons(&[(1, season)])
+			.mint_cooldown(5)
+			.build()
+			.execute_with(|| {
+				run_to_block(15_792);
+
+				let dna_before = [0x23, 0x25, 0x24, 0x20, 0x05, 0x25, 0x01, 0x20, 0x02, 0x23, 0x23];
+				let dna_after = [0x23, 0x25, 0x24, 0x20, 0x05, 0x25, 0x21, 0x20, 0x22, 0x23, 0x23];
+				assert_eq!(expected_upgraded_components(&dna_before, &dna_after), 2);
+
+				let leader_id = create_avatar(5, &dna_before);
+				let sacrifice_ids = [
+					create_avatar(
+						6,
+						&[0x00, 0x00, 0x04, 0x01, 0x03, 0x21, 0x00, 0x00, 0x03, 0x04, 0x04],
+					),
+					create_avatar(
+						7,
+						&[0x04, 0x02, 0x04, 0x21, 0x02, 0x05, 0x02, 0x21, 0x02, 0x23, 0x00],
+					),
+					create_avatar(
+						8,
+						&[0x02, 0x05, 0x22, 0x02, 0x23, 0x05, 0x02, 0x24, 0x05, 0x03, 0x03],
+					),
+					create_avatar(
+						9,
+						&[0x23, 0x24, 0x23, 0x21, 0x25, 0x23, 0x00, 0x25, 0x01, 0x22, 0x05],
+					),
+				];
+
+				assert_ok!(AAvatars::forge(
+					RuntimeOrigin::signed(BOB),
+					leader_id,
+					sacrifice_ids.to_vec()
+				));
+				let leader = AAvatars::avatars(leader_id).unwrap().1;
+				assert_eq!(leader.dna.to_vec(), dna_after.to_vec());
+				assert_eq!(leader.min_tier::<Test>().unwrap(), RarityTier::Common as u8);
+			});
+	}
+
 	#[test]
 	fn forge_should_work() {
 		let season = Season::default()
@@ -1196,19 +1273,6 @@ mod forging {
 			.max_components(8)
 			.max_variations(6)
 			.max_tier_forges(5);
-
-		let create_avatar = |avatar_id_seed: u8, dna: &[u8]| -> AvatarIdOf<Test> {
-			let avatar = Avatar::default().season_id(1).dna(dna);
-			if avatar.min_tier::<Test>().unwrap() == RarityTier::Legendary as u8 {
-				CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
-			}
-
-			let avatar_id = H256::from([avatar_id_seed; 32]);
-			Avatars::<Test>::insert(avatar_id, (BOB, avatar));
-			Owners::<Test>::try_append(BOB, avatar_id).unwrap();
-
-			avatar_id
-		};
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
