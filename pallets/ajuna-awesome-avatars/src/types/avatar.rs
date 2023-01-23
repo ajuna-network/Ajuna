@@ -161,6 +161,7 @@ impl Avatar {
 
 #[cfg(test)]
 mod test {
+	use super::*;
 	use crate::{mock::*, types::*};
 
 	impl Avatar {
@@ -279,5 +280,39 @@ mod test {
 				assert_eq!(avatar.forge_multiplier::<Test>(&season, &now), expected_multiplier);
 			}
 		}
+	}
+
+	#[test]
+	fn compare_works() {
+		let season = Season::default()
+			.early_start(100)
+			.start(200)
+			.end(150_000)
+			.max_tier_forges(100)
+			.max_variations(6)
+			.max_components(11)
+			.min_sacrifices(1)
+			.max_sacrifices(4)
+			.tiers(&[RarityTier::Common, RarityTier::Rare, RarityTier::Legendary])
+			.single_mint_probs(&[95, 5])
+			.batch_mint_probs(&[80, 20])
+			.base_prob(20)
+			.per_period(20)
+			.periods(12);
+
+		let leader = Avatar::default()
+			.dna(&[0x21, 0x05, 0x23, 0x24, 0x20, 0x22, 0x25, 0x23, 0x05, 0x04, 0x02]);
+		let other = Avatar::default()
+			.dna(&[0x04, 0x00, 0x00, 0x04, 0x02, 0x04, 0x02, 0x00, 0x05, 0x05, 0x04]);
+
+		assert_eq!(
+			leader.compare(
+				&other,
+				&[1, 8, 9, 10],
+				season.max_variations,
+				*season.tiers.last().unwrap() as u8,
+			),
+			(true, BTreeSet::from([1, 9]))
+		);
 	}
 }
