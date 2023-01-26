@@ -116,6 +116,11 @@ fn play_works() {
 		assert_ne!(Seed::<Test>::get(), Some(TEST_SEED));
 		assert!(PlayerBoards::<Test>::get(ALICE).is_none());
 		assert!(PlayerBoards::<Test>::get(BOB).is_none());
+		assert!(BoardGames::<Test>::get(BOARD_ID).is_some());
+
+		// We clear the board
+		assert_ok!(AjunaBoard::clear_board(RuntimeOrigin::root(), BOARD_ID));
+
 		assert!(BoardGames::<Test>::get(BOARD_ID).is_none());
 	})
 }
