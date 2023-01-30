@@ -725,9 +725,13 @@ pub mod pallet {
 			ensure!(mint.open, Error::<T>::MintClosed);
 
 			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
-			ensure!(!early_ended, Error::<T>::PrematureSeasonEnd);
+			let free_mints = Self::accounts(player).free_mints;
+			let is_whitelisted = free_mints > Zero::zero();
+			ensure!(!early_ended || is_whitelisted, Error::<T>::PrematureSeasonEnd);
 			ensure!(
-				active || (mint_option.mint_type == MintType::Free && early),
+				active ||
+					early && is_whitelisted ||
+					early && mint_option.mint_type == MintType::Free,
 				Error::<T>::SeasonClosed
 			);
 
@@ -767,11 +771,11 @@ pub mod pallet {
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
-					let free_mints = Self::accounts(player)
-						.free_mints
-						.checked_sub(fee)
-						.ok_or(Error::<T>::InsufficientFreeMints)?;
-					Accounts::<T>::mutate(player, |account| account.free_mints = free_mints);
+					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
+						account.free_mints =
+							free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
+						Ok(())
+					})?;
 				},
 			};
 
