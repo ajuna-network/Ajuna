@@ -272,7 +272,7 @@ pub mod pallet {
 		/// Trading is not available at the moment.
 		TradeClosed,
 		/// Attempt to mint or forge outside of an active season.
-		OutOfSeason,
+		SeasonClosed,
 		/// Attempt to mint when the season has ended prematurely.
 		PrematureSeasonEnd,
 		/// Max ownership reached.
@@ -728,7 +728,7 @@ pub mod pallet {
 			ensure!(!early_ended, Error::<T>::PrematureSeasonEnd);
 			ensure!(
 				active || (mint_option.mint_type == MintType::Free && early),
-				Error::<T>::OutOfSeason
+				Error::<T>::SeasonClosed
 			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();

@@ -715,7 +715,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 						),
-						Error::<Test>::OutOfSeason
+						Error::<Test>::SeasonClosed
 					);
 
 					// total minted count updates
@@ -804,7 +804,7 @@ mod minting {
 						RuntimeOrigin::signed(ALICE),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 					),
-					Error::<Test>::OutOfSeason
+					Error::<Test>::SeasonClosed
 				);
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
@@ -827,7 +827,7 @@ mod minting {
 								RuntimeOrigin::signed(ALICE),
 								MintOption { count, mint_type }
 							),
-							Error::<Test>::OutOfSeason
+							Error::<Test>::SeasonClosed
 						);
 					}
 				}
