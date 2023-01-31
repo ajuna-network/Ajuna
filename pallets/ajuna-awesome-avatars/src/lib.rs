@@ -923,9 +923,10 @@ pub mod pallet {
 			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
 			let free_mints = Self::accounts(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
-			ensure!(!early_ended || is_whitelisted, Error::<T>::PrematureSeasonEnd);
+			let is_free_mint = mint_type == &MintType::Free;
+			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
 			ensure!(
-				active || early && is_whitelisted || early && mint_type == &MintType::Free,
+				active || early && is_whitelisted || early && is_free_mint,
 				Error::<T>::SeasonClosed
 			);
 			Ok(free_mints)

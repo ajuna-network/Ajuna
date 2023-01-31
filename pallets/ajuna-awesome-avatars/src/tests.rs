@@ -576,20 +576,20 @@ mod minting {
 					}
 				}
 
-				// At premature end, only whitelisted accounts can mint.
+				// At premature end, only free mint is available for all accounts.
 				for n in season.start..=season.end {
 					run_to_block(n);
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = true);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &MintType::Normal), 42);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&ALICE, &MintType::Normal),
+						Error::<Test>::PrematureSeasonEnd
+					);
 					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &MintType::Free), 42);
 					assert_noop!(
 						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
 						Error::<Test>::PrematureSeasonEnd
 					);
-					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, &MintType::Free),
-						Error::<Test>::PrematureSeasonEnd
-					);
+					assert_ok!(AAvatars::ensure_for_mint(&BOB, &MintType::Free), 0);
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = false);
 				}
 
@@ -1373,7 +1373,7 @@ mod forging {
 				assert_noop!(
 					AAvatars::mint(
 						RuntimeOrigin::signed(BOB),
-						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 					),
 					Error::<Test>::PrematureSeasonEnd
 				);
