@@ -4,7 +4,7 @@ edition    = "2021"
 homepage   = "https://ajuna.io"
 name       = "ajuna-primitives"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.8"
+version    = "0.1.9"
 
 [dependencies]
 sp-core    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }

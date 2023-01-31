@@ -4,7 +4,7 @@ edition    = "2021"
 homepage   = "https://ajuna.io"
 name       = "ajuna-node"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.8"
+version    = "0.1.9"
 
 [[bin]]
 name              = "ajuna-solo"
