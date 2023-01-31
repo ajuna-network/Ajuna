@@ -294,8 +294,6 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
- "pallet-ajuna-board",
- "pallet-ajuna-matchmaker",
  "pallet-asset-tx-payment",
  "pallet-assets",
  "pallet-aura",
@@ -2241,15 +2239,6 @@ checksum = "c4d33be9473d06f75f58220f71f7a9317aca647dc061dbd3c361b0bef505fbea"
 dependencies = [
  "byteorder",
  "quick-error 1.2.3",
-]
-
-[[package]]
-name = "dot4gravity"
-version = "0.1.0"
-source = "git+https://github.com/ajuna-network/ajuna-games?rev=polkadot-v0.9.20-dev#fea4a210dae6f6f0c8bfb02cc144aac9b861ffe9"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
 ]
 
 [[package]]
@@ -5191,37 +5180,6 @@ dependencies = [
  "frame-system",
  "pallet-balances",
  "pallet-randomness-collective-flip",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-ajuna-board"
-version = "0.1.8"
-dependencies = [
- "dot4gravity",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-ajuna-matchmaker",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-ajuna-matchmaker"
-version = "0.1.8"
-dependencies = [
- "frame-support",
- "frame-system",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
