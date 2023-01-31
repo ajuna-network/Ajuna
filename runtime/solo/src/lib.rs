@@ -523,19 +523,6 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_ajuna_matchmaker::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
-impl pallet_ajuna_board::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Matchmaker = pallet_ajuna_matchmaker::Matchmaking<Runtime>;
-	type BoardId = u32;
-	type PlayersTurn = pallet_ajuna_board::dot4gravity::Turn;
-	type GameState = pallet_ajuna_board::dot4gravity::GameState<AccountId>;
-	type Game = pallet_ajuna_board::dot4gravity::Game<AccountId>;
-	type Players = frame_support::traits::ConstU32<2>;
-}
-
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	items as Balance * 20 * AJUNS + (bytes as Balance) * 1_000 * MICRO_AJUNS
 }
@@ -608,8 +595,6 @@ construct_runtime!(
 		PreImage: pallet_preimage = 19,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 		Randomness: pallet_randomness_collective_flip = 23,
-		AjunaBoard: pallet_ajuna_board,
-		AjunaMatchmaker: pallet_ajuna_matchmaker,
 	}
 );
 
