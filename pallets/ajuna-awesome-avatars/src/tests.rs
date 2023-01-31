@@ -531,6 +531,86 @@ mod minting {
 	use frame_support::traits::Currency;
 
 	#[test]
+	fn ensure_for_mint_works() {
+		let season = Season::default().early_start(10).start(20).end(30);
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.free_mints(&[(ALICE, 42)])
+			.build()
+			.execute_with(|| {
+				// Outside a season, both mints are unavailable.
+				for n in 0..season.early_start {
+					run_to_block(n);
+					for mint_type in [MintType::Normal, MintType::Free] {
+						assert_noop!(
+							AAvatars::ensure_for_mint(&ALICE, &mint_type),
+							Error::<Test>::SeasonClosed
+						);
+					}
+				}
+
+				// At early start, both mints are available for whitelisted accounts.
+				for n in season.early_start..season.start {
+					run_to_block(n);
+					for mint_type in [MintType::Normal, MintType::Free] {
+						assert_ok!(AAvatars::ensure_for_mint(&ALICE, &mint_type), 42);
+					}
+				}
+				// At early start, only free mint is available for non-whitelisted accounts.
+				for n in season.early_start..season.start {
+					run_to_block(n);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
+						Error::<Test>::SeasonClosed
+					);
+					assert_ok!(AAvatars::ensure_for_mint(&BOB, &MintType::Free), 0);
+				}
+
+				// At official start, both mints are available for all accounts.
+				for n in season.start..=season.end {
+					run_to_block(n);
+					for mint_type in [MintType::Normal, MintType::Free] {
+						assert_ok!(AAvatars::ensure_for_mint(&ALICE, &mint_type), 42);
+						assert_ok!(AAvatars::ensure_for_mint(&BOB, &mint_type), 0);
+					}
+				}
+
+				// At premature end, only whitelisted accounts can mint.
+				for n in season.start..=season.end {
+					run_to_block(n);
+					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = true);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &MintType::Normal), 42);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &MintType::Free), 42);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
+						Error::<Test>::PrematureSeasonEnd
+					);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &MintType::Free),
+						Error::<Test>::PrematureSeasonEnd
+					);
+					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = false);
+				}
+
+				// At season end, both mints are unavailable for all accounts.
+				for n in season.end + 1..(season.end + 5) {
+					run_to_block(n);
+					for mint_type in [MintType::Normal, MintType::Free] {
+						assert_noop!(
+							AAvatars::ensure_for_mint(&ALICE, &mint_type),
+							Error::<Test>::SeasonClosed
+						);
+						assert_noop!(
+							AAvatars::ensure_for_mint(&BOB, &mint_type),
+							Error::<Test>::SeasonClosed
+						);
+					}
+				}
+			});
+	}
+
+	#[test]
 	fn mint_should_work() {
 		let season_1 = Season::default().early_start(3).start(5).end(20).max_components(7);
 		let season_2 = Season::default().early_start(23).start(35).end(40).max_components(17);
