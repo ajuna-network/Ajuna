@@ -715,7 +715,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption { count: MintPackSize::One, mint_type: mint_type.clone() }
 						),
-						Error::<Test>::OutOfSeason
+						Error::<Test>::SeasonClosed
 					);
 
 					// total minted count updates
@@ -793,31 +793,76 @@ mod minting {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.free_mints(&[(ALICE, 10)])
+			.free_mints(&[(ALICE, 10), (BOB, 0)])
 			.seasons(&[(1, season.clone())])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.early_start);
 
+				assert!(AAvatars::current_season_status().early);
 				assert_noop!(
 					AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
+						RuntimeOrigin::signed(BOB),
 						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 					),
-					Error::<Test>::OutOfSeason
+					Error::<Test>::SeasonClosed
 				);
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
 					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
 				));
+				assert_noop!(
+					AAvatars::mint(
+						RuntimeOrigin::signed(BOB),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					),
+					Error::<Test>::InsufficientFreeMints
+				);
 			});
 	}
 
 	#[test]
-	fn mint_should_reject_when_season_is_inactive() {
+	fn mint_should_allow_whitelisted_accounts_when_season_is_early() {
+		let season = Season::default();
+		let fees = MintFees { one: 1, three: 3, six: 6 };
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.mint_fees(fees)
+			.free_mints(&[(ALICE, 10), (BOB, 1), (CHARLIE, 0)])
+			.balances(&[
+				(ALICE, MockExistentialDeposit::get() + fees.one),
+				(BOB, MockExistentialDeposit::get() + fees.one),
+				(CHARLIE, MockExistentialDeposit::get() + fees.one),
+			])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.early_start);
+
+				assert!(AAvatars::current_season_status().early);
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(ALICE),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+				assert_noop!(
+					AAvatars::mint(
+						RuntimeOrigin::signed(CHARLIE),
+						MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+					),
+					Error::<Test>::SeasonClosed
+				);
+			});
+	}
+
+	#[test]
+	fn mint_should_reject_non_whitelisted_accounts_when_season_is_inactive() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_234_567_890_123_456)])
-			.free_mints(&[(ALICE, 10)])
+			.free_mints(&[(ALICE, 0)])
 			.build()
 			.execute_with(|| {
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
@@ -827,7 +872,7 @@ mod minting {
 								RuntimeOrigin::signed(ALICE),
 								MintOption { count, mint_type }
 							),
-							Error::<Test>::OutOfSeason
+							Error::<Test>::SeasonClosed
 						);
 					}
 				}
@@ -1117,11 +1162,11 @@ mod forging {
 			|leader_id: &AvatarIdOf<Test>, expected_dna: &[u8], insert_dna: Option<&[u8]>| {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::Three, mint_type: MintType::Free }
+					MintOption { count: MintPackSize::Three, mint_type: MintType::Normal }
 				));
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 
 				if let Some(dna) = insert_dna {
@@ -1168,13 +1213,15 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
 			.mint_cooldown(0)
-			.free_mints(&[(BOB, MintCount::MAX)])
+			.mint_fees(MintFees { one: 1, three: 3, six: 6 })
+			.balances(&[(BOB, MockBalance::max_value())])
+			.free_mints(&[(BOB, 0)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
 				));
 				let leader_id = AAvatars::owners(BOB)[0];
 				assert_eq!(
