@@ -723,17 +723,7 @@ pub mod pallet {
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
-
-			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
-			let free_mints = Self::accounts(player).free_mints;
-			let is_whitelisted = free_mints > Zero::zero();
-			ensure!(!early_ended || is_whitelisted, Error::<T>::PrematureSeasonEnd);
-			ensure!(
-				active ||
-					early && is_whitelisted ||
-					early && mint_option.mint_type == MintType::Free,
-				Error::<T>::SeasonClosed
-			);
+			let free_mints = Self::ensure_for_mint(player, &mint_option.mint_type)?;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let last_block = Self::accounts(player).stats.mint.last;
@@ -924,6 +914,22 @@ pub mod pallet {
 			let (owner, avatar) = Self::avatars(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
 			ensure!(player == &owner, Error::<T>::Ownership);
 			Ok(avatar)
+		}
+
+		pub(crate) fn ensure_for_mint(
+			player: &T::AccountId,
+			mint_type: &MintType,
+		) -> Result<MintCount, DispatchError> {
+			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
+			let free_mints = Self::accounts(player).free_mints;
+			let is_whitelisted = free_mints > Zero::zero();
+			let is_free_mint = mint_type == &MintType::Free;
+			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
+			ensure!(
+				active || early && is_whitelisted || early && is_free_mint,
+				Error::<T>::SeasonClosed
+			);
+			Ok(free_mints)
 		}
 
 		fn ensure_for_trade(
