@@ -23,6 +23,7 @@ concurrency:
 env:
   CARGO_ARGS: ${{ github.ref == 'refs/heads/develop' && '--release' || '' }}
   CARGO_TERM_COLOR: always
+  SKIP_WASM_BUILD: 1
 
 jobs:
   fmt:
@@ -30,8 +31,6 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     continue-on-error: false
-    env:
-      SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v3
       - run: cargo fmt --all -- --check
@@ -41,8 +40,6 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     continue-on-error: false
-    env:
-      SKIP_WASM_BUILD: 1
     steps:
       - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
@@ -63,8 +60,6 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     continue-on-error: false
-    env:
-      SKIP_WASM_BUILD: 1
     steps:
       - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
