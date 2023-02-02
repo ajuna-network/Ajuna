@@ -14,15 +14,14 @@ on:
   push:
     branches:
       - develop
-      - main
 
-# Ensures only one build is run per branch, unless pushing to main
+# Ensures only one build is run per branch, unless pushing to develop
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/develop' && github.run_number || github.ref }}
   cancel-in-progress: true
 
 env:
-  CARGO_ARGS: ${{ github.ref == 'refs/heads/main' && '--release' || '' }}
+  CARGO_ARGS: ${{ github.ref == 'refs/heads/develop' && '--release' || '' }}
   CARGO_TERM_COLOR: always
 
 jobs:
