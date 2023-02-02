@@ -270,7 +270,6 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::Proxy(_) |
 			RuntimeCall::Scheduler(_) |
 			RuntimeCall::PreImage(_) |
-			RuntimeCall::Uniques(_) |
 			// monetary
 			RuntimeCall::Balances(_) |
 			RuntimeCall::Vesting(_) |
@@ -288,7 +287,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::Council(_) |
 			RuntimeCall::CouncilMembership(_) |
 			// ajuna pallets
-			RuntimeCall::AwesomeAvatars(_	) => true
+			RuntimeCall::AwesomeAvatars(_	) => true,
+			RuntimeCall::NFT(_) => false,
 		}
 	}
 }
@@ -697,20 +697,28 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CollectionDeposit: Balance = MILLI_BAJUN;
-	pub const ItemDeposit: Balance = MICRO_BAJUN;
+	pub const CollectionDeposit: Balance = MICRO_BAJUN;
+	pub const ItemDeposit: Balance = NANO_BAJUN;
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
 	pub const ValueLimit: u32 = 64;
 	pub const MetadataDepositBase: Balance = deposit(1, 129);
 	pub const AttributeDepositBase: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
+	pub const ApprovalsLimit: u32 = 1;
+	pub const ItemAttributesApprovalsLimit: u32 = 10;
+	pub const MaxTips: u32 = 1;
+	pub const MaxDeadlineDuration: u32 = 1;
+	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
-impl pallet_uniques::Config for Runtime {
+pub type CollectionId = u32;
+pub type ItemId = u64;
+
+impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type CollectionId = u32;
-	type ItemId = u32;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
@@ -723,9 +731,14 @@ impl pallet_uniques::Config for Runtime {
 	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
 	type ValueLimit = ValueLimit;
+	type ApprovalsLimit = ApprovalsLimit;
+	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
+	type MaxTips = MaxTips;
+	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type Features = ConfigFeatures;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
-	type WeightInfo = weights::pallet_uniques::WeightInfo<Runtime>;
+	type WeightInfo = ();
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -748,7 +761,6 @@ construct_runtime!(
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 7,
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 8,
 		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
-		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 10,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
@@ -777,6 +789,9 @@ construct_runtime!(
 		// Indexes 50-59 should be reserved for our games.
 		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 50,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
+
+		// Indexes 100+ should be reserved for NFT related pallets
+		NFT: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
 	}
 );
 
@@ -800,10 +815,10 @@ mod benches {
 		[pallet_membership, CouncilMembership]
 		[pallet_identity, Identity]
 		[pallet_preimage, PreImage]
-		[pallet_uniques, Uniques]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
+		[pallet_nfts, NFT]
 	);
 }
 
@@ -916,7 +931,7 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
-		fn on_runtime_upgrade(checks: bool) -> (Weight, Weight) {
+		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			let weight = Executive::try_runtime_upgrade(checks).unwrap();
 			(weight, RuntimeBlockWeights::get().max_block)
 		}

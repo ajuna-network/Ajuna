@@ -7,8 +7,8 @@ repository = "https://github.com/ajuna-network/Ajuna"
 version    = "0.1.10"
 
 [dependencies]
-sp-core    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
+sp-core    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 [features]
 default = [ "std" ]

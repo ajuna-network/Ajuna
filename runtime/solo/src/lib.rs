@@ -262,6 +262,7 @@ impl pallet_assets::Config for Runtime {
 	type StringLimit = frame_support::traits::ConstU32<20>;
 	type Freezer = ();
 	type Extra = ();
+	type CallbackHandle = ();
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 	type RemoveItemsLimit = frame_support::traits::ConstU32<1000>;
 }
