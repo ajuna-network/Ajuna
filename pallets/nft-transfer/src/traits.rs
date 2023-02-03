@@ -22,14 +22,14 @@ pub trait NFTConvertible: Encode + Decode {
 }
 
 /// Trait to define the transformation and bridging of assets as NFT.
-pub trait NFTHandler<Account, CollectionId, AssetId, Asset: NFTConvertible> {
+pub trait NFTHandler<Account, CollectionId, AssetId, Asset: NFTConvertible, ItemConfig> {
 	/// Consumes the given **asset** and stores it as an NFT owned by **owner**,
 	/// returns the NFT index for tracking and recovering the asset.
 	fn store_as_nft(
 		owner: Account,
-		collection_owner: Account,
 		collection_id: CollectionId,
 		asset: Asset,
+		asset_config: Option<ItemConfig>,
 	) -> Result<AssetId, sp_runtime::DispatchError>;
 	/// Attempts to recover the NFT indexed by **nft_id** and transform it back into an
 	/// asset, returns an appropriate error if the process fails.

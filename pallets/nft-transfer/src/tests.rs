@@ -20,7 +20,13 @@ use crate::{
 	Error, *,
 };
 use codec::{Decode, Encode};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::tokens::{
+		nonfungibles_v2::{Create, Inspect},
+		AttributeNamespace,
+	},
+};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug)]
 struct MockStruct {
@@ -39,16 +45,26 @@ impl NFTConvertible for MockStruct {
 	}
 }
 
+fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId {
+	let collection_config = CollectionConfig::default();
+	<Test as crate::pallet::Config>::NFTHelper::create_collection(
+		&account,
+		&account,
+		&collection_config,
+	)
+	.expect("Should have create contract collection")
+}
+
 mod store_as_nft {
 	use super::*;
 
 	#[test]
 	fn asset_properly_stored() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = 1;
+			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct::default();
 
-			let result = NFTTransfer::store_as_nft(BOB, ALICE, collection_id, asset.clone());
+			let result = NFTTransfer::store_as_nft(BOB, collection_id, asset.clone(), None);
 
 			assert_ok!(result);
 
@@ -65,9 +81,14 @@ mod store_as_nft {
 				Some(NFTStatus::Stored)
 			);
 
-			let stored_asset = AttributeStorage::<Test>::get(
-				(collection_id, asset_id),
-				MockStruct::get_asset_code(),
+			let stored_asset = <Test as crate::pallet::Config>::NFTHelper::typed_attribute::<
+				AssetCode,
+				EncodedAssetOf<Test>,
+			>(
+				&collection_id,
+				&asset_id,
+				&AttributeNamespace::<MockAccountId>::Pallet,
+				&MockStruct::get_asset_code(),
 			)
 			.map(|item| item.into_inner());
 
@@ -78,11 +99,11 @@ mod store_as_nft {
 	#[test]
 	fn cannot_store_asset_above_encoding_limit() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = 1;
+			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
 
 			assert_noop!(
-				NFTTransfer::store_as_nft(BOB, ALICE, collection_id, asset),
+				NFTTransfer::store_as_nft(BOB, collection_id, asset, None),
 				Error::<Test>::AssetSizeAboveEncodingLimit
 			);
 		});
@@ -95,10 +116,10 @@ mod recover_from_nft {
 	#[test]
 	fn asset_properly_recovered() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = 1;
+			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct::default();
 
-			let asset_id = NFTTransfer::store_as_nft(BOB, ALICE, collection_id, asset.clone())
+			let asset_id = NFTTransfer::store_as_nft(BOB, collection_id, asset.clone(), None)
 				.expect("Storage should have been successful!");
 
 			let result = NFTTransfer::recover_from_nft(BOB, collection_id, asset_id);
@@ -111,9 +132,14 @@ mod recover_from_nft {
 
 			assert_eq!(LockItemStatus::<Test>::get(collection_id, asset_id), None);
 
-			let stored_asset = AttributeStorage::<Test>::get(
-				(collection_id, asset_id),
-				MockStruct::get_asset_code(),
+			let stored_asset = <Test as crate::pallet::Config>::NFTHelper::typed_attribute::<
+				AssetCode,
+				EncodedAssetOf<Test>,
+			>(
+				&collection_id,
+				&asset_id,
+				&AttributeNamespace::<MockAccountId>::Pallet,
+				&MockStruct::get_asset_code(),
 			);
 
 			assert_eq!(stored_asset, None);
@@ -123,10 +149,10 @@ mod recover_from_nft {
 	#[test]
 	fn cannot_restore_uploaded_asset() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = 1;
+			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct::default();
 
-			let asset_id = NFTTransfer::store_as_nft(BOB, ALICE, collection_id, asset)
+			let asset_id = NFTTransfer::store_as_nft(BOB, collection_id, asset, None)
 				.expect("Storage should have been successful!");
 
 			LockItemStatus::<Test>::insert(collection_id, asset_id, NFTStatus::Uploaded);

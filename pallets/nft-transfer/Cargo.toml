@@ -22,11 +22,11 @@ sp-io              = { default-features = false, git = "https://github.com/parit
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-pallet-uniques  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+pallet-nfts     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [ "pallet-uniques/runtime-benchmarks" ]
+runtime-benchmarks = []
 std = [
 	"codec/std",
 	"scale-info/std",
