@@ -42,7 +42,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
 		System: frame_system,
-		Uniques: pallet_uniques,
+		NFT: pallet_nfts,
 		Balances: pallet_balances,
 		NFTTransfer: pallet_nft_transfer,
 	}
@@ -100,12 +100,17 @@ parameter_types! {
 	pub const MetadataDepositBase: MockBalance = 1;
 	pub const AttributeDepositBase: MockBalance = 1;
 	pub const DepositPerByte: MockBalance = 1;
+	pub const ApprovalsLimit: u32 = 1;
+	pub const ItemAttributesApprovalsLimit: u32 = 10;
+	pub const MaxTips: u32 = 1;
+	pub const MaxDeadlineDuration: u32 = 1;
+	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
 pub type MockCollectionId = u32;
 pub type MockItemId = u128;
 
-impl pallet_uniques::Config for Test {
+impl pallet_nfts::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = MockCollectionId;
 	type ItemId = MockItemId;
@@ -121,6 +126,11 @@ impl pallet_uniques::Config for Test {
 	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
 	type ValueLimit = ValueLimit;
+	type ApprovalsLimit = ApprovalsLimit;
+	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
+	type MaxTips = MaxTips;
+	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type Features = ConfigFeatures;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
 	type WeightInfo = ();
@@ -128,12 +138,17 @@ impl pallet_uniques::Config for Test {
 
 pub const MAX_ENCODING_SIZE: u32 = 200;
 
+pub type CollectionConfig =
+	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
+
 impl pallet_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
+	type CollectionConfig = CollectionConfig;
 	type ItemId = MockItemId;
-	type NFTHelper = Uniques;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NFTHelper = NFT;
 }
 
 pub const ALICE: MockAccountId = 1;
