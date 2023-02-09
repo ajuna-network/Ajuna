@@ -42,16 +42,6 @@ pub mod pallet {
 	};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
 
-	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-
-	pub type CollectionIdOf<T> = <T as Config>::CollectionId;
-	pub type ItemIdOf<T> = <T as Config>::ItemId;
-
-	pub type CollectionConfigOf<T> = <T as Config>::CollectionConfig;
-	pub type MaybeCollectionConfigOf<T> = Option<CollectionConfigOf<T>>;
-	pub type ItemConfigOf<T> = <T as Config>::ItemConfig;
-	pub type MaybeItemConfigOf<T> = Option<ItemConfigOf<T>>;
-
 	pub type EncodedAssetOf<T> = BoundedVec<u8, <T as Config>::MaxAssetEncodedSize>;
 
 	#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
@@ -130,40 +120,25 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub(crate) type NextItemId<T: Config> =
-		StorageMap<_, Identity, CollectionIdOf<T>, ItemIdOf<T>, ValueQuery>;
+		StorageMap<_, Identity, T::CollectionId, T::ItemId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(crate) type LockItemStatus<T: Config> = StorageDoubleMap<
-		_,
-		Identity,
-		CollectionIdOf<T>,
-		Identity,
-		ItemIdOf<T>,
-		NFTStatus,
-		OptionQuery,
-	>;
+	pub(crate) type LockItemStatus<T: Config> =
+		StorageDoubleMap<_, Identity, T::CollectionId, Identity, T::ItemId, NFTStatus, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Asset has been stored as an NFT [collection_id, asset_id, owner]
-		AssetStored {
-			collection_id: CollectionIdOf<T>,
-			asset_id: ItemIdOf<T>,
-			owner: AccountIdOf<T>,
-		},
+		AssetStored { collection_id: T::CollectionId, asset_id: T::ItemId, owner: T::AccountId },
 		/// Asset has been restored back from its NFT representation [collection_id, asset_id,
 		/// owner]
-		AssetRestored {
-			collection_id: CollectionIdOf<T>,
-			asset_id: ItemIdOf<T>,
-			owner: AccountIdOf<T>,
-		},
+		AssetRestored { collection_id: T::CollectionId, asset_id: T::ItemId, owner: T::AccountId },
 		/// Asset has been transferred outside the chain [collection_id, asset_id, owner]
 		AssetTransferred {
-			collection_id: CollectionIdOf<T>,
-			asset_id: ItemIdOf<T>,
-			owner: AccountIdOf<T>,
+			collection_id: T::CollectionId,
+			asset_id: T::ItemId,
+			owner: T::AccountId,
 		},
 	}
 
@@ -185,14 +160,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config, Asset: NFTConvertible>
-		NFTHandler<AccountIdOf<T>, CollectionIdOf<T>, ItemIdOf<T>, Asset, ItemConfigOf<T>> for Pallet<T>
+		NFTHandler<T::AccountId, T::CollectionId, T::ItemId, Asset, T::ItemConfig> for Pallet<T>
 	{
 		fn store_as_nft(
-			owner: AccountIdOf<T>,
-			collection_id: CollectionIdOf<T>,
+			owner: T::AccountId,
+			collection_id: T::CollectionId,
 			asset: Asset,
-			asset_config: MaybeItemConfigOf<T>,
-		) -> Result<ItemIdOf<T>, DispatchError> {
+			asset_config: Option<T::ItemConfig>,
+		) -> Result<T::ItemId, DispatchError> {
 			let encoded_asset: EncodedAssetOf<T> = asset
 				.encode_into()
 				.try_into()
@@ -229,9 +204,9 @@ pub mod pallet {
 		}
 
 		fn recover_from_nft(
-			owner: AccountIdOf<T>,
-			collection_id: CollectionIdOf<T>,
-			nft_id: ItemIdOf<T>,
+			owner: T::AccountId,
+			collection_id: T::CollectionId,
+			nft_id: T::ItemId,
 		) -> Result<Asset, DispatchError> {
 			let nft_owner = T::NFTHelper::owner(&collection_id, &nft_id);
 
@@ -267,16 +242,16 @@ pub mod pallet {
 		}
 
 		fn schedule_nft_upload(
-			_owner: AccountIdOf<T>,
-			_collection_id: CollectionIdOf<T>,
-			_nft_id: ItemIdOf<T>,
+			_owner: T::AccountId,
+			_collection_id: T::CollectionId,
+			_nft_id: T::ItemId,
 		) -> DispatchResult {
 			todo!()
 		}
 	}
 
-	impl<T: Config> Locker<CollectionIdOf<T>, ItemIdOf<T>> for Pallet<T> {
-		fn is_locked(collection: CollectionIdOf<T>, item: ItemIdOf<T>) -> bool {
+	impl<T: Config> Locker<T::CollectionId, T::ItemId> for Pallet<T> {
+		fn is_locked(collection: T::CollectionId, item: T::ItemId) -> bool {
 			LockItemStatus::<T>::get(collection, item).is_some()
 		}
 	}
