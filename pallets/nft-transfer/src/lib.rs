@@ -29,7 +29,6 @@ pub mod traits;
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::traits::*;
-	use codec::HasCompact;
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{
@@ -60,24 +59,12 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		#[pallet::constant]
 		/// Maximum amount of bytes that an asset may be encoded as.
+		#[pallet::constant]
 		type MaxAssetEncodedSize: Get<u32>;
 
 		/// Identifier for the collection of an NFT.
-		type CollectionId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u32>
-			+ Into<u32>
-			+ sp_std::fmt::Display
-			+ sp_std::cmp::PartialOrd
-			+ sp_std::cmp::Ord;
+		type CollectionId: Member + Parameter + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
 
 		/// Type that holds the specific configurations for a collection.
 		type CollectionConfig: Copy
@@ -90,17 +77,7 @@ pub mod pallet {
 			+ TypeInfo;
 
 		/// Identifier for the individual instances of an NFT.
-		type ItemId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u128>
-			+ Into<u128>
-			+ AtLeast32BitUnsigned;
+		type ItemId: Member + Parameter + Default + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
 
 		/// Type that holds the specific configurations for an item.
 		type ItemConfig: Copy
