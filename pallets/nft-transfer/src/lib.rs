@@ -185,10 +185,10 @@ pub mod pallet {
 			collection_id: T::CollectionId,
 			nft_id: T::ItemId,
 		) -> Result<Asset, DispatchError> {
-			let nft_owner = T::NftHelper::owner(&collection_id, &nft_id);
+			let nft_owner =
+				T::NftHelper::owner(&collection_id, &nft_id).ok_or(Error::<T>::NftNotFound)?;
 
-			ensure!(nft_owner.is_some(), Error::<T>::NftNotFound);
-			ensure!(nft_owner.unwrap() == owner, Error::<T>::NftNotOwned);
+			ensure!(nft_owner == owner, Error::<T>::NftNotOwned);
 			ensure!(
 				LockItemStatus::<T>::get(collection_id, nft_id) == Some(NftStatus::Stored),
 				Error::<T>::NftOutsideOfChain
