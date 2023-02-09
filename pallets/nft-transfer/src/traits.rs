@@ -5,7 +5,7 @@ use frame_support::dispatch::DispatchResult;
 pub type AssetCode = u16;
 
 /// Marker trait for Assets that can be converted back and forth into an NFT representation.
-pub trait NFTConvertible: Encode + Decode {
+pub trait NftConvertible: Encode + Decode {
 	/// Returns the numeric key used to store this specific asset's attributes in the NFT.
 	fn get_asset_code() -> AssetCode;
 
@@ -22,7 +22,7 @@ pub trait NFTConvertible: Encode + Decode {
 }
 
 /// Trait to define the transformation and bridging of assets as NFT.
-pub trait NFTHandler<Account, CollectionId, AssetId, Asset: NFTConvertible, ItemConfig> {
+pub trait NftHandler<Account, CollectionId, AssetId, Asset: NftConvertible, ItemConfig> {
 	/// Consumes the given **asset** and stores it as an NFT owned by **owner**,
 	/// returns the NFT index for tracking and recovering the asset.
 	fn store_as_nft(

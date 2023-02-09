@@ -285,7 +285,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::CouncilMembership(_) |
 			// ajuna pallets
 			RuntimeCall::AwesomeAvatars(_	) => true,
-			RuntimeCall::NFT(_) => false,
+			RuntimeCall::Nft(_) => false,
 		}
 	}
 }
@@ -788,7 +788,7 @@ construct_runtime!(
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
 
 		// Indexes 100+ should be reserved for NFT related pallets
-		NFT: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
+		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
 	}
 );
 
@@ -815,7 +815,7 @@ mod benches {
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
-		[pallet_nfts, NFT]
+		[pallet_nfts, Nft]
 	);
 }
 
