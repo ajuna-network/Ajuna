@@ -42,7 +42,6 @@ done
 [ "${RUNTIME}" != "bajun" ] && exit 0
 CUSTOM_PALLETS=(
   "pallet-ajuna-awesome-avatars"
-  "pallet-ajuna-nft-transfer"
 )
 for PALLET in "${CUSTOM_PALLETS[@]}"; do
   ./target/release/"${RUNTIME}"-para benchmark pallet \
