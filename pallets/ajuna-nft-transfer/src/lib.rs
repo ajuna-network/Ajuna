@@ -136,15 +136,17 @@ pub mod pallet {
 		AssetRestoreFailure,
 	}
 
-	impl<T: Config, Asset: NftConvertible>
-		NftHandler<T::AccountId, T::CollectionId, T::ItemId, Asset, T::ItemConfig> for Pallet<T>
-	{
+	impl<T: Config, Asset: NftConvertible> NftHandler<T::AccountId, Asset> for Pallet<T> {
+		type CollectionId = T::CollectionId;
+		type AssetId = T::ItemId;
+		type AssetConfig = T::ItemConfig;
+
 		fn store_as_nft(
 			owner: T::AccountId,
-			collection_id: T::CollectionId,
+			collection_id: Self::CollectionId,
 			asset: Asset,
-			asset_config: Option<T::ItemConfig>,
-		) -> Result<T::ItemId, DispatchError> {
+			asset_config: Option<Self::AssetConfig>,
+		) -> Result<Self::AssetId, DispatchError> {
 			let encoded_asset: EncodedAssetOf<T> = asset
 				.encode_into()
 				.try_into()
@@ -182,46 +184,46 @@ pub mod pallet {
 
 		fn recover_from_nft(
 			owner: T::AccountId,
-			collection_id: T::CollectionId,
-			nft_id: T::ItemId,
+			collection_id: Self::CollectionId,
+			asset_id: Self::AssetId,
 		) -> Result<Asset, DispatchError> {
 			let nft_owner =
-				T::NftHelper::owner(&collection_id, &nft_id).ok_or(Error::<T>::NftNotFound)?;
+				T::NftHelper::owner(&collection_id, &asset_id).ok_or(Error::<T>::NftNotFound)?;
 
 			ensure!(nft_owner == owner, Error::<T>::NftNotOwned);
 			ensure!(
-				LockItemStatus::<T>::get(collection_id, nft_id) == Some(NftStatus::Stored),
+				LockItemStatus::<T>::get(collection_id, asset_id) == Some(NftStatus::Stored),
 				Error::<T>::NftOutsideOfChain
 			);
 
-			let encoded_nft_data = T::NftHelper::typed_attribute::<AssetCode, EncodedAssetOf<T>>(
+			let encoded_asset_data = T::NftHelper::typed_attribute::<AssetCode, EncodedAssetOf<T>>(
 				&collection_id,
-				&nft_id,
+				&asset_id,
 				&AttributeNamespace::Pallet,
 				&Asset::get_asset_code(),
 			)
 			.ok_or(Error::<T>::NftAttributeMissing)?;
 
-			let asset = Asset::decode_from(encoded_nft_data.into_inner())
+			let asset = Asset::decode_from(encoded_asset_data.into_inner())
 				.map_err(|_| Error::<T>::AssetRestoreFailure)?;
 
-			T::NftHelper::clear_typed_attribute(&collection_id, &nft_id, &Asset::get_asset_code())?;
-			T::NftHelper::burn(&collection_id, &nft_id, Some(&owner))?;
-			LockItemStatus::<T>::remove(collection_id, nft_id);
+			T::NftHelper::clear_typed_attribute(
+				&collection_id,
+				&asset_id,
+				&Asset::get_asset_code(),
+			)?;
+			T::NftHelper::burn(&collection_id, &asset_id, Some(&owner))?;
+			LockItemStatus::<T>::remove(collection_id, asset_id);
 
-			Self::deposit_event(Event::<T>::AssetRestored {
-				collection_id,
-				asset_id: nft_id,
-				owner,
-			});
+			Self::deposit_event(Event::<T>::AssetRestored { collection_id, asset_id, owner });
 
 			Ok(asset)
 		}
 
 		fn schedule_nft_upload(
 			_owner: T::AccountId,
-			_collection_id: T::CollectionId,
-			_nft_id: T::ItemId,
+			_collection_id: Self::CollectionId,
+			_asset_id: Self::AssetId,
 		) -> DispatchResult {
 			todo!()
 		}
