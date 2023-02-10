@@ -29,7 +29,6 @@ pub mod traits;
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::traits::*;
-	use codec::HasCompact;
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{
@@ -42,20 +41,10 @@ pub mod pallet {
 	};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
 
-	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-
-	pub type CollectionIdOf<T> = <T as Config>::CollectionId;
-	pub type ItemIdOf<T> = <T as Config>::ItemId;
-
-	pub type CollectionConfigOf<T> = <T as Config>::CollectionConfig;
-	pub type MaybeCollectionConfigOf<T> = Option<CollectionConfigOf<T>>;
-	pub type ItemConfigOf<T> = <T as Config>::ItemConfig;
-	pub type MaybeItemConfigOf<T> = Option<ItemConfigOf<T>>;
-
 	pub type EncodedAssetOf<T> = BoundedVec<u8, <T as Config>::MaxAssetEncodedSize>;
 
 	#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
-	pub enum NFTStatus {
+	pub enum NftStatus {
 		/// The NFT exists in storage in the chain
 		Stored,
 		/// The NFT has been uploaded outside the chain
@@ -70,24 +59,12 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		#[pallet::constant]
 		/// Maximum amount of bytes that an asset may be encoded as.
+		#[pallet::constant]
 		type MaxAssetEncodedSize: Get<u32>;
 
 		/// Identifier for the collection of an NFT.
-		type CollectionId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u32>
-			+ Into<u32>
-			+ sp_std::fmt::Display
-			+ sp_std::cmp::PartialOrd
-			+ sp_std::cmp::Ord;
+		type CollectionId: Member + Parameter + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
 
 		/// Type that holds the specific configurations for a collection.
 		type CollectionConfig: Copy
@@ -100,17 +77,7 @@ pub mod pallet {
 			+ TypeInfo;
 
 		/// Identifier for the individual instances of an NFT.
-		type ItemId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u128>
-			+ Into<u128>
-			+ AtLeast32BitUnsigned;
+		type ItemId: Member + Parameter + Default + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
 
 		/// Type that holds the specific configurations for an item.
 		type ItemConfig: Copy
@@ -122,7 +89,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo;
 
-		type NFTHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
+		type NftHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
 			+ Create<Self::AccountId, Self::CollectionConfig>
 			+ Mutate<Self::AccountId, Self::ItemConfig>
 			+ Destroy<Self::AccountId>;
@@ -130,40 +97,25 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub(crate) type NextItemId<T: Config> =
-		StorageMap<_, Identity, CollectionIdOf<T>, ItemIdOf<T>, ValueQuery>;
+		StorageMap<_, Identity, T::CollectionId, T::ItemId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(crate) type LockItemStatus<T: Config> = StorageDoubleMap<
-		_,
-		Identity,
-		CollectionIdOf<T>,
-		Identity,
-		ItemIdOf<T>,
-		NFTStatus,
-		OptionQuery,
-	>;
+	pub(crate) type LockItemStatus<T: Config> =
+		StorageDoubleMap<_, Identity, T::CollectionId, Identity, T::ItemId, NftStatus, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Asset has been stored as an NFT [collection_id, asset_id, owner]
-		AssetStored {
-			collection_id: CollectionIdOf<T>,
-			asset_id: ItemIdOf<T>,
-			owner: AccountIdOf<T>,
-		},
+		AssetStored { collection_id: T::CollectionId, asset_id: T::ItemId, owner: T::AccountId },
 		/// Asset has been restored back from its NFT representation [collection_id, asset_id,
 		/// owner]
-		AssetRestored {
-			collection_id: CollectionIdOf<T>,
-			asset_id: ItemIdOf<T>,
-			owner: AccountIdOf<T>,
-		},
+		AssetRestored { collection_id: T::CollectionId, asset_id: T::ItemId, owner: T::AccountId },
 		/// Asset has been transferred outside the chain [collection_id, asset_id, owner]
 		AssetTransferred {
-			collection_id: CollectionIdOf<T>,
-			asset_id: ItemIdOf<T>,
-			owner: AccountIdOf<T>,
+			collection_id: T::CollectionId,
+			asset_id: T::ItemId,
+			owner: T::AccountId,
 		},
 	}
 
@@ -172,111 +124,113 @@ pub mod pallet {
 		/// The given asset resulted in an encoded size larger that the defined encoding limit.
 		AssetSizeAboveEncodingLimit,
 		/// The given NFT id didn't match any entries for the specified collection.
-		NFTNotFound,
+		NftNotFound,
 		/// The given NFT id doesn't have the proper attribute set.
-		NFTAttributeMissing,
+		NftAttributeMissing,
 		/// The given NFT is not owned by the requester.
-		NFTNotOwned,
+		NftNotOwned,
 		/// The given NFT is currently outside of the chain, transfer it back before attempting a
 		/// restore.
-		NFTOutsideOfChain,
+		NftOutsideOfChain,
 		/// The process of restoring an NFT into an Asset has failed.
 		AssetRestoreFailure,
 	}
 
-	impl<T: Config, Asset: NFTConvertible>
-		NFTHandler<AccountIdOf<T>, CollectionIdOf<T>, ItemIdOf<T>, Asset, ItemConfigOf<T>> for Pallet<T>
-	{
+	impl<T: Config, Asset: NftConvertible> NftHandler<T::AccountId, Asset> for Pallet<T> {
+		type CollectionId = T::CollectionId;
+		type AssetId = T::ItemId;
+		type AssetConfig = T::ItemConfig;
+
 		fn store_as_nft(
-			owner: AccountIdOf<T>,
-			collection_id: CollectionIdOf<T>,
+			owner: T::AccountId,
+			collection_id: Self::CollectionId,
 			asset: Asset,
-			asset_config: MaybeItemConfigOf<T>,
-		) -> Result<ItemIdOf<T>, DispatchError> {
+			asset_config: Option<Self::AssetConfig>,
+		) -> Result<Self::AssetId, DispatchError> {
 			let encoded_asset: EncodedAssetOf<T> = asset
 				.encode_into()
 				.try_into()
 				.map_err(|_| Error::<T>::AssetSizeAboveEncodingLimit)?;
 
-			let next_id = NextItemId::<T>::mutate(collection_id, |item| {
-				let next_id = *item;
-				item.saturating_inc();
-				next_id
+			let next_item_id = NextItemId::<T>::mutate(collection_id, |item_id| {
+				let next_item_id = *item_id;
+				item_id.saturating_inc();
+				next_item_id
 			});
 
-			T::NFTHelper::mint_into(
+			T::NftHelper::mint_into(
 				&collection_id,
-				&next_id,
+				&next_item_id,
 				&owner,
 				&asset_config.unwrap_or_default(),
 				true,
 			)?;
-			T::NFTHelper::set_typed_attribute(
+			T::NftHelper::set_typed_attribute(
 				&collection_id,
-				&next_id,
+				&next_item_id,
 				&Asset::get_asset_code(),
 				&encoded_asset,
 			)?;
-			LockItemStatus::<T>::insert(collection_id, next_id, NFTStatus::Stored);
+			LockItemStatus::<T>::insert(collection_id, next_item_id, NftStatus::Stored);
 
 			Self::deposit_event(Event::<T>::AssetStored {
 				collection_id,
-				asset_id: next_id,
+				asset_id: next_item_id,
 				owner,
 			});
 
-			Ok(next_id)
+			Ok(next_item_id)
 		}
 
 		fn recover_from_nft(
-			owner: AccountIdOf<T>,
-			collection_id: CollectionIdOf<T>,
-			nft_id: ItemIdOf<T>,
+			owner: T::AccountId,
+			collection_id: Self::CollectionId,
+			asset_id: Self::AssetId,
 		) -> Result<Asset, DispatchError> {
-			let nft_owner = T::NFTHelper::owner(&collection_id, &nft_id);
+			let nft_owner =
+				T::NftHelper::owner(&collection_id, &asset_id).ok_or(Error::<T>::NftNotFound)?;
 
-			ensure!(nft_owner.is_some(), Error::<T>::NFTNotFound);
-			ensure!(nft_owner.unwrap() == owner, Error::<T>::NFTNotOwned);
+			ensure!(nft_owner == owner, Error::<T>::NftNotOwned);
 			ensure!(
-				LockItemStatus::<T>::get(collection_id, nft_id) == Some(NFTStatus::Stored),
-				Error::<T>::NFTOutsideOfChain
+				LockItemStatus::<T>::get(collection_id, asset_id) == Some(NftStatus::Stored),
+				Error::<T>::NftOutsideOfChain
 			);
 
-			let encoded_nft_data = T::NFTHelper::typed_attribute::<AssetCode, EncodedAssetOf<T>>(
+			let encoded_asset_data = T::NftHelper::typed_attribute::<AssetCode, EncodedAssetOf<T>>(
 				&collection_id,
-				&nft_id,
+				&asset_id,
 				&AttributeNamespace::Pallet,
 				&Asset::get_asset_code(),
 			)
-			.ok_or(Error::<T>::NFTAttributeMissing)?;
+			.ok_or(Error::<T>::NftAttributeMissing)?;
 
-			let asset = Asset::decode_from(encoded_nft_data.into_inner())
+			let asset = Asset::decode_from(encoded_asset_data.into_inner())
 				.map_err(|_| Error::<T>::AssetRestoreFailure)?;
 
-			T::NFTHelper::clear_typed_attribute(&collection_id, &nft_id, &Asset::get_asset_code())?;
-			T::NFTHelper::burn(&collection_id, &nft_id, Some(&owner))?;
-			LockItemStatus::<T>::remove(collection_id, nft_id);
+			T::NftHelper::clear_typed_attribute(
+				&collection_id,
+				&asset_id,
+				&Asset::get_asset_code(),
+			)?;
+			T::NftHelper::burn(&collection_id, &asset_id, Some(&owner))?;
+			LockItemStatus::<T>::remove(collection_id, asset_id);
 
-			Self::deposit_event(Event::<T>::AssetRestored {
-				collection_id,
-				asset_id: nft_id,
-				owner,
-			});
+			Self::deposit_event(Event::<T>::AssetRestored { collection_id, asset_id, owner });
 
 			Ok(asset)
 		}
 
 		fn schedule_nft_upload(
-			_owner: AccountIdOf<T>,
-			_collection_id: CollectionIdOf<T>,
-			_nft_id: ItemIdOf<T>,
+			_owner: T::AccountId,
+			_collection_id: Self::CollectionId,
+			_asset_id: Self::AssetId,
 		) -> DispatchResult {
 			todo!()
 		}
 	}
 
-	impl<T: Config> Locker<CollectionIdOf<T>, ItemIdOf<T>> for Pallet<T> {
-		fn is_locked(collection: CollectionIdOf<T>, item: ItemIdOf<T>) -> bool {
+	impl<T: Config> Locker<T::CollectionId, T::ItemId> for Pallet<T> {
+		fn is_locked(collection: T::CollectionId, item: T::ItemId) -> bool {
 			LockItemStatus::<T>::get(collection, item).is_some()
 		}
 	}
