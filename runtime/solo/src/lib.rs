@@ -378,7 +378,7 @@ impl pallet_democracy::Config for Runtime {
 	type MaxVotes = frame_support::traits::ConstU32<100>;
 	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
 	type MaxProposals = frame_support::traits::ConstU32<100>;
-	type Preimages = PreImage;
+	type Preimages = Preimage;
 	type MaxDeposits = frame_support::traits::ConstU32<100>;
 	type MaxBlacklisted = frame_support::traits::ConstU32<100>;
 }
@@ -464,7 +464,7 @@ impl pallet_scheduler::Config for Runtime {
 	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-	type Preimages = PreImage;
+	type Preimages = Preimage;
 }
 
 parameter_types! {
@@ -593,7 +593,7 @@ construct_runtime!(
 		Proxy: pallet_proxy = 16,
 		Multisig: pallet_multisig = 17,
 		Utility: pallet_utility = 18,
-		PreImage: pallet_preimage = 19,
+		Preimage: pallet_preimage = 19,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 		Randomness: pallet_randomness_collective_flip = 23,
 	}

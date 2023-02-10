@@ -266,7 +266,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::Identity(_) |
 			RuntimeCall::Proxy(_) |
 			RuntimeCall::Scheduler(_) |
-			RuntimeCall::PreImage(_) |
+			RuntimeCall::Preimage(_) |
 			// monetary
 			RuntimeCall::Balances(_) |
 			RuntimeCall::Vesting(_) |
@@ -664,7 +664,7 @@ impl pallet_scheduler::Config for Runtime {
 	type OriginPrivilegeCmp = frame_support::traits::EqualPrivilegeOnly;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = weights::pallet_scheduler::WeightInfo<Runtime>;
-	type Preimages = PreImage;
+	type Preimages = Preimage;
 }
 
 parameter_types! {
@@ -700,7 +700,7 @@ construct_runtime!(
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 6,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 7,
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 8,
-		PreImage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
@@ -747,7 +747,7 @@ mod benches {
 		[pallet_collective, Council]
 		[pallet_membership, CouncilMembership]
 		[pallet_identity, Identity]
-		[pallet_preimage, PreImage]
+		[pallet_preimage, Preimage]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
 	);
