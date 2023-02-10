@@ -42,9 +42,9 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
 	{
 		System: frame_system,
-		NFT: pallet_nfts,
+		Nft: pallet_nfts,
 		Balances: pallet_balances,
-		NFTTransfer: pallet_nft_transfer,
+		NftTransfer: pallet_nft_transfer,
 	}
 );
 
@@ -131,8 +131,9 @@ impl pallet_nfts::Config for Test {
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
 	type Features = ConfigFeatures;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Helper = ();
+	pallet_nfts::runtime_benchmarks_enabled! {
+		type Helper = ();
+	}
 	type WeightInfo = ();
 }
 
@@ -148,7 +149,7 @@ impl pallet_nft_transfer::Config for Test {
 	type CollectionConfig = CollectionConfig;
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
-	type NFTHelper = NFT;
+	type NftHelper = Nft;
 }
 
 pub const ALICE: MockAccountId = 1;
