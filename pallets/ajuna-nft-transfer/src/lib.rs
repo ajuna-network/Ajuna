@@ -152,34 +152,34 @@ pub mod pallet {
 				.try_into()
 				.map_err(|_| Error::<T>::AssetSizeAboveEncodingLimit)?;
 
-			let next_id = NextItemId::<T>::mutate(collection_id, |item| {
-				let next_id = *item;
-				item.saturating_inc();
-				next_id
+			let next_item_id = NextItemId::<T>::mutate(collection_id, |item_id| {
+				let next_item_id = *item_id;
+				item_id.saturating_inc();
+				next_item_id
 			});
 
 			T::NftHelper::mint_into(
 				&collection_id,
-				&next_id,
+				&next_item_id,
 				&owner,
 				&asset_config.unwrap_or_default(),
 				true,
 			)?;
 			T::NftHelper::set_typed_attribute(
 				&collection_id,
-				&next_id,
+				&next_item_id,
 				&Asset::get_asset_code(),
 				&encoded_asset,
 			)?;
-			LockItemStatus::<T>::insert(collection_id, next_id, NftStatus::Stored);
+			LockItemStatus::<T>::insert(collection_id, next_item_id, NftStatus::Stored);
 
 			Self::deposit_event(Event::<T>::AssetStored {
 				collection_id,
-				asset_id: next_id,
+				asset_id: next_item_id,
 				owner,
 			});
 
-			Ok(next_id)
+			Ok(next_item_id)
 		}
 
 		fn recover_from_nft(
