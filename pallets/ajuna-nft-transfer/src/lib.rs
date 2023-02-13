@@ -96,11 +96,11 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	pub(crate) type NextItemId<T: Config> =
+	pub type NextItemId<T: Config> =
 		StorageMap<_, Identity, T::CollectionId, T::ItemId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(crate) type LockItemStatus<T: Config> =
+	pub type LockItemStatus<T: Config> =
 		StorageDoubleMap<_, Identity, T::CollectionId, Identity, T::ItemId, NftStatus, OptionQuery>;
 
 	#[pallet::event]

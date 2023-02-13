@@ -361,6 +361,7 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-nft-transfer",
  "pallet-asset-tx-payment",
  "pallet-assets",
  "pallet-aura",
@@ -371,6 +372,7 @@ dependencies = [
  "pallet-identity",
  "pallet-membership",
  "pallet-multisig",
+ "pallet-nfts",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -668,6 +670,7 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-nft-transfer",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -5598,7 +5601,9 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "pallet-ajuna-nft-transfer",
  "pallet-balances",
+ "pallet-nfts",
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
  "scale-info",
@@ -5620,6 +5625,7 @@ dependencies = [
  "scale-info",
  "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

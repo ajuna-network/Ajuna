@@ -1,5 +1,6 @@
 use codec::{Decode, Encode, Error as CodecError};
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each Asset.
 pub type AssetCode = u16;

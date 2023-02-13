@@ -17,9 +17,12 @@
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU16, ConstU64, GenesisBuild, Hooks},
+	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64, GenesisBuild, Hooks},
 };
-use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use frame_system::{
+	mocking::{MockBlock, MockUncheckedExtrinsic},
+	EnsureRoot, EnsureSigned,
+};
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
@@ -48,7 +51,9 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Randomness: pallet_randomness_collective_flip,
+		Nft: pallet_nfts,
 		AAvatars: pallet_ajuna_awesome_avatars,
+		NftTransfer: pallet_ajuna_nft_transfer,
 	}
 );
 
@@ -97,11 +102,80 @@ impl pallet_balances::Config for Test {
 
 impl pallet_randomness_collective_flip::Config for Test {}
 
+parameter_types! {
+	pub const CollectionDeposit: MockBalance = 1;
+	pub const ItemDeposit: MockBalance = 1;
+	pub const StringLimit: u32 = 128;
+	pub const KeyLimit: u32 = 32;
+	pub const ValueLimit: u32 = 64;
+	pub const MetadataDepositBase: MockBalance = 1;
+	pub const AttributeDepositBase: MockBalance = 1;
+	pub const DepositPerByte: MockBalance = 1;
+	pub const ApprovalsLimit: u32 = 1;
+	pub const ItemAttributesApprovalsLimit: u32 = 10;
+	pub const MaxTips: u32 = 1;
+	pub const MaxDeadlineDuration: u32 = 1;
+	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
+}
+
+pub type MockCollectionId = u32;
+pub type MockItemId = u128;
+
+impl pallet_nfts::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type CollectionId = MockCollectionId;
+	type ItemId = MockItemId;
+	type Currency = Balances;
+	type ForceOrigin = EnsureRoot<MockAccountId>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<MockAccountId>>;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = StringLimit;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
+	type ApprovalsLimit = ApprovalsLimit;
+	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
+	type MaxTips = MaxTips;
+	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type Features = ConfigFeatures;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const AvatarCollection: MockCollectionId = 0;
+}
+
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type AvatarNftHandler = NftTransfer;
+	type AvatarCollectionId = MockCollectionId;
+	type AvatarCollection = AvatarCollection;
+	type AvatarItemId = MockItemId;
+	type AvatarItemConfig = pallet_nfts::ItemConfig;
 	type WeightInfo = ();
+}
+
+pub const MAX_ENCODING_SIZE: u32 = 200;
+
+pub type CollectionConfig =
+	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
+
+impl pallet_ajuna_nft_transfer::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type CollectionId = MockCollectionId;
+	type CollectionConfig = CollectionConfig;
+	type ItemId = MockItemId;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NftHelper = Nft;
 }
 
 pub struct ExtBuilder {
@@ -216,6 +290,13 @@ impl ExtBuilder {
 			for (account_id, mint_amount) in self.free_mints {
 				Accounts::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
 			}
+
+			Nft::force_create(
+				RuntimeOrigin::root(),
+				ALICE,
+				pallet_nfts::CollectionConfig::default(),
+			)
+			.expect("Collection created");
 		});
 		ext
 	}
