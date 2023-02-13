@@ -23,7 +23,6 @@ concurrency:
 env:
   CARGO_ARGS: ${{ github.ref == 'refs/heads/develop' && '--release' || '' }}
   CARGO_TERM_COLOR: always
-  SKIP_WASM_BUILD: 1
 
 jobs:
   fmt:
@@ -51,8 +50,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-lint-
       - run: cargo clippy --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
 
   test:
