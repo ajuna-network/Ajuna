@@ -80,7 +80,9 @@ pub mod pallet {
 	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 	use pallet_ajuna_nft_transfer::traits::NftHandler;
 	use sp_runtime::{
-		traits::{AtLeast32BitUnsigned, Hash, Saturating, TrailingZeroInput, Zero},
+		traits::{
+			AtLeast32BitUnsigned, Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero,
+		},
 		ArithmeticError,
 	};
 	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
