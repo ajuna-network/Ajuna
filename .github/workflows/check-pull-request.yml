@@ -21,6 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  CARGO_ARGS: ${{ github.ref == 'refs/heads/develop' && '--release' || '' }}
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -51,7 +52,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-lint-
-      - run: cargo clippy --all-features --all-targets --release -- -D warnings
+      - run: cargo clippy --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
 
   test:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
@@ -71,7 +72,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-
-      - run: cargo test --workspace --all-features --all-targets --release --jobs 1
+      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
 
   coverage:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
