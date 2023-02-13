@@ -291,8 +291,8 @@ impl ExtBuilder {
 				Accounts::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
 			}
 
-			Nft::create(
-				RuntimeOrigin::signed(ALICE),
+			Nft::force_create(
+				RuntimeOrigin::root(),
 				ALICE,
 				pallet_nfts::CollectionConfig::default(),
 			)
