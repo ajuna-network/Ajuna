@@ -728,7 +728,6 @@ pub mod pallet {
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&account, &avatar_id)?;
-			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 
 			if let Some(avatar_nft_id) = Self::locked_avatars(avatar_id) {
 				let _ = T::AvatarNftHandler::recover_from_nft(
@@ -928,6 +927,7 @@ pub mod pallet {
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
+			Self::ensure_not_locked(leader_id)?;
 			ensure!(
 				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
 				Error::<T>::AvatarInTrade

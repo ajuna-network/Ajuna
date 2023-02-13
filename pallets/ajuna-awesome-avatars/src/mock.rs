@@ -148,7 +148,7 @@ impl pallet_nfts::Config for Test {
 }
 
 parameter_types! {
-	pub const AvatarCollection: MockCollectionId = 17_410;
+	pub const AvatarCollection: MockCollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Test {
@@ -290,6 +290,13 @@ impl ExtBuilder {
 			for (account_id, mint_amount) in self.free_mints {
 				Accounts::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
 			}
+
+			Nft::create(
+				RuntimeOrigin::signed(ALICE),
+				ALICE,
+				pallet_nfts::CollectionConfig::default(),
+			)
+			.expect("Collection created");
 		});
 		ext
 	}
