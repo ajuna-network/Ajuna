@@ -40,6 +40,7 @@ pallet-democracy                           = { default-features = false, git = "
 pallet-grandpa                             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-membership                          = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-multisig                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+pallet-nfts                                = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-preimage                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-proxy                               = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-randomness-collective-flip          = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -68,6 +69,7 @@ orml-vesting = { default-features = false, git = "https://github.com/ajuna-netwo
 # Ajuna pallets
 ajuna-primitives             = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+pallet-ajuna-nft-transfer    = { default-features = false, path = "../../pallets/ajuna-nft-transfer" }
 
 [features]
 default = [ "std" ]
@@ -78,8 +80,10 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hex-literal",
     "pallet-ajuna-awesome-avatars/runtime-benchmarks",
+    "pallet-ajuna-nft-transfer/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
+    "pallet-nfts/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
@@ -104,6 +108,7 @@ std = [
     "pallet-grandpa/std",
     "pallet-membership/std",
     "pallet-multisig/std",
+    "pallet-nfts/std",
     "pallet-preimage/std",
     "pallet-proxy/std",
     "pallet-randomness-collective-flip/std",
@@ -127,4 +132,5 @@ std = [
     "sp-version/std",
     "orml-vesting/std",
     "pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-nft-transfer/std",
 ]

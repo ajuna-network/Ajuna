@@ -517,10 +517,19 @@ impl pallet_proxy::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
+parameter_types! {
+	pub const AvatarCollection: CollectionId = 17_410;
+}
+
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type AvatarNftHandler = NftTransfer;
+	type AvatarCollectionId = CollectionId;
+	type AvatarCollection = AvatarCollection;
+	type AvatarItemId = ItemId;
+	type AvatarItemConfig = pallet_nfts::ItemConfig;
 	type WeightInfo = ();
 }
 
@@ -567,6 +576,64 @@ impl pallet_preimage::Config for Runtime {
 	type ByteDeposit = ByteDeposit;
 }
 
+parameter_types! {
+	pub const CollectionDeposit: Balance = MICRO_AJUNS;
+	pub const ItemDeposit: Balance = NANO_AJUNS;
+	pub const StringLimit: u32 = 128;
+	pub const KeyLimit: u32 = 32;
+	pub const ValueLimit: u32 = 64;
+	pub const AttributeDepositBase: Balance = deposit(1, 0);
+	pub const DepositPerByte: Balance = deposit(0, 1);
+	pub const ApprovalsLimit: u32 = 1;
+	pub const ItemAttributesApprovalsLimit: u32 = 10;
+	pub const MaxTips: u32 = 1;
+	pub const MaxDeadlineDuration: u32 = 1;
+	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
+}
+
+pub type CollectionId = u32;
+pub type ItemId = u128;
+
+impl pallet_nfts::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
+	type Currency = Balances;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = StringLimit;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
+	type ApprovalsLimit = ApprovalsLimit;
+	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
+	type MaxTips = MaxTips;
+	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type Features = ConfigFeatures;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type WeightInfo = ();
+}
+
+pub const MAX_ENCODING_SIZE: u32 = 200;
+
+pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+
+impl pallet_ajuna_nft_transfer::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type CollectionId = CollectionId;
+	type CollectionConfig = CollectionConfig;
+	type ItemId = ItemId;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NftHelper = Nft;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -596,6 +663,8 @@ construct_runtime!(
 		Preimage: pallet_preimage = 19,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
 		Randomness: pallet_randomness_collective_flip = 23,
+		Nft: pallet_nfts = 24,
+		NftTransfer: pallet_ajuna_nft_transfer = 25,
 	}
 );
 

@@ -159,6 +159,19 @@ impl Avatar {
 	}
 }
 
+pub mod impl_nft_convertible {
+	use super::*;
+	use pallet_ajuna_nft_transfer::traits::{AssetCode, NftConvertible};
+
+	pub const AVATAR_ASSET_CODE: u16 = 17;
+
+	impl NftConvertible for Avatar {
+		fn get_asset_code() -> AssetCode {
+			AVATAR_ASSET_CODE
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;

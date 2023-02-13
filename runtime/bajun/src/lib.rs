@@ -686,10 +686,19 @@ impl pallet_preimage::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
+parameter_types! {
+	pub const AvatarCollection: CollectionId = 17_410;
+}
+
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type AvatarNftHandler = NftTransfer;
+	type AvatarCollectionId = CollectionId;
+	type AvatarCollection = AvatarCollection;
+	type AvatarItemId = ItemId;
+	type AvatarItemConfig = pallet_nfts::ItemConfig;
 	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
@@ -710,7 +719,7 @@ parameter_types! {
 }
 
 pub type CollectionId = u32;
-pub type ItemId = u64;
+pub type ItemId = u128;
 
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -736,6 +745,20 @@ impl pallet_nfts::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
 	type WeightInfo = ();
+}
+
+pub const MAX_ENCODING_SIZE: u32 = 200;
+
+pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+
+impl pallet_ajuna_nft_transfer::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type CollectionId = CollectionId;
+	type CollectionConfig = CollectionConfig;
+	type ItemId = ItemId;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NftHelper = Nft;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -789,6 +812,7 @@ construct_runtime!(
 
 		// Indexes 100+ should be reserved for NFT related pallets
 		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
+		NftTransfer: pallet_ajuna_nft_transfer = 101,
 	}
 );
 
