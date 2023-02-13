@@ -2403,20 +2403,94 @@ mod lock_avatar {
 }
 
 mod unlock_avatar {
-	use crate::mock::ExtBuilder;
+	use super::*;
 
 	#[test]
 	fn can_unlock_avatar_successfully() {
-		ExtBuilder::default().build().execute_with(|| {});
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(ALICE),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_id = AAvatars::owners(ALICE)[0];
+
+				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert!(LockedAvatars::<Test>::get(avatar_id).is_none());
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarUnlocked { avatar_id },
+				));
+			});
 	}
 
 	#[test]
 	fn cannot_unlock_non_owned_avatar() {
-		ExtBuilder::default().build().execute_with(|| {});
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(BOB),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_id = AAvatars::owners(BOB)[0];
+
+				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
+				assert_noop!(
+					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::Ownership
+				);
+			});
 	}
 
 	#[test]
-	fn cannot_unlock_transfered_avatar() {
-		ExtBuilder::default().build().execute_with(|| {});
+	fn cannot_unlock_transferred_avatar() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(ALICE),
+					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
+				));
+
+				let avatar_id = AAvatars::owners(ALICE)[0];
+
+				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+
+				let asset_id =
+					LockedAvatars::<Test>::get(avatar_id).expect("Should get avatar nft id");
+
+				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
+					crate::mock::AvatarCollection::get(),
+					asset_id,
+					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
+				);
+
+				assert_noop!(
+					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					pallet_ajuna_nft_transfer::Error::<Test>::NftOutsideOfChain
+				);
+			});
 	}
 }
