@@ -32,10 +32,10 @@ mod fund_treasury {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = RuntimeOrigin::signed(ALICE);
 			let fund_amount: MockBalance = 1_000_000;
-			let treasury_account = NFTStake::treasury_account().unwrap();
+			let treasury_account = NftStake::treasury_account().unwrap();
 			let base_reserves = Balances::reserved_balance(treasury_account);
 
-			assert_ok!(NFTStake::fund_treasury(account, fund_amount));
+			assert_ok!(NftStake::fund_treasury(account, fund_amount));
 
 			System::assert_last_event(mock::RuntimeEvent::NFTStake(crate::Event::TreasuryFunded {
 				funding_account: ALICE,
@@ -57,7 +57,7 @@ mod fund_treasury {
 				let account = RuntimeOrigin::signed(ALICE);
 
 				assert_noop!(
-					NFTStake::fund_treasury(account, fund_amount),
+					NftStake::fund_treasury(account, fund_amount),
 					crate::pallet::Error::<Test>::AccountLacksFunds
 				);
 			});
@@ -74,7 +74,7 @@ mod fund_treasury {
 				let account = RuntimeOrigin::signed(ALICE);
 
 				assert_noop!(
-					NFTStake::fund_treasury(account, fund_amount),
+					NftStake::fund_treasury(account, fund_amount),
 					pallet_balances::Error::<Test>::KeepAlive
 				);
 			});
@@ -96,12 +96,12 @@ mod submit_staking_contract {
 				let contract_reward = StakingRewardOf::<Test>::Tokens(reward);
 				let contract = StakingContractOf::<Test>::new(contract_reward, 10)
 					.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
-				let treasury_account = NFTStake::treasury_account().unwrap();
+				let treasury_account = NftStake::treasury_account().unwrap();
 				let base_reserves = Balances::reserved_balance(treasury_account);
 
-				let expected_contract_id = NFTStake::next_contract_id();
+				let expected_contract_id = NftStake::next_contract_id();
 
-				assert_ok!(NFTStake::submit_staking_contract(
+				assert_ok!(NftStake::submit_staking_contract(
 					RuntimeOrigin::signed(account),
 					contract.clone()
 				));
@@ -113,11 +113,11 @@ mod submit_staking_contract {
 					},
 				));
 
-				assert_eq!(NFTStake::active_contracts(expected_contract_id), Some(contract));
+				assert_eq!(NftStake::active_contracts(expected_contract_id), Some(contract));
 
 				assert_eq!(
-					NFT::owner(contract_collection_id(), expected_contract_id),
-					Some(NFTStake::treasury_account_id())
+					Nft::owner(contract_collection_id(), expected_contract_id),
+					Some(NftStake::treasury_account_id())
 				);
 
 				let new_reserve = Balances::reserved_balance(treasury_account);
@@ -138,9 +138,9 @@ mod submit_staking_contract {
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
 				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
-			let expected_contract_id = NFTStake::next_contract_id();
+			let expected_contract_id = NftStake::next_contract_id();
 
-			assert_ok!(NFTStake::submit_staking_contract(
+			assert_ok!(NftStake::submit_staking_contract(
 				RuntimeOrigin::signed(account),
 				contract.clone()
 			));
@@ -152,14 +152,14 @@ mod submit_staking_contract {
 				},
 			));
 
-			assert_eq!(NFTStake::active_contracts(expected_contract_id), Some(contract));
+			assert_eq!(NftStake::active_contracts(expected_contract_id), Some(contract));
 
 			assert_eq!(
-				NFT::owner(contract_collection_id(), expected_contract_id),
-				Some(NFTStake::treasury_account_id())
+				Nft::owner(contract_collection_id(), expected_contract_id),
+				Some(NftStake::treasury_account_id())
 			);
 
-			assert_eq!(NFT::owner(collection_id, nft_addr.1), Some(NFTStake::treasury_account_id()))
+			assert_eq!(Nft::owner(collection_id, nft_addr.1), Some(NftStake::treasury_account_id()))
 		});
 	}
 
@@ -177,7 +177,7 @@ mod submit_staking_contract {
 					.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
 				assert_noop!(
-					NFTStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
+					NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
 					Error::<Test>::AccountLacksFunds
 				);
 			});
@@ -195,7 +195,7 @@ mod submit_staking_contract {
 				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
 			assert_noop!(
-				NFTStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
+				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
 				Error::<Test>::ContractRewardNotOwned
 			);
 		});
@@ -206,7 +206,7 @@ mod submit_staking_contract {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let collection_id = contract_collection_id();
-			let item_id = NFTStake::next_contract_id() + 100;
+			let item_id = NftStake::next_contract_id() + 100;
 			let nft_addr = create_random_mock_nft(account, collection_id, item_id);
 
 			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
@@ -214,7 +214,7 @@ mod submit_staking_contract {
 				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
 			assert_noop!(
-				NFTStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
+				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
 				Error::<Test>::InvalidContractReward
 			);
 		});
@@ -235,14 +235,14 @@ mod take_staking_contract {
 				contract_duration,
 			)
 			.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, attr_key));
-			let expected_contract_id = NFTStake::next_contract_id();
+			let expected_contract_id = NftStake::next_contract_id();
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			let contract_taker = BOB;
 			let staked_nft = create_random_mock_nft_for(contract_taker);
 			set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
 
-			assert_ok!(NFTStake::take_staking_contract(
+			assert_ok!(NftStake::take_staking_contract(
 				RuntimeOrigin::signed(contract_taker),
 				contract_addr.1,
 				bounded_vec![staked_nft.clone()],
@@ -256,25 +256,25 @@ mod take_staking_contract {
 			));
 
 			assert_eq!(
-				NFT::owner(staked_nft.0, staked_nft.1),
-				Some(NFTStake::treasury_account_id())
+				Nft::owner(staked_nft.0, staked_nft.1),
+				Some(NftStake::treasury_account_id())
 			);
 
 			assert_eq!(
-				NFT::owner(contract_collection_id(), expected_contract_id),
+				Nft::owner(contract_collection_id(), expected_contract_id),
 				Some(contract_taker)
 			);
 
-			assert_eq!(NFTStake::contract_owners(expected_contract_id), Some(contract_taker));
+			assert_eq!(NftStake::contract_owners(expected_contract_id), Some(contract_taker));
 
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			assert_eq!(
-				NFTStake::contract_durations(expected_contract_id),
+				NftStake::contract_durations(expected_contract_id),
 				Some(current_block + contract_duration)
 			);
 
 			assert_eq!(
-				NFTStake::contract_staked_assets(expected_contract_id),
+				NftStake::contract_staked_assets(expected_contract_id),
 				Some(bounded_vec![staked_nft])
 			);
 		});
@@ -302,7 +302,7 @@ mod take_staking_contract {
 				attr_key_set[2],
 				attr_value_set[2],
 			));
-			let expected_contract_id = NFTStake::next_contract_id();
+			let expected_contract_id = NftStake::next_contract_id();
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			let contract_taker = BOB;
@@ -319,7 +319,7 @@ mod take_staking_contract {
 				bounded_vec![staked_nft_1, staked_nft_2, staked_nft_3]
 			};
 
-			assert_ok!(NFTStake::take_staking_contract(
+			assert_ok!(NftStake::take_staking_contract(
 				RuntimeOrigin::signed(contract_taker),
 				contract_addr.1,
 				staked_nft_vec,
@@ -357,7 +357,7 @@ mod take_staking_contract {
 					bounded_vec![staked_nft]
 				};
 
-				assert_ok!(NFTStake::take_staking_contract(
+				assert_ok!(NftStake::take_staking_contract(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec,
@@ -375,7 +375,7 @@ mod take_staking_contract {
 				};
 
 				assert_noop!(
-					NFTStake::take_staking_contract(
+					NftStake::take_staking_contract(
 						RuntimeOrigin::signed(contract_taker),
 						contract_addr.1,
 						staked_nft_vec,
@@ -409,14 +409,14 @@ mod take_staking_contract {
 					bounded_vec![staked_nft]
 				};
 
-				assert_ok!(NFTStake::take_staking_contract(
+				assert_ok!(NftStake::take_staking_contract(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec.clone(),
 				));
 
 				assert_noop!(
-					NFTStake::take_staking_contract(
+					NftStake::take_staking_contract(
 						RuntimeOrigin::signed(contract_taker),
 						contract_addr.1,
 						staked_nft_vec,
@@ -450,7 +450,7 @@ mod take_staking_contract {
 			};
 
 			assert_noop!(
-				NFTStake::take_staking_contract(
+				NftStake::take_staking_contract(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec,
@@ -499,7 +499,7 @@ mod take_staking_contract {
 			};
 
 			assert_noop!(
-				NFTStake::take_staking_contract(
+				NftStake::take_staking_contract(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec,
@@ -534,7 +534,7 @@ mod take_staking_contract {
 				};
 
 				assert_noop!(
-					NFTStake::take_staking_contract(
+					NftStake::take_staking_contract(
 						RuntimeOrigin::signed(contract_taker),
 						contract_addr.1,
 						staked_nft_vec,
@@ -580,7 +580,7 @@ mod redeem_staking_contract {
 
 			let contract_id = contract_addr.1;
 
-			assert_ok!(NFTStake::take_staking_contract(
+			assert_ok!(NftStake::take_staking_contract(
 				RuntimeOrigin::signed(account),
 				contract_id,
 				bounded_vec![staked_nft.clone()],
@@ -590,7 +590,7 @@ mod redeem_staking_contract {
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			run_to_block(current_block + contract_duration);
 
-			assert_ok!(NFTStake::redeem_staking_contract(
+			assert_ok!(NftStake::redeem_staking_contract(
 				RuntimeOrigin::signed(account),
 				contract_id,
 			));
@@ -605,15 +605,15 @@ mod redeem_staking_contract {
 
 			assert_eq!(Balances::free_balance(account), current_balance + reward_amt);
 
-			assert_eq!(NFT::owner(staked_nft.0, staked_nft.1), Some(account));
+			assert_eq!(Nft::owner(staked_nft.0, staked_nft.1), Some(account));
 
-			assert_eq!(NFT::owner(contract_collection_id(), contract_id), None);
+			assert_eq!(Nft::owner(contract_collection_id(), contract_id), None);
 
-			assert_eq!(NFTStake::contract_owners(contract_id), None);
+			assert_eq!(NftStake::contract_owners(contract_id), None);
 
-			assert_eq!(NFTStake::contract_durations(contract_id), None);
+			assert_eq!(NftStake::contract_durations(contract_id), None);
 
-			assert_eq!(NFTStake::contract_staked_assets(contract_id), None);
+			assert_eq!(NftStake::contract_staked_assets(contract_id), None);
 		});
 	}
 
@@ -645,7 +645,7 @@ mod redeem_staking_contract {
 
 			let contract_id = contract_addr.1;
 
-			assert_ok!(NFTStake::take_staking_contract(
+			assert_ok!(NftStake::take_staking_contract(
 				RuntimeOrigin::signed(account),
 				contract_id,
 				bounded_vec![staked_nft.clone()],
@@ -655,7 +655,7 @@ mod redeem_staking_contract {
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			run_to_block(current_block + contract_duration);
 
-			assert_ok!(NFTStake::redeem_staking_contract(
+			assert_ok!(NftStake::redeem_staking_contract(
 				RuntimeOrigin::signed(account),
 				contract_id,
 			));
@@ -668,19 +668,19 @@ mod redeem_staking_contract {
 				},
 			));
 
-			assert_eq!(NFT::owner(nft_reward_addr.0, nft_reward_addr.1), Some(account));
+			assert_eq!(Nft::owner(nft_reward_addr.0, nft_reward_addr.1), Some(account));
 
-			assert_eq!(NFT::owner(staked_nft.0, staked_nft.1), Some(account));
+			assert_eq!(Nft::owner(staked_nft.0, staked_nft.1), Some(account));
 
-			assert_eq!(NFT::owner(contract_collection_id(), contract_id), None);
+			assert_eq!(Nft::owner(contract_collection_id(), contract_id), None);
 
-			assert_eq!(NFTStake::active_contracts(contract_id), None);
+			assert_eq!(NftStake::active_contracts(contract_id), None);
 
-			assert_eq!(NFTStake::contract_owners(contract_id), None);
+			assert_eq!(NftStake::contract_owners(contract_id), None);
 
-			assert_eq!(NFTStake::contract_durations(contract_id), None);
+			assert_eq!(NftStake::contract_durations(contract_id), None);
 
-			assert_eq!(NFTStake::contract_staked_assets(contract_id), None);
+			assert_eq!(NftStake::contract_staked_assets(contract_id), None);
 		});
 	}
 
@@ -698,7 +698,7 @@ mod redeem_staking_contract {
 
 				let taker_account = BOB;
 
-				assert_ok!(NFTStake::take_staking_contract(
+				assert_ok!(NftStake::take_staking_contract(
 					RuntimeOrigin::signed(taker_account),
 					contract_addr.1,
 					bounded_vec![],
@@ -715,7 +715,7 @@ mod redeem_staking_contract {
 			run_to_block(expiry_block);
 
 			assert_noop!(
-				NFTStake::redeem_staking_contract(
+				NftStake::redeem_staking_contract(
 					RuntimeOrigin::signed(contract_redeemer),
 					taken_contract_id,
 				),
@@ -737,7 +737,7 @@ mod redeem_staking_contract {
 				let contract_addr =
 					create_and_submit_random_staking_contract_nft(creator_account, contract);
 
-				assert_ok!(NFTStake::take_staking_contract(
+				assert_ok!(NftStake::take_staking_contract(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					bounded_vec![],
@@ -752,7 +752,7 @@ mod redeem_staking_contract {
 			run_to_block(expiry_block - 1);
 
 			assert_noop!(
-				NFTStake::redeem_staking_contract(
+				NftStake::redeem_staking_contract(
 					RuntimeOrigin::signed(contract_taker),
 					taken_contract_id,
 				),
@@ -805,11 +805,11 @@ fn create_and_submit_random_staking_contract_nft(
 	contract: StakingContractOf<Test>,
 ) -> NftAddressOf<Test> {
 	let collection_id = contract_collection_id();
-	let expected_contract_id = NFTStake::next_contract_id();
+	let expected_contract_id = NftStake::next_contract_id();
 
-	assert_ok!(NFTStake::submit_staking_contract(RuntimeOrigin::signed(creator), contract.clone()));
+	assert_ok!(NftStake::submit_staking_contract(RuntimeOrigin::signed(creator), contract.clone()));
 
-	assert_eq!(NFTStake::active_contracts(expected_contract_id), Some(contract));
+	assert_eq!(NftStake::active_contracts(expected_contract_id), Some(contract));
 
 	NftAddress(collection_id, expected_contract_id)
 }
