@@ -37,7 +37,7 @@ mod fund_treasury {
 
 			assert_ok!(NftStake::fund_treasury(account, fund_amount));
 
-			System::assert_last_event(mock::RuntimeEvent::NFTStake(crate::Event::TreasuryFunded {
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::TreasuryFunded {
 				funding_account: ALICE,
 				funds: fund_amount,
 			}));
@@ -106,7 +106,7 @@ mod submit_staking_contract {
 					contract.clone()
 				));
 
-				System::assert_last_event(mock::RuntimeEvent::NFTStake(
+				System::assert_last_event(mock::RuntimeEvent::NftStake(
 					crate::Event::StakingContractCreated {
 						creator: account,
 						contract: expected_contract_id,
@@ -145,7 +145,7 @@ mod submit_staking_contract {
 				contract.clone()
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NFTStake(
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::StakingContractCreated {
 					creator: account,
 					contract: expected_contract_id,
@@ -248,7 +248,7 @@ mod take_staking_contract {
 				bounded_vec![staked_nft.clone()],
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NFTStake(
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::StakingContractTaken {
 					taken_by: contract_taker,
 					contract: expected_contract_id,
@@ -325,7 +325,7 @@ mod take_staking_contract {
 				staked_nft_vec,
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NFTStake(
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::StakingContractTaken {
 					taken_by: contract_taker,
 					contract: expected_contract_id,
@@ -595,7 +595,7 @@ mod redeem_staking_contract {
 				contract_id,
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NFTStake(
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::StakingContractRedeemed {
 					redeemed_by: account,
 					contract: contract_id,
@@ -660,7 +660,7 @@ mod redeem_staking_contract {
 				contract_id,
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NFTStake(
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::StakingContractRedeemed {
 					redeemed_by: account,
 					contract: contract_id,
