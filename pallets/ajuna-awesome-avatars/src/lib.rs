@@ -66,22 +66,25 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod migration;
 pub mod types;
 pub mod weights;
 
+use crate::{types::*, weights::WeightInfo};
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
+};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
+use sp_runtime::{
+	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
+	ArithmeticError,
+};
+use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+
 #[frame_support::pallet]
 pub mod pallet {
-	use super::{types::*, weights::WeightInfo};
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
-	};
-	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::{
-		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
-		ArithmeticError,
-	};
-	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+	use super::*;
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type BalanceOf<T> =
@@ -95,6 +98,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(migration::STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -190,7 +194,8 @@ pub mod pallet {
 				forge: ForgeConfig { open: true },
 				trade: TradeConfig {
 					open: true,
-					buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+					percent_fee: 1,                                     // 1% of sales price
 				},
 				account: AccountConfig {
 					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
@@ -313,6 +318,8 @@ pub mod pallet {
 		AvatarInTrade,
 		/// Tried to forge avatars from different seasons.
 		IncorrectAvatarSeason,
+		/// Tried sending free mints to his or her own account.
+		CannotSendToSelf,
 	}
 
 	#[pallet::hooks]
@@ -387,6 +394,8 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
+			ensure!(from != to, Error::<T>::CannotSendToSelf);
+
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMintTransfer);
 			let sender_free_mints = Self::accounts(&from)
@@ -476,8 +485,13 @@ pub mod pallet {
 				Some(_) => current_season_id,
 				None => current_season_id.saturating_sub(1),
 			};
-			T::Currency::withdraw(&buyer, trade.buy_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade.buy_fee));
+
+			let trade_fee = trade.min_fee.max(
+				price.saturating_mul(trade.percent_fee.unique_saturated_into()) /
+					MAX_PERCENTAGE.unique_saturated_into(),
+			);
+			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids
@@ -831,6 +845,7 @@ pub mod pallet {
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
 			let mut leader = Self::ensure_ownership(player, leader_id)?;
+			let prev_leader_tier = leader.min_tier::<T>()?;
 			ensure!(leader.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
 			ensure!(
 				sacrifices.iter().all(|avatar| avatar.season_id == season_id),
@@ -870,7 +885,8 @@ pub mod pallet {
 				}
 			}
 
-			if leader.min_tier::<T>()? == max_tier {
+			let after_leader_tier = leader.min_tier::<T>()?;
+			if prev_leader_tier != max_tier && after_leader_tier == max_tier {
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();
 					if status.max_tier_avatars == season.max_tier_forges {

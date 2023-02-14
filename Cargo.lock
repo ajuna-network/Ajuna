@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-cli"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "ajuna-service",
@@ -105,6 +105,7 @@ dependencies = [
  "polkadot-primitives",
  "sc-cli",
  "sc-client-api",
+ "sc-executor",
  "sc-finality-grandpa",
  "sc-service",
  "sc-sysinfo",
@@ -113,15 +114,17 @@ dependencies = [
  "sp-api",
  "sp-core",
  "sp-inherents",
+ "sp-io",
  "sp-keyring",
  "sp-runtime",
  "sp-timestamp",
  "substrate-build-script-utils",
+ "try-runtime-cli",
 ]
 
 [[package]]
 name = "ajuna-node"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-cli",
  "ajuna-service",
@@ -129,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-primitives"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "sp-core",
  "sp-runtime",
@@ -137,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-rpc"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "jsonrpsee 0.16.2",
@@ -154,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-runtime"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -222,7 +225,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-service"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "ajuna-rpc",
@@ -281,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-solo-runtime"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "frame-benchmarking",
@@ -605,7 +608,7 @@ dependencies = [
 
 [[package]]
 name = "bajun-runtime"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -5173,11 +5176,12 @@ checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
 
 [[package]]
 name = "pallet-ajuna-awesome-avatars"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
@@ -11454,6 +11458,7 @@ source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.36#cb
 dependencies = [
  "clap",
  "frame-remote-externalities",
+ "frame-try-runtime",
  "hex",
  "log",
  "parity-scale-codec",

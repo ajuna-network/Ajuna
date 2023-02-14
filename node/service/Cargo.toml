@@ -4,7 +4,7 @@ edition    = "2021"
 homepage   = "https://ajuna.io"
 name       = "ajuna-service"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.9"
+version    = "0.1.10"
 
 [dependencies]
 hex-literal  = "0.3.3"
@@ -114,4 +114,8 @@ runtime-benchmarks = [
     "ajuna-solo-runtime/runtime-benchmarks",
     "bajun-runtime/runtime-benchmarks",
     "ajuna-runtime/runtime-benchmarks",
+]
+
+try-runtime = [
+    "bajun-runtime/try-runtime",
 ]

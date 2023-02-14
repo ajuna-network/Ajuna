@@ -18,6 +18,19 @@ use crate::{mock::*, types::*, *};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::{ArithmeticError, DispatchError};
 
+fn create_avatars(account: MockAccountId, n: u8) -> Vec<AvatarIdOf<Test>> {
+	(0..n)
+		.into_iter()
+		.map(|i| {
+			let avatar = Avatar::default().season_id(1).dna(&[i; 32]);
+			let avatar_id = sp_runtime::testing::H256::from([i; 32]);
+			Avatars::<Test>::insert(avatar_id, (account, avatar));
+			Owners::<Test>::try_append(account, avatar_id).unwrap();
+			avatar_id
+		})
+		.collect()
+}
+
 mod organizer {
 	use super::*;
 
@@ -1067,6 +1080,16 @@ mod minting {
 	}
 
 	#[test]
+	fn transfer_free_mints_should_reject_sending_to_self() {
+		ExtBuilder::default().free_mints(&[(ALICE, 7)]).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), ALICE, 1),
+				Error::<Test>::CannotSendToSelf
+			);
+		});
+	}
+
+	#[test]
 	fn issue_free_mints_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
@@ -1381,19 +1404,20 @@ mod forging {
 
 				// `max_tier_avatars` decreases when legendaries are sacrificed
 				let legendary_avatar_ids = [
-					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(5, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(6, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(7, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(8, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
 				];
 				max_tier_avatars += 4;
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+
+				// leader is already legendary so max_tier_avatars isn't incremented
 				assert_ok!(AAvatars::forge(
 					RuntimeOrigin::signed(BOB),
 					legendary_avatar_ids[0],
 					legendary_avatar_ids[1..].to_vec()
 				));
-				max_tier_avatars += 1;
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
 				assert_eq!(AAvatars::owners(BOB).len(), (4 - 3) + (4 - 3));
 				assert_eq!(
@@ -2105,10 +2129,10 @@ mod trading {
 		let season = Season::default();
 		let mint_fees = MintFees { one: 1, three: 3, six: 6 };
 		let price = 310_984;
-		let buy_fee = 54_321;
-		let alice_initial_bal = price + buy_fee + 20_849;
+		let min_fee = 54_321;
+		let alice_initial_bal = price + min_fee + 20_849;
 		let bob_initial_bal = 103_598;
-		let charlie_initial_bal = MockExistentialDeposit::get() + buy_fee + 1357;
+		let charlie_initial_bal = MockExistentialDeposit::get() + min_fee + 1357;
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
@@ -2118,7 +2142,7 @@ mod trading {
 				(CHARLIE, charlie_initial_bal),
 			])
 			.mint_fees(mint_fees)
-			.trade_buy_fee(buy_fee)
+			.trade_min_fee(min_fee)
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance = 0;
@@ -2140,9 +2164,9 @@ mod trading {
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(ALICE), avatar_for_sale));
 
 				// check for balance transfer
-				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - buy_fee);
+				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - min_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.three);
-				assert_eq!(AAvatars::treasury(1), treasury_balance + buy_fee);
+				assert_eq!(AAvatars::treasury(1), treasury_balance + min_fee);
 
 				// check for ownership transfer
 				assert_eq!(AAvatars::owners(ALICE).len(), owned_by_alice.len() + 1);
@@ -2169,6 +2193,53 @@ mod trading {
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(CHARLIE), avatar_for_sale));
 				assert_eq!(AAvatars::accounts(CHARLIE).stats.trade.bought, 1);
 				assert_eq!(AAvatars::accounts(BOB).stats.trade.sold, 2);
+			});
+	}
+
+	#[test]
+	fn buy_fee_should_be_calculated_correctly() {
+		let season = Season::default();
+		let min_fee = 123;
+		let percent_fee = 30;
+		let mut alice_balance = 999_999;
+		let mut bob_balance = 999_999;
+		let mut treasury_balance = 0;
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, alice_balance), (BOB, bob_balance)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(ALICE, 2);
+
+				GlobalConfigs::<Test>::mutate(|cfg| {
+					cfg.trade.min_fee = min_fee;
+					cfg.trade.percent_fee = percent_fee;
+				});
+
+				// when price is much greater (> 30%) than min_fee, percent_fee should be charged
+				let price = 9_999;
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_ids[0], price));
+				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[0]));
+				let expected_fee = price * percent_fee as u64 / 100_u64;
+				bob_balance -= price + expected_fee;
+				alice_balance += price;
+				treasury_balance += expected_fee;
+				assert_eq!(Balances::free_balance(BOB), bob_balance);
+				assert_eq!(Balances::free_balance(ALICE), alice_balance);
+				assert_eq!(AAvatars::treasury(1), treasury_balance);
+
+				// when price is less than min_fee, min_fee should be charged
+				let price = 100;
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_ids[1], price));
+				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[1]));
+				bob_balance -= price + min_fee;
+				alice_balance += price;
+				treasury_balance += min_fee;
+				assert_eq!(Balances::free_balance(BOB), bob_balance);
+				assert_eq!(Balances::free_balance(ALICE), alice_balance);
+				assert_eq!(AAvatars::treasury(1), treasury_balance);
 			});
 	}
 

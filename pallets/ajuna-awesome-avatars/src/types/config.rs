@@ -97,7 +97,8 @@ pub struct ForgeConfig {
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct TradeConfig<Balance> {
 	pub open: bool,
-	pub buy_fee: Balance,
+	pub min_fee: Balance,
+	pub percent_fee: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
