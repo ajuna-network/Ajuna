@@ -17,6 +17,9 @@
 use super::*;
 use frame_support::traits::OnRuntimeUpgrade;
 
+// The current storage version.
+pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
 const LOG_TARGET: &str = "runtime::ajuna-awesome-avatars";
 
 pub mod v1 {
@@ -66,7 +69,7 @@ pub mod v1 {
 					_,
 				>(|maybe_old_value| {
 					maybe_old_value.map(|old_value| {
-						log::info!(target: LOG_TARGET, "migrated config");
+						log::info!(target: LOG_TARGET, "migrated global config");
 						old_value.migrate_to_v1()
 					})
 				});
@@ -89,6 +92,7 @@ pub mod v1 {
 					}
 				}
 				CurrentSeasonStatus::<T>::mutate(|status| status.max_tier_avatars = legendaries);
+				log::info!(target: LOG_TARGET, "migrated {} legendaries", legendaries);
 				weight
 			} else {
 				log::info!(
