@@ -9,7 +9,7 @@ version    = "0.1.10"
 [dependencies]
 ajuna-primitives = { path = "../primitives" }
 
-jsonrpsee = { version = "0.16.2", features = ["server"] }
+jsonrpsee = { version = "0.16.2", features = [ "server" ] }
 
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-client-api                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
