@@ -190,7 +190,7 @@ pub mod pallet {
 				forge: ForgeConfig { open: true },
 				trade: TradeConfig {
 					open: true,
-					buy_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
 				},
 				account: AccountConfig {
 					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
@@ -476,8 +476,8 @@ pub mod pallet {
 				Some(_) => current_season_id,
 				None => current_season_id.saturating_sub(1),
 			};
-			T::Currency::withdraw(&buyer, trade.buy_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade.buy_fee));
+			T::Currency::withdraw(&buyer, trade.min_fee, WithdrawReasons::FEE, AllowDeath)?;
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade.min_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids

@@ -2105,10 +2105,10 @@ mod trading {
 		let season = Season::default();
 		let mint_fees = MintFees { one: 1, three: 3, six: 6 };
 		let price = 310_984;
-		let buy_fee = 54_321;
-		let alice_initial_bal = price + buy_fee + 20_849;
+		let min_fee = 54_321;
+		let alice_initial_bal = price + min_fee + 20_849;
 		let bob_initial_bal = 103_598;
-		let charlie_initial_bal = MockExistentialDeposit::get() + buy_fee + 1357;
+		let charlie_initial_bal = MockExistentialDeposit::get() + min_fee + 1357;
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
@@ -2118,7 +2118,7 @@ mod trading {
 				(CHARLIE, charlie_initial_bal),
 			])
 			.mint_fees(mint_fees)
-			.trade_buy_fee(buy_fee)
+			.trade_min_fee(min_fee)
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance = 0;
@@ -2140,9 +2140,9 @@ mod trading {
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(ALICE), avatar_for_sale));
 
 				// check for balance transfer
-				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - buy_fee);
+				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - min_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.three);
-				assert_eq!(AAvatars::treasury(1), treasury_balance + buy_fee);
+				assert_eq!(AAvatars::treasury(1), treasury_balance + min_fee);
 
 				// check for ownership transfer
 				assert_eq!(AAvatars::owners(ALICE).len(), owned_by_alice.len() + 1);

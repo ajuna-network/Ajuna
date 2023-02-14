@@ -112,7 +112,7 @@ pub struct ExtBuilder {
 	mint_fees: Option<MintFees<MockBalance>>,
 	forge_open: bool,
 	trade_open: bool,
-	trade_buy_fee: Option<MockBalance>,
+	trade_min_fee: Option<MockBalance>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 }
@@ -129,7 +129,7 @@ impl Default for ExtBuilder {
 			mint_open: true,
 			forge_open: true,
 			trade_open: true,
-			trade_buy_fee: Default::default(),
+			trade_min_fee: Default::default(),
 		}
 	}
 }
@@ -171,8 +171,8 @@ impl ExtBuilder {
 		self.trade_open = trade_open;
 		self
 	}
-	pub fn trade_buy_fee(mut self, trade_buy_fee: MockBalance) -> Self {
-		self.trade_buy_fee = Some(trade_buy_fee);
+	pub fn trade_min_fee(mut self, trade_min_fee: MockBalance) -> Self {
+		self.trade_min_fee = Some(trade_min_fee);
 		self
 	}
 
@@ -209,8 +209,8 @@ impl ExtBuilder {
 				config.trade.open = self.trade_open;
 			});
 
-			if let Some(x) = self.trade_buy_fee {
-				GlobalConfigs::<Test>::mutate(|config| config.trade.buy_fee = x);
+			if let Some(x) = self.trade_min_fee {
+				GlobalConfigs::<Test>::mutate(|config| config.trade.min_fee = x);
 			}
 
 			for (account_id, mint_amount) in self.free_mints {
