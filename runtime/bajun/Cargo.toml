@@ -3,7 +3,7 @@ authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 edition    = "2021"
 name       = "bajun-runtime"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.9"
+version    = "0.1.10"
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }

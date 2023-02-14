@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-cli"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "ajuna-service",
@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-node"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-cli",
  "ajuna-service",
@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-primitives"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "sp-core",
  "sp-runtime",
@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-rpc"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "jsonrpsee 0.16.2",
@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-runtime"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -225,7 +225,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-service"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "ajuna-rpc",
@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-solo-runtime"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "frame-benchmarking",
@@ -608,7 +608,7 @@ dependencies = [
 
 [[package]]
 name = "bajun-runtime"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -5176,7 +5176,7 @@ checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
 
 [[package]]
 name = "pallet-ajuna-awesome-avatars"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
