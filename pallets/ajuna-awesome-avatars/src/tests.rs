@@ -1394,19 +1394,20 @@ mod forging {
 
 				// `max_tier_avatars` decreases when legendaries are sacrificed
 				let legendary_avatar_ids = [
-					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(5, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(6, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(7, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar(8, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
 				];
 				max_tier_avatars += 4;
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
+
+				// leader is already legendary so max_tier_avatars isn't incremented
 				assert_ok!(AAvatars::forge(
 					RuntimeOrigin::signed(BOB),
 					legendary_avatar_ids[0],
 					legendary_avatar_ids[1..].to_vec()
 				));
-				max_tier_avatars += 1;
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
 				assert_eq!(AAvatars::owners(BOB).len(), (4 - 3) + (4 - 3));
 				assert_eq!(

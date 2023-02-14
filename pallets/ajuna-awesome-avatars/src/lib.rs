@@ -841,6 +841,7 @@ pub mod pallet {
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
 			let mut leader = Self::ensure_ownership(player, leader_id)?;
+			let prev_leader_tier = leader.min_tier::<T>()?;
 			ensure!(leader.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
 			ensure!(
 				sacrifices.iter().all(|avatar| avatar.season_id == season_id),
@@ -880,7 +881,8 @@ pub mod pallet {
 				}
 			}
 
-			if leader.min_tier::<T>()? == max_tier {
+			let after_leader_tier = leader.min_tier::<T>()?;
+			if prev_leader_tier != max_tier && after_leader_tier == max_tier {
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();
 					if status.max_tier_avatars == season.max_tier_forges {
