@@ -191,6 +191,7 @@ pub mod pallet {
 				trade: TradeConfig {
 					open: true,
 					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
+					percent_fee: 1,                                     // 1% of sales price
 				},
 				account: AccountConfig {
 					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
@@ -476,8 +477,13 @@ pub mod pallet {
 				Some(_) => current_season_id,
 				None => current_season_id.saturating_sub(1),
 			};
-			T::Currency::withdraw(&buyer, trade.min_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade.min_fee));
+
+			let trade_fee = trade.min_fee.max(
+				price.saturating_mul(trade.percent_fee.unique_saturated_into()) /
+					MAX_PERCENTAGE.unique_saturated_into(),
+			);
+			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade_fee));
 
 			let mut buyer_avatar_ids = Self::owners(&buyer);
 			buyer_avatar_ids

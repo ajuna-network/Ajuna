@@ -194,7 +194,8 @@ benchmarks! {
 
 		let min_fee = AAvatars::<T>::global_configs().trade.min_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
-		T::Currency::make_free_balance_be(&buyer, sell_fee + min_fee);
+		let trade_fee = sell_fee / BalanceOf::<T>::unique_saturated_from(100_u8);
+		T::Currency::make_free_balance_be(&buyer, sell_fee + trade_fee);
 		T::Currency::make_free_balance_be(&seller, sell_fee);
 
 		let avatar_id = AAvatars::<T>::owners(&seller)[0];
@@ -276,6 +277,7 @@ benchmarks! {
 			trade: TradeConfig {
 				open: true,
 				min_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				percent_fee: u8::MAX,
 			},
 			account: AccountConfig {
 				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),

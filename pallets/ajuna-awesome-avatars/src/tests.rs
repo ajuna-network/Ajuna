@@ -18,6 +18,19 @@ use crate::{mock::*, types::*, *};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::{ArithmeticError, DispatchError};
 
+fn create_avatars(account: MockAccountId, n: u8) -> Vec<AvatarIdOf<Test>> {
+	(0..n)
+		.into_iter()
+		.map(|i| {
+			let avatar = Avatar::default().season_id(1).dna(&[i; 32]);
+			let avatar_id = sp_runtime::testing::H256::from([i; 32]);
+			Avatars::<Test>::insert(avatar_id, (account, avatar));
+			Owners::<Test>::try_append(account, avatar_id).unwrap();
+			avatar_id
+		})
+		.collect()
+}
+
 mod organizer {
 	use super::*;
 
@@ -2169,6 +2182,53 @@ mod trading {
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(CHARLIE), avatar_for_sale));
 				assert_eq!(AAvatars::accounts(CHARLIE).stats.trade.bought, 1);
 				assert_eq!(AAvatars::accounts(BOB).stats.trade.sold, 2);
+			});
+	}
+
+	#[test]
+	fn buy_fee_should_be_calculated_correctly() {
+		let season = Season::default();
+		let min_fee = 123;
+		let percent_fee = 30;
+		let mut alice_balance = 999_999;
+		let mut bob_balance = 999_999;
+		let mut treasury_balance = 0;
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, alice_balance), (BOB, bob_balance)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(ALICE, 2);
+
+				GlobalConfigs::<Test>::mutate(|cfg| {
+					cfg.trade.min_fee = min_fee;
+					cfg.trade.percent_fee = percent_fee;
+				});
+
+				// when price is much greater (> 30%) than min_fee, percent_fee should be charged
+				let price = 9_999;
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_ids[0], price));
+				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[0]));
+				let expected_fee = price * percent_fee as u64 / 100_u64;
+				bob_balance -= price + expected_fee;
+				alice_balance += price;
+				treasury_balance += expected_fee;
+				assert_eq!(Balances::free_balance(BOB), bob_balance);
+				assert_eq!(Balances::free_balance(ALICE), alice_balance);
+				assert_eq!(AAvatars::treasury(1), treasury_balance);
+
+				// when price is less than min_fee, min_fee should be charged
+				let price = 100;
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_ids[1], price));
+				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[1]));
+				bob_balance -= price + min_fee;
+				alice_balance += price;
+				treasury_balance += min_fee;
+				assert_eq!(Balances::free_balance(BOB), bob_balance);
+				assert_eq!(Balances::free_balance(ALICE), alice_balance);
+				assert_eq!(AAvatars::treasury(1), treasury_balance);
 			});
 	}
 
