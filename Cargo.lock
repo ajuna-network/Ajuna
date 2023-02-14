@@ -5641,6 +5641,7 @@ dependencies = [
  "pallet-nfts",
  "parity-scale-codec",
  "scale-info",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
