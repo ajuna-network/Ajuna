@@ -1080,6 +1080,16 @@ mod minting {
 	}
 
 	#[test]
+	fn transfer_free_mints_should_reject_sending_to_self() {
+		ExtBuilder::default().free_mints(&[(ALICE, 7)]).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), ALICE, 1),
+				Error::<Test>::CannotSendToSelf
+			);
+		});
+	}
+
+	#[test]
 	fn issue_free_mints_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)

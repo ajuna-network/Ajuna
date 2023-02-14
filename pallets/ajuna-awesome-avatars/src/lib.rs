@@ -318,6 +318,8 @@ pub mod pallet {
 		AvatarInTrade,
 		/// Tried to forge avatars from different seasons.
 		IncorrectAvatarSeason,
+		/// Tried sending free mints to his or her own account.
+		CannotSendToSelf,
 	}
 
 	#[pallet::hooks]
@@ -392,6 +394,8 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
+			ensure!(from != to, Error::<T>::CannotSendToSelf);
+
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMintTransfer);
 			let sender_free_mints = Self::accounts(&from)
