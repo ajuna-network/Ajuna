@@ -48,8 +48,8 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
-		NFT: pallet_nfts,
-		NFTStake: pallet_nft_staking,
+		Nft: pallet_nfts,
+		NftStake: pallet_nft_staking,
 	}
 );
 
@@ -165,7 +165,7 @@ impl pallet_nft_staking::Config for Test {
 	type CollectionConfig = CollectionConfig;
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
-	type NFTHelper = NFT;
+	type NftHelper = Nft;
 	type StakingOrigin = EnsureSigned<MockAccountId>;
 	type TreasuryPalletId = TreasuryPalletId;
 	type MinimumStakingTokenReward = MinimumStakingTokenReward;
@@ -216,11 +216,11 @@ impl ExtBuilder {
 pub fn run_to_block(n: u64) {
 	while System::block_number() < n {
 		if System::block_number() > 1 {
-			NFTStake::on_finalize(System::block_number());
+			NftStake::on_finalize(System::block_number());
 			System::on_finalize(System::block_number());
 		}
 		System::set_block_number(System::block_number() + 1);
 		System::on_initialize(System::block_number());
-		NFTStake::on_initialize(System::block_number());
+		NftStake::on_initialize(System::block_number());
 	}
 }

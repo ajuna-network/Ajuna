@@ -17,7 +17,7 @@
 use super::*;
 
 #[allow(unused)]
-use crate::Pallet as NFTStake;
+use crate::Pallet as NftStake;
 use frame_benchmarking::{benchmarks, whitelist_account};
 use frame_support::traits::tokens::{
 	nonfungibles_v2::{Create, Mutate},
@@ -66,7 +66,7 @@ fn create_staking_contract<T: Config>(
 
 fn create_random_nft_collection<T: Config>(account: AccountIdOf<T>) -> CollectionIdOf<T> {
 	let collection_config = T::ContractCollectionConfig::get();
-	T::NFTHelper::create_collection(&account, &account, &collection_config)
+	T::NftHelper::create_collection(&account, &account, &collection_config)
 		.expect("Should have create contract collection")
 }
 
@@ -74,7 +74,7 @@ fn create_random_nft_batch<T: Config>(
 	owner: &AccountIdOf<T>,
 	collection_id: CollectionIdOf<T>,
 	amount: u32,
-) -> Vec<NFTAddressOf<T>> {
+) -> Vec<NftAddressOf<T>> {
 	let mut nft_vec = Vec::with_capacity(amount as usize);
 
 	for item_id in 0..amount {
@@ -88,16 +88,16 @@ fn create_random_nft<T: Config>(
 	owner: &AccountIdOf<T>,
 	collection_id: CollectionIdOf<T>,
 	item_id: ItemIdOf<T>,
-) -> NFTAddressOf<T> {
+) -> NftAddressOf<T> {
 	let item_config = T::ContractCollectionItemConfig::get();
-	T::NFTHelper::mint_into(&collection_id, &item_id, owner, &item_config, true)
-		.expect("Should create NFT");
+	T::NftHelper::mint_into(&collection_id, &item_id, owner, &item_config, true)
+		.expect("Should create Nft");
 
-	NFTAddress(collection_id, item_id)
+	NftAddress(collection_id, item_id)
 }
 
 fn create_staking_vector_from<T: Config>(
-	mut nft_vec: Vec<NFTAddressOf<T>>,
+	mut nft_vec: Vec<NftAddressOf<T>>,
 ) -> StakedAssetsVecOf<T> {
 	let mut vec = StakedAssetsVecOf::<T>::with_max_capacity();
 
@@ -113,7 +113,7 @@ fn create_staking_vector_from<T: Config>(
 }
 
 fn set_attribute_for_nft_batch<T: Config>(
-	nft_batch: &[NFTAddressOf<T>],
+	nft_batch: &[NftAddressOf<T>],
 	nft_attr_key: u32,
 	nft_attr_value: u64,
 ) {
@@ -123,17 +123,17 @@ fn set_attribute_for_nft_batch<T: Config>(
 }
 
 fn set_attribute_for_nft<T: Config>(
-	nft_addr: &NFTAddressOf<T>,
+	nft_addr: &NftAddressOf<T>,
 	nft_attr_key: u32,
 	nft_attr_value: u64,
 ) {
-	T::NFTHelper::set_typed_attribute::<u32, u64>(
+	T::NftHelper::set_typed_attribute::<u32, u64>(
 		&nft_addr.0,
 		&nft_addr.1,
 		&nft_attr_key,
 		&nft_attr_value,
 	)
-	.expect("Should add attribute NFT");
+	.expect("Should add attribute Nft");
 }
 
 fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> ContractClauseOf<T> {
@@ -165,7 +165,7 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
-		let expected_id = NFTStake::<T>::next_contract_id();
+		let expected_id = NftStake::<T>::next_contract_id();
 	}: submit_staking_contract(RawOrigin::Signed(caller.clone()), contract)
 	verify {
 		assert_last_event::<T>(Event::StakingContractCreated { creator: caller, contract: expected_id }.into())
@@ -175,10 +175,10 @@ benchmarks! {
 		let caller = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
 		let nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
-		let reward = StakingRewardOf::<T>::NFT(nft_addr);
+		let reward = StakingRewardOf::<T>::Nft(nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
-		let expected_id = NFTStake::<T>::next_contract_id();
+		let expected_id = NftStake::<T>::next_contract_id();
 	}: submit_staking_contract(RawOrigin::Signed(caller.clone()), contract)
 	verify {
 		assert_last_event::<T>(Event::StakingContractCreated { creator: caller, contract: expected_id }.into())
@@ -190,9 +190,9 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
-		let contract_id = NFTStake::<T>::next_contract_id();
+		let contract_id = NftStake::<T>::next_contract_id();
 
-		NFTStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
+		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
 
 		let taker_caller = prepare_account::<T>("BOB");
 		let collection_id = create_random_nft_collection::<T>(taker_caller.clone());
@@ -210,9 +210,9 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
-		let contract_id = NFTStake::<T>::next_contract_id();
+		let contract_id = NftStake::<T>::next_contract_id();
 
-		NFTStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
+		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
 
 		let taker_caller = prepare_account::<T>("BOB");
 		let collection_id = create_random_nft_collection::<T>(taker_caller.clone());
@@ -220,7 +220,7 @@ benchmarks! {
 		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
 		let staking_vec = create_staking_vector_from::<T>(nft_batch);
 
-		NFTStake::<T>::take_staking_contract(RawOrigin::Signed(taker_caller.clone()).into(), contract_id, staking_vec)?;
+		NftStake::<T>::take_staking_contract(RawOrigin::Signed(taker_caller.clone()).into(), contract_id, staking_vec)?;
 
 	}: redeem_staking_contract(RawOrigin::Signed(taker_caller.clone()), contract_id)
 	verify {
@@ -231,12 +231,12 @@ benchmarks! {
 		let caller = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
 		let reward_nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
-		let reward = StakingRewardOf::<T>::NFT(reward_nft_addr);
+		let reward = StakingRewardOf::<T>::Nft(reward_nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
-		let contract_id = NFTStake::<T>::next_contract_id();
+		let contract_id = NftStake::<T>::next_contract_id();
 
-		NFTStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
+		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
 
 		let taker_caller = prepare_account::<T>("BOB");
 		let collection_id = create_random_nft_collection::<T>(taker_caller.clone());
@@ -244,7 +244,7 @@ benchmarks! {
 		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
 		let staking_vec = create_staking_vector_from::<T>(nft_batch);
 
-		NFTStake::<T>::take_staking_contract(RawOrigin::Signed(taker_caller.clone()).into(), contract_id, staking_vec)?;
+		NftStake::<T>::take_staking_contract(RawOrigin::Signed(taker_caller.clone()).into(), contract_id, staking_vec)?;
 
 	}: redeem_staking_contract(RawOrigin::Signed(taker_caller.clone()), contract_id)
 	verify {
@@ -252,6 +252,6 @@ benchmarks! {
 	}
 
 	impl_benchmark_test_suite!(
-		NFTStake, crate::mock::ExtBuilder::default().build(), crate::mock::Test
+		NftStake, crate::mock::ExtBuilder::default().build(), crate::mock::Test
 	);
 }

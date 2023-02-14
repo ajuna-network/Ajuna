@@ -670,6 +670,7 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-nft-staking",
  "pallet-ajuna-nft-transfer",
  "pallet-aura",
  "pallet-authorship",
@@ -5614,6 +5615,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ajuna-nft-staking"
+version = "0.0.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "pallet-balances",
+ "pallet-nfts",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-ajuna-nft-transfer"
 version = "0.1.8"
 dependencies = [
@@ -5623,7 +5641,6 @@ dependencies = [
  "pallet-nfts",
  "parity-scale-codec",
  "scale-info",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]

@@ -288,7 +288,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::CouncilMembership(_) |
 			// ajuna pallets
 			RuntimeCall::AwesomeAvatars(_	) |
-			RuntimeCall::NFTStake(_) => true,
+			RuntimeCall::NftStake(_) => true,
 			RuntimeCall::Nft(_) => false,
 		}
 	}
@@ -766,13 +766,11 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NFTStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
+	pub const NftStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
 	pub const MinimumStakingTokenReward: Balance = 100;
 	pub ContractCollectionConfig: CollectionConfig = CollectionConfig::default();
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
-
-pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 
 pub type ContractAttributeKey = u32;
 pub type ContractAttributeValue = u64;
@@ -784,9 +782,9 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
-	type NFTHelper = NFT;
+	type NftHelper = Nft;
 	type StakingOrigin = EnsureSigned<AccountId>;
-	type TreasuryPalletId = NFTStakeTreasuryPalletId;
+	type TreasuryPalletId = NftStakeTreasuryPalletId;
 	type MinimumStakingTokenReward = MinimumStakingTokenReward;
 	type ContractCollectionConfig = ContractCollectionConfig;
 	type ContractCollectionItemConfig = ContractCollectionItemConfig;
@@ -847,7 +845,7 @@ construct_runtime!(
 		// Indexes 100+ should be reserved for NFT related pallets
 		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
 		NftTransfer: pallet_ajuna_nft_transfer = 101,
-		NFTStake: pallet_ajuna_nft_staking = 102,
+		NftStake: pallet_ajuna_nft_staking = 102,
 	}
 );
 
@@ -875,7 +873,7 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
 		[pallet_nfts, Nft]
-		[pallet_ajuna_nft_staking, NFTStake]
+		[pallet_ajuna_nft_staking, NftStake]
 	);
 }
 

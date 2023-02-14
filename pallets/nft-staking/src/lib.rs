@@ -76,7 +76,7 @@ pub mod pallet {
 	>;
 	pub(crate) type StakedAssetsVecOf<T> =
 		StakedAssetsVec<CollectionIdOf<T>, ItemIdOf<T>, MAXIMUM_CLAUSES_PER_CONTRACT>;
-	pub(crate) type NFTAddressOf<T> = NFTAddress<CollectionIdOf<T>, ItemIdOf<T>>;
+	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type StakingRewardOf<T> =
 		StakingReward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
@@ -92,7 +92,7 @@ pub mod pallet {
 		/// The staking balance.
 		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
-		/// Identifier for the collection of an NFT.
+		/// Identifier for the collection of an Nft.
 		type CollectionId: Member
 			+ Parameter
 			+ Default
@@ -116,7 +116,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo;
 
-		/// Identifier for the individual instances of an NFT.
+		/// Identifier for the individual instances of an Nft.
 		type ItemId: Member
 			+ Parameter
 			+ Default
@@ -137,7 +137,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo;
 
-		type NFTHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
+		type NftHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
 			+ Create<Self::AccountId, Self::CollectionConfig>
 			+ Mutate<Self::AccountId, Self::ItemConfig>
 			+ Destroy<Self::AccountId>
@@ -146,7 +146,7 @@ pub mod pallet {
 		/// The origin which may interact with the staking logic.
 		type StakingOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Self::AccountId>;
 
-		/// The treasury's pallet id, used for deriving its sovereign account ID.
+		/// The treasury's pallet id, used for deriving its sovereign account identifier.
 		#[pallet::constant]
 		type TreasuryPalletId: Get<PalletId>;
 
@@ -154,11 +154,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinimumStakingTokenReward: Get<BalanceOf<Self>>;
 
-		/// The configuration for the contract NFT collection
+		/// The configuration for the contract Nft collection
 		#[pallet::constant]
 		type ContractCollectionConfig: Get<Self::CollectionConfig>;
 
-		/// The configuration for the contract NFT collection
+		/// The configuration for the contract Nft collection
 		#[pallet::constant]
 		type ContractCollectionItemConfig: Get<Self::ItemConfig>;
 
@@ -270,7 +270,7 @@ pub mod pallet {
 
 			let collection_config = T::ContractCollectionConfig::get();
 			let collection_id =
-				T::NFTHelper::create_collection(&account_id, &account_id, &collection_config)
+				T::NftHelper::create_collection(&account_id, &account_id, &collection_config)
 					.expect("Should have create contract collection");
 			ContractCollectionId::<T>::put(collection_id);
 		}
@@ -302,7 +302,7 @@ pub mod pallet {
 		AccountLacksFunds,
 		/// The account that tried to take a staking contract failed to fulfill its conditions.
 		ContractConditionsNotFulfilled,
-		/// The contract reward is not valid. Either an invalid NFT or not enough tokens.
+		/// The contract reward is not valid. Either an invalid Nft or not enough tokens.
 		InvalidContractReward,
 		/// The account that tried to take a staking contract didn't own one or more of the
 		/// staked assets.
@@ -364,7 +364,7 @@ pub mod pallet {
 				StakingReward::Tokens(amount) => {
 					Self::try_transfer_funds_from_account_to_treasury(&account, amount)?;
 				},
-				StakingReward::NFT(address) => {
+				StakingReward::Nft(address) => {
 					Self::try_taking_ownership_of_nft(&account, &address)?;
 				},
 			}
@@ -394,7 +394,7 @@ pub mod pallet {
 				Self::active_contracts(contract_id).ok_or(Error::<T>::ContractNotFound)?;
 
 			ensure!(
-				contract.evaluate_for::<T::NFTHelper>(&staked_assets),
+				contract.evaluate_for::<T::NftHelper>(&staked_assets),
 				Error::<T>::ContractConditionsNotFulfilled
 			);
 
@@ -458,7 +458,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// The account ID of the treasury pot.
+		/// The account identifier of the treasury pot.
 		pub fn treasury_account_id() -> AccountIdOf<T> {
 			if let Some(account) = Self::treasury_account() {
 				account
@@ -490,7 +490,7 @@ pub mod pallet {
 			contract_id
 		}
 
-		/// Tries to create a new NFT using the information provided in the contract as
+		/// Tries to create a new Nft using the information provided in the contract as
 		/// supporting data.
 		#[inline]
 		fn try_creating_contract_nft_from(
@@ -502,7 +502,7 @@ pub mod pallet {
 			let contract_id = Self::get_next_contract_id();
 			let contract_item_config = T::ContractCollectionItemConfig::get();
 
-			T::NFTHelper::mint_into(
+			T::NftHelper::mint_into(
 				&collection_id,
 				&contract_id,
 				&owner,
@@ -541,11 +541,11 @@ pub mod pallet {
 			for asset in assets.iter() {
 				ensure!(
 					skip_ownership_check ||
-						(T::NFTHelper::owner(&asset.0, &asset.1).as_ref() == Some(from)),
+						(T::NftHelper::owner(&asset.0, &asset.1).as_ref() == Some(from)),
 					Error::<T>::StakedAssetNotOwned
 				);
 
-				T::NFTHelper::transfer(&asset.0, &asset.1, to)?;
+				T::NftHelper::transfer(&asset.0, &asset.1, to)?;
 			}
 
 			Ok(())
@@ -560,7 +560,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let collection_id = ContractCollectionId::<T>::get()
 				.expect("Contract collection id should not be empty");
-			T::NFTHelper::transfer(&collection_id, contract_id, &new_owner)?;
+			T::NftHelper::transfer(&collection_id, contract_id, &new_owner)?;
 
 			ContractOwners::<T>::insert(contract_id, new_owner);
 
@@ -590,8 +590,8 @@ pub mod pallet {
 						BalanceStatus::Free,
 					)?;
 				},
-				StakingRewardOf::<T>::NFT(asset) => {
-					T::NFTHelper::transfer(&asset.0, &asset.1, account_to_reward)?;
+				StakingRewardOf::<T>::Nft(asset) => {
+					T::NftHelper::transfer(&asset.0, &asset.1, account_to_reward)?;
 				},
 			}
 
@@ -622,10 +622,10 @@ pub mod pallet {
 		#[inline]
 		fn try_taking_ownership_of_nft(
 			original_owner: &AccountIdOf<T>,
-			nft_addr: &NFTAddressOf<T>,
+			nft_addr: &NftAddressOf<T>,
 		) -> DispatchResult {
 			ensure!(
-				T::NFTHelper::owner(&nft_addr.0, &nft_addr.1).as_ref() == Some(original_owner),
+				T::NftHelper::owner(&nft_addr.0, &nft_addr.1).as_ref() == Some(original_owner),
 				Error::<T>::ContractRewardNotOwned
 			);
 
@@ -636,7 +636,7 @@ pub mod pallet {
 				Error::<T>::InvalidContractReward
 			);
 
-			T::NFTHelper::transfer(&nft_addr.0, &nft_addr.1, &Self::treasury_account_id())?;
+			T::NftHelper::transfer(&nft_addr.0, &nft_addr.1, &Self::treasury_account_id())?;
 
 			Ok(())
 		}
@@ -672,7 +672,7 @@ pub mod pallet {
 
 			let contract_collection = ContractCollectionId::<T>::get()
 				.expect("Contract collection id should not be empty");
-			T::NFTHelper::burn(&contract_collection, contract_id, Some(contract_redeemer))?;
+			T::NftHelper::burn(&contract_collection, contract_id, Some(contract_redeemer))?;
 
 			Ok(())
 		}

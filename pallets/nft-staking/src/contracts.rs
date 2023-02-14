@@ -23,18 +23,18 @@ use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
 use sp_std::fmt::Debug;
 
-/// Struct that represents a combination of an NFT collection id and item id.
+/// Struct that represents a combination of an Nft collection id and item id.
 /// Used in combination of an [`Inspect`] capable provider.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct NFTAddress<CollectionId, ItemId>(pub CollectionId, pub ItemId)
+pub struct NftAddress<CollectionId, ItemId>(pub CollectionId, pub ItemId)
 where
 	CollectionId: Debug,
 	ItemId: Debug;
 
-/// List of NFT assets to be used for contract validation and staking.
-/// See also: [`NFTAddress`], [`StakingContract`]
+/// List of Nft assets to be used for contract validation and staking.
+/// See also: [`NftAddress`], [`StakingContract`]
 pub type StakedAssetsVec<CollectionId, ItemId, const N: u32> =
-	BoundedVec<NFTAddress<CollectionId, ItemId>, ConstU32<N>>;
+	BoundedVec<NftAddress<CollectionId, ItemId>, ConstU32<N>>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub enum StakingReward<Balance, CollectionId, ItemId>
@@ -44,7 +44,7 @@ where
 	ItemId: Debug + Copy,
 {
 	Tokens(Balance),
-	NFT(NFTAddress<CollectionId, ItemId>),
+	Nft(NftAddress<CollectionId, ItemId>),
 }
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
@@ -120,17 +120,17 @@ impl<
 		self
 	}
 
-	pub fn evaluate_for<NFTInspector>(
+	pub fn evaluate_for<NftInspector>(
 		&self,
 		staked_assets: &StakedAssetsVec<CollectionId, ItemId, N>,
 	) -> bool
 	where
-		NFTInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 	{
 		(self.contract_clauses.len() == staked_assets.len())
 			.then(|| {
 				self.contract_clauses.iter().zip(staked_assets.iter()).all(|(clause, asset)| {
-					clause.evaluate_for::<NFTInspector, CollectionId, ItemId>(asset)
+					clause.evaluate_for::<NftInspector, CollectionId, ItemId>(asset)
 				})
 			})
 			.unwrap_or(false)
@@ -161,25 +161,25 @@ where
 	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 {
-	pub fn evaluate_for<NFTInspector, CollectionId, ItemId>(
+	pub fn evaluate_for<NftInspector, CollectionId, ItemId>(
 		&self,
-		asset: &NFTAddress<CollectionId, ItemId>,
+		asset: &NftAddress<CollectionId, ItemId>,
 	) -> bool
 	where
-		NFTInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 		CollectionId: Debug + Copy,
 		ItemId: Debug + Copy,
 	{
-		let NFTAddress(collection_id, item_id) = asset;
+		let NftAddress(collection_id, item_id) = asset;
 
 		match self {
-			ContractClause::HasAttribute(ns, key) => NFTInspector::typed_attribute::<
+			ContractClause::HasAttribute(ns, key) => NftInspector::typed_attribute::<
 				AttributeKey,
 				AttributeValue,
 			>(collection_id, item_id, ns, key)
 			.is_some(),
 			ContractClause::HasAttributeWithValue(ns, key, expected_value) => {
-				if let Some(value) = NFTInspector::typed_attribute::<AttributeKey, AttributeValue>(
+				if let Some(value) = NftInspector::typed_attribute::<AttributeKey, AttributeValue>(
 					collection_id,
 					item_id,
 					ns,

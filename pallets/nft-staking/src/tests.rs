@@ -134,7 +134,7 @@ mod submit_staking_contract {
 			let collection_id = create_random_mock_nft_collection(account);
 			let nft_addr = create_random_mock_nft(account, collection_id, 1);
 
-			let contract_reward = StakingRewardOf::<Test>::NFT(nft_addr.clone());
+			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr.clone());
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
 				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
@@ -190,7 +190,7 @@ mod submit_staking_contract {
 			let other_account = BOB;
 			let nft_addr = create_random_mock_nft_for(other_account);
 
-			let contract_reward = StakingRewardOf::<Test>::NFT(nft_addr);
+			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
 				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
@@ -209,7 +209,7 @@ mod submit_staking_contract {
 			let item_id = NFTStake::next_contract_id() + 100;
 			let nft_addr = create_random_mock_nft(account, collection_id, item_id);
 
-			let contract_reward = StakingRewardOf::<Test>::NFT(nft_addr);
+			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
 				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
 
@@ -627,7 +627,7 @@ mod redeem_staking_contract {
 			let collection_id = create_random_mock_nft_collection(creator_account);
 			let nft_reward_addr = create_random_mock_nft(creator_account, collection_id, 1);
 
-			let contract_reward = StakingRewardOf::<Test>::NFT(nft_reward_addr.clone());
+			let contract_reward = StakingRewardOf::<Test>::Nft(nft_reward_addr.clone());
 
 			let contract_addr = {
 				let contract = StakingContractOf::<Test>::new(contract_reward.clone(), 10)
@@ -768,7 +768,7 @@ fn contract_collection_id() -> MockCollectionId {
 
 fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId {
 	let collection_config = CollectionConfig::default();
-	<Test as crate::pallet::Config>::NFTHelper::create_collection(
+	<Test as crate::pallet::Config>::NftHelper::create_collection(
 		&account,
 		&account,
 		&collection_config,
@@ -780,9 +780,9 @@ fn create_random_mock_nft(
 	owner: MockAccountId,
 	collection_id: MockCollectionId,
 	item_id: MockItemId,
-) -> NFTAddressOf<Test> {
+) -> NftAddressOf<Test> {
 	let item_config = pallet_nfts::ItemConfig::default();
-	<Test as crate::pallet::Config>::NFTHelper::mint_into(
+	<Test as crate::pallet::Config>::NftHelper::mint_into(
 		&collection_id,
 		&item_id,
 		&owner,
@@ -791,10 +791,10 @@ fn create_random_mock_nft(
 	)
 	.expect("Should create NFT");
 
-	NFTAddress(collection_id, item_id)
+	NftAddress(collection_id, item_id)
 }
 
-fn create_random_mock_nft_for(owner: MockAccountId) -> NFTAddressOf<Test> {
+fn create_random_mock_nft_for(owner: MockAccountId) -> NftAddressOf<Test> {
 	let collection_id = create_random_mock_nft_collection(owner);
 	let item_id = 1;
 	create_random_mock_nft(owner, collection_id, item_id)
@@ -803,7 +803,7 @@ fn create_random_mock_nft_for(owner: MockAccountId) -> NFTAddressOf<Test> {
 fn create_and_submit_random_staking_contract_nft(
 	creator: MockAccountId,
 	contract: StakingContractOf<Test>,
-) -> NFTAddressOf<Test> {
+) -> NftAddressOf<Test> {
 	let collection_id = contract_collection_id();
 	let expected_contract_id = NFTStake::next_contract_id();
 
@@ -811,11 +811,11 @@ fn create_and_submit_random_staking_contract_nft(
 
 	assert_eq!(NFTStake::active_contracts(expected_contract_id), Some(contract));
 
-	NFTAddress(collection_id, expected_contract_id)
+	NftAddress(collection_id, expected_contract_id)
 }
 
-fn set_attribute_for_nft(nft_addr: &NFTAddressOf<Test>, nft_attr_key: u32, nft_attr_value: u64) {
-	<Test as crate::pallet::Config>::NFTHelper::set_typed_attribute::<u32, u64>(
+fn set_attribute_for_nft(nft_addr: &NftAddressOf<Test>, nft_attr_key: u32, nft_attr_value: u64) {
+	<Test as crate::pallet::Config>::NftHelper::set_typed_attribute::<u32, u64>(
 		&nft_addr.0,
 		&nft_addr.1,
 		&nft_attr_key,
