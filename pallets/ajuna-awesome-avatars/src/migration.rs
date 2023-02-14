@@ -62,8 +62,6 @@ pub mod v1 {
 			let current_version = Pallet::<T>::current_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 			if onchain_version == 0 && current_version == 1 {
-				let mut weight = T::DbWeight::get().reads_writes(1, 1);
-
 				let _ = GlobalConfigs::<T>::translate::<
 					OldGlobalConfig<BalanceOf<T>, T::BlockNumber>,
 					_,
@@ -75,25 +73,7 @@ pub mod v1 {
 				});
 				current_version.put::<Pallet<T>>();
 				log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version,);
-				weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
-
-				let mut legendaries = 0;
-				for avatar_id in Avatars::<T>::iter_keys() {
-					weight.saturating_accrue(T::DbWeight::get().reads(1));
-					if let Some((_account, avatar)) = Avatars::<T>::get(avatar_id) {
-						weight.saturating_accrue(T::DbWeight::get().reads(1));
-						if avatar.min_tier::<T>().unwrap_or(0) == RarityTier::Legendary as u8 &&
-							!Legendaries::<T>::contains_key(avatar.season_id, avatar_id)
-						{
-							Legendaries::<T>::insert(avatar.season_id, avatar_id, ());
-							weight.saturating_accrue(T::DbWeight::get().writes(1));
-							legendaries += 1;
-						}
-					}
-				}
-				CurrentSeasonStatus::<T>::mutate(|status| status.max_tier_avatars = legendaries);
-				log::info!(target: LOG_TARGET, "migrated {} legendaries", legendaries);
-				weight
+				T::DbWeight::get().reads_writes(2, 2)
 			} else {
 				log::info!(
 					target: LOG_TARGET,

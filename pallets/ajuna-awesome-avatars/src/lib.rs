@@ -144,11 +144,6 @@ pub mod pallet {
 	pub type Avatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn legendaries)]
-	pub type Legendaries<T: Config> =
-		StorageDoubleMap<_, Identity, SeasonId, Identity, AvatarIdOf<T>, ()>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn owners)]
 	pub type Owners<T: Config> =
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
@@ -885,10 +880,7 @@ pub mod pallet {
 				}
 			}
 
-			if leader.min_tier::<T>()? == max_tier &&
-				!Legendaries::<T>::contains_key(season_id, leader_id)
-			{
-				Legendaries::<T>::insert(season_id, leader_id, ());
+			if leader.min_tier::<T>()? == max_tier {
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();
 					if status.max_tier_avatars == season.max_tier_forges {
