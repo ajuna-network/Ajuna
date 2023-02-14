@@ -115,3 +115,7 @@ runtime-benchmarks = [
     "bajun-runtime/runtime-benchmarks",
     "ajuna-runtime/runtime-benchmarks",
 ]
+
+try-runtime = [
+    "bajun-runtime/try-runtime",
+]

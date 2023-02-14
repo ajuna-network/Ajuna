@@ -105,6 +105,7 @@ dependencies = [
  "polkadot-primitives",
  "sc-cli",
  "sc-client-api",
+ "sc-executor",
  "sc-finality-grandpa",
  "sc-service",
  "sc-sysinfo",
@@ -113,10 +114,12 @@ dependencies = [
  "sp-api",
  "sp-core",
  "sp-inherents",
+ "sp-io",
  "sp-keyring",
  "sp-runtime",
  "sp-timestamp",
  "substrate-build-script-utils",
+ "try-runtime-cli",
 ]
 
 [[package]]
@@ -5178,6 +5181,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
@@ -11454,6 +11458,7 @@ source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.36#cb
 dependencies = [
  "clap",
  "frame-remote-externalities",
+ "frame-try-runtime",
  "hex",
  "log",
  "parity-scale-codec",
