@@ -86,6 +86,7 @@ parachain-info                      = { git = "https://github.com/paritytech/cum
 # Ajuna pallets
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
 pallet-ajuna-nft-transfer    = { default-features = false, path = "../../pallets/ajuna-nft-transfer" }
+pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/nft-staking" }
 
 [features]
 default = [
@@ -112,6 +113,7 @@ std = [
     "frame-try-runtime/std",
     "orml-vesting/std",
     "pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-nft-staking/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-balances/std",
@@ -160,6 +162,7 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+    "pallet-ajuna-nft-staking/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
@@ -192,6 +195,7 @@ try-runtime = [
     "frame-system/try-runtime",
     "frame-try-runtime/try-runtime",
     "orml-vesting/try-runtime",
+    "pallet-ajuna-nft-staking/try-runtime",
     "pallet-aura/try-runtime",
     "pallet-authorship/try-runtime",
     "pallet-balances/try-runtime",
