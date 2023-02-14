@@ -66,22 +66,25 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod migration;
 pub mod types;
 pub mod weights;
 
+use crate::{types::*, weights::WeightInfo};
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
+};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
+use sp_runtime::{
+	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
+	ArithmeticError,
+};
+use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+
 #[frame_support::pallet]
 pub mod pallet {
-	use super::{types::*, weights::WeightInfo};
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
-	};
-	use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::{
-		traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
-		ArithmeticError,
-	};
-	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+	use super::*;
 
 	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
 	pub(crate) type BalanceOf<T> =
