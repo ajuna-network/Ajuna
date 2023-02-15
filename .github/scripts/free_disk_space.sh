@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+get_available_space() {
+    echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}')
+}
+
+BEFORE_SPACE=$(get_available_space)
+
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 echo "Removing large packages"
 sudo apt-get remove -y '^dotnet-.*'
@@ -35,3 +41,7 @@ sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 echo "Removing swap storage"
 sudo swapoff -a
 sudo rm -f /mnt/swapfile
+
+echo "Finding space freed up"
+AFTER_SPACE=$(get_available_space)
+printf "%'.f\n" $((AFTER_SPACE - BEFORE_SPACE))
