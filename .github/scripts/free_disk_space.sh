@@ -31,3 +31,7 @@ sudo rm -rf /usr/local/lib/node_modules
 # REF: https://github.com/actions/runner-images/issues/2875#issuecomment-1163392159
 echo "Removing tool cache"
 sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+echo "Removing swap storage"
+sudo swapoff -a
+sudo rm -f /mnt/swapfile
