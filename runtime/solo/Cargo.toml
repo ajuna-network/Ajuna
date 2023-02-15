@@ -1,12 +1,13 @@
 [package]
-authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 description = "The Ajuna Network Node Runtime"
-edition     = "2021"
-homepage    = "https://ajuna.io"
 name        = "ajuna-solo-runtime"
 publish     = false
-repository  = "https://github.com/ajuna-network/Ajuna"
-version     = "0.1.10"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]

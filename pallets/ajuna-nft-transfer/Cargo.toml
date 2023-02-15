@@ -1,11 +1,12 @@
 [package]
-authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 description = "Ajuna Network pallet used to handle the transformation of Game Assets into an NFT-ready format"
-edition     = "2021"
-homepage    = "https://ajuna.io"
 name        = "pallet-ajuna-nft-transfer"
-repository  = "https://github.com/ajuna-network/Ajuna"
-version     = "0.1.8"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]

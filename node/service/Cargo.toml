@@ -1,10 +1,11 @@
 [package]
-authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
-edition    = "2021"
-homepage   = "https://ajuna.io"
-name       = "ajuna-service"
-repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.10"
+name = "ajuna-service"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [dependencies]
 hex-literal = "0.3.3"

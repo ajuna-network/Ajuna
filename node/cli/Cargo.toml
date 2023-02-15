@@ -1,11 +1,12 @@
 [package]
-authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
-build      = "build.rs"
-edition    = "2021"
-homepage   = "https://ajuna.io"
-name       = "ajuna-cli"
-repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.10"
+build = "build.rs"
+name  = "ajuna-cli"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [build-dependencies]
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }

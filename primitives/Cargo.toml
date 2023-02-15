@@ -1,10 +1,11 @@
 [package]
-authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
-edition    = "2021"
-homepage   = "https://ajuna.io"
-name       = "ajuna-primitives"
-repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.10"
+name = "ajuna-primitives"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [dependencies]
 sp-core    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
