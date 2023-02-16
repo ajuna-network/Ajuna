@@ -466,7 +466,7 @@ pub mod pallet {
 			let seller = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_ownership(&seller, &avatar_id)?;
-			Self::ensure_not_locked(&avatar_id)?;
+			Self::ensure_unlocked(&avatar_id)?;
 			Trade::<T>::insert(avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
@@ -940,7 +940,7 @@ pub mod pallet {
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
-			Self::ensure_not_locked(leader_id)?;
+			Self::ensure_unlocked(leader_id)?;
 			ensure!(
 				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
 				Error::<T>::AvatarInTrade
@@ -952,7 +952,7 @@ pub mod pallet {
 				.iter()
 				.map(|id| {
 					let avatar = Self::ensure_ownership(player, id)?;
-					Self::ensure_not_locked(id)?;
+					Self::ensure_unlocked(id)?;
 					Ok(avatar)
 				})
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
@@ -1069,8 +1069,9 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn ensure_not_locked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
-			Ok(ensure!(Self::locked_avatars(avatar_id).is_none(), Error::<T>::AvatarLocked))
+		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+			ensure!(!LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarLocked);
+			Ok(())
 		}
 
 		fn start_season(
