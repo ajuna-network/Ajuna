@@ -71,7 +71,6 @@ pub mod types;
 pub mod weights;
 
 use crate::{types::*, weights::WeightInfo};
-use codec::HasCompact;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
@@ -79,9 +78,7 @@ use frame_support::{
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
-	traits::{
-		AtLeast32BitUnsigned, Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero,
-	},
+	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
 	ArithmeticError,
 };
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -90,13 +87,21 @@ use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 pub mod pallet {
 	use super::*;
 
-	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
-	pub(crate) type BalanceOf<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+
+	pub(crate) type SeasonOf<T> = Season<BlockNumberOf<T>>;
+	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
-	pub(crate) type GlobalConfigOf<T> =
-		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
+	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberOf<T>>;
+
+	pub(crate) type CollectionIdOf<T> =
+		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
+	pub(crate) type AssetIdOf<T> =
+		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
+	pub(crate) type AssetConfigOf<T> =
+		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetConfig;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
@@ -113,52 +118,10 @@ pub mod pallet {
 
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
-		type AvatarNftHandler: NftHandler<
-			Self::AccountId,
-			Avatar,
-			CollectionId = Self::AvatarCollectionId,
-			AssetId = Self::AvatarItemId,
-			AssetConfig = Self::AvatarItemConfig,
-		>;
-
-		type AvatarCollectionId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u32>
-			+ Into<u32>
-			+ sp_std::fmt::Display
-			+ sp_std::cmp::PartialOrd
-			+ sp_std::cmp::Ord;
+		type NftHandler: NftHandler<Self::AccountId, Avatar>;
 
 		#[pallet::constant]
-		type AvatarCollection: Get<Self::AvatarCollectionId>;
-
-		type AvatarItemId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u128>
-			+ Into<u128>
-			+ AtLeast32BitUnsigned;
-
-		/// Type that holds the specific configurations for an item.
-		type AvatarItemConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
+		type NftCollectionId: Get<CollectionIdOf<Self>>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -204,7 +167,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn locked_avatars)]
-	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, T::AvatarItemId>;
+	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, AssetIdOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
@@ -758,11 +721,11 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 
 			// TODO: Use proper config type instead
-			let asset_config = T::AvatarItemConfig::default();
+			let asset_config = AssetConfigOf::<T>::default();
 
-			let avatar_nft_id = T::AvatarNftHandler::store_as_nft(
+			let avatar_nft_id = T::NftHandler::store_as_nft(
 				account,
-				T::AvatarCollection::get(),
+				T::NftCollectionId::get(),
 				avatar,
 				Some(asset_config),
 			)?;
@@ -780,9 +743,9 @@ pub mod pallet {
 			let _ = Self::ensure_ownership(&account, &avatar_id)?;
 
 			if let Some(avatar_nft_id) = Self::locked_avatars(avatar_id) {
-				let _ = T::AvatarNftHandler::recover_from_nft(
+				let _ = T::NftHandler::recover_from_nft(
 					account,
-					T::AvatarCollection::get(),
+					T::NftCollectionId::get(),
 					avatar_nft_id,
 				)?;
 

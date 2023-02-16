@@ -692,18 +692,15 @@ impl pallet_preimage::Config for Runtime {
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
-	pub const AvatarCollection: CollectionId = 17_410;
+	pub const AvatarCollectionId: CollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftHandler = NftTransfer;
-	type AvatarCollectionId = CollectionId;
-	type AvatarCollection = AvatarCollection;
-	type AvatarItemId = ItemId;
-	type AvatarItemConfig = pallet_nfts::ItemConfig;
+	type NftHandler = NftTransfer;
+	type NftCollectionId = AvatarCollectionId;
 	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 

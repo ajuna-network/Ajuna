@@ -2611,7 +2611,7 @@ mod unlock_avatar {
 					LockedAvatars::<Test>::get(avatar_id).expect("Should get avatar nft id");
 
 				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
-					crate::mock::AvatarCollection::get(),
+					MockAvatarCollectionId::get(),
 					asset_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
 				);

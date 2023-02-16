@@ -1,5 +1,9 @@
-use codec::{Decode, Encode, Error as CodecError};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use codec::{Codec, Decode, Encode, Error as CodecError, MaxEncodedLen};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	Parameter,
+};
+use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each Asset.
@@ -24,9 +28,9 @@ pub trait NftConvertible: Encode + Decode {
 
 /// Trait to define the transformation and bridging of assets as NFT.
 pub trait NftHandler<Account, Asset: NftConvertible> {
-	type CollectionId;
-	type AssetId;
-	type AssetConfig;
+	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
+	type AssetId: Codec + Parameter + MaxEncodedLen;
+	type AssetConfig: Default;
 
 	/// Consumes the given **asset** and stores it as an NFT owned by **owner**,
 	/// returns the NFT index for tracking and recovering the asset.

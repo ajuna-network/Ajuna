@@ -149,18 +149,15 @@ impl pallet_nfts::Config for Test {
 }
 
 parameter_types! {
-	pub const AvatarCollection: MockCollectionId = 0;
+	pub const MockAvatarCollectionId: MockCollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftHandler = NftTransfer;
-	type AvatarCollectionId = MockCollectionId;
-	type AvatarCollection = AvatarCollection;
-	type AvatarItemId = MockItemId;
-	type AvatarItemConfig = pallet_nfts::ItemConfig;
+	type NftHandler = NftTransfer;
+	type NftCollectionId = MockAvatarCollectionId;
 	type WeightInfo = ();
 }
 
