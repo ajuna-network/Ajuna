@@ -23,6 +23,7 @@ concurrency:
 env:
   CARGO_ARGS: ${{ github.ref == 'refs/heads/develop' && '--release' || '' }}
   CARGO_TERM_COLOR: always
+  SKIP_WASM_BUILD: 1
 
 jobs:
   fmt:
@@ -40,8 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
-      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
+      - run: ./.github/scripts/free_disk_space.sh
+      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/cache@v3
         with:
           path: |
@@ -60,8 +62,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
-      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
+      - run: ./.github/scripts/free_disk_space.sh
+      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/cache@v3
         with:
           path: |
@@ -72,7 +75,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-
-      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }} --jobs 1
+      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }}
 
   coverage:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
