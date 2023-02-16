@@ -23,6 +23,7 @@ concurrency:
 env:
   CARGO_ARGS: ${{ github.ref == 'refs/heads/develop' && '--release' || '' }}
   CARGO_TERM_COLOR: always
+  SKIP_WASM_BUILD: 1
 
 jobs:
   fmt:
