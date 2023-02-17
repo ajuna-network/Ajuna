@@ -74,7 +74,9 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
 
-use ajuna_primitives::{AccountId, Balance, BlockNumber, Hash, Header, Index, Signature};
+use ajuna_primitives::{
+	AccountId, Balance, BlockNumber, CollectionId, Hash, Header, Index, ItemId, Signature,
+};
 
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
@@ -720,9 +722,6 @@ parameter_types! {
 	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
-pub type CollectionId = u32;
-pub type ItemId = u128;
-
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = CollectionId;
@@ -746,18 +745,16 @@ impl pallet_nfts::Config for Runtime {
 	type Features = ConfigFeatures;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_nfts::WeightInfo<Runtime>;
 }
 
-pub const MAX_ENCODING_SIZE: u32 = 200;
-
-pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
-	type CollectionConfig = CollectionConfig;
+	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
@@ -767,7 +764,7 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 parameter_types! {
 	pub const NftStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
 	pub const MinimumStakingTokenReward: Balance = 100;
-	pub ContractCollectionConfig: CollectionConfig = CollectionConfig::default();
+	pub ContractCollectionConfig: CollectionConfig = pallet_nfts::CollectionConfig::default();
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
 
@@ -778,7 +775,7 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = CollectionId;
-	type CollectionConfig = CollectionConfig;
+	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
