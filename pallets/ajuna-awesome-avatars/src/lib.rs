@@ -914,7 +914,7 @@ pub mod pallet {
 
 			let (mut leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
-			let prev_leader_tier = leader.min_tier::<T>()?;
+			let prev_leader_tier = leader.min_tier();
 
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 			let (mut unique_matched_indexes, matches) =
@@ -950,7 +950,7 @@ pub mod pallet {
 				}
 			}
 
-			let after_leader_tier = leader.min_tier::<T>()?;
+			let after_leader_tier = leader.min_tier();
 			if prev_leader_tier != max_tier && after_leader_tier == max_tier {
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();

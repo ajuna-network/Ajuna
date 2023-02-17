@@ -38,11 +38,11 @@ impl Avatar {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes::<T>()?;
-		let leader_tier = self.min_tier::<T>()?;
+		let leader_tier = self.min_tier();
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0),
 			|(mut matched_components, mut matches), other| {
-				let sacrifice_tier = other.min_tier::<T>()?;
+				let sacrifice_tier = other.min_tier();
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
 						self.compare(other, &upgradable_indexes, max_variations, max_tier);
@@ -59,7 +59,7 @@ impl Avatar {
 	}
 
 	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
-		let min_tier = self.min_tier::<T>()?;
+		let min_tier = self.min_tier();
 		Ok(self
 			.dna
 			.iter()
@@ -69,12 +69,8 @@ impl Avatar {
 			.collect::<Vec<usize>>())
 	}
 
-	pub(crate) fn min_tier<T: Config>(&self) -> Result<u8, DispatchError> {
-		self.dna
-			.iter()
-			.map(|x| *x >> 4)
-			.min()
-			.ok_or_else(|| Error::<T>::IncorrectDna.into())
+	pub(crate) fn min_tier(&self) -> u8 {
+		self.dna.iter().map(|x| *x >> 4).min().unwrap_or_default()
 	}
 
 	pub(crate) fn compare(

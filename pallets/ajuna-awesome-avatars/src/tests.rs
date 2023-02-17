@@ -1197,7 +1197,7 @@ mod forging {
 
 	fn create_avatar(avatar_id_seed: u8, dna: &[u8]) -> AvatarIdOf<Test> {
 		let avatar = Avatar::default().season_id(1).dna(dna);
-		if avatar.min_tier::<Test>().unwrap() == RarityTier::Legendary as u8 {
+		if avatar.min_tier() == RarityTier::Legendary as u8 {
 			CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
 		}
 
@@ -1268,7 +1268,7 @@ mod forging {
 				));
 				let leader = AAvatars::avatars(leader_id).unwrap().1;
 				assert_eq!(leader.dna.to_vec(), dna_after.to_vec());
-				assert_eq!(leader.min_tier::<Test>().unwrap(), RarityTier::Common as u8);
+				assert_eq!(leader.min_tier(), RarityTier::Common as u8);
 			});
 	}
 
@@ -1680,8 +1680,8 @@ mod forging {
 					&[0x04, 0x03, 0x05, 0x01]
 				);
 				assert_eq!(
-					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
-					Ok(tiers[0].clone() as u8),
+					AAvatars::avatars(&leader_id).unwrap().1.min_tier(),
+					tiers[0].clone() as u8,
 				);
 
 				// mutate the DNA of leader to make it a tier higher
@@ -1696,8 +1696,8 @@ mod forging {
 					.unwrap();
 				Avatars::<Test>::insert(leader_id, &leader_avatar);
 				assert_eq!(
-					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
-					Ok(tiers[1].clone() as u8),
+					AAvatars::avatars(&leader_id).unwrap().1.min_tier(),
+					tiers[1].clone() as u8
 				);
 
 				// forging doesn't take effect
