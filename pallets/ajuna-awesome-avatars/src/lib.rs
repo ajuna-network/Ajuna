@@ -929,42 +929,11 @@ pub mod pallet {
 				},
 			};
 
-			ensure!(
-				sacrifice_ids.len() as u8 >= season.min_sacrifices,
-				Error::<T>::TooFewSacrifices
-			);
-			ensure!(
-				sacrifice_ids.len() as u8 <= season.max_sacrifices,
-				Error::<T>::TooManySacrifices
-			);
-			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
-
-			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
-			Self::ensure_unlocked(leader_id)?;
-			ensure!(
-				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
-				Error::<T>::AvatarInTrade
-			);
-			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
-
-			let sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
-			let sacrifices = sacrifice_ids
-				.iter()
-				.map(|id| {
-					let avatar = Self::ensure_ownership(player, id)?;
-					Self::ensure_unlocked(id)?;
-					Ok(avatar)
-				})
-				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
-
-			let mut leader = Self::ensure_ownership(player, leader_id)?;
+			let (mut leader, sacrifice_ids, sacrifices) =
+				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
 			let prev_leader_tier = leader.min_tier::<T>()?;
-			ensure!(leader.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
-			ensure!(
-				sacrifices.iter().all(|avatar| avatar.season_id == season_id),
-				Error::<T>::IncorrectAvatarSeason
-			);
 
+			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
 			let (mut unique_matched_indexes, matches) =
 				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
 
@@ -1059,6 +1028,41 @@ pub mod pallet {
 				Error::<T>::SeasonClosed
 			);
 			Ok(free_mints)
+		}
+
+		fn ensure_for_forge(
+			player: &T::AccountId,
+			leader_id: &AvatarIdOf<T>,
+			sacrifice_ids: &[AvatarIdOf<T>],
+			season_id: &SeasonId,
+			season: &SeasonOf<T>,
+		) -> Result<(Avatar, BTreeSet<AvatarIdOf<T>>, Vec<Avatar>), DispatchError> {
+			let sacrifice_count = sacrifice_ids.len() as u8;
+			ensure!(sacrifice_count >= season.min_sacrifices, Error::<T>::TooFewSacrifices);
+			ensure!(sacrifice_count <= season.max_sacrifices, Error::<T>::TooManySacrifices);
+			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
+			ensure!(
+				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
+				Error::<T>::AvatarInTrade
+			);
+			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
+			Self::ensure_unlocked(leader_id)?;
+
+			let deduplicated_sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
+			let sacrifices = deduplicated_sacrifice_ids
+				.iter()
+				.map(|id| {
+					let avatar = Self::ensure_ownership(player, id)?;
+					ensure!(avatar.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+					Self::ensure_unlocked(id)?;
+					Ok(avatar)
+				})
+				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
+
+			let leader = Self::ensure_ownership(player, leader_id)?;
+			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+
+			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
 		}
 
 		fn ensure_for_trade(
