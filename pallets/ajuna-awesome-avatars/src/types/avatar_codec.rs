@@ -14,16 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod account;
-mod avatar;
-mod avatar_codec;
-mod config;
-mod rarity_tier;
-mod season;
+use crate::*;
+use codec::alloc::string::ToString;
+use scale_info::prelude::string::String;
 
-pub use account::*;
-pub use avatar::*;
-pub use avatar_codec::*;
-pub use config::*;
-pub use rarity_tier::*;
-pub use season::*;
+pub struct AvatarCodec {
+	pub season_id: SeasonId,
+	pub dna: Dna,
+	pub soul_points: SoulCount,
+	pub rarity: String,
+	// force: String,
+}
+
+impl From<Avatar> for AvatarCodec {
+	fn from(avatar: Avatar) -> Self {
+		let rarity_tier: RarityTier = avatar.min_tier().try_into().unwrap_or_default();
+
+		Self {
+			season_id: avatar.season_id,
+			dna: avatar.dna.clone(),
+			soul_points: avatar.souls,
+			rarity: rarity_tier.to_string(),
+			// force: "".into(),
+		}
+	}
+}
