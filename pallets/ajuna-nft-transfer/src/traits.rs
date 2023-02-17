@@ -11,8 +11,8 @@ pub type AssetCode = u16;
 
 /// Marker trait for Assets that can be converted back and forth into an NFT representation.
 pub trait NftConvertible: Encode + Decode {
-	/// Returns the numeric key used to store this specific asset's attributes in the NFT.
-	fn get_asset_code() -> AssetCode;
+	/// Numeric key used to store this specific asset's attributes in the NFT.
+	const ASSET_CODE: AssetCode;
 
 	/// Encodes the asset into a byte representation for storage.
 	fn encode_into(self) -> Vec<u8> {

@@ -40,9 +40,7 @@ impl Default for MockStruct {
 }
 
 impl NftConvertible for MockStruct {
-	fn get_asset_code() -> AssetCode {
-		1
-	}
+	const ASSET_CODE: AssetCode = 1;
 }
 
 fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId {
@@ -161,7 +159,7 @@ mod store_as_nft {
 				&collection_id,
 				&asset_id,
 				&AttributeNamespace::<MockAccountId>::Pallet,
-				&MockStruct::get_asset_code(),
+				&MockStruct::ASSET_CODE,
 			)
 			.map(|item| item.into_inner());
 
@@ -212,7 +210,7 @@ mod recover_from_nft {
 				&collection_id,
 				&asset_id,
 				&AttributeNamespace::<MockAccountId>::Pallet,
-				&MockStruct::get_asset_code(),
+				&MockStruct::ASSET_CODE,
 			);
 
 			assert_eq!(stored_asset, None);

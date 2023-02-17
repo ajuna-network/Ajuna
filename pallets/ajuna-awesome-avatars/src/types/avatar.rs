@@ -16,6 +16,7 @@
 
 use crate::*;
 use frame_support::pallet_prelude::*;
+use pallet_ajuna_nft_transfer::traits::NftConvertible;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
@@ -155,17 +156,8 @@ impl Avatar {
 	}
 }
 
-pub mod impl_nft_convertible {
-	use super::*;
-	use pallet_ajuna_nft_transfer::traits::{AssetCode, NftConvertible};
-
-	pub const AVATAR_ASSET_CODE: u16 = 17;
-
-	impl NftConvertible for Avatar {
-		fn get_asset_code() -> AssetCode {
-			AVATAR_ASSET_CODE
-		}
-	}
+impl NftConvertible for Avatar {
+	const ASSET_CODE: u16 = 0;
 }
 
 #[cfg(test)]
