@@ -56,7 +56,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-lint-
       - run: cargo clippy --all-features --all-targets ${{ env.CARGO_ARGS }} -- -D warnings
 
-  test:
+  test-pallets:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: Test
     runs-on: ubuntu-latest
@@ -73,9 +73,30 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-test-
-      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }}
+          key: ${{ runner.os }}-cargo-test-pallets-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-pallets-
+      - run: cd pallets && cargo test --all-features --all-targets ${{ env.CARGO_ARGS }}
+
+  test-full:
+    if: ${{ startsWith(github.head_ref, 'release/') }}
+    name: Test
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v3
+      - run: ./.github/scripts/free_disk_space.sh
+      - run: sudo apt-get install -y protobuf-compiler
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-test-full-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-full-
+      - run: cargo test --package --all-features --all-targets ${{ env.CARGO_ARGS }}
 
   coverage:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
