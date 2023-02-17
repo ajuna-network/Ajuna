@@ -38,7 +38,6 @@ pub trait NftHandler<Account, Asset: NftConvertible> {
 		owner: Account,
 		collection_id: Self::CollectionId,
 		asset: Asset,
-		asset_config: Option<Self::AssetConfig>,
 	) -> Result<Self::AssetId, DispatchError>;
 	/// Attempts to recover the NFT indexed by **nft_id** and transform it back into an
 	/// asset, returns an appropriate error if the process fails.

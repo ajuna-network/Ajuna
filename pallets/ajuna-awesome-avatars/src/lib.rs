@@ -100,8 +100,6 @@ pub mod pallet {
 		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
 	pub(crate) type AssetIdOf<T> =
 		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
-	pub(crate) type AssetConfigOf<T> =
-		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetConfig;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
@@ -259,7 +257,7 @@ pub mod pallet {
 		/// Avatar has been traded.
 		AvatarTraded { avatar_id: AvatarIdOf<T>, from: T::AccountId, to: T::AccountId },
 		/// Avatar locked.
-		AvatarLocked { avatar_id: AvatarIdOf<T> },
+		AvatarLocked { avatar_id: AvatarIdOf<T>, asset_id: AssetIdOf<T> },
 		/// Avatar unlocked.
 		AvatarUnlocked { avatar_id: AvatarIdOf<T> },
 		/// Storage tier has been upgraded.
@@ -347,6 +345,8 @@ pub mod pallet {
 		AvatarInTrade,
 		/// The avatar is currently locked and cannot be used.
 		AvatarLocked,
+		/// The avatar is currently unlocked and cannot be locked again.
+		AvatarUnlocked,
 		/// Tried to forge avatars from different seasons.
 		IncorrectAvatarSeason,
 		/// Tried sending free mints to his or her own account.
@@ -720,19 +720,9 @@ pub mod pallet {
 			let avatar = Self::ensure_ownership(&account, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 
-			// TODO: Use proper config type instead
-			let asset_config = AssetConfigOf::<T>::default();
-
-			let avatar_nft_id = T::NftHandler::store_as_nft(
-				account,
-				T::NftCollectionId::get(),
-				avatar,
-				Some(asset_config),
-			)?;
-
-			LockedAvatars::<T>::insert(avatar_id, avatar_nft_id);
-
-			Self::deposit_event(Event::AvatarLocked { avatar_id });
+			let asset_id = T::NftHandler::store_as_nft(account, T::NftCollectionId::get(), avatar)?;
+			LockedAvatars::<T>::insert(avatar_id, &asset_id);
+			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())
 		}
 
@@ -742,18 +732,11 @@ pub mod pallet {
 			let account = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&account, &avatar_id)?;
 
-			if let Some(avatar_nft_id) = Self::locked_avatars(avatar_id) {
-				let _ = T::NftHandler::recover_from_nft(
-					account,
-					T::NftCollectionId::get(),
-					avatar_nft_id,
-				)?;
+			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
+			let _ = T::NftHandler::recover_from_nft(account, T::NftCollectionId::get(), asset_id)?;
 
-				LockedAvatars::<T>::remove(avatar_id);
-
-				Self::deposit_event(Event::AvatarUnlocked { avatar_id });
-			}
-
+			LockedAvatars::<T>::remove(avatar_id);
+			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
 			Ok(())
 		}
 	}

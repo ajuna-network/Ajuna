@@ -223,7 +223,6 @@ pub mod pallet {
 			owner: T::AccountId,
 			collection_id: Self::CollectionId,
 			asset: Asset,
-			asset_config: Option<Self::AssetConfig>,
 		) -> Result<Self::AssetId, DispatchError> {
 			Pallet::<T>::ensure_unlocked()?;
 
@@ -242,7 +241,7 @@ pub mod pallet {
 				&collection_id,
 				&next_item_id,
 				&owner,
-				&asset_config.unwrap_or_default(),
+				&Self::AssetConfig::default(),
 				true,
 			)?;
 			T::NftHelper::set_typed_attribute(

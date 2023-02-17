@@ -2459,9 +2459,9 @@ mod lock_avatar {
 				let avatar_id = AAvatars::owners(ALICE)[0];
 
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-				assert!(LockedAvatars::<Test>::get(avatar_id).is_some());
+				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::AvatarLocked { avatar_id },
+					crate::Event::AvatarLocked { avatar_id, asset_id },
 				));
 
 				// Ensure locked avatars cannot be used in neither trading nor forging
