@@ -58,7 +58,7 @@ jobs:
 
   test-pallets:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
-    name: Test
+    name: Test-Pallets
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
@@ -79,7 +79,7 @@ jobs:
 
   test-full:
     if: ${{ startsWith(github.head_ref, 'release/') }}
-    name: Test
+    name: Test-Full
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
