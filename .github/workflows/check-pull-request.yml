@@ -61,6 +61,12 @@ jobs:
     name: Test-Pallets
     runs-on: ubuntu-latest
     continue-on-error: false
+    strategy:
+      matrix:
+        pallet:
+          - pallet-ajuna-awesome-avatars
+          - pallet-ajuna-nft-staking
+          - pallet-ajuna-nft-transfer
     steps:
       - uses: actions/checkout@v3
       - run: ./.github/scripts/free_disk_space.sh
@@ -75,10 +81,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-pallets-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-pallets-
-      - run: |
-          cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-awesome-avatars
-          cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-nft-transfer
-          cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-nft-staking
+      - run: cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p ${{ matrix.pallet }}
 
   test-full:
     if: ${{ startsWith(github.head_ref, 'develop') }}
