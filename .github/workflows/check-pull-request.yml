@@ -75,7 +75,10 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-pallets-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-pallets-
-      - run: cd pallets && cargo test --all-features --all-targets ${{ env.CARGO_ARGS }}
+      - run: |
+          cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-awesome-avatars
+          cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-nft-transfer
+          cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-nft-staking
 
   test-full:
     if: ${{ startsWith(github.head_ref, 'release/') }}
