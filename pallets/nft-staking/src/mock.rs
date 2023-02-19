@@ -16,12 +16,12 @@
 
 use crate::{self as pallet_nft_staking, *};
 use frame_support::{
-	ord_parameter_types, parameter_types,
+	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64, Hooks},
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot, EnsureSigned, EnsureSignedBy,
+	EnsureRoot, EnsureSigned,
 };
 use pallet_nfts::PalletFeatures;
 use sp_runtime::{
@@ -115,17 +115,13 @@ parameter_types! {
 	pub ConfigFeatures: PalletFeatures = PalletFeatures::all_enabled();
 }
 
-ord_parameter_types! {
-	pub const AliceAccount: MockAccountId = ALICE;
-}
-
 impl pallet_nfts::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = MockCollectionId;
 	type ItemId = MockItemId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<MockAccountId>;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSignedBy<AliceAccount, MockAccountId>>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<MockAccountId>>;
 	type Locker = ();
 	type CollectionDeposit = CollectionDeposit;
 	type ItemDeposit = ItemDeposit;
@@ -140,8 +136,9 @@ impl pallet_nfts::Config for Test {
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
 	type Features = ConfigFeatures;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Helper = ();
+	pallet_nfts::runtime_benchmarks_enabled! {
+		type Helper = ();
+	}
 	type WeightInfo = ();
 }
 
