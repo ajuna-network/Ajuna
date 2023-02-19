@@ -111,7 +111,7 @@ jobs:
       - run: cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p ${{ matrix.runtime }}
 
   test-full:
-    if: ${{ contains(github.base_ref, 'develop') }}
+    if: ${{ contains(github.head_ref, 'develop') }}
     name: Test-Full
     runs-on: ubuntu-latest
     continue-on-error: false
