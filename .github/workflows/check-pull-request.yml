@@ -81,7 +81,7 @@ jobs:
           cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p pallet-ajuna-nft-staking
 
   test-full:
-    if: ${{ startsWith(github.head_ref, 'release/') }}
+    if: ${{ startsWith(github.head_ref, 'develop') }}
     name: Test-Full
     runs-on: ubuntu-latest
     continue-on-error: false
@@ -99,7 +99,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-full-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-full-
-      - run: cargo test --package --all-features --all-targets ${{ env.CARGO_ARGS }}
+      - run: cargo test --workspace --all-features --all-targets ${{ env.CARGO_ARGS }}
 
   coverage:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
