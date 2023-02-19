@@ -287,7 +287,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::Council(_) |
 			RuntimeCall::CouncilMembership(_) |
 			// ajuna pallets
-			RuntimeCall::AwesomeAvatars(_	) => true,
+			RuntimeCall::AwesomeAvatars(_	) |
+			RuntimeCall::NftStake(_) => true,
 			RuntimeCall::Nft(_) => false,
 		}
 	}
@@ -764,6 +765,34 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type NftHelper = Nft;
 }
 
+parameter_types! {
+	pub const NftStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
+	pub const MinimumStakingTokenReward: Balance = 100;
+	pub ContractCollectionConfig: CollectionConfig = CollectionConfig::default();
+	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
+}
+
+pub type ContractAttributeKey = u32;
+pub type ContractAttributeValue = u64;
+
+impl pallet_ajuna_nft_staking::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type CollectionId = CollectionId;
+	type CollectionConfig = CollectionConfig;
+	type ItemId = ItemId;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NftHelper = Nft;
+	type StakingOrigin = EnsureSigned<AccountId>;
+	type TreasuryPalletId = NftStakeTreasuryPalletId;
+	type MinimumStakingTokenReward = MinimumStakingTokenReward;
+	type ContractCollectionConfig = ContractCollectionConfig;
+	type ContractCollectionItemConfig = ContractCollectionItemConfig;
+	type ContractAttributeKey = ContractAttributeKey;
+	type ContractAttributeValue = ContractAttributeValue;
+	type WeightInfo = pallet_ajuna_nft_staking::weights::AjunaWeight<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -816,6 +845,7 @@ construct_runtime!(
 		// Indexes 100+ should be reserved for NFT related pallets
 		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
 		NftTransfer: pallet_ajuna_nft_transfer = 101,
+		NftStake: pallet_ajuna_nft_staking = 102,
 	}
 );
 
@@ -843,6 +873,7 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
 		[pallet_nfts, Nft]
+		[pallet_ajuna_nft_staking, NftStake]
 	);
 }
 

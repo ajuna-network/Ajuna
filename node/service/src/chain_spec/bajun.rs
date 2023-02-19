@@ -168,5 +168,6 @@ fn testnet_genesis(
 		parachain_system: Default::default(),
 		polkadot_xcm: bajun_runtime::PolkadotXcmConfig { safe_xcm_version: Some(SAFE_XCM_VERSION) },
 		awesome_avatars: Default::default(),
+		nft_stake: Default::default(),
 	}
 }
