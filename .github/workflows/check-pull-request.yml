@@ -83,6 +83,33 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-test-pallets-
       - run: cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p ${{ matrix.pallet }}
 
+  test-runtime:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
+    name: Test-Runtime
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    strategy:
+      matrix:
+        runtime:
+          - ajuna-solo-runtime
+          - ajuna-runtime
+          - bajun-runtime
+    steps:
+      - uses: actions/checkout@v3
+      - run: ./.github/scripts/free_disk_space.sh
+      - run: sudo apt-get install -y protobuf-compiler
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-test-runtime-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-runtime-
+      - run: cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p ${{ matrix.runtime }}
+
   test-full:
     if: ${{ startsWith(github.head_ref, 'develop') }}
     name: Test-Full
