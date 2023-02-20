@@ -978,9 +978,9 @@ pub mod pallet {
 
 			let rolls = sacrifices.len();
 			for hash in random_hash.iter().take(rolls) {
-				if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
-					let roll = hash % MAX_PERCENTAGE;
-					if roll <= prob {
+				let roll = hash % MAX_PERCENTAGE;
+				if roll <= prob {
+					if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
 						let nucleotide = leader.dna[first_matched_index];
 						let current_tier_index = season
 							.tiers
