@@ -719,6 +719,7 @@ pub mod pallet {
 			let account = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&account, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
+			Self::ensure_unlocked(&avatar_id)?;
 
 			let asset_id = T::NftHandler::store_as_nft(account, T::NftCollectionId::get(), avatar)?;
 			LockedAvatars::<T>::insert(avatar_id, &asset_id);

@@ -15,7 +15,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::*;
-use sp_std::fmt;
+use codec::alloc::string::ToString;
+use sp_std::{fmt, prelude::*};
 
 #[derive(
 	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
@@ -42,6 +43,12 @@ impl TryFrom<u8> for RarityTier {
 			x if x == 5 => Ok(RarityTier::Mythical),
 			_ => Err(()),
 		}
+	}
+}
+
+impl From<RarityTier> for BoundedVec<u8, ConstU32<20>> {
+	fn from(x: RarityTier) -> Self {
+		x.to_string().as_bytes().to_owned().try_into().unwrap_or_default()
 	}
 }
 

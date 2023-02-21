@@ -24,7 +24,7 @@ pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
 pub type SoulCount = u32;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct Avatar {
 	pub season_id: SeasonId,
 	pub dna: Dna,
@@ -136,7 +136,7 @@ impl Avatar {
 
 	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
 		let mut current_period = season.current_period(now);
-		let mut last_variation = (self.dna.last().unwrap_or(&0) & 0b0000_1111) as u16;
+		let mut last_variation = self.last_variation() as u16;
 
 		current_period.saturating_inc();
 		last_variation.saturating_inc();
@@ -154,10 +154,24 @@ impl Avatar {
 			2 // TODO: move this to config
 		}
 	}
+
+	pub(crate) fn last_variation(&self) -> u8 {
+		self.dna.last().unwrap_or(&0) & 0b0000_1111
+	}
 }
 
 impl NftConvertible for Avatar {
 	const ASSET_CODE: u16 = 0;
+
+	fn encode_into(self) -> Vec<u8> {
+		let avatar_codec = AvatarCodec::from(self);
+		avatar_codec.encode()
+	}
+
+	fn decode_from(input: Vec<u8>) -> Result<Self, codec::Error> {
+		let avatar_codec = AvatarCodec::decode(&mut input.as_slice())?;
+		Ok(Avatar::from(avatar_codec))
+	}
 }
 
 #[cfg(test)]
@@ -172,6 +186,10 @@ mod test {
 		}
 		pub(crate) fn dna(mut self, dna: &[u8]) -> Self {
 			self.dna = Dna::try_from(dna.to_vec()).unwrap();
+			self
+		}
+		pub(crate) fn souls(mut self, souls: SoulCount) -> Self {
+			self.souls = souls;
 			self
 		}
 	}
@@ -315,5 +333,27 @@ mod test {
 			),
 			(true, BTreeSet::from([1, 9]))
 		);
+	}
+
+	#[test]
+	fn codec_works() {
+		let avatar = Avatar::default().season_id(123).dna(&[0x31, 0x32, 0x33, 0x34]).souls(321);
+		let encoded = avatar.clone().encode_into();
+
+		// check encoding
+		assert_eq!(
+			encoded,
+			AvatarCodec {
+				season_id: avatar.season_id,
+				dna: avatar.dna.clone(),
+				soul_points: avatar.souls,
+				rarity: RarityTier::Epic.into(),
+				force: Force::Astral.into(),
+			}
+			.encode()
+		);
+
+		// check decoding
+		assert_eq!(Avatar::decode_from(encoded), Ok(avatar));
 	}
 }
