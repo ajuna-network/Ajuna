@@ -720,7 +720,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(12)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::withdraw_free_mints())]
 		pub fn withdraw_free_mints(
 			origin: OriginFor<T>,
 			from: T::AccountId,
@@ -738,7 +738,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(13)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_free_mints())]
 		pub fn set_free_mints(
 			origin: OriginFor<T>,
 			target: T::AccountId,
