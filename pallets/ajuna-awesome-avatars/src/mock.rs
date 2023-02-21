@@ -177,6 +177,7 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type WeightInfo = ();
 }
 
 pub struct ExtBuilder {

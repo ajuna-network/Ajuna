@@ -288,6 +288,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::CouncilMembership(_) |
 			// ajuna pallets
 			RuntimeCall::AwesomeAvatars(_	) |
+			RuntimeCall::NftTransfer(_) |
 			RuntimeCall::NftStake(_) => true,
 			RuntimeCall::Nft(_) => false,
 		}
@@ -763,6 +764,7 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type WeightInfo = pallet_ajuna_nft_transfer::weights::AjunaWeight<Runtime>;
 }
 
 parameter_types! {
@@ -873,6 +875,7 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
 		[pallet_nfts, Nft]
+		[pallet_ajuna_nft_transfer, NftTransfer]
 		[pallet_ajuna_nft_staking, NftStake]
 	);
 }

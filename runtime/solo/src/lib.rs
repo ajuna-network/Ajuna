@@ -632,6 +632,7 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type WeightInfo = ();
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

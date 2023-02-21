@@ -151,6 +151,21 @@ type ContractClauseOf<T> = ContractClause<
 >;
 
 benchmarks! {
+	set_organizer {
+		let organizer = prepare_account::<T>("ALICE");
+	}: _(RawOrigin::Root, organizer.clone())
+	verify {
+		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+	}
+
+	set_locked_state {
+		let organizer = prepare_account::<T>("ALICE");
+		Organizer::<T>::put(&organizer);
+	}: _(RawOrigin::Signed(organizer), PalletLockedState::Locked)
+	verify {
+		assert_last_event::<T>(Event::LockedStateSet { locked_state: PalletLockedState::Locked }.into())
+	}
+
 	fund_treasury {
 		let caller = prepare_account::<T>("ALICE");
 		let fund_amt: BalanceOf<T> = 1_000_u32.into();
