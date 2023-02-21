@@ -1064,7 +1064,7 @@ mod minting {
 			GlobalConfigs::<Test>::mutate(|cfg| cfg.mint.min_free_mint_transfer = transfer + 1);
 			assert_noop!(
 				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, transfer),
-				Error::<Test>::TooLowFreeMintTransfer
+				Error::<Test>::TooLowFreeMints
 			);
 		});
 	}
@@ -1093,25 +1093,100 @@ mod minting {
 	fn issue_free_mints_should_work() {
 		ExtBuilder::default()
 			.organizer(ALICE)
-			.free_mints(&[(ALICE, 7)])
+			.free_mints(&[(BOB, 7)])
 			.build()
 			.execute_with(|| {
-				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
-
 				assert_ok!(AAvatars::issue_free_mints(RuntimeOrigin::signed(ALICE), BOB, 7));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::FreeMintsIssued { to: BOB, how_many: 7 },
 				));
-
-				assert_eq!(AAvatars::accounts(BOB).free_mints, 7);
-
-				assert_ok!(AAvatars::issue_free_mints(RuntimeOrigin::signed(ALICE), BOB, 3));
-				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::FreeMintsIssued { to: BOB, how_many: 3 },
-				));
-
-				assert_eq!(AAvatars::accounts(BOB).free_mints, 10);
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 7 + 7);
 			});
+	}
+
+	#[test]
+	fn issue_free_mints_rejects_overflow() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.free_mints(&[(BOB, MintCount::MAX)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AAvatars::issue_free_mints(RuntimeOrigin::signed(ALICE), BOB, 1),
+					ArithmeticError::Overflow
+				);
+			})
+	}
+
+	#[test]
+	fn withdraw_free_mints_works() {
+		ExtBuilder::default()
+			.organizer(BOB)
+			.free_mints(&[(ALICE, 369)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(AAvatars::withdraw_free_mints(RuntimeOrigin::signed(BOB), ALICE, 135));
+				assert_eq!(AAvatars::accounts(ALICE).free_mints, 369 - 135);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::FreeMintsWithdrawn { from: ALICE, how_many: 135 },
+				));
+			})
+	}
+
+	#[test]
+	fn withdraw_free_mints_rejects_underflow() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.free_mints(&[(BOB, 123)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AAvatars::withdraw_free_mints(RuntimeOrigin::signed(ALICE), BOB, 124),
+					ArithmeticError::Underflow
+				);
+			})
+	}
+
+	#[test]
+	fn set_free_mints_works() {
+		ExtBuilder::default()
+			.organizer(ALICE)
+			.free_mints(&[(BOB, 123)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(AAvatars::set_free_mints(RuntimeOrigin::signed(ALICE), BOB, 999));
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 999);
+
+				assert_ok!(AAvatars::set_free_mints(RuntimeOrigin::signed(ALICE), BOB, 0));
+				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
+			})
+	}
+
+	#[test]
+	fn managing_free_mints_rejects_zero_amount() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			for extrinsic in [
+				AAvatars::issue_free_mints(RuntimeOrigin::signed(ALICE), BOB, 0),
+				AAvatars::withdraw_free_mints(RuntimeOrigin::signed(ALICE), BOB, 0),
+			] {
+				assert_noop!(extrinsic, Error::<Test>::TooLowFreeMints);
+			}
+		})
+	}
+
+	#[test]
+	fn managing_free_mints_requires_organizer() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			for not_organizer in [BOB, CHARLIE] {
+				for extrinsic in [
+					AAvatars::issue_free_mints(RuntimeOrigin::signed(not_organizer), ALICE, 123),
+					AAvatars::withdraw_free_mints(RuntimeOrigin::signed(not_organizer), ALICE, 123),
+					AAvatars::set_free_mints(RuntimeOrigin::signed(not_organizer), ALICE, 123),
+				] {
+					assert_noop!(extrinsic, DispatchError::BadOrigin);
+				}
+			}
+		})
 	}
 }
 

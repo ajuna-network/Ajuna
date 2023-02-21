@@ -299,6 +299,29 @@ benchmarks! {
 		assert_last_event::<T>(Event::FreeMintsIssued { to, how_many }.into())
 	}
 
+	withdraw_free_mints {
+		let organizer = account::<T>("organizer");
+		Organizer::<T>::put(&organizer);
+
+		let from = account::<T>("from");
+		let how_many = MintCount::MAX;
+		Accounts::<T>::mutate(&from, |account|account.free_mints = how_many);
+	}: _(RawOrigin::Signed(organizer), from.clone(), how_many)
+	verify {
+		assert_last_event::<T>(Event::FreeMintsWithdrawn { from, how_many }.into())
+	}
+
+	set_free_mints {
+		let organizer = account::<T>("organizer");
+		Organizer::<T>::put(&organizer);
+
+		let target = account::<T>("target");
+		let how_many = MintCount::MAX;
+	}: _(RawOrigin::Signed(organizer), target.clone(), how_many)
+	verify {
+		assert_last_event::<T>(Event::FreeMintsSet { target, how_many }.into())
+	}
+
 	impl_benchmark_test_suite!(
 		AAvatars, crate::mock::ExtBuilder::default().build(), crate::mock::Test
 	);
