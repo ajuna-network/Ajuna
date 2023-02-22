@@ -5635,6 +5635,7 @@ dependencies = [
 name = "pallet-ajuna-nft-transfer"
 version = "0.1.8"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",

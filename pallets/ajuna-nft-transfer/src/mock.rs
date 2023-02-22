@@ -150,6 +150,7 @@ impl pallet_nft_transfer::Config for Test {
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type WeightInfo = ();
 }
 
 pub const ALICE: MockAccountId = 1;

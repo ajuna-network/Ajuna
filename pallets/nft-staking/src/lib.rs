@@ -80,6 +80,20 @@ pub mod pallet {
 	pub(crate) type StakingRewardOf<T> =
 		StakingReward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
+	#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Eq, PartialEq)]
+	pub enum PalletLockedState {
+		/// Pallet is unlocked, all operations can be performed
+		Unlocked,
+		/// Pallet is locked, operations are restricted
+		Locked,
+	}
+
+	impl Default for PalletLockedState {
+		fn default() -> Self {
+			PalletLockedState::Unlocked
+		}
+	}
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -211,6 +225,14 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
+	#[pallet::getter(fn organizer)]
+	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn lock_status)]
+	pub type LockedState<T: Config> = StorageValue<_, PalletLockedState, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn active_contracts)]
 	pub type ActiveContracts<T: Config> =
 		StorageMap<_, Identity, ContractItemIdOf<T>, StakingContractOf<T>, OptionQuery>;
@@ -279,6 +301,10 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// An organizer has been set.
+		OrganizerSet { organizer: T::AccountId },
+		/// The pallet's lock status has been set
+		LockedStateSet { locked_state: PalletLockedState },
 		/// A new staking contract has been successfully created
 		StakingContractCreated { creator: AccountIdOf<T>, contract: ContractItemIdOf<T> },
 		/// A new staking contract has been successfully created
@@ -296,6 +322,10 @@ pub mod pallet {
 	/// Error for the treasury pallet.
 	#[pallet::error]
 	pub enum Error<T> {
+		/// There is no account set as the organizer
+		OrganizerNotSet,
+		/// The pallet is currently locked and cannot be interacted with.
+		PalletLocked,
 		/// The treasury doesn't have enough funds to pay the contract rewards.
 		TreasuryLacksFunds,
 		/// Account doesn't have enough the minimum amount of funds necessary to contribute.
@@ -323,8 +353,29 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::WeightInfo::fund_treasury())]
 		#[pallet::call_index(0)]
+		#[pallet::weight(T::WeightInfo::set_organizer())]
+		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+			Organizer::<T>::put(&organizer);
+			Self::deposit_event(Event::OrganizerSet { organizer });
+			Ok(())
+		}
+
+		#[pallet::call_index(1)]
+		#[pallet::weight(T::WeightInfo::set_locked_state())]
+		pub fn set_locked_state(
+			origin: OriginFor<T>,
+			locked_state: PalletLockedState,
+		) -> DispatchResult {
+			Self::ensure_organizer(origin)?;
+			LockedState::<T>::put(locked_state);
+			Self::deposit_event(Event::LockedStateSet { locked_state });
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::fund_treasury())]
+		#[pallet::call_index(2)]
 		pub fn fund_treasury(origin: OriginFor<T>, fund_amount: BalanceOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 
@@ -353,11 +404,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::submit_staking_contract_nft_reward())]
-		#[pallet::call_index(1)]
+		#[pallet::call_index(3)]
 		pub fn submit_staking_contract(
 			origin: OriginFor<T>,
 			staking_contract: StakingContractOf<T>,
 		) -> DispatchResult {
+			Self::ensure_unlocked()?;
+
 			let account = T::StakingOrigin::ensure_origin(origin)?;
 
 			match staking_contract.get_reward() {
@@ -380,12 +433,14 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::take_staking_contract())]
-		#[pallet::call_index(2)]
+		#[pallet::call_index(4)]
 		pub fn take_staking_contract(
 			origin: OriginFor<T>,
 			contract_id: ContractItemIdOf<T>,
 			staked_assets: StakedAssetsVecOf<T>,
 		) -> DispatchResult {
+			Self::ensure_unlocked()?;
+
 			let account = T::StakingOrigin::ensure_origin(origin)?;
 
 			Self::try_if_contract_can_be_taken_by(&account, &contract_id)?;
@@ -421,11 +476,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::redeem_staking_contract_nft_reward())]
-		#[pallet::call_index(3)]
+		#[pallet::call_index(5)]
 		pub fn redeem_staking_contract(
 			origin: OriginFor<T>,
 			contract_id: ContractItemIdOf<T>,
 		) -> DispatchResult {
+			Self::ensure_unlocked()?;
+
 			let account = T::StakingOrigin::ensure_origin(origin)?;
 
 			Self::try_checking_if_contract_can_be_redeemed(&account, &contract_id)?;
@@ -458,6 +515,21 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+			let maybe_organizer = ensure_signed(origin)?;
+			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
+			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
+			Ok(())
+		}
+
+		fn ensure_unlocked() -> DispatchResult {
+			ensure!(
+				LockedState::<T>::get() == PalletLockedState::Unlocked,
+				Error::<T>::PalletLocked
+			);
+			Ok(())
+		}
+
 		/// The account identifier of the treasury pot.
 		pub fn treasury_account_id() -> AccountIdOf<T> {
 			if let Some(account) = Self::treasury_account() {

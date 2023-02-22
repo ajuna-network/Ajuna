@@ -24,6 +24,75 @@ use frame_support::{
 };
 use sp_runtime::bounded_vec;
 
+mod organizer {
+	use super::*;
+
+	#[test]
+	fn set_organizer_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(NftStake::organizer(), None);
+			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_eq!(NftStake::organizer(), Some(ALICE), "Organizer should be Alice");
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::OrganizerSet {
+				organizer: ALICE,
+			}));
+		});
+	}
+
+	#[test]
+	fn set_organizer_should_reject_non_root_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				NftStake::set_organizer(RuntimeOrigin::signed(BOB), ALICE),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+}
+
+mod set_lock_state {
+	use super::*;
+
+	#[test]
+	fn set_lock_state_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			assert_ok!(NftStake::set_locked_state(
+				RuntimeOrigin::signed(ALICE),
+				PalletLockedState::Locked
+			));
+			assert_eq!(
+				NftStake::lock_status(),
+				PalletLockedState::Locked,
+				"Pallet should be locked"
+			);
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::LockedStateSet {
+				locked_state: PalletLockedState::Locked,
+			}));
+
+			let contract_reward = StakingRewardOf::<Test>::Tokens(1_000);
+			let contract = StakingContractOf::<Test>::new(contract_reward, 10);
+			assert_noop!(
+				NftStake::submit_staking_contract(RuntimeOrigin::signed(BOB), contract),
+				Error::<Test>::PalletLocked
+			);
+		});
+	}
+
+	#[test]
+	fn set_lock_state_should_fail_with_non_organizer_account() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			assert_noop!(
+				NftStake::set_locked_state(RuntimeOrigin::signed(BOB), PalletLockedState::Locked),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+}
+
 mod fund_treasury {
 	use super::*;
 

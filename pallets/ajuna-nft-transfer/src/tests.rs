@@ -55,6 +55,79 @@ fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId
 	.expect("Should have create contract collection")
 }
 
+mod organizer {
+	use super::*;
+
+	#[test]
+	fn set_organizer_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(NftTransfer::organizer(), None);
+			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_eq!(NftTransfer::organizer(), Some(ALICE), "Organizer should be Alice");
+			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+				crate::Event::OrganizerSet { organizer: ALICE },
+			));
+		});
+	}
+
+	#[test]
+	fn set_organizer_should_reject_non_root_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				NftTransfer::set_organizer(RuntimeOrigin::signed(BOB), ALICE),
+				sp_runtime::DispatchError::BadOrigin
+			);
+		});
+	}
+}
+
+mod set_lock_state {
+	use super::*;
+
+	#[test]
+	fn set_lock_state_successfully() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			assert_ok!(NftTransfer::set_locked_state(
+				RuntimeOrigin::signed(ALICE),
+				PalletLockedState::Locked
+			));
+			assert_eq!(
+				NftTransfer::lock_status(),
+				PalletLockedState::Locked,
+				"Pallet should be locked"
+			);
+			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+				crate::Event::LockedStateSet { locked_state: PalletLockedState::Locked },
+			));
+
+			let collection_id = create_random_mock_nft_collection(ALICE);
+			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
+
+			assert_noop!(
+				NftTransfer::store_as_nft(BOB, collection_id, asset, None),
+				Error::<Test>::PalletLocked
+			);
+		});
+	}
+
+	#[test]
+	fn set_lock_state_should_fail_with_non_organizer_account() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			assert_noop!(
+				NftTransfer::set_locked_state(
+					RuntimeOrigin::signed(BOB),
+					PalletLockedState::Locked
+				),
+				sp_runtime::DispatchError::BadOrigin
+			);
+		});
+	}
+}
+
 mod store_as_nft {
 	use super::*;
 
