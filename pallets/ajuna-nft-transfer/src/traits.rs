@@ -1,5 +1,9 @@
-use codec::{Decode, Encode, Error as CodecError};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use codec::{Codec, Decode, Encode, Error as CodecError, MaxEncodedLen};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	Parameter,
+};
+use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each Asset.
@@ -7,8 +11,8 @@ pub type AssetCode = u16;
 
 /// Marker trait for Assets that can be converted back and forth into an NFT representation.
 pub trait NftConvertible: Encode + Decode {
-	/// Returns the numeric key used to store this specific asset's attributes in the NFT.
-	fn get_asset_code() -> AssetCode;
+	/// Numeric key used to store this specific asset's attributes in the NFT.
+	const ASSET_CODE: AssetCode;
 
 	/// Encodes the asset into a byte representation for storage.
 	fn encode_into(self) -> Vec<u8> {
@@ -24,9 +28,9 @@ pub trait NftConvertible: Encode + Decode {
 
 /// Trait to define the transformation and bridging of assets as NFT.
 pub trait NftHandler<Account, Asset: NftConvertible> {
-	type CollectionId;
-	type AssetId;
-	type AssetConfig;
+	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
+	type AssetId: Codec + Parameter + MaxEncodedLen;
+	type AssetConfig: Default;
 
 	/// Consumes the given **asset** and stores it as an NFT owned by **owner**,
 	/// returns the NFT index for tracking and recovering the asset.
@@ -34,7 +38,6 @@ pub trait NftHandler<Account, Asset: NftConvertible> {
 		owner: Account,
 		collection_id: Self::CollectionId,
 		asset: Asset,
-		asset_config: Option<Self::AssetConfig>,
 	) -> Result<Self::AssetId, DispatchError>;
 	/// Attempts to recover the NFT indexed by **nft_id** and transform it back into an
 	/// asset, returns an appropriate error if the process fails.

@@ -1197,7 +1197,7 @@ mod forging {
 
 	fn create_avatar(avatar_id_seed: u8, dna: &[u8]) -> AvatarIdOf<Test> {
 		let avatar = Avatar::default().season_id(1).dna(dna);
-		if avatar.min_tier::<Test>().unwrap() == RarityTier::Legendary as u8 {
+		if avatar.min_tier() == RarityTier::Legendary as u8 {
 			CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
 		}
 
@@ -1268,7 +1268,7 @@ mod forging {
 				));
 				let leader = AAvatars::avatars(leader_id).unwrap().1;
 				assert_eq!(leader.dna.to_vec(), dna_after.to_vec());
-				assert_eq!(leader.min_tier::<Test>().unwrap(), RarityTier::Common as u8);
+				assert_eq!(leader.min_tier(), RarityTier::Common as u8);
 			});
 	}
 
@@ -1680,8 +1680,8 @@ mod forging {
 					&[0x04, 0x03, 0x05, 0x01]
 				);
 				assert_eq!(
-					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
-					Ok(tiers[0].clone() as u8),
+					AAvatars::avatars(&leader_id).unwrap().1.min_tier(),
+					tiers[0].clone() as u8,
 				);
 
 				// mutate the DNA of leader to make it a tier higher
@@ -1696,8 +1696,8 @@ mod forging {
 					.unwrap();
 				Avatars::<Test>::insert(leader_id, &leader_avatar);
 				assert_eq!(
-					AAvatars::avatars(&leader_id).unwrap().1.min_tier::<Test>(),
-					Ok(tiers[1].clone() as u8),
+					AAvatars::avatars(&leader_id).unwrap().1.min_tier(),
+					tiers[1].clone() as u8
 				);
 
 				// forging doesn't take effect
@@ -2439,10 +2439,15 @@ mod account {
 
 mod lock_avatar {
 	use super::*;
+	use frame_support::{
+		bounded_vec,
+		traits::tokens::{nonfungibles_v2::Inspect, AttributeNamespace},
+	};
+	use pallet_ajuna_nft_transfer::traits::NftConvertible;
 
 	#[test]
 	fn can_lock_avatar_successfully() {
-		let season = Season::default();
+		let season = Season::default().max_components(8).max_variations(5);
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
@@ -2450,52 +2455,79 @@ mod lock_avatar {
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
 					MintOption { count: MintPackSize::Three, mint_type: MintType::Normal }
 				));
-
-				let avatar_id = AAvatars::owners(ALICE)[0];
+				let avatar_ids = AAvatars::owners(ALICE);
+				let avatar_id = avatar_ids[0];
 
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-				assert!(LockedAvatars::<Test>::get(avatar_id).is_some());
+				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::AvatarLocked { avatar_id },
+					crate::Event::AvatarLocked { avatar_id, asset_id },
 				));
 
-				// Ensure locked avatars cannot be used in neither trading nor forging
+				let (_, avatar) = AAvatars::avatars(avatar_id).unwrap();
+				assert_eq!(
+					avatar,
+					Avatar {
+						season_id: 1,
+						dna: bounded_vec![0x02, 0x04, 0x00, 0x03, 0x01, 0x12, 0x00, 0x23],
+						souls: 64
+					}
+				);
+
+				// Ensure correct encoding
+				let encoded_asset = <Nft as Inspect<MockAccountId>>::typed_attribute::<
+					pallet_ajuna_nft_transfer::traits::AssetCode,
+					pallet_ajuna_nft_transfer::EncodedAssetOf<Test>,
+				>(
+					&MockAvatarCollectionId::get(),
+					&asset_id,
+					&AttributeNamespace::Pallet,
+					&<Avatar as NftConvertible>::ASSET_CODE,
+				)
+				.unwrap();
+
+				assert_eq!(
+					encoded_asset,
+					AvatarCodec {
+						season_id: avatar.season_id,
+						dna: avatar.dna,
+						soul_points: avatar.souls,
+						rarity: RarityTier::Common.into(),
+						force: Force::Thermal.into(),
+					}
+					.encode()
+				);
+
+				// Ensure locked avatars cannot be used in trading
 				assert_noop!(
 					AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000),
 					Error::<Test>::AvatarLocked
 				);
 
-				let other_avatar_id = AAvatars::owners(ALICE)[1];
+				// Ensure locked avatars cannot be used in forging
+				run_to_block(season.start);
 				assert_noop!(
-					AAvatars::forge(RuntimeOrigin::signed(ALICE), avatar_id, vec![other_avatar_id]),
+					AAvatars::forge(
+						RuntimeOrigin::signed(ALICE),
+						avatar_id,
+						avatar_ids[1..3].to_vec()
+					),
 					Error::<Test>::AvatarLocked
 				);
 			});
 	}
 
 	#[test]
-	fn cannot_lock_non_owned_avatar() {
-		let season = Season::default();
-
+	fn cannot_lock_unowned_avatar() {
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
-			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
+			.balances(&[(BOB, 1_000_000_000_000)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.start);
-
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
-
-				let avatar_id = AAvatars::owners(BOB)[0];
-
+				let avatar_id = create_avatars(BOB, 1)[0];
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					Error::<Test>::Ownership
@@ -2505,27 +2537,30 @@ mod lock_avatar {
 
 	#[test]
 	fn cannot_lock_avatar_on_trade() {
-		let season = Season::default();
-
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.start);
-
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(ALICE),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
-
-				let avatar_id = AAvatars::owners(ALICE)[0];
-
+				let avatar_id = create_avatars(ALICE, 1)[0];
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000));
-
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					Error::<Test>::AvatarInTrade
+				);
+			});
+	}
+
+	#[test]
+	fn cannot_lock_already_locked_avatar() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(ALICE, 1)[0];
+				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::AvatarLocked
 				);
 			});
 	}
@@ -2536,25 +2571,14 @@ mod unlock_avatar {
 
 	#[test]
 	fn can_unlock_avatar_successfully() {
-		let season = Season::default();
-
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.start);
-
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(ALICE),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
-
-				let avatar_id = AAvatars::owners(ALICE)[0];
-
+				let avatar_id = create_avatars(ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-				assert!(LockedAvatars::<Test>::get(avatar_id).is_none());
+				assert_eq!(LockedAvatars::<Test>::get(avatar_id), None);
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarUnlocked { avatar_id },
 				));
@@ -2562,23 +2586,12 @@ mod unlock_avatar {
 	}
 
 	#[test]
-	fn cannot_unlock_non_owned_avatar() {
-		let season = Season::default();
-
+	fn cannot_unlock_unowned_avatar() {
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season.start);
-
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
-
-				let avatar_id = AAvatars::owners(BOB)[0];
-
+				let avatar_id = create_avatars(BOB, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -2598,20 +2611,12 @@ mod unlock_avatar {
 			.execute_with(|| {
 				run_to_block(season.start);
 
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(ALICE),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
-
-				let avatar_id = AAvatars::owners(ALICE)[0];
-
+				let avatar_id = create_avatars(ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 
-				let asset_id =
-					LockedAvatars::<Test>::get(avatar_id).expect("Should get avatar nft id");
-
+				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
 				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
-					crate::mock::AvatarCollection::get(),
+					MockAvatarCollectionId::get(),
 					asset_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
 				);

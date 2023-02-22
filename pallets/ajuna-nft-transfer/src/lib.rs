@@ -223,7 +223,6 @@ pub mod pallet {
 			owner: T::AccountId,
 			collection_id: Self::CollectionId,
 			asset: Asset,
-			asset_config: Option<Self::AssetConfig>,
 		) -> Result<Self::AssetId, DispatchError> {
 			Pallet::<T>::ensure_unlocked()?;
 
@@ -242,13 +241,13 @@ pub mod pallet {
 				&collection_id,
 				&next_item_id,
 				&owner,
-				&asset_config.unwrap_or_default(),
+				&Self::AssetConfig::default(),
 				true,
 			)?;
 			T::NftHelper::set_typed_attribute(
 				&collection_id,
 				&next_item_id,
-				&Asset::get_asset_code(),
+				&Asset::ASSET_CODE,
 				&encoded_asset,
 			)?;
 			LockItemStatus::<T>::insert(collection_id, next_item_id, NftStatus::Stored);
@@ -282,18 +281,14 @@ pub mod pallet {
 				&collection_id,
 				&asset_id,
 				&AttributeNamespace::Pallet,
-				&Asset::get_asset_code(),
+				&Asset::ASSET_CODE,
 			)
 			.ok_or(Error::<T>::NftAttributeMissing)?;
 
 			let asset = Asset::decode_from(encoded_asset_data.into_inner())
 				.map_err(|_| Error::<T>::AssetRestoreFailure)?;
 
-			T::NftHelper::clear_typed_attribute(
-				&collection_id,
-				&asset_id,
-				&Asset::get_asset_code(),
-			)?;
+			T::NftHelper::clear_typed_attribute(&collection_id, &asset_id, &Asset::ASSET_CODE)?;
 			T::NftHelper::burn(&collection_id, &asset_id, Some(&owner))?;
 			LockItemStatus::<T>::remove(collection_id, asset_id);
 

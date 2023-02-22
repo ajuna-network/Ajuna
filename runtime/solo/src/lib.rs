@@ -61,14 +61,13 @@ mod impls;
 mod types;
 
 pub use ajuna_primitives::{
-	AccountId, AssetId, Balance, BlockNumber, Hash, Index, Moment, Signature,
+	AccountId, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, ItemId, Moment, Signature,
 };
 pub use consts::{ajuna, currency, time};
 use consts::{currency::*, time::*};
 use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
 use types::governance::*;
 
-// Some public reexports..
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
@@ -113,7 +112,7 @@ parameter_types! {
 		);
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub const SS58Prefix: u8 = 42; // TODO[PLAT-80]: 1337 for mainnet
+	pub const SS58Prefix: u8 = 42;
 }
 
 impl frame_system::Config for Runtime {
@@ -238,9 +237,7 @@ impl pallet_transaction_payment::Config for Runtime {
 
 parameter_types! {
 	pub const AssetDeposit: Balance = Balance::MAX;
-	// TODO[PLAT-91]: how much deposit should creating an account for a given asset cost?
 	pub const AssetAccountDeposit: Balance = 1_000 * AJUNS;
-	// TODO[PLAT-91]: how much deposit should delegated transfer cost?
 	pub const ApprovalDeposit: Balance = 1_000 * AJUNS;
 	pub const MetadataDepositBase: Balance = 0;
 	pub const MetadataDepositPerByte: Balance = 0;
@@ -446,14 +443,11 @@ impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
-// TODO[PLAT-35]: actually understand these when review
 parameter_types! {
-	// pub MaximumSchedulerWeight: Weight = 10_000_000;
 	pub const MaxScheduledPerBlock: u32 = 50;
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
 }
 
-// Configure the runtime's implementation of the Scheduler pallet.
 impl pallet_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
@@ -518,18 +512,15 @@ impl pallet_proxy::Config for Runtime {
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
-	pub const AvatarCollection: CollectionId = 17_410;
+	pub const AvatarCollectionId: CollectionId = 17_410;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftHandler = NftTransfer;
-	type AvatarCollectionId = CollectionId;
-	type AvatarCollection = AvatarCollection;
-	type AvatarItemId = ItemId;
-	type AvatarItemConfig = pallet_nfts::ItemConfig;
+	type NftHandler = NftTransfer;
+	type NftCollectionId = AvatarCollectionId;
 	type WeightInfo = ();
 }
 
@@ -591,9 +582,6 @@ parameter_types! {
 	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
-pub type CollectionId = u32;
-pub type ItemId = u128;
-
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = CollectionId;
@@ -620,15 +608,11 @@ impl pallet_nfts::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub const MAX_ENCODING_SIZE: u32 = 200;
-
-pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
-
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
-	type CollectionConfig = CollectionConfig;
+	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;

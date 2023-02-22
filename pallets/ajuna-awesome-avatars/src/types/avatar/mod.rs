@@ -14,8 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+mod avatar_codec;
+mod force;
+mod rarity_tier;
+
+pub use avatar_codec::*;
+pub use force::*;
+pub use rarity_tier::*;
+
 use crate::*;
 use frame_support::pallet_prelude::*;
+use pallet_ajuna_nft_transfer::traits::NftConvertible;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
@@ -23,7 +32,7 @@ pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
 pub type SoulCount = u32;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct Avatar {
 	pub season_id: SeasonId,
 	pub dna: Dna,
@@ -38,11 +47,11 @@ impl Avatar {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes::<T>()?;
-		let leader_tier = self.min_tier::<T>()?;
+		let leader_tier = self.min_tier();
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0),
 			|(mut matched_components, mut matches), other| {
-				let sacrifice_tier = other.min_tier::<T>()?;
+				let sacrifice_tier = other.min_tier();
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
 						self.compare(other, &upgradable_indexes, max_variations, max_tier);
@@ -59,7 +68,7 @@ impl Avatar {
 	}
 
 	pub(crate) fn upgradable_indexes<T: Config>(&self) -> Result<Vec<usize>, DispatchError> {
-		let min_tier = self.min_tier::<T>()?;
+		let min_tier = self.min_tier();
 		Ok(self
 			.dna
 			.iter()
@@ -69,12 +78,8 @@ impl Avatar {
 			.collect::<Vec<usize>>())
 	}
 
-	pub(crate) fn min_tier<T: Config>(&self) -> Result<u8, DispatchError> {
-		self.dna
-			.iter()
-			.map(|x| *x >> 4)
-			.min()
-			.ok_or_else(|| Error::<T>::IncorrectDna.into())
+	pub(crate) fn min_tier(&self) -> u8 {
+		self.dna.iter().map(|x| *x >> 4).min().unwrap_or_default()
 	}
 
 	pub(crate) fn compare(
@@ -139,7 +144,7 @@ impl Avatar {
 
 	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
 		let mut current_period = season.current_period(now);
-		let mut last_variation = (self.dna.last().unwrap_or(&0) & 0b0000_1111) as u16;
+		let mut last_variation = self.last_variation() as u16;
 
 		current_period.saturating_inc();
 		last_variation.saturating_inc();
@@ -157,18 +162,23 @@ impl Avatar {
 			2 // TODO: move this to config
 		}
 	}
+
+	pub(crate) fn last_variation(&self) -> u8 {
+		self.dna.last().unwrap_or(&0) & 0b0000_1111
+	}
 }
 
-pub mod impl_nft_convertible {
-	use super::*;
-	use pallet_ajuna_nft_transfer::traits::{AssetCode, NftConvertible};
+impl NftConvertible for Avatar {
+	const ASSET_CODE: u16 = 0;
 
-	pub const AVATAR_ASSET_CODE: u16 = 17;
+	fn encode_into(self) -> Vec<u8> {
+		let avatar_codec = AvatarCodec::from(self);
+		avatar_codec.encode()
+	}
 
-	impl NftConvertible for Avatar {
-		fn get_asset_code() -> AssetCode {
-			AVATAR_ASSET_CODE
-		}
+	fn decode_from(input: Vec<u8>) -> Result<Self, codec::Error> {
+		let avatar_codec = AvatarCodec::decode(&mut input.as_slice())?;
+		Ok(Avatar::from(avatar_codec))
 	}
 }
 
@@ -184,6 +194,10 @@ mod test {
 		}
 		pub(crate) fn dna(mut self, dna: &[u8]) -> Self {
 			self.dna = Dna::try_from(dna.to_vec()).unwrap();
+			self
+		}
+		pub(crate) fn souls(mut self, souls: SoulCount) -> Self {
+			self.souls = souls;
 			self
 		}
 	}
@@ -327,5 +341,27 @@ mod test {
 			),
 			(true, BTreeSet::from([1, 9]))
 		);
+	}
+
+	#[test]
+	fn codec_works() {
+		let avatar = Avatar::default().season_id(123).dna(&[0x31, 0x32, 0x33, 0x34]).souls(321);
+		let encoded = avatar.clone().encode_into();
+
+		// check encoding
+		assert_eq!(
+			encoded,
+			AvatarCodec {
+				season_id: avatar.season_id,
+				dna: avatar.dna.clone(),
+				soul_points: avatar.souls,
+				rarity: RarityTier::Epic.into(),
+				force: Force::Astral.into(),
+			}
+			.encode()
+		);
+
+		// check decoding
+		assert_eq!(Avatar::decode_from(encoded), Ok(avatar));
 	}
 }

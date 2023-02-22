@@ -107,7 +107,7 @@ parameter_types! {
 	pub const ItemDeposit: MockBalance = 1;
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 64;
+	pub const ValueLimit: u32 = 200;
 	pub const MetadataDepositBase: MockBalance = 1;
 	pub const AttributeDepositBase: MockBalance = 1;
 	pub const DepositPerByte: MockBalance = 1;
@@ -149,31 +149,24 @@ impl pallet_nfts::Config for Test {
 }
 
 parameter_types! {
-	pub const AvatarCollection: MockCollectionId = 0;
+	pub const MockAvatarCollectionId: MockCollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftHandler = NftTransfer;
-	type AvatarCollectionId = MockCollectionId;
-	type AvatarCollection = AvatarCollection;
-	type AvatarItemId = MockItemId;
-	type AvatarItemConfig = pallet_nfts::ItemConfig;
+	type NftHandler = NftTransfer;
+	type NftCollectionId = MockAvatarCollectionId;
 	type WeightInfo = ();
 }
 
-pub const MAX_ENCODING_SIZE: u32 = 200;
-
-pub type CollectionConfig =
-	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
-
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type MaxAssetEncodedSize = ValueLimit;
 	type CollectionId = MockCollectionId;
-	type CollectionConfig = CollectionConfig;
+	type CollectionConfig =
+		pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;

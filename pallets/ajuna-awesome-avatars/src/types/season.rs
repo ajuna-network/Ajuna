@@ -32,19 +32,8 @@ impl SeasonStatus {
 	}
 }
 
-#[derive(
-	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub enum RarityTier {
-	Common = 0,
-	Uncommon = 1,
-	Rare = 2,
-	Epic = 3,
-	Legendary = 4,
-	Mythical = 5,
-}
-
 pub type RarityPercent = u8;
+pub type SacrificeCount = u8;
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
 pub struct Season<BlockNumber> {
@@ -56,8 +45,8 @@ pub struct Season<BlockNumber> {
 	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
-	pub min_sacrifices: u8,
-	pub max_sacrifices: u8,
+	pub min_sacrifices: SacrificeCount,
+	pub max_sacrifices: SacrificeCount,
 	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
 	pub single_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub batch_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
@@ -227,11 +216,11 @@ mod test {
 			self.max_variations = max_variations;
 			self
 		}
-		pub fn min_sacrifices(mut self, min_sacrifices: u8) -> Self {
+		pub fn min_sacrifices(mut self, min_sacrifices: SacrificeCount) -> Self {
 			self.min_sacrifices = min_sacrifices;
 			self
 		}
-		pub fn max_sacrifices(mut self, max_sacrifices: u8) -> Self {
+		pub fn max_sacrifices(mut self, max_sacrifices: SacrificeCount) -> Self {
 			self.max_sacrifices = max_sacrifices;
 			self
 		}

@@ -40,9 +40,7 @@ impl Default for MockStruct {
 }
 
 impl NftConvertible for MockStruct {
-	fn get_asset_code() -> AssetCode {
-		1
-	}
+	const ASSET_CODE: AssetCode = 1;
 }
 
 fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId {
@@ -106,7 +104,7 @@ mod set_lock_state {
 			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
 
 			assert_noop!(
-				NftTransfer::store_as_nft(BOB, collection_id, asset, None),
+				NftTransfer::store_as_nft(BOB, collection_id, asset),
 				Error::<Test>::PalletLocked
 			);
 		});
@@ -137,7 +135,7 @@ mod store_as_nft {
 			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct::default();
 
-			let result = NftTransfer::store_as_nft(BOB, collection_id, asset.clone(), None);
+			let result = NftTransfer::store_as_nft(BOB, collection_id, asset.clone());
 
 			assert_ok!(result);
 
@@ -161,7 +159,7 @@ mod store_as_nft {
 				&collection_id,
 				&asset_id,
 				&AttributeNamespace::<MockAccountId>::Pallet,
-				&MockStruct::get_asset_code(),
+				&MockStruct::ASSET_CODE,
 			)
 			.map(|item| item.into_inner());
 
@@ -176,7 +174,7 @@ mod store_as_nft {
 			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
 
 			assert_noop!(
-				NftTransfer::store_as_nft(BOB, collection_id, asset, None),
+				NftTransfer::store_as_nft(BOB, collection_id, asset),
 				Error::<Test>::AssetSizeAboveEncodingLimit
 			);
 		});
@@ -192,7 +190,7 @@ mod recover_from_nft {
 			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset.clone(), None)
+			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset.clone())
 				.expect("Storage should have been successful!");
 
 			let result = NftTransfer::recover_from_nft(BOB, collection_id, asset_id);
@@ -212,7 +210,7 @@ mod recover_from_nft {
 				&collection_id,
 				&asset_id,
 				&AttributeNamespace::<MockAccountId>::Pallet,
-				&MockStruct::get_asset_code(),
+				&MockStruct::ASSET_CODE,
 			);
 
 			assert_eq!(stored_asset, None);
@@ -225,7 +223,7 @@ mod recover_from_nft {
 			let collection_id = create_random_mock_nft_collection(ALICE);
 			let asset = MockStruct::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset, None)
+			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset)
 				.expect("Storage should have been successful!");
 
 			LockItemStatus::<Test>::insert(collection_id, asset_id, NftStatus::Uploaded);

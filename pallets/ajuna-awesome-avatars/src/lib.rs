@@ -71,7 +71,6 @@ pub mod types;
 pub mod weights;
 
 use crate::{types::*, weights::WeightInfo};
-use codec::HasCompact;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
@@ -79,9 +78,7 @@ use frame_support::{
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
-	traits::{
-		AtLeast32BitUnsigned, Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero,
-	},
+	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
 	ArithmeticError,
 };
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -90,13 +87,19 @@ use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 pub mod pallet {
 	use super::*;
 
-	pub(crate) type SeasonOf<T> = Season<<T as frame_system::Config>::BlockNumber>;
-	pub(crate) type BalanceOf<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+
+	pub(crate) type SeasonOf<T> = Season<BlockNumberOf<T>>;
+	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
-	pub(crate) type GlobalConfigOf<T> =
-		GlobalConfig<BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
+	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberOf<T>>;
+
+	pub(crate) type CollectionIdOf<T> =
+		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
+	pub(crate) type AssetIdOf<T> =
+		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
@@ -113,52 +116,10 @@ pub mod pallet {
 
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
-		type AvatarNftHandler: NftHandler<
-			Self::AccountId,
-			Avatar,
-			CollectionId = Self::AvatarCollectionId,
-			AssetId = Self::AvatarItemId,
-			AssetConfig = Self::AvatarItemConfig,
-		>;
-
-		type AvatarCollectionId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u32>
-			+ Into<u32>
-			+ sp_std::fmt::Display
-			+ sp_std::cmp::PartialOrd
-			+ sp_std::cmp::Ord;
+		type NftHandler: NftHandler<Self::AccountId, Avatar>;
 
 		#[pallet::constant]
-		type AvatarCollection: Get<Self::AvatarCollectionId>;
-
-		type AvatarItemId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<u128>
-			+ Into<u128>
-			+ AtLeast32BitUnsigned;
-
-		/// Type that holds the specific configurations for an item.
-		type AvatarItemConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
+		type NftCollectionId: Get<CollectionIdOf<Self>>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -204,7 +165,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn locked_avatars)]
-	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, T::AvatarItemId>;
+	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, AssetIdOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
@@ -296,7 +257,7 @@ pub mod pallet {
 		/// Avatar has been traded.
 		AvatarTraded { avatar_id: AvatarIdOf<T>, from: T::AccountId, to: T::AccountId },
 		/// Avatar locked.
-		AvatarLocked { avatar_id: AvatarIdOf<T> },
+		AvatarLocked { avatar_id: AvatarIdOf<T>, asset_id: AssetIdOf<T> },
 		/// Avatar unlocked.
 		AvatarUnlocked { avatar_id: AvatarIdOf<T> },
 		/// Storage tier has been upgraded.
@@ -384,6 +345,8 @@ pub mod pallet {
 		AvatarInTrade,
 		/// The avatar is currently locked and cannot be used.
 		AvatarLocked,
+		/// The avatar is currently unlocked and cannot be locked again.
+		AvatarUnlocked,
 		/// Tried to forge avatars from different seasons.
 		IncorrectAvatarSeason,
 		/// Tried sending free mints to his or her own account.
@@ -503,7 +466,7 @@ pub mod pallet {
 			let seller = ensure_signed(origin)?;
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_ownership(&seller, &avatar_id)?;
-			Self::ensure_not_locked(&avatar_id)?;
+			Self::ensure_unlocked(&avatar_id)?;
 			Trade::<T>::insert(avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
@@ -756,20 +719,11 @@ pub mod pallet {
 			let account = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&account, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
+			Self::ensure_unlocked(&avatar_id)?;
 
-			// TODO: Use proper config type instead
-			let asset_config = T::AvatarItemConfig::default();
-
-			let avatar_nft_id = T::AvatarNftHandler::store_as_nft(
-				account,
-				T::AvatarCollection::get(),
-				avatar,
-				Some(asset_config),
-			)?;
-
-			LockedAvatars::<T>::insert(avatar_id, avatar_nft_id);
-
-			Self::deposit_event(Event::AvatarLocked { avatar_id });
+			let asset_id = T::NftHandler::store_as_nft(account, T::NftCollectionId::get(), avatar)?;
+			LockedAvatars::<T>::insert(avatar_id, &asset_id);
+			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())
 		}
 
@@ -779,18 +733,11 @@ pub mod pallet {
 			let account = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&account, &avatar_id)?;
 
-			if let Some(avatar_nft_id) = Self::locked_avatars(avatar_id) {
-				let _ = T::AvatarNftHandler::recover_from_nft(
-					account,
-					T::AvatarCollection::get(),
-					avatar_nft_id,
-				)?;
+			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
+			let _ = T::NftHandler::recover_from_nft(account, T::NftCollectionId::get(), asset_id)?;
 
-				LockedAvatars::<T>::remove(avatar_id);
-
-				Self::deposit_event(Event::AvatarUnlocked { avatar_id });
-			}
-
+			LockedAvatars::<T>::remove(avatar_id);
+			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
 			Ok(())
 		}
 	}
@@ -966,42 +913,11 @@ pub mod pallet {
 				},
 			};
 
-			ensure!(
-				sacrifice_ids.len() as u8 >= season.min_sacrifices,
-				Error::<T>::TooFewSacrifices
-			);
-			ensure!(
-				sacrifice_ids.len() as u8 <= season.max_sacrifices,
-				Error::<T>::TooManySacrifices
-			);
+			let (mut leader, sacrifice_ids, sacrifices) =
+				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
+			let prev_leader_tier = leader.min_tier();
+
 			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
-
-			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
-			Self::ensure_not_locked(leader_id)?;
-			ensure!(
-				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
-				Error::<T>::AvatarInTrade
-			);
-			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
-
-			let sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
-			let sacrifices = sacrifice_ids
-				.iter()
-				.map(|id| {
-					let avatar = Self::ensure_ownership(player, id)?;
-					Self::ensure_not_locked(id)?;
-					Ok(avatar)
-				})
-				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
-
-			let mut leader = Self::ensure_ownership(player, leader_id)?;
-			let prev_leader_tier = leader.min_tier::<T>()?;
-			ensure!(leader.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
-			ensure!(
-				sacrifices.iter().all(|avatar| avatar.season_id == season_id),
-				Error::<T>::IncorrectAvatarSeason
-			);
-
 			let (mut unique_matched_indexes, matches) =
 				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
 
@@ -1035,7 +951,7 @@ pub mod pallet {
 				}
 			}
 
-			let after_leader_tier = leader.min_tier::<T>()?;
+			let after_leader_tier = leader.min_tier();
 			if prev_leader_tier != max_tier && after_leader_tier == max_tier {
 				CurrentSeasonStatus::<T>::mutate(|status| {
 					status.max_tier_avatars.saturating_inc();
@@ -1098,6 +1014,41 @@ pub mod pallet {
 			Ok(free_mints)
 		}
 
+		fn ensure_for_forge(
+			player: &T::AccountId,
+			leader_id: &AvatarIdOf<T>,
+			sacrifice_ids: &[AvatarIdOf<T>],
+			season_id: &SeasonId,
+			season: &SeasonOf<T>,
+		) -> Result<(Avatar, BTreeSet<AvatarIdOf<T>>, Vec<Avatar>), DispatchError> {
+			let sacrifice_count = sacrifice_ids.len() as u8;
+			ensure!(sacrifice_count >= season.min_sacrifices, Error::<T>::TooFewSacrifices);
+			ensure!(sacrifice_count <= season.max_sacrifices, Error::<T>::TooManySacrifices);
+			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
+			ensure!(
+				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
+				Error::<T>::AvatarInTrade
+			);
+			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
+			Self::ensure_unlocked(leader_id)?;
+
+			let deduplicated_sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
+			let sacrifices = deduplicated_sacrifice_ids
+				.iter()
+				.map(|id| {
+					let avatar = Self::ensure_ownership(player, id)?;
+					ensure!(avatar.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+					Self::ensure_unlocked(id)?;
+					Ok(avatar)
+				})
+				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
+
+			let leader = Self::ensure_ownership(player, leader_id)?;
+			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+
+			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
+		}
+
 		fn ensure_for_trade(
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<(T::AccountId, BalanceOf<T>), DispatchError> {
@@ -1106,8 +1057,9 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn ensure_not_locked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
-			Ok(ensure!(Self::locked_avatars(avatar_id).is_none(), Error::<T>::AvatarLocked))
+		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+			ensure!(!LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarLocked);
+			Ok(())
 		}
 
 		fn start_season(

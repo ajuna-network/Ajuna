@@ -63,3 +63,9 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
+
+/// Identifier of a collection of NFTs.
+pub type CollectionId = u32;
+
+/// Identifier of an NFT.
+pub type ItemId = u128;
