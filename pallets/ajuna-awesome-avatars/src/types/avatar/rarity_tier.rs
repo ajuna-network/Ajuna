@@ -30,6 +30,25 @@ pub enum RarityTier {
 	Mythical = 5,
 }
 
+impl Default for RarityTier {
+	fn default() -> Self {
+		RarityTier::Common
+	}
+}
+
+impl fmt::Display for RarityTier {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			RarityTier::Common => write!(f, "Common"),
+			RarityTier::Uncommon => write!(f, "Uncommon"),
+			RarityTier::Rare => write!(f, "Rare"),
+			RarityTier::Epic => write!(f, "Epic"),
+			RarityTier::Legendary => write!(f, "Legendary"),
+			RarityTier::Mythical => write!(f, "Mythical"),
+		}
+	}
+}
+
 impl TryFrom<u8> for RarityTier {
 	type Error = ();
 
@@ -49,24 +68,5 @@ impl TryFrom<u8> for RarityTier {
 impl From<RarityTier> for BoundedVec<u8, ConstU32<20>> {
 	fn from(x: RarityTier) -> Self {
 		x.to_string().as_bytes().to_owned().try_into().unwrap_or_default()
-	}
-}
-
-impl fmt::Display for RarityTier {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			RarityTier::Common => write!(f, "Common"),
-			RarityTier::Uncommon => write!(f, "Uncommon"),
-			RarityTier::Rare => write!(f, "Rare"),
-			RarityTier::Epic => write!(f, "Epic"),
-			RarityTier::Legendary => write!(f, "Legendary"),
-			RarityTier::Mythical => write!(f, "Mythical"),
-		}
-	}
-}
-
-impl Default for RarityTier {
-	fn default() -> Self {
-		RarityTier::Common
 	}
 }

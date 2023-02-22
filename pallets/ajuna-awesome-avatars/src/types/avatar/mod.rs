@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+mod avatar_codec;
+mod force;
+mod rarity_tier;
+
+pub use avatar_codec::*;
+pub use force::*;
+pub use rarity_tier::*;
+
 use crate::*;
 use frame_support::pallet_prelude::*;
 use pallet_ajuna_nft_transfer::traits::NftConvertible;

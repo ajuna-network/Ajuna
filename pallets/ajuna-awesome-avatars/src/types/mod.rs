@@ -16,14 +16,10 @@
 
 mod account;
 mod avatar;
-mod avatar_codec;
 mod config;
-mod rarity_tier;
 mod season;
 
 pub use account::*;
 pub use avatar::*;
-pub use avatar_codec::*;
 pub use config::*;
-pub use rarity_tier::*;
 pub use season::*;
