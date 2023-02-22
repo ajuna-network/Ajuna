@@ -75,7 +75,8 @@ use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
 
 use ajuna_primitives::{
-	AccountId, Balance, BlockNumber, CollectionId, Hash, Header, Index, ItemId, Signature,
+	AccountId, Balance, BlockNumber, CollectionId, ContractAttributeKey, ContractAttributeValue,
+	Hash, Header, Index, ItemId, Signature,
 };
 
 /// The address format for describing accounts.
@@ -749,12 +750,11 @@ impl pallet_nfts::Config for Runtime {
 }
 
 type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
-
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
@@ -768,14 +768,11 @@ parameter_types! {
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
 
-pub type ContractAttributeKey = u32;
-pub type ContractAttributeValue = u64;
-
 impl pallet_ajuna_nft_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;

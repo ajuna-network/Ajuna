@@ -70,6 +70,7 @@ orml-vesting = { default-features = false, git = "https://github.com/ajuna-netwo
 # Ajuna pallets
 ajuna-primitives             = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/ajuna-nft-staking" }
 pallet-ajuna-nft-transfer    = { default-features = false, path = "../../pallets/ajuna-nft-transfer" }
 
 [features]
@@ -81,6 +82,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hex-literal",
     "pallet-ajuna-awesome-avatars/runtime-benchmarks",
+    "pallet-ajuna-nft-staking/runtime-benchmarks",
     "pallet-ajuna-nft-transfer/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
@@ -88,7 +90,6 @@ runtime-benchmarks = [
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
-# allow workers to register without remote attestation for dev purposes
 std = [
     "log/std",
     "codec/std",
@@ -133,5 +134,6 @@ std = [
     "sp-version/std",
     "orml-vesting/std",
     "pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-nft-staking/std",
     "pallet-ajuna-nft-transfer/std",
 ]
