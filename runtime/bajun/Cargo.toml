@@ -87,7 +87,7 @@ parachain-info                      = { git = "https://github.com/paritytech/cum
 
 # Ajuna pallets
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
-pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/nft-staking" }
+pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/ajuna-nft-staking" }
 pallet-ajuna-nft-transfer    = { default-features = false, path = "../../pallets/ajuna-nft-transfer" }
 
 [features]
