@@ -262,6 +262,8 @@ pub mod pallet {
 		AvatarUnlocked { avatar_id: AvatarIdOf<T> },
 		/// Storage tier has been upgraded.
 		StorageTierUpgraded,
+		/// Avatars transferred from organizer.
+		OrganizerAvatarsTransferred { to: T::AccountId, avatar_ids: Vec<AvatarIdOf<T>> },
 	}
 
 	#[pallet::error]
@@ -715,6 +717,58 @@ pub mod pallet {
 
 		#[pallet::call_index(14)]
 		#[pallet::weight(10_000)]
+		pub fn transfer_organizer_avatars(
+			origin: OriginFor<T>,
+			to: T::AccountId,
+			avatar_ids: Vec<AvatarIdOf<T>>,
+		) -> DispatchResult {
+			let organizer = Self::ensure_organizer(origin)?;
+
+			let mut avatar_ids = avatar_ids;
+			avatar_ids.dedup();
+
+			ensure!(
+				Self::owners(&to).len().saturating_add(avatar_ids.len()) <=
+					Self::accounts(&to).storage_tier as usize,
+				Error::<T>::MaxOwnershipReached
+			);
+
+			avatar_ids.iter().try_for_each(|avatar_id| {
+				let _ = Self::ensure_ownership(&organizer, avatar_id)?;
+				Avatars::<T>::try_mutate(avatar_id, |maybe_avatar| -> DispatchResult {
+					let (owner, _) = maybe_avatar.as_mut().ok_or(Error::<T>::UnknownAvatar)?;
+					*owner = to.clone();
+					Ok(())
+				})
+			})?;
+
+			Owners::<T>::try_mutate(&organizer, |existing_avatar_ids| -> DispatchResult {
+				*existing_avatar_ids = BoundedAvatarIdsOf::<T>::try_from(
+					Self::owners(&organizer)
+						.into_iter()
+						.filter(|avatar_id| !avatar_ids.contains(avatar_id))
+						.collect::<Vec<_>>(),
+				)
+				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+				Ok(())
+			})?;
+
+			Owners::<T>::try_mutate(&to, |existing_avatar_ids| -> DispatchResult {
+				let mut to_avatar_ids = Self::owners(&to);
+				to_avatar_ids
+					.try_extend(avatar_ids.clone().into_iter())
+					.map_err(|_| Error::<T>::IncorrectAvatarId)?;
+
+				*existing_avatar_ids = to_avatar_ids;
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::OrganizerAvatarsTransferred { to, avatar_ids });
+			Ok(())
+		}
+
+		#[pallet::call_index(15)]
+		#[pallet::weight(10_000)]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&account, &avatar_id)?;
@@ -727,7 +781,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(15)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
@@ -744,11 +798,13 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// Check that the origin is an organizer account.
-		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+		pub(crate) fn ensure_organizer(
+			origin: OriginFor<T>,
+		) -> Result<T::AccountId, DispatchError> {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
-			Ok(())
+			Ok(maybe_organizer)
 		}
 
 		/// Validates a new season.

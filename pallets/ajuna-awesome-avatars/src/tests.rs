@@ -16,14 +16,14 @@
 
 use crate::{mock::*, types::*, *};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::{ArithmeticError, DispatchError};
+use sp_runtime::{testing::H256, ArithmeticError, DispatchError};
 
 fn create_avatars(account: MockAccountId, n: u8) -> Vec<AvatarIdOf<Test>> {
 	(0..n)
 		.into_iter()
 		.map(|i| {
 			let avatar = Avatar::default().season_id(1).dna(&[i; 32]);
-			let avatar_id = sp_runtime::testing::H256::from([i; 32]);
+			let avatar_id = H256::random();
 			Avatars::<Test>::insert(avatar_id, (account, avatar));
 			Owners::<Test>::try_append(account, avatar_id).unwrap();
 			avatar_id
@@ -92,6 +92,91 @@ mod organizer {
 	fn ensure_organizer_should_validate_newly_set_organizer() {
 		ExtBuilder::default().organizer(CHARLIE).build().execute_with(|| {
 			assert_ok!(AAvatars::ensure_organizer(RuntimeOrigin::signed(CHARLIE)));
+		});
+	}
+
+	#[test]
+	fn transfer_organizer_avatars_works() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let alice_avatar_ids = create_avatars(ALICE, 10);
+			let bob_avatar_ids = create_avatars(BOB, 10);
+			let avatar_ids = alice_avatar_ids[0..3].to_vec();
+
+			assert_ok!(AAvatars::transfer_organizer_avatars(
+				RuntimeOrigin::signed(ALICE),
+				BOB,
+				avatar_ids.clone()
+			));
+
+			assert_eq!(AAvatars::owners(ALICE).len(), 10 - 3);
+			assert_eq!(AAvatars::owners(BOB).len(), 10 + 3);
+
+			assert_eq!(AAvatars::owners(ALICE), alice_avatar_ids[3..10].to_vec());
+			assert_eq!(AAvatars::owners(BOB), [bob_avatar_ids, avatar_ids.clone()].concat());
+
+			assert!(avatar_ids.iter().all(|avatar_id| {
+				let (owner, _) = AAvatars::avatars(avatar_id).unwrap();
+				owner == BOB
+			}));
+
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::OrganizerAvatarsTransferred { to: BOB, avatar_ids },
+			));
+		});
+	}
+
+	#[test]
+	fn transfer_organizer_avatars_rejects_non_organizer_calls() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::transfer_organizer_avatars(
+					RuntimeOrigin::signed(BOB),
+					CHARLIE,
+					vec![H256::random(), H256::random()]
+				),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_organizer_avatars_rejects_unowned_avatars() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let mut avatar_ids = create_avatars(ALICE, 10);
+			avatar_ids.extend(create_avatars(CHARLIE, 10).iter());
+
+			assert_noop!(
+				AAvatars::transfer_organizer_avatars(RuntimeOrigin::signed(ALICE), BOB, avatar_ids),
+				Error::<Test>::Ownership
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_organizer_avatars_rejects_unknown_avatars() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			let mut avatar_ids = create_avatars(ALICE, 10);
+			avatar_ids.push(H256::random());
+
+			assert_noop!(
+				AAvatars::transfer_organizer_avatars(RuntimeOrigin::signed(ALICE), BOB, avatar_ids),
+				Error::<Test>::UnknownAvatar
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_organizer_avatars_rejects_on_max_ownership() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			Accounts::<Test>::mutate(BOB, |info| info.storage_tier = StorageTier::Three);
+
+			let avatar_ids = create_avatars(ALICE, 1);
+			let _ = create_avatars(BOB, StorageTier::Three as u8);
+
+			assert_noop!(
+				AAvatars::transfer_organizer_avatars(RuntimeOrigin::signed(ALICE), BOB, avatar_ids),
+				Error::<Test>::MaxOwnershipReached
+			);
 		});
 	}
 }
