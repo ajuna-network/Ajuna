@@ -61,7 +61,8 @@ mod impls;
 mod types;
 
 pub use ajuna_primitives::{
-	AccountId, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, ItemId, Moment, Signature,
+	AccountId, AssetId, Balance, BlockNumber, CollectionId, ContractAttributeKey,
+	ContractAttributeValue, Hash, Index, ItemId, Moment, Signature,
 };
 pub use consts::{ajuna, currency, time};
 use consts::{currency::*, time::*};
@@ -608,14 +609,40 @@ impl pallet_nfts::Config for Runtime {
 	type WeightInfo = ();
 }
 
+type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const NftStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
+	pub const MinimumStakingTokenReward: Balance = 100;
+	pub ContractCollectionConfig: CollectionConfig = pallet_nfts::CollectionConfig::default();
+	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
+}
+
+impl pallet_ajuna_nft_staking::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type CollectionId = CollectionId;
+	type CollectionConfig = CollectionConfig;
+	type ItemId = ItemId;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NftHelper = Nft;
+	type StakingOrigin = EnsureSigned<AccountId>;
+	type TreasuryPalletId = NftStakeTreasuryPalletId;
+	type MinimumStakingTokenReward = MinimumStakingTokenReward;
+	type ContractCollectionConfig = ContractCollectionConfig;
+	type ContractCollectionItemConfig = ContractCollectionItemConfig;
+	type ContractAttributeKey = ContractAttributeKey;
+	type ContractAttributeValue = ContractAttributeValue;
 	type WeightInfo = ();
 }
 
@@ -650,6 +677,7 @@ construct_runtime!(
 		Randomness: pallet_randomness_collective_flip = 23,
 		Nft: pallet_nfts = 24,
 		NftTransfer: pallet_ajuna_nft_transfer = 25,
+		NftStaking: pallet_ajuna_nft_staking = 26,
 	}
 );
 

@@ -75,8 +75,10 @@ use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
 
 use ajuna_primitives::{
-	AccountId, Balance, BlockNumber, CollectionId, Hash, Header, Index, ItemId, Signature,
+	AccountId, Balance, BlockNumber, CollectionId, ContractAttributeKey, ContractAttributeValue,
+	Hash, Header, Index, ItemId, Signature,
 };
+use pallet_ajuna_awesome_avatars::Call as AwesomeAvatarsCall;
 
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
@@ -261,39 +263,14 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(call: &RuntimeCall) -> bool {
-		match call {
-			// system
-			RuntimeCall::System(_) |
-			RuntimeCall::ParachainSystem(_) |
-			RuntimeCall::Timestamp(_) |
-			RuntimeCall::Multisig(_) |
-			RuntimeCall::Utility(_) |
-			RuntimeCall::Identity(_) |
-			RuntimeCall::Proxy(_) |
-			RuntimeCall::Scheduler(_) |
-			RuntimeCall::Preimage(_) |
-			// monetary
-			RuntimeCall::Balances(_) |
-			RuntimeCall::Vesting(_) |
-			// collator support
-			RuntimeCall::Authorship(_) |
-			RuntimeCall::CollatorSelection(_) |
-			RuntimeCall::Session(_) |
-			// xcm helpers
-			RuntimeCall::XcmpQueue(_) |
-			RuntimeCall::PolkadotXcm(_) |
-			RuntimeCall::DmpQueue(_) |
-			// governance
-			RuntimeCall::Sudo(_) |
-			RuntimeCall::Treasury(_) |
-			RuntimeCall::Council(_) |
-			RuntimeCall::CouncilMembership(_) |
-			// ajuna pallets
-			RuntimeCall::AwesomeAvatars(_	) |
-			RuntimeCall::NftTransfer(_) |
-			RuntimeCall::NftStake(_) => true,
-			RuntimeCall::Nft(_) => false,
-		}
+		!matches!(
+			call,
+			RuntimeCall::Nft(_) |
+				RuntimeCall::NftTransfer(_) |
+				RuntimeCall::NftStake(_) |
+				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::lock_avatar { .. }) |
+				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::unlock_avatar { .. })
+		)
 	}
 }
 
@@ -711,7 +688,7 @@ parameter_types! {
 	pub const ItemDeposit: Balance = NANO_BAJUN;
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 64;
+	pub const MaxAssetEncodedSize: u32 = 200; // TODO: use max bytes for an avatar
 	pub const MetadataDepositBase: Balance = deposit(1, 129);
 	pub const AttributeDepositBase: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
@@ -737,7 +714,7 @@ impl pallet_nfts::Config for Runtime {
 	type DepositPerByte = DepositPerByte;
 	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
-	type ValueLimit = ValueLimit;
+	type ValueLimit = MaxAssetEncodedSize;
 	type ApprovalsLimit = ApprovalsLimit;
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
@@ -749,12 +726,11 @@ impl pallet_nfts::Config for Runtime {
 }
 
 type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
-
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
+	type MaxAssetEncodedSize = MaxAssetEncodedSize;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
@@ -768,14 +744,11 @@ parameter_types! {
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
 
-pub type ContractAttributeKey = u32;
-pub type ContractAttributeValue = u64;
-
 impl pallet_ajuna_nft_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
@@ -838,10 +811,10 @@ construct_runtime!(
 		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 50,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
 
-		// Indexes 100+ should be reserved for NFT related pallets
-		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 100,
-		NftTransfer: pallet_ajuna_nft_transfer = 101,
-		NftStake: pallet_ajuna_nft_staking = 102,
+		// Indexes 60-69 should be reserved for NFT related pallets
+		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 60,
+		NftTransfer: pallet_ajuna_nft_transfer = 61,
+		NftStake: pallet_ajuna_nft_staking = 62,
 	}
 );
 

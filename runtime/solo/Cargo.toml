@@ -1,12 +1,13 @@
 [package]
-authors     = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 description = "The Ajuna Network Node Runtime"
-edition     = "2021"
-homepage    = "https://ajuna.io"
 name        = "ajuna-solo-runtime"
 publish     = false
-repository  = "https://github.com/ajuna-network/Ajuna"
-version     = "0.1.10"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
@@ -35,9 +36,9 @@ pallet-assets                              = { default-features = false, git = "
 pallet-aura                                = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-balances                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-collective                          = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-pallet-identity                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-democracy                           = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-grandpa                             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+pallet-identity                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-membership                          = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-multisig                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 pallet-nfts                                = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -69,6 +70,7 @@ orml-vesting = { default-features = false, git = "https://github.com/ajuna-netwo
 # Ajuna pallets
 ajuna-primitives             = { default-features = false, path = "../../primitives" }
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/ajuna-nft-staking" }
 pallet-ajuna-nft-transfer    = { default-features = false, path = "../../pallets/ajuna-nft-transfer" }
 
 [features]
@@ -80,6 +82,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hex-literal",
     "pallet-ajuna-awesome-avatars/runtime-benchmarks",
+    "pallet-ajuna-nft-staking/runtime-benchmarks",
     "pallet-ajuna-nft-transfer/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
@@ -87,7 +90,6 @@ runtime-benchmarks = [
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
-# allow workers to register without remote attestation for dev purposes
 std = [
     "log/std",
     "codec/std",
@@ -132,5 +134,6 @@ std = [
     "sp-version/std",
     "orml-vesting/std",
     "pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-nft-staking/std",
     "pallet-ajuna-nft-transfer/std",
 ]

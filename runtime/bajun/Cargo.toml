@@ -1,9 +1,11 @@
 [package]
-authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
-edition    = "2021"
-name       = "bajun-runtime"
-repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.10"
+name = "bajun-runtime"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -85,8 +87,8 @@ parachain-info                      = { git = "https://github.com/paritytech/cum
 
 # Ajuna pallets
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
+pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/ajuna-nft-staking" }
 pallet-ajuna-nft-transfer    = { default-features = false, path = "../../pallets/ajuna-nft-transfer" }
-pallet-ajuna-nft-staking     = { default-features = false, path = "../../pallets/nft-staking" }
 
 [features]
 default = [
@@ -113,8 +115,8 @@ std = [
     "frame-try-runtime/std",
     "orml-vesting/std",
     "pallet-ajuna-awesome-avatars/std",
-    "pallet-ajuna-nft-transfer/std",
     "pallet-ajuna-nft-staking/std",
+    "pallet-ajuna-nft-transfer/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-balances/std",
@@ -182,8 +184,8 @@ runtime-benchmarks = [
     "cumulus-pallet-session-benchmarking/runtime-benchmarks",
     "cumulus-pallet-xcmp-queue/runtime-benchmarks",
     "pallet-ajuna-awesome-avatars/runtime-benchmarks",
-    "pallet-ajuna-nft-transfer/runtime-benchmarks",
     "pallet-ajuna-nft-staking/runtime-benchmarks",
+    "pallet-ajuna-nft-transfer/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -218,6 +220,6 @@ try-runtime = [
     "pallet-xcm/try-runtime",
     "parachain-info/try-runtime",
     "pallet-ajuna-awesome-avatars/try-runtime",
-    "pallet-ajuna-nft-transfer/try-runtime",
     "pallet-ajuna-nft-staking/try-runtime",
+    "pallet-ajuna-nft-transfer/try-runtime",
 ]

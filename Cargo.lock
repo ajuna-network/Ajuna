@@ -361,6 +361,7 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-nft-staking",
  "pallet-ajuna-nft-transfer",
  "pallet-asset-tx-payment",
  "pallet-assets",
@@ -5616,7 +5617,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-nft-staking"
-version = "0.0.1"
+version = "0.1.10"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5633,7 +5634,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-nft-transfer"
-version = "0.1.8"
+version = "0.1.10"
 dependencies = [
  "frame-benchmarking",
  "frame-support",

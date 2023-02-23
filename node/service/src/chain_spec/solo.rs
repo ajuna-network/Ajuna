@@ -203,5 +203,6 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		treasury: Default::default(),
 		democracy: Default::default(),
 		awesome_avatars: Default::default(),
+		nft_staking: Default::default(),
 	}
 }

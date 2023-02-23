@@ -1,22 +1,23 @@
 [package]
-authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
-edition    = "2021"
-homepage   = "https://ajuna.io"
-name       = "ajuna-service"
-repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.10"
+name = "ajuna-service"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
 
 [dependencies]
-hex-literal  = "0.3.3"
-jsonrpsee = { version = "0.15.1", features = ["server"] }
-serde        = { version = "1.0.132", features = [ "derive" ] }
+hex-literal = "0.3.3"
+jsonrpsee   = { version = "0.15.1", features = [ "server" ] }
+serde       = { version = "1.0.132", features = [ "derive" ] }
 
 # Local
 ajuna-primitives   = { path = "../../primitives" }
 ajuna-rpc          = { path = "../../rpc" }
+ajuna-runtime      = { path = "../../runtime/ajuna", optional = true }
 ajuna-solo-runtime = { path = "../../runtime/solo", optional = true }
 bajun-runtime      = { path = "../../runtime/bajun", optional = true }
-ajuna-runtime      = { path = "../../runtime/ajuna", optional = true }
 
 # Substrate
 frame-benchmarking  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -73,6 +74,8 @@ cumulus-relay-chain-rpc-interface       = { git = "https://github.com/paritytech
 [features]
 default = [ "solo" ]
 
+ajuna = [ "ajuna-runtime", "para" ]
+bajun = [ "bajun-runtime", "para" ]
 para = [
     "pallet-transaction-payment-rpc",
     "sc-network",
@@ -103,12 +106,10 @@ para = [
     "cumulus-relay-chain-rpc-interface",
 ]
 solo = [ "ajuna-solo-runtime" ]
-bajun = ["bajun-runtime", "para"]
-ajuna = ["ajuna-runtime", "para"]
 
-kusama-native = [ "polkadot-service/kusama-native" ]
-rococo-native = [ "polkadot-service/rococo-native" ]
+kusama-native   = [ "polkadot-service/kusama-native" ]
 polkadot-native = [ "polkadot-service/polkadot-native" ]
+rococo-native   = [ "polkadot-service/rococo-native" ]
 
 runtime-benchmarks = [
     "ajuna-solo-runtime/runtime-benchmarks",
