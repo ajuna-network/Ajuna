@@ -322,6 +322,23 @@ benchmarks! {
 		assert_last_event::<T>(Event::FreeMintsSet { target, how_many }.into())
 	}
 
+	transfer_organizer_avatars {
+		let organizer = account::<T>("organizer");
+		let to = account::<T>("to");
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+
+		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
+
+		let avatar_ids = AAvatars::<T>::owners(&organizer);
+		let avatar_ids = avatar_ids[0..(n as usize)].to_vec();
+
+		Organizer::<T>::put(&organizer);
+	}: _(RawOrigin::Signed(organizer), to.clone(), avatar_ids.clone())
+	verify {
+		assert_last_event::<T>(Event::OrganizerAvatarsTransferred { to, avatar_ids }.into())
+	}
+
 	impl_benchmark_test_suite!(
 		AAvatars, crate::mock::ExtBuilder::default().build(), crate::mock::Test
 	);
