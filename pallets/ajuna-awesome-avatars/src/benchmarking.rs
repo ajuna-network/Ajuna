@@ -155,7 +155,8 @@ benchmarks! {
 	transfer_free_mints {
 		let from = account::<T>("from");
 		let to = account::<T>("to");
-		let free_mint_transfer_fee = AAvatars::<T>::global_configs().mint.free_mint_transfer_fee;
+		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
 		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
@@ -270,10 +271,14 @@ benchmarks! {
 				},
 				cooldown: T::BlockNumber::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
-				free_mint_transfer_fee: MintCount::MAX,
-				min_free_mint_transfer: MintCount::MAX,
 			},
 			forge: ForgeConfig { open: true },
+			transfer: TransferConfig {
+				open:true,
+				free_mint_transfer_fee: MintCount::MAX,
+				min_free_mint_transfer: MintCount::MAX,
+				avatar_transfer_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			},
 			trade: TradeConfig {
 				open: true,
 				min_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),

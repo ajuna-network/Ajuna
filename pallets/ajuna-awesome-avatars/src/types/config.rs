@@ -85,13 +85,19 @@ pub struct MintConfig<Balance, BlockNumber> {
 	pub fees: MintFees<Balance>,
 	pub cooldown: BlockNumber,
 	pub free_mint_fee_multiplier: MintCount,
-	pub free_mint_transfer_fee: MintCount,
-	pub min_free_mint_transfer: MintCount,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct ForgeConfig {
 	pub open: bool,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct TransferConfig<Balance> {
+	pub open: bool,
+	pub free_mint_transfer_fee: MintCount,
+	pub min_free_mint_transfer: MintCount,
+	pub avatar_transfer_fee: Balance,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
@@ -110,6 +116,7 @@ pub struct AccountConfig<Balance> {
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,
+	pub transfer: TransferConfig<Balance>,
 	pub trade: TradeConfig<Balance>,
 	pub account: AccountConfig<Balance>,
 }

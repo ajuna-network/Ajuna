@@ -75,7 +75,7 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
 };
-use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
 	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
@@ -88,13 +88,11 @@ pub mod pallet {
 	use super::*;
 
 	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-	type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-
-	pub(crate) type SeasonOf<T> = Season<BlockNumberOf<T>>;
+	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
 	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
-	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberOf<T>>;
+	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
 	pub(crate) type CollectionIdOf<T> =
 		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
@@ -207,10 +205,14 @@ pub mod pallet {
 					},
 					cooldown: 5_u8.into(),
 					free_mint_fee_multiplier: 1,
-					free_mint_transfer_fee: 1,
-					min_free_mint_transfer: 1,
 				},
 				forge: ForgeConfig { open: true },
+				transfer: TransferConfig {
+					open: true,
+					free_mint_transfer_fee: 1,
+					min_free_mint_transfer: 1,
+					avatar_transfer_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+				},
 				trade: TradeConfig {
 					open: true,
 					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
@@ -429,13 +431,13 @@ pub mod pallet {
 			let from = ensure_signed(origin)?;
 			ensure!(from != to, Error::<T>::CannotSendToSelf);
 
-			let GlobalConfig { mint, .. } = Self::global_configs();
-			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
+			let GlobalConfig { transfer, .. } = Self::global_configs();
+			ensure!(how_many >= transfer.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
 			let sender_free_mints = Self::accounts(&from)
 				.free_mints
 				.checked_sub(
 					how_many
-						.checked_add(mint.free_mint_transfer_fee)
+						.checked_add(transfer.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;

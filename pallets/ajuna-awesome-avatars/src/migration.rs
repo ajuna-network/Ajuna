@@ -31,9 +31,16 @@ pub mod v1 {
 		pub buy_fee: Balance,
 	}
 
+	#[derive(Decode, Encode, Default)]
+	pub struct TradeConfigV1<Balance> {
+		pub open: bool,
+		pub min_fee: Balance,
+		pub percent_fee: u8,
+	}
+
 	impl<Balance> OldTradeConfig<Balance> {
-		fn migrate_to_v1(self) -> TradeConfig<Balance> {
-			TradeConfig { open: self.open, min_fee: self.buy_fee, percent_fee: 1 }
+		fn migrate_to_v1(self) -> TradeConfigV1<Balance> {
+			TradeConfigV1 { open: self.open, min_fee: self.buy_fee, percent_fee: 1 }
 		}
 	}
 
@@ -45,9 +52,17 @@ pub mod v1 {
 		pub account: AccountConfig<Balance>,
 	}
 
+	#[derive(Decode, Encode, Default)]
+	pub struct GlobalConfigV1<Balance, BlockNumber> {
+		pub mint: MintConfig<Balance, BlockNumber>,
+		pub forge: ForgeConfig,
+		pub trade: TradeConfigV1<Balance>,
+		pub account: AccountConfig<Balance>,
+	}
+
 	impl<Balance, BlockNumber> OldGlobalConfig<Balance, BlockNumber> {
-		fn migrate_to_v1(self) -> GlobalConfig<Balance, BlockNumber> {
-			GlobalConfig {
+		fn migrate_to_v1(self) -> GlobalConfigV1<Balance, BlockNumber> {
+			GlobalConfigV1 {
 				mint: self.mint,
 				forge: self.forge,
 				trade: self.trade.migrate_to_v1(),
@@ -55,6 +70,10 @@ pub mod v1 {
 			}
 		}
 	}
+
+	#[frame_support::storage_alias]
+	pub(crate) type GlobalConfigs<T: Config> =
+		StorageValue<Pallet<T>, GlobalConfigV1<BalanceOf<T>, BlockNumberFor<T>>, ValueQuery>;
 
 	pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
