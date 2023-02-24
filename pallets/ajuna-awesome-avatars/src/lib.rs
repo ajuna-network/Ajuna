@@ -419,7 +419,11 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight({
+			let n = MaxAvatarsPerPlayer::get();
+			T::WeightInfo::transfer_avatar_normal(n)
+				.max(T::WeightInfo::transfer_avatar_organizer(n))
+		})]
 		pub fn transfer_avatar(
 			origin: OriginFor<T>,
 			to: T::AccountId,
