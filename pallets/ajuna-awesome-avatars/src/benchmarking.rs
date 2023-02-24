@@ -152,6 +152,36 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarForged { avatar_id, upgraded_components }.into())
 	}
 
+	transfer_avatar_normal {
+		let from = account::<T>("from");
+		let to = account::<T>("to");
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+		create_avatars::<T>("from", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
+		let avatar_id = AAvatars::<T>::owners(&from)[n as usize - 1];
+
+		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		T::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
+	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id }.into())
+	}
+
+	transfer_avatar_organizer {
+		let organizer = account::<T>("organizer");
+		let to = account::<T>("to");
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
+		let avatar_id = AAvatars::<T>::owners(&organizer)[n as usize - 1];
+
+		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		T::Currency::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
+	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id }.into())
+	}
+
 	transfer_free_mints {
 		let from = account::<T>("from");
 		let to = account::<T>("to");
@@ -325,23 +355,6 @@ benchmarks! {
 	}: _(RawOrigin::Signed(organizer), target.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsSet { target, how_many }.into())
-	}
-
-	transfer_organizer_avatars {
-		let organizer = account::<T>("organizer");
-		let to = account::<T>("to");
-		let n in 1 .. MaxAvatarsPerPlayer::get();
-
-		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
-		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-
-		let avatar_ids = AAvatars::<T>::owners(&organizer);
-		let avatar_ids = avatar_ids[0..(n as usize)].to_vec();
-
-		Organizer::<T>::put(&organizer);
-	}: _(RawOrigin::Signed(organizer), to.clone(), avatar_ids.clone())
-	verify {
-		assert_last_event::<T>(Event::OrganizerAvatarsTransferred { to, avatar_ids }.into())
 	}
 
 	impl_benchmark_test_suite!(

@@ -36,12 +36,8 @@ pub type MockIndex = u64;
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
 pub const CHARLIE: MockAccountId = 3;
-pub const DELTHEA: MockAccountId = 4;
-pub const ERIN: MockAccountId = 5;
-pub const FLORINA: MockAccountId = 6;
-pub const HILDA: MockAccountId = 7;
+pub const DAVE: MockAccountId = 4;
 
-// Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
 		Block = MockBlock<Test>,
@@ -173,34 +169,16 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type WeightInfo = ();
 }
 
+#[derive(Default)]
 pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
-	mint_open: bool,
 	mint_cooldown: Option<MockBlockNumber>,
 	mint_fees: Option<MintFees<MockBalance>>,
-	forge_open: bool,
-	trade_open: bool,
 	trade_min_fee: Option<MockBalance>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
-}
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self {
-			organizer: Default::default(),
-			seasons: Default::default(),
-			mint_cooldown: Default::default(),
-			mint_fees: Default::default(),
-			balances: Default::default(),
-			free_mints: Default::default(),
-			mint_open: true,
-			forge_open: true,
-			trade_open: true,
-			trade_min_fee: Default::default(),
-		}
-	}
+	avatar_transfer_fee: Option<MockBalance>,
 }
 
 impl ExtBuilder {
@@ -210,10 +188,6 @@ impl ExtBuilder {
 	}
 	pub fn seasons(mut self, seasons: &[(SeasonId, Season<MockBlockNumber>)]) -> Self {
 		self.seasons = seasons.to_vec();
-		self
-	}
-	pub fn mint_open(mut self, mint_open: bool) -> Self {
-		self.mint_open = mint_open;
 		self
 	}
 	pub fn mint_cooldown(mut self, mint_cooldown: MockBlockNumber) -> Self {
@@ -232,16 +206,12 @@ impl ExtBuilder {
 		self.free_mints = free_mints.to_vec();
 		self
 	}
-	pub fn forge_open(mut self, forge_open: bool) -> Self {
-		self.forge_open = forge_open;
-		self
-	}
-	pub fn trade_open(mut self, trade_open: bool) -> Self {
-		self.trade_open = trade_open;
-		self
-	}
 	pub fn trade_min_fee(mut self, trade_min_fee: MockBalance) -> Self {
 		self.trade_min_fee = Some(trade_min_fee);
+		self
+	}
+	pub fn avatar_transfer_fee(mut self, avatar_transfer_fee: MockBalance) -> Self {
+		self.avatar_transfer_fee = Some(avatar_transfer_fee);
 		self
 	}
 
@@ -265,7 +235,12 @@ impl ExtBuilder {
 				Seasons::<Test>::insert(season_id, season);
 			}
 
-			GlobalConfigs::<Test>::mutate(|config| config.mint.open = self.mint_open);
+			GlobalConfigs::<Test>::mutate(|config| {
+				config.mint.open = true;
+				config.forge.open = true;
+				config.trade.open = true;
+			});
+
 			if let Some(x) = self.mint_cooldown {
 				GlobalConfigs::<Test>::mutate(|config| config.mint.cooldown = x);
 			}
@@ -273,17 +248,16 @@ impl ExtBuilder {
 				GlobalConfigs::<Test>::mutate(|config| config.mint.fees = x);
 			}
 
-			GlobalConfigs::<Test>::mutate(|config| {
-				config.forge.open = self.forge_open;
-				config.trade.open = self.trade_open;
-			});
-
 			if let Some(x) = self.trade_min_fee {
 				GlobalConfigs::<Test>::mutate(|config| config.trade.min_fee = x);
 			}
 
 			for (account_id, mint_amount) in self.free_mints {
 				Accounts::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
+			}
+
+			if let Some(x) = self.avatar_transfer_fee {
+				GlobalConfigs::<Test>::mutate(|config| config.transfer.avatar_transfer_fee = x);
 			}
 
 			Nft::force_create(
