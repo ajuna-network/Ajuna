@@ -3,7 +3,7 @@ authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 edition    = "2021"
 homepage   = "https://ajuna.io"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.11"
+version    = "0.1.12"
 
 [profile.release]
 panic = "unwind"
