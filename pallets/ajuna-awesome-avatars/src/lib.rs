@@ -75,7 +75,7 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
 };
-use frame_system::{ensure_root, ensure_signed, pallet_prelude::OriginFor};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
 	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
@@ -88,13 +88,11 @@ pub mod pallet {
 	use super::*;
 
 	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-	type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-
-	pub(crate) type SeasonOf<T> = Season<BlockNumberOf<T>>;
+	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
 	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
-	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberOf<T>>;
+	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
 	pub(crate) type CollectionIdOf<T> =
 		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
@@ -207,10 +205,14 @@ pub mod pallet {
 					},
 					cooldown: 5_u8.into(),
 					free_mint_fee_multiplier: 1,
-					free_mint_transfer_fee: 1,
-					min_free_mint_transfer: 1,
 				},
 				forge: ForgeConfig { open: true },
+				transfer: TransferConfig {
+					open: true,
+					free_mint_transfer_fee: 1,
+					min_free_mint_transfer: 1,
+					avatar_transfer_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+				},
 				trade: TradeConfig {
 					open: true,
 					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
@@ -238,6 +240,8 @@ pub mod pallet {
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 		/// Avatar forged.
 		AvatarForged { avatar_id: AvatarIdOf<T>, upgraded_components: u8 },
+		/// Avatar transferred.
+		AvatarTransferred { from: T::AccountId, to: T::AccountId, avatar_id: AvatarIdOf<T> },
 		/// A season has started.
 		SeasonStarted(SeasonId),
 		/// A season has finished.
@@ -301,6 +305,8 @@ pub mod pallet {
 		MintClosed,
 		/// Forging is not available at the moment.
 		ForgeClosed,
+		/// Transfer is not available at the moment.
+		TransferClosed,
 		/// Trading is not available at the moment.
 		TradeClosed,
 		/// Attempt to mint or forge outside of an active season.
@@ -349,8 +355,8 @@ pub mod pallet {
 		AvatarUnlocked,
 		/// Tried to forge avatars from different seasons.
 		IncorrectAvatarSeason,
-		/// Tried sending free mints to his or her own account.
-		CannotSendToSelf,
+		/// Tried transferring to his or her own account.
+		CannotTransferToSelf,
 	}
 
 	#[pallet::hooks]
@@ -412,12 +418,43 @@ pub mod pallet {
 			Self::do_forge(&player, &leader, &sacrifices)
 		}
 
+		#[pallet::call_index(2)]
+		#[pallet::weight({
+			let n = MaxAvatarsPerPlayer::get();
+			T::WeightInfo::transfer_avatar_normal(n)
+				.max(T::WeightInfo::transfer_avatar_organizer(n))
+		})]
+		pub fn transfer_avatar(
+			origin: OriginFor<T>,
+			to: T::AccountId,
+			avatar_id: AvatarIdOf<T>,
+		) -> DispatchResult {
+			let GlobalConfig { transfer, .. } = Self::global_configs();
+			let from = match Self::ensure_organizer(origin.clone()) {
+				Ok(organizer) => organizer,
+				_ => {
+					ensure!(transfer.open, Error::<T>::TransferClosed);
+					ensure_signed(origin)?
+				},
+			};
+			ensure!(from != to, Error::<T>::CannotTransferToSelf);
+
+			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
+			let fee = transfer.avatar_transfer_fee;
+			T::Currency::withdraw(&from, fee, WithdrawReasons::FEE, AllowDeath)?;
+			Treasury::<T>::mutate(avatar.season_id, |bal| bal.saturating_accrue(fee));
+
+			Self::do_transfer_avatar(&from, &to, &avatar_id)?;
+			Self::deposit_event(Event::AvatarTransferred { from, to, avatar_id });
+			Ok(())
+		}
+
 		/// Transfer free mints to a given account.
 		///
 		/// Emits `FreeMintsTransferred` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::transfer_free_mints())]
 		pub fn transfer_free_mints(
 			origin: OriginFor<T>,
@@ -425,15 +462,15 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
-			ensure!(from != to, Error::<T>::CannotSendToSelf);
+			ensure!(from != to, Error::<T>::CannotTransferToSelf);
 
-			let GlobalConfig { mint, .. } = Self::global_configs();
-			ensure!(how_many >= mint.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
+			let GlobalConfig { transfer, .. } = Self::global_configs();
+			ensure!(how_many >= transfer.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
 			let sender_free_mints = Self::accounts(&from)
 				.free_mints
 				.checked_sub(
 					how_many
-						.checked_add(mint.free_mint_transfer_fee)
+						.checked_add(transfer.free_mint_transfer_fee)
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
@@ -456,7 +493,7 @@ pub mod pallet {
 		/// Emits `AvatarPriceSet` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
@@ -479,7 +516,7 @@ pub mod pallet {
 		/// Emits `AvatarPriceUnset` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(4)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
@@ -501,7 +538,7 @@ pub mod pallet {
 		/// Emits `AvatarTraded` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
@@ -525,26 +562,7 @@ pub mod pallet {
 			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
 			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade_fee));
 
-			let mut buyer_avatar_ids = Self::owners(&buyer);
-			buyer_avatar_ids
-				.try_push(avatar_id)
-				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
-
-			ensure!(
-				buyer_avatar_ids.len() <= Self::accounts(&buyer).storage_tier as usize,
-				Error::<T>::MaxOwnershipReached
-			);
-
-			let mut seller_avatar_ids = Self::owners(&seller);
-			seller_avatar_ids.retain(|x| x != &avatar_id);
-
-			Owners::<T>::mutate(&buyer, |avatar_ids| *avatar_ids = buyer_avatar_ids);
-			Owners::<T>::mutate(&seller, |avatar_ids| *avatar_ids = seller_avatar_ids);
-			Avatars::<T>::mutate(avatar_id, |maybe_avatar| {
-				if let Some((owner, _)) = maybe_avatar {
-					*owner = buyer.clone();
-				}
-			});
+			Self::do_transfer_avatar(&seller, &buyer, &avatar_id)?;
 			Trade::<T>::remove(avatar_id);
 
 			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
@@ -559,7 +577,7 @@ pub mod pallet {
 		/// Emits `StorageTierUpgraded` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(6)]
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -588,7 +606,7 @@ pub mod pallet {
 		/// Emits `OrganizerSet` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(7)]
+		#[pallet::call_index(8)]
 		#[pallet::weight(T::WeightInfo::set_organizer())]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -606,7 +624,7 @@ pub mod pallet {
 		/// Emits `TreasurerSet` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(8)]
+		#[pallet::call_index(9)]
 		#[pallet::weight(T::WeightInfo::set_treasurer())]
 		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
@@ -624,7 +642,7 @@ pub mod pallet {
 		/// Emits `UpdatedSeason` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(9)]
+		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::set_season())]
 		pub fn set_season(
 			origin: OriginFor<T>,
@@ -645,7 +663,7 @@ pub mod pallet {
 		/// Emits `UpdatedGlobalConfig` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(10)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(T::WeightInfo::update_global_config())]
 		pub fn update_global_config(
 			origin: OriginFor<T>,
@@ -664,7 +682,7 @@ pub mod pallet {
 		/// Emits `FreeMintsIssued` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(11)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
@@ -682,7 +700,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(12)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(T::WeightInfo::withdraw_free_mints())]
 		pub fn withdraw_free_mints(
 			origin: OriginFor<T>,
@@ -700,7 +718,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(13)]
+		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::set_free_mints())]
 		pub fn set_free_mints(
 			origin: OriginFor<T>,
@@ -713,7 +731,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(14)]
+		#[pallet::call_index(15)]
 		#[pallet::weight(10_000)]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
@@ -727,7 +745,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(15)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
@@ -744,11 +762,13 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// Check that the origin is an organizer account.
-		pub(crate) fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+		pub(crate) fn ensure_organizer(
+			origin: OriginFor<T>,
+		) -> Result<T::AccountId, DispatchError> {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
-			Ok(())
+			Ok(maybe_organizer)
 		}
 
 		/// Validates a new season.
@@ -987,6 +1007,32 @@ pub mod pallet {
 
 			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
 			Ok(())
+		}
+
+		fn do_transfer_avatar(
+			from: &T::AccountId,
+			to: &T::AccountId,
+			avatar_id: &AvatarIdOf<T>,
+		) -> DispatchResult {
+			let mut from_avatar_ids = Self::owners(from);
+			from_avatar_ids.retain(|existing_avatar_id| existing_avatar_id != avatar_id);
+
+			let mut to_avatar_ids = Self::owners(to);
+			to_avatar_ids
+				.try_push(*avatar_id)
+				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+			ensure!(
+				to_avatar_ids.len() <= Self::accounts(to).storage_tier as usize,
+				Error::<T>::MaxOwnershipReached
+			);
+
+			Owners::<T>::mutate(from, |avatar_ids| *avatar_ids = from_avatar_ids);
+			Owners::<T>::mutate(to, |avatar_ids| *avatar_ids = to_avatar_ids);
+			Avatars::<T>::try_mutate(avatar_id, |maybe_avatar| -> DispatchResult {
+				let (from_owner, _) = maybe_avatar.as_mut().ok_or(Error::<T>::UnknownAvatar)?;
+				*from_owner = to.clone();
+				Ok(())
+			})
 		}
 
 		fn ensure_ownership(

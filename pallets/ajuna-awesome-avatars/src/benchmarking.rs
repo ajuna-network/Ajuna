@@ -152,10 +152,41 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarForged { avatar_id, upgraded_components }.into())
 	}
 
+	transfer_avatar_normal {
+		let from = account::<T>("from");
+		let to = account::<T>("to");
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+		create_avatars::<T>("from", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
+		let avatar_id = AAvatars::<T>::owners(&from)[n as usize - 1];
+
+		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		T::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
+	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id }.into())
+	}
+
+	transfer_avatar_organizer {
+		let organizer = account::<T>("organizer");
+		let to = account::<T>("to");
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
+		let avatar_id = AAvatars::<T>::owners(&organizer)[n as usize - 1];
+
+		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		T::Currency::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
+	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id }.into())
+	}
+
 	transfer_free_mints {
 		let from = account::<T>("from");
 		let to = account::<T>("to");
-		let free_mint_transfer_fee = AAvatars::<T>::global_configs().mint.free_mint_transfer_fee;
+		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
 		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
@@ -270,10 +301,14 @@ benchmarks! {
 				},
 				cooldown: T::BlockNumber::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
-				free_mint_transfer_fee: MintCount::MAX,
-				min_free_mint_transfer: MintCount::MAX,
 			},
 			forge: ForgeConfig { open: true },
+			transfer: TransferConfig {
+				open:true,
+				free_mint_transfer_fee: MintCount::MAX,
+				min_free_mint_transfer: MintCount::MAX,
+				avatar_transfer_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			},
 			trade: TradeConfig {
 				open: true,
 				min_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
