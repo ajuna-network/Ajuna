@@ -18,6 +18,7 @@ use crate::{self as pallet_nft_transfer};
 use frame_support::{
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
+	PalletId,
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
@@ -139,6 +140,10 @@ impl pallet_nfts::Config for Test {
 
 pub const MAX_ENCODING_SIZE: u32 = 200;
 
+parameter_types! {
+	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+}
+
 pub type CollectionConfig =
 	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 
@@ -150,6 +155,7 @@ impl pallet_nft_transfer::Config for Test {
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type HoldingPalletId = HoldingPalletId;
 	type WeightInfo = ();
 }
 

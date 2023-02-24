@@ -16,15 +16,16 @@
 
 mod avatar_codec;
 mod force;
+mod nft;
 mod rarity_tier;
 
 pub use avatar_codec::*;
 pub use force::*;
+pub use nft::*;
 pub use rarity_tier::*;
 
 use crate::*;
 use frame_support::pallet_prelude::*;
-use pallet_ajuna_nft_transfer::traits::NftConvertible;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
@@ -168,24 +169,11 @@ impl Avatar {
 	}
 }
 
-impl NftConvertible for Avatar {
-	const ASSET_CODE: u16 = 0;
-
-	fn encode_into(self) -> Vec<u8> {
-		let avatar_codec = AvatarCodec::from(self);
-		avatar_codec.encode()
-	}
-
-	fn decode_from(input: Vec<u8>) -> Result<Self, codec::Error> {
-		let avatar_codec = AvatarCodec::decode(&mut input.as_slice())?;
-		Ok(Avatar::from(avatar_codec))
-	}
-}
-
 #[cfg(test)]
 mod test {
 	use super::*;
 	use crate::{mock::*, types::*};
+	use pallet_ajuna_nft_transfer::traits::NftConvertible;
 
 	impl Avatar {
 		pub(crate) fn season_id(mut self, season_id: SeasonId) -> Self {
