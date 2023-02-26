@@ -18,21 +18,14 @@ use super::{MintCount, SeasonId};
 use frame_support::pallet_prelude::*;
 use sp_runtime::{traits::Get, BoundedBTreeSet};
 
-const MAX_AVATARS_PER_PLAYER: isize = 100;
-
-pub struct MaxAvatarsPerPlayer;
-impl Get<u32> for MaxAvatarsPerPlayer {
-	fn get() -> u32 {
-		MAX_AVATARS_PER_PLAYER as u32
-	}
-}
-
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
 pub enum StorageTier {
-	One = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(1),
-	Two = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(2),
-	Three = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(3),
-	Four = MAX_AVATARS_PER_PLAYER.saturating_div(4).saturating_mul(4),
+	One = 25,
+	Two = 50,
+	Three = 75,
+	Four = 100,
+	Five = 150,
+	Max = 200,
 }
 
 impl Default for StorageTier {
@@ -47,8 +40,17 @@ impl StorageTier {
 			Self::One => Self::Two,
 			Self::Two => Self::Three,
 			Self::Three => Self::Four,
-			Self::Four => Self::Four,
+			Self::Four => Self::Five,
+			Self::Five => Self::Max,
+			Self::Max => Self::Max,
 		}
+	}
+}
+
+pub struct MaxAvatarsPerPlayer;
+impl Get<u32> for MaxAvatarsPerPlayer {
+	fn get() -> u32 {
+		StorageTier::Max as u32
 	}
 }
 

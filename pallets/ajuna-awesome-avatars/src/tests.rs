@@ -2509,10 +2509,12 @@ mod account {
 
 	#[test]
 	fn upgrade_storage_should_work() {
-		let upgrade_fee = 12_345;
+		let upgrade_fee = 12_345 as MockBalance;
+		let num_storage_tiers = sp_std::mem::variant_count::<StorageTier>() as MockBalance;
+		let num_upgrades = num_storage_tiers - 1;
 
 		ExtBuilder::default()
-			.balances(&[(ALICE, 3 * upgrade_fee)])
+			.balances(&[(ALICE, num_upgrades * upgrade_fee)])
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
@@ -2531,6 +2533,14 @@ mod account {
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 100);
+
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Five);
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 150);
+
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Max);
+				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 200);
 			});
 	}
 
@@ -2548,7 +2558,7 @@ mod account {
 	fn upgrade_storage_should_reject_fully_upgraded_storage() {
 		ExtBuilder::default().build().execute_with(|| {
 			GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = 0);
-			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Four);
+			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Max);
 
 			assert_noop!(
 				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),

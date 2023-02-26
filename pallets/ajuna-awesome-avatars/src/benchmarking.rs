@@ -76,7 +76,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 
 	Accounts::<T>::mutate(&player, |account| {
 		account.free_mints = n as MintCount;
-		account.storage_tier = StorageTier::Four;
+		account.storage_tier = StorageTier::Max;
 	});
 
 	for _ in 0..n {
