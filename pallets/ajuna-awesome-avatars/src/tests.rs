@@ -102,10 +102,11 @@ mod treasurer {
 	#[test]
 	fn set_treasurer_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(AAvatars::treasurer(), None);
-			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), CHARLIE));
-			assert_eq!(AAvatars::treasurer(), Some(CHARLIE));
+			assert_eq!(AAvatars::treasurer(123), None);
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), 123, CHARLIE));
+			assert_eq!(AAvatars::treasurer(123), Some(CHARLIE));
 			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::TreasurerSet {
+				season_id: 123,
 				treasurer: CHARLIE,
 			}));
 		});
@@ -115,7 +116,7 @@ mod treasurer {
 	fn set_treasurer_should_reject_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_treasurer(RuntimeOrigin::signed(ALICE), CHARLIE),
+				AAvatars::set_treasurer(RuntimeOrigin::signed(ALICE), 1, CHARLIE),
 				DispatchError::BadOrigin
 			);
 		});
@@ -124,10 +125,11 @@ mod treasurer {
 	#[test]
 	fn set_treasurer_should_replace_existing_treasurer() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), BOB));
-			assert_eq!(AAvatars::treasurer(), Some(BOB));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), 333, ALICE));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), 333, BOB));
+			assert_eq!(AAvatars::treasurer(333), Some(BOB));
 			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::TreasurerSet {
+				season_id: 333,
 				treasurer: BOB,
 			}));
 		});

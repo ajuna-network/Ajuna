@@ -128,7 +128,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn treasurer)]
-	pub type Treasurer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
 
 	/// Contains the identifier of the current season.
 	#[pallet::storage]
@@ -230,8 +230,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// An organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
-		/// A treasurer has been set.
-		TreasurerSet { treasurer: T::AccountId },
+		/// A treasurer has been set for a season.
+		TreasurerSet { season_id: SeasonId, treasurer: T::AccountId },
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -626,10 +626,14 @@ pub mod pallet {
 		/// Weight: `O(1)`
 		#[pallet::call_index(9)]
 		#[pallet::weight(T::WeightInfo::set_treasurer())]
-		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
+		pub fn set_treasurer(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			treasurer: T::AccountId,
+		) -> DispatchResult {
 			ensure_root(origin)?;
-			Treasurer::<T>::put(&treasurer);
-			Self::deposit_event(Event::TreasurerSet { treasurer });
+			Treasurer::<T>::insert(season_id, &treasurer);
+			Self::deposit_event(Event::TreasurerSet { season_id, treasurer });
 			Ok(())
 		}
 

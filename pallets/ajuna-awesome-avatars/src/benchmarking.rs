@@ -253,10 +253,11 @@ benchmarks! {
 	}
 
 	set_treasurer {
+		let season_id = 369;
 		let treasurer = account::<T>("treasurer");
-	}: _(RawOrigin::Root, treasurer.clone())
+	}: _(RawOrigin::Root, season_id, treasurer.clone())
 	verify {
-		assert_last_event::<T>(Event::TreasurerSet { treasurer }.into())
+		assert_last_event::<T>(Event::TreasurerSet { season_id, treasurer }.into())
 	}
 
 	set_season {
