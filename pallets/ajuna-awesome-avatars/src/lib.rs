@@ -52,7 +52,7 @@
 //! * `do_mint` - Mint avatar.
 //! * `ensure_season` - Given a season id and a season, validate them.
 
-#![feature(map_first_last)]
+#![feature(map_first_last, variant_count)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
@@ -593,7 +593,7 @@ pub mod pallet {
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let storage_tier = Self::accounts(&player).storage_tier;
-			ensure!(storage_tier != StorageTier::Four, Error::<T>::MaxStorageTierReached);
+			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
 			let upgrade_fee = Self::global_configs().account.storage_upgrade_fee;
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
