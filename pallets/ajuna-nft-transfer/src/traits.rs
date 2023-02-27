@@ -1,4 +1,4 @@
-use codec::{Codec, Decode, Encode, Error as CodecError, MaxEncodedLen};
+use codec::{Codec, Error as CodecError, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	Parameter,
@@ -8,9 +8,10 @@ use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each Asset.
 pub type AssetCode = u16;
+pub type AttributeCode = u16;
 
 /// Marker trait for Assets that can be converted back and forth into an NFT representation.
-pub trait NftConvertible: Encode + Decode {
+pub trait NftConvertible: Codec {
 	/// Numeric key used to store this specific asset's attributes in the NFT.
 	const ASSET_CODE: AssetCode;
 
@@ -24,6 +25,12 @@ pub trait NftConvertible: Encode + Decode {
 	fn decode_from(input: Vec<u8>) -> Result<Self, CodecError> {
 		Self::decode(&mut input.as_slice())
 	}
+
+	/// Returns the list of attribute keys associated with the specific type.
+	fn get_attribute_table() -> Vec<AttributeCode>;
+
+	/// Returns a list of key-value pairs with the attributes to attach to the encoded asset.
+	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)>;
 }
 
 /// Trait to define the transformation and bridging of assets as NFT.

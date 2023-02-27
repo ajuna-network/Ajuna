@@ -18,6 +18,7 @@ use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::{
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64, GenesisBuild, Hooks},
+	PalletId,
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
@@ -157,6 +158,10 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+}
+
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = ValueLimit;
@@ -166,6 +171,7 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type HoldingPalletId = HoldingPalletId;
 	type WeightInfo = ();
 }
 

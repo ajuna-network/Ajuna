@@ -41,6 +41,14 @@ impl Default for MockStruct {
 
 impl NftConvertible for MockStruct {
 	const ASSET_CODE: AssetCode = 1;
+
+	fn get_attribute_table() -> Vec<AttributeCode> {
+		vec![10]
+	}
+
+	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)> {
+		vec![(10, vec![1; 1])]
+	}
 }
 
 fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId {
@@ -152,6 +160,8 @@ mod store_as_nft {
 				Some(NftStatus::Stored)
 			);
 
+			assert_eq!(NftClaimants::<Test>::get(collection_id, asset_id), Some(BOB));
+
 			let stored_asset = <Test as crate::pallet::Config>::NftHelper::typed_attribute::<
 				AssetCode,
 				EncodedAssetOf<Test>,
@@ -232,6 +242,22 @@ mod recover_from_nft {
 				NftTransfer::recover_from_nft(BOB, collection_id, asset_id);
 
 			assert_noop!(result, Error::<Test>::NftOutsideOfChain);
+		});
+	}
+
+	#[test]
+	fn cannot_restore_nft_if_not_claimant() {
+		ExtBuilder::default().build().execute_with(|| {
+			let collection_id = create_random_mock_nft_collection(ALICE);
+			let asset = MockStruct::default();
+
+			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset)
+				.expect("Storage should have been successful!");
+
+			let result: Result<MockStruct, _> =
+				NftTransfer::recover_from_nft(ALICE, collection_id, asset_id);
+
+			assert_noop!(result, Error::<Test>::NftNotOwned);
 		});
 	}
 }

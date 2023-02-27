@@ -2820,12 +2820,82 @@ mod lock_avatar {
 					encoded_asset,
 					AvatarCodec {
 						season_id: avatar.season_id,
-						dna: avatar.dna,
+						dna: avatar.dna.clone(),
 						soul_points: avatar.souls,
 						rarity: RarityTier::Common.into(),
 						force: Force::Thermal.into(),
 					}
 					.encode()
+				);
+
+				// Ensure attribute storage DNA
+				let encoded_dna = <Nft as Inspect<MockAccountId>>::typed_attribute::<
+					pallet_ajuna_nft_transfer::traits::AttributeCode,
+					Vec<u8>,
+				>(
+					&MockAvatarCollectionId::get(),
+					&asset_id,
+					&AttributeNamespace::Pallet,
+					&DNA_ATTRIBUTE_CODE,
+				)
+				.unwrap();
+
+				assert_eq!(
+					Dna::decode(&mut encoded_dna.as_slice()).expect("Decode should succeed"),
+					avatar.dna
+				);
+
+				// Ensure attribute storage SOUL POINTS
+				let encoded_soul_points = <Nft as Inspect<MockAccountId>>::typed_attribute::<
+					pallet_ajuna_nft_transfer::traits::AttributeCode,
+					Vec<u8>,
+				>(
+					&MockAvatarCollectionId::get(),
+					&asset_id,
+					&AttributeNamespace::Pallet,
+					&SOUL_POINTS_ATTRIBUTE_CODE,
+				)
+				.unwrap();
+
+				assert_eq!(
+					SoulCount::decode(&mut encoded_soul_points.as_slice())
+						.expect("Decode should succeed"),
+					avatar.souls
+				);
+
+				// Ensure attribute storage RARITY
+				let encoded_rarity = <Nft as Inspect<MockAccountId>>::typed_attribute::<
+					pallet_ajuna_nft_transfer::traits::AttributeCode,
+					Vec<u8>,
+				>(
+					&MockAvatarCollectionId::get(),
+					&asset_id,
+					&AttributeNamespace::Pallet,
+					&RARITY_ATTRIBUTE_CODE,
+				)
+				.unwrap();
+
+				assert_eq!(
+					RarityTier::decode(&mut encoded_rarity.as_slice())
+						.expect("Decode should succeed"),
+					RarityTier::Common
+				);
+
+				// Ensure attribute storage FORCE
+				let encoded_force = <Nft as Inspect<MockAccountId>>::typed_attribute::<
+					pallet_ajuna_nft_transfer::traits::AttributeCode,
+					Vec<u8>,
+				>(
+					&MockAvatarCollectionId::get(),
+					&asset_id,
+					&AttributeNamespace::Pallet,
+					&FORCE_ATTRIBUTE_CODE,
+				)
+				.unwrap();
+
+				assert_eq!(
+					Force::decode(&mut encoded_force.as_slice()).expect("Decode should succeed"),
+					Force::Thermal
 				);
 
 				// Ensure locked avatars cannot be used in trading

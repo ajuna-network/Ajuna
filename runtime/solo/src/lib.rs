@@ -609,7 +609,12 @@ impl pallet_nfts::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+}
+
 type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
@@ -618,6 +623,7 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type HoldingPalletId = HoldingPalletId;
 	type WeightInfo = ();
 }
 
