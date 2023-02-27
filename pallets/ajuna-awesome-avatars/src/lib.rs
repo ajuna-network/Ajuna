@@ -128,7 +128,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn treasurer)]
-	pub type Treasurer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
 
 	/// Contains the identifier of the current season.
 	#[pallet::storage]
@@ -230,8 +230,10 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// An organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
-		/// A treasurer has been set.
-		TreasurerSet { treasurer: T::AccountId },
+		/// A treasurer has been set for a season.
+		TreasurerSet { season_id: SeasonId, treasurer: T::AccountId },
+		/// A season's treasury has been claimed by a treasurer.
+		TreasuryClaimed { season_id: SeasonId, treasurer: T::AccountId, amount: BalanceOf<T> },
 		/// The season configuration for {season_id} has been updated.
 		UpdatedSeason { season_id: SeasonId, season: SeasonOf<T> },
 		/// Global configuration updated.
@@ -292,6 +294,8 @@ pub mod pallet {
 		UnknownAvatarForSale,
 		/// The tier doesn't exist.
 		UnknownTier,
+		/// The treasurer doesn't exist.
+		UnknownTreasurer,
 		/// The season ID of a season to create is not sequential.
 		NonSequentialSeasonId,
 		/// Rarity percentages don't add up to 100
@@ -357,6 +361,10 @@ pub mod pallet {
 		IncorrectAvatarSeason,
 		/// Tried transferring to his or her own account.
 		CannotTransferToSelf,
+		/// Tried claiming treasury during a season.
+		CannotClaimDuringSeason,
+		/// Tried claiming treasury which is zero.
+		CannotClaimZero,
 	}
 
 	#[pallet::hooks]
@@ -626,10 +634,37 @@ pub mod pallet {
 		/// Weight: `O(1)`
 		#[pallet::call_index(9)]
 		#[pallet::weight(T::WeightInfo::set_treasurer())]
-		pub fn set_treasurer(origin: OriginFor<T>, treasurer: T::AccountId) -> DispatchResult {
+		pub fn set_treasurer(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			treasurer: T::AccountId,
+		) -> DispatchResult {
 			ensure_root(origin)?;
-			Treasurer::<T>::put(&treasurer);
-			Self::deposit_event(Event::TreasurerSet { treasurer });
+			Treasurer::<T>::insert(season_id, &treasurer);
+			Self::deposit_event(Event::TreasurerSet { season_id, treasurer });
+			Ok(())
+		}
+
+		#[pallet::call_index(10)]
+		#[pallet::weight(T::WeightInfo::claim_treasury())]
+		pub fn claim_treasury(origin: OriginFor<T>, season_id: SeasonId) -> DispatchResult {
+			let maybe_treasurer = ensure_signed(origin)?;
+			let treasurer = Self::treasurer(season_id).ok_or(Error::<T>::UnknownTreasurer)?;
+			ensure!(maybe_treasurer == treasurer, DispatchError::BadOrigin);
+
+			let (current_season_id, season) = Self::current_season_with_id()?;
+			ensure!(
+				season_id < current_season_id ||
+					(season_id == current_season_id &&
+						<frame_system::Pallet<T>>::block_number() > season.end),
+				Error::<T>::CannotClaimDuringSeason
+			);
+
+			let amount = Treasury::<T>::take(season_id);
+			ensure!(!amount.is_zero(), Error::<T>::CannotClaimZero);
+
+			T::Currency::deposit_into_existing(&treasurer, amount)?;
+			Self::deposit_event(Event::TreasuryClaimed { season_id, treasurer, amount });
 			Ok(())
 		}
 
@@ -642,7 +677,7 @@ pub mod pallet {
 		/// Emits `UpdatedSeason` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(10)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(T::WeightInfo::set_season())]
 		pub fn set_season(
 			origin: OriginFor<T>,
@@ -663,7 +698,7 @@ pub mod pallet {
 		/// Emits `UpdatedGlobalConfig` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(11)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(T::WeightInfo::update_global_config())]
 		pub fn update_global_config(
 			origin: OriginFor<T>,
@@ -682,7 +717,7 @@ pub mod pallet {
 		/// Emits `FreeMintsIssued` event when successful.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(12)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(T::WeightInfo::issue_free_mints())]
 		pub fn issue_free_mints(
 			origin: OriginFor<T>,
@@ -700,7 +735,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(13)]
+		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::withdraw_free_mints())]
 		pub fn withdraw_free_mints(
 			origin: OriginFor<T>,
@@ -718,7 +753,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(14)]
+		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::set_free_mints())]
 		pub fn set_free_mints(
 			origin: OriginFor<T>,
@@ -731,7 +766,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(15)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(10_000)]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
@@ -745,7 +780,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(16)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
@@ -924,15 +959,7 @@ pub mod pallet {
 			let GlobalConfig { forge, .. } = Self::global_configs();
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			let mut season_id = Self::current_season_id();
-			let season = match Self::seasons(season_id) {
-				Some(season) if Self::current_season_status().is_in_season() => season,
-				_ => {
-					season_id.saturating_dec();
-					Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?
-				},
-			};
-
+			let (season_id, season) = Self::current_season_with_id()?;
 			let (mut leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
 			let prev_leader_tier = leader.min_tier();
@@ -1033,6 +1060,20 @@ pub mod pallet {
 				*from_owner = to.clone();
 				Ok(())
 			})
+		}
+
+		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
+			let mut season_id = Self::current_season_id();
+			let season = match Self::seasons(season_id) {
+				Some(season) if Self::current_season_status().is_in_season() => season,
+				_ => {
+					if season_id > 1 {
+						season_id.saturating_dec();
+					}
+					Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?
+				},
+			};
+			Ok((season_id, season))
 		}
 
 		fn ensure_ownership(

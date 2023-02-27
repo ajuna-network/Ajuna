@@ -33,7 +33,6 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 }
 
 fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
-	CurrentSeasonId::<T>::put(1);
 	CurrentSeasonStatus::<T>::put(SeasonStatus {
 		early: false,
 		active: true,
@@ -41,6 +40,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 		max_tier_avatars: 0,
 	});
 	for i in 0..n {
+		CurrentSeasonId::<T>::put(i as SeasonId + 1);
 		Seasons::<T>::insert(
 			(i + 1) as SeasonId,
 			Season {
@@ -253,10 +253,24 @@ benchmarks! {
 	}
 
 	set_treasurer {
+		let season_id = 369;
 		let treasurer = account::<T>("treasurer");
-	}: _(RawOrigin::Root, treasurer.clone())
+	}: _(RawOrigin::Root, season_id, treasurer.clone())
 	verify {
-		assert_last_event::<T>(Event::TreasurerSet { treasurer }.into())
+		assert_last_event::<T>(Event::TreasurerSet { season_id, treasurer }.into())
+	}
+
+	claim_treasury {
+		create_seasons::<T>(3)?;
+		let season_id = 1;
+		let treasurer = account::<T>("treasurer");
+		let amount = BalanceOf::<T>::unique_saturated_from(333_u128);
+		Treasurer::<T>::insert(season_id, treasurer.clone());
+		Treasury::<T>::insert(season_id, amount);
+		T::Currency::make_free_balance_be(&treasurer, T::Currency::minimum_balance());
+	}: _(RawOrigin::Signed(treasurer.clone()), season_id)
+	verify {
+		assert_last_event::<T>(Event::TreasuryClaimed { season_id, treasurer, amount }.into())
 	}
 
 	set_season {

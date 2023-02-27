@@ -102,10 +102,11 @@ mod treasurer {
 	#[test]
 	fn set_treasurer_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(AAvatars::treasurer(), None);
-			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), CHARLIE));
-			assert_eq!(AAvatars::treasurer(), Some(CHARLIE));
+			assert_eq!(AAvatars::treasurer(123), None);
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), 123, CHARLIE));
+			assert_eq!(AAvatars::treasurer(123), Some(CHARLIE));
 			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::TreasurerSet {
+				season_id: 123,
 				treasurer: CHARLIE,
 			}));
 		});
@@ -115,7 +116,7 @@ mod treasurer {
 	fn set_treasurer_should_reject_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_treasurer(RuntimeOrigin::signed(ALICE), CHARLIE),
+				AAvatars::set_treasurer(RuntimeOrigin::signed(ALICE), 1, CHARLIE),
 				DispatchError::BadOrigin
 			);
 		});
@@ -124,13 +125,217 @@ mod treasurer {
 	#[test]
 	fn set_treasurer_should_replace_existing_treasurer() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), BOB));
-			assert_eq!(AAvatars::treasurer(), Some(BOB));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), 333, ALICE));
+			assert_ok!(AAvatars::set_treasurer(RuntimeOrigin::root(), 333, BOB));
+			assert_eq!(AAvatars::treasurer(333), Some(BOB));
 			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::TreasurerSet {
+				season_id: 333,
 				treasurer: BOB,
 			}));
 		});
+	}
+}
+
+mod treasury {
+	use super::*;
+
+	#[test]
+	fn claim_treasury_works() {
+		let season_1 = Season::default().early_start(5).start(10).end(15);
+		let mint_fees = MintFees { one: 12, three: 34, six: 56 };
+		let initial_balance = MockExistentialDeposit::get() + 999_999;
+		let initial_issuance = initial_balance;
+		ExtBuilder::default()
+			.seasons(&[(1, season_1.clone())])
+			.mint_fees(mint_fees)
+			.balances(&[(BOB, initial_balance)])
+			.build()
+			.execute_with(|| {
+				Treasurer::<Test>::insert(1, BOB);
+				assert_eq!(AAvatars::treasury(1), 0);
+				assert_eq!(Balances::total_issuance(), initial_issuance);
+				assert_eq!(Balances::total_balance(&BOB), initial_balance);
+
+				Treasury::<Test>::insert(1, 333);
+				assert_eq!(AAvatars::treasury(1), 333);
+				assert_noop!(
+					AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 1),
+					Error::<Test>::CannotClaimDuringSeason
+				);
+
+				run_to_block(season_1.end + 1);
+				assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 1));
+				assert_eq!(AAvatars::treasury(1), 0);
+				assert_eq!(Balances::total_issuance(), initial_issuance + 333);
+				assert_eq!(Balances::total_balance(&BOB), initial_balance + 333);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::TreasuryClaimed { season_id: 1, treasurer: BOB, amount: 333 },
+				));
+			})
+	}
+
+	#[test]
+	fn claim_treasury_rejects_unsigned_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::claim_treasury(RuntimeOrigin::none(), 123),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn claim_treasury_rejects_unknown_treasurer() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1),
+				Error::<Test>::UnknownTreasurer
+			);
+		})
+	}
+
+	#[test]
+	fn claim_treasury_rejects_non_treasurer_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			Treasurer::<Test>::insert(3, BOB);
+			assert_noop!(
+				AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 3),
+				DispatchError::BadOrigin
+			);
+		})
+	}
+
+	#[test]
+	fn claim_treasury_rejects_during_season() {
+		let season_1 = Season::default().early_start(10).start(15).end(20);
+		let season_2 = Season::default().early_start(25).start(30).end(35);
+		ExtBuilder::default()
+			.seasons(&[(1, season_1.clone()), (2, season_2.clone())])
+			.balances(&[
+				(ALICE, MockExistentialDeposit::get()),
+				(BOB, MockExistentialDeposit::get()),
+				(CHARLIE, MockExistentialDeposit::get()),
+				(DAVE, MockExistentialDeposit::get()),
+			])
+			.build()
+			.execute_with(|| {
+				Treasurer::<Test>::insert(1, ALICE);
+				Treasurer::<Test>::insert(2, BOB);
+				Treasurer::<Test>::insert(3, CHARLIE);
+				Treasurer::<Test>::insert(4, DAVE);
+
+				// before season 1
+				for (treasurer, season_id) in [(ALICE, 1), (BOB, 2), (CHARLIE, 3)] {
+					for n in 0..season_1.early_start {
+						run_to_block(n);
+						assert_noop!(
+							AAvatars::claim_treasury(RuntimeOrigin::signed(treasurer), season_id),
+							Error::<Test>::CannotClaimDuringSeason
+						);
+					}
+				}
+
+				// during season 1
+				for (treasurer, season_id) in [(ALICE, 1), (BOB, 2), (CHARLIE, 3)] {
+					for iter in [
+						season_1.early_start..=season_1.start, // 10..15
+						season_1.start..=season_1.end,         // 15..20
+					] {
+						for n in iter {
+							run_to_block(n);
+							assert_noop!(
+								AAvatars::claim_treasury(
+									RuntimeOrigin::signed(treasurer),
+									season_id
+								),
+								Error::<Test>::CannotClaimDuringSeason
+							);
+						}
+					}
+				}
+
+				// before season 2
+				for (treasurer, season_id) in [(BOB, 2), (CHARLIE, 3)] {
+					for n in (season_1.end + 1)..season_2.early_start {
+						run_to_block(n);
+						Treasury::<Test>::insert(1, 369);
+						assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1));
+						assert_noop!(
+							AAvatars::claim_treasury(RuntimeOrigin::signed(treasurer), season_id),
+							Error::<Test>::CannotClaimDuringSeason
+						);
+					}
+				}
+
+				// during season 2
+				for (treasurer, season_id) in [(BOB, 2), (CHARLIE, 3)] {
+					for iter in [
+						season_2.early_start..=season_2.start, // 25..30
+						season_2.start..=season_2.end,         // 30..35
+					] {
+						for n in iter {
+							run_to_block(n);
+							Treasury::<Test>::insert(1, 369);
+							assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1));
+							assert_noop!(
+								AAvatars::claim_treasury(
+									RuntimeOrigin::signed(treasurer),
+									season_id
+								),
+								Error::<Test>::CannotClaimDuringSeason
+							);
+						}
+					}
+				}
+
+				// end of season 2
+				for (treasurer, season_id) in [(CHARLIE, 3), (DAVE, 4)] {
+					for n in (season_2.end + 1)..(season_2.end + 5) {
+						run_to_block(n);
+						Treasury::<Test>::insert(1, 369);
+						Treasury::<Test>::insert(2, 369);
+						assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1));
+						assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 2));
+						assert_noop!(
+							AAvatars::claim_treasury(RuntimeOrigin::signed(treasurer), season_id),
+							Error::<Test>::CannotClaimDuringSeason
+						);
+					}
+				}
+			})
+	}
+
+	#[test]
+	fn claim_treasury_rejects_empty_treasury() {
+		let season_1 = Season::default();
+		ExtBuilder::default()
+			.seasons(&[(1, season_1.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season_1.end + 1);
+				Treasurer::<Test>::insert(1, CHARLIE);
+				assert_noop!(
+					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
+					Error::<Test>::CannotClaimZero
+				);
+			})
+	}
+
+	#[test]
+	fn claim_treasury_rejects_non_existent_account() {
+		let season_1 = Season::default();
+		ExtBuilder::default()
+			.seasons(&[(1, season_1.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season_1.end + 1);
+				Treasurer::<Test>::insert(1, CHARLIE);
+				Treasury::<Test>::insert(1, 999);
+				assert_noop!(
+					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
+					pallet_balances::Error::<Test>::DeadAccount
+				);
+			})
 	}
 }
 
