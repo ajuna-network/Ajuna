@@ -2155,7 +2155,6 @@ mod transferring {
 		let season_id = 999;
 
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.balances(&[(ALICE, initial_balance)])
 			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
@@ -2190,7 +2189,7 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_rejects_on_transfer_closed() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			GlobalConfigs::<Test>::mutate(|config| config.transfer.open = false);
 			assert_noop!(
 				AAvatars::transfer_avatar(RuntimeOrigin::signed(BOB), CHARLIE, H256::random()),
@@ -2216,7 +2215,7 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_rejects_transferring_to_self() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			for who in [ALICE, BOB] {
 				assert_noop!(
 					AAvatars::transfer_avatar(RuntimeOrigin::signed(who), who, H256::random()),
@@ -2240,7 +2239,7 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_rejects_unowned_avatars() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			let avatar_id = create_avatars(CHARLIE, 1)[0];
 			assert_noop!(
 				AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, avatar_id),
@@ -2251,7 +2250,7 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_rejects_unknown_avatars() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, H256::random()),
 				Error::<Test>::UnknownAvatar
@@ -2263,7 +2262,6 @@ mod transferring {
 	fn transfer_avatar_rejects_on_max_ownership() {
 		let avatar_transfer_fee = 369;
 		ExtBuilder::default()
-			.organizer(ALICE)
 			.balances(&[(ALICE, MockExistentialDeposit::get() + avatar_transfer_fee)])
 			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
