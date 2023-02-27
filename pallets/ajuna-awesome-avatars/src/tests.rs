@@ -2227,6 +2227,18 @@ mod transferring {
 	}
 
 	#[test]
+	fn transfer_avatar_rejects_avatar_in_trade() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(CHARLIE, 1)[0];
+			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_id, 999));
+			assert_noop!(
+				AAvatars::transfer_avatar(RuntimeOrigin::signed(CHARLIE), DAVE, avatar_id),
+				Error::<Test>::AvatarInTrade
+			);
+		});
+	}
+
+	#[test]
 	fn transfer_avatar_rejects_unowned_avatars() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			let avatar_id = create_avatars(CHARLIE, 1)[0];
