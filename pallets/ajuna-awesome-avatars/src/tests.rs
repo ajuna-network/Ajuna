@@ -1250,6 +1250,18 @@ mod minting {
 				assert_eq!(AAvatars::accounts(BOB).free_mints, 0);
 			})
 	}
+
+	#[test]
+	fn set_free_mints_rejects_non_organizer_calls() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			for not_organizer in [BOB, CHARLIE] {
+				assert_noop!(
+					AAvatars::set_free_mints(RuntimeOrigin::signed(not_organizer), ALICE, 123),
+					DispatchError::BadOrigin
+				);
+			}
+		})
+	}
 }
 
 mod forging {
