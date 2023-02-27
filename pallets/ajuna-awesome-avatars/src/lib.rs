@@ -646,7 +646,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(10)]
-		#[pallet::weight(123)]
+		#[pallet::weight(T::WeightInfo::claim_treasury())]
 		pub fn claim_treasury(origin: OriginFor<T>, season_id: SeasonId) -> DispatchResult {
 			let maybe_treasurer = ensure_signed(origin)?;
 			let treasurer = Self::treasurer(season_id).ok_or(Error::<T>::UnknownTreasurer)?;
