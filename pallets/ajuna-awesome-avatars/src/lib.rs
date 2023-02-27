@@ -44,7 +44,7 @@
 //! * `set_treasurer` - Set the treasurer.
 //! * `set_season` - Add a new season.
 //! * `update_global_config` - Update the configuration.
-//! * `issue_free_mints` - Give a number of free mints to a player.
+//! * `set_free_mints` - Set a number of free mints to a player.
 //!
 //! ### Public Functions
 //!
@@ -250,10 +250,6 @@ pub mod pallet {
 		SeasonFinished(SeasonId),
 		/// Free mints transferred between accounts.
 		FreeMintsTransferred { from: T::AccountId, to: T::AccountId, how_many: MintCount },
-		/// Free mints issued to account.
-		FreeMintsIssued { to: T::AccountId, how_many: MintCount },
-		/// Free mints withdrawn from account.
-		FreeMintsWithdrawn { from: T::AccountId, how_many: MintCount },
 		/// Free mints set for target account.
 		FreeMintsSet { target: T::AccountId, how_many: MintCount },
 		/// Avatar has price set for trade.
@@ -710,50 +706,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Issue free mints.
+		/// Set free mints.
 		///
 		/// It can only be called by an organizer account.
 		///
-		/// Emits `FreeMintsIssued` event when successful.
+		/// Emits `FreeMintSet` event when successful.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(13)]
-		#[pallet::weight(T::WeightInfo::issue_free_mints())]
-		pub fn issue_free_mints(
-			origin: OriginFor<T>,
-			to: T::AccountId,
-			how_many: MintCount,
-		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-			ensure!(!how_many.is_zero(), Error::<T>::TooLowFreeMints);
-			let new_free_mints = Self::accounts(&to)
-				.free_mints
-				.checked_add(how_many)
-				.ok_or(ArithmeticError::Overflow)?;
-			Accounts::<T>::mutate(&to, |account| account.free_mints = new_free_mints);
-			Self::deposit_event(Event::FreeMintsIssued { to, how_many });
-			Ok(())
-		}
-
-		#[pallet::call_index(14)]
-		#[pallet::weight(T::WeightInfo::withdraw_free_mints())]
-		pub fn withdraw_free_mints(
-			origin: OriginFor<T>,
-			from: T::AccountId,
-			how_many: MintCount,
-		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
-			ensure!(!how_many.is_zero(), Error::<T>::TooLowFreeMints);
-			let new_free_mints = Self::accounts(&from)
-				.free_mints
-				.checked_sub(how_many)
-				.ok_or(ArithmeticError::Underflow)?;
-			Accounts::<T>::mutate(&from, |account| account.free_mints = new_free_mints);
-			Self::deposit_event(Event::FreeMintsWithdrawn { from, how_many });
-			Ok(())
-		}
-
-		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::set_free_mints())]
 		pub fn set_free_mints(
 			origin: OriginFor<T>,
@@ -766,7 +726,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(16)]
+		#[pallet::call_index(14)]
 		#[pallet::weight(10_000)]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
@@ -780,7 +740,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(17)]
+		#[pallet::call_index(15)]
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
