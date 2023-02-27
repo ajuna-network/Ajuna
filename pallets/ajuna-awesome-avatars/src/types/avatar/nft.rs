@@ -1,6 +1,7 @@
 use crate::types::{Avatar, AvatarCodec, Force, RarityTier};
 use codec::{Decode, Encode};
 use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
+use sp_std::prelude::*;
 
 pub const DNA_ATTRIBUTE_CODE: u16 = 10;
 pub const SOUL_POINTS_ATTRIBUTE_CODE: u16 = 11;
