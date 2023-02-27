@@ -2184,6 +2184,18 @@ mod transferring {
 				// balance checks
 				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee);
 				assert_eq!(AAvatars::treasury(season_id), avatar_transfer_fee);
+
+				// check organizer transfer
+				GlobalConfigs::<Test>::mutate(|config| config.trade.open = false);
+				Balances::make_free_balance_be(&BOB, avatar_transfer_fee);
+				assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), BOB));
+				assert_ok!(AAvatars::transfer_avatar(
+					RuntimeOrigin::signed(BOB),
+					CHARLIE,
+					bob_avatar_ids[0]
+				));
+				assert_eq!(AAvatars::owners(BOB).len(), 6);
+				assert_eq!(AAvatars::owners(CHARLIE).len(), 1);
 			});
 	}
 
