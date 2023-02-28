@@ -60,8 +60,6 @@ pub trait WeightInfo {
 	fn claim_treasury() -> Weight;
 	fn set_season() -> Weight;
 	fn update_global_config() -> Weight;
-	fn issue_free_mints() -> Weight;
-	fn withdraw_free_mints() -> Weight;
 	fn set_free_mints() -> Weight;
 }
 
@@ -80,10 +78,10 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Avatars (r:0 w:6)
 	/// The range of component `n` is `[0, 94]`.
 	fn mint_free(n: u32, ) -> Weight {
-		// Minimum execution time: 265_388 nanoseconds.
-		Weight::from_ref_time(468_372_289 as u64)
-			// Standard Error: 114_304
-			.saturating_add(Weight::from_ref_time(695_001 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 244_785 nanoseconds.
+		Weight::from_ref_time(398_333_505 as u64)
+			// Standard Error: 133_877
+			.saturating_add(Weight::from_ref_time(2_098_630 as u64).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
@@ -100,10 +98,10 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Avatars (r:0 w:6)
 	/// The range of component `n` is `[0, 94]`.
 	fn mint_normal(n: u32, ) -> Weight {
-		// Minimum execution time: 252_187 nanoseconds.
-		Weight::from_ref_time(530_234_018 as u64)
-			// Standard Error: 149_705
-			.saturating_add(Weight::from_ref_time(1_097_430 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 244_213 nanoseconds.
+		Weight::from_ref_time(481_435_528 as u64)
+			// Standard Error: 180_498
+			.saturating_add(Weight::from_ref_time(2_144_042 as u64).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(10 as u64))
 			.saturating_add(T::DbWeight::get().writes(11 as u64))
 	}
@@ -121,15 +119,16 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars SeasonStats (r:1 w:1)
 	/// The range of component `n` is `[5, 100]`.
 	fn forge(n: u32, ) -> Weight {
-		// Minimum execution time: 231_976 nanoseconds.
-		Weight::from_ref_time(413_073_177 as u64)
-			// Standard Error: 94_461
-			.saturating_add(Weight::from_ref_time(1_452_125 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 307_119 nanoseconds.
+		Weight::from_ref_time(401_306_776 as u64)
+			// Standard Error: 99_120
+			.saturating_add(Weight::from_ref_time(1_515_709 as u64).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(24 as u64))
 			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	// Storage: AwesomeAvatars GlobalConfigs (r:1 w:0)
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
+	// Storage: AwesomeAvatars Trade (r:1 w:0)
 	// Storage: AwesomeAvatars Avatars (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
@@ -137,13 +136,14 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Accounts (r:1 w:0)
 	/// The range of component `n` is `[1, 100]`.
 	fn transfer_avatar_normal(_n: u32, ) -> Weight {
-		// Minimum execution time: 279_238 nanoseconds.
-		Weight::from_ref_time(506_614_201 as u64)
-			.saturating_add(T::DbWeight::get().reads(8 as u64))
+		// Minimum execution time: 283_030 nanoseconds.
+		Weight::from_ref_time(534_484_708 as u64)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: AwesomeAvatars GlobalConfigs (r:1 w:0)
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
+	// Storage: AwesomeAvatars Trade (r:1 w:0)
 	// Storage: AwesomeAvatars Avatars (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
@@ -151,16 +151,16 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Accounts (r:1 w:0)
 	/// The range of component `n` is `[1, 100]`.
 	fn transfer_avatar_organizer(_n: u32, ) -> Weight {
-		// Minimum execution time: 274_635 nanoseconds.
-		Weight::from_ref_time(512_149_052 as u64)
-			.saturating_add(T::DbWeight::get().reads(8 as u64))
+		// Minimum execution time: 252_848 nanoseconds.
+		Weight::from_ref_time(503_065_973 as u64)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: AwesomeAvatars GlobalConfigs (r:1 w:0)
 	// Storage: AwesomeAvatars Accounts (r:2 w:2)
 	fn transfer_free_mints() -> Weight {
-		// Minimum execution time: 112_141 nanoseconds.
-		Weight::from_ref_time(130_095_000 as u64)
+		// Minimum execution time: 122_178 nanoseconds.
+		Weight::from_ref_time(147_446_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -169,8 +169,8 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars LockedAvatars (r:1 w:0)
 	// Storage: AwesomeAvatars Trade (r:0 w:1)
 	fn set_price() -> Weight {
-		// Minimum execution time: 190_370 nanoseconds.
-		Weight::from_ref_time(225_812_000 as u64)
+		// Minimum execution time: 175_500 nanoseconds.
+		Weight::from_ref_time(221_159_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -178,8 +178,8 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Trade (r:1 w:1)
 	// Storage: AwesomeAvatars Avatars (r:1 w:0)
 	fn remove_price() -> Weight {
-		// Minimum execution time: 172_500 nanoseconds.
-		Weight::from_ref_time(205_093_000 as u64)
+		// Minimum execution time: 173_826 nanoseconds.
+		Weight::from_ref_time(210_433_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -194,10 +194,10 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Accounts (r:2 w:2)
 	/// The range of component `n` is `[1, 100]`.
 	fn buy(n: u32, ) -> Weight {
-		// Minimum execution time: 290_973 nanoseconds.
-		Weight::from_ref_time(456_446_372 as u64)
-			// Standard Error: 121_129
-			.saturating_add(Weight::from_ref_time(2_010_133 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 261_882 nanoseconds.
+		Weight::from_ref_time(478_686_234 as u64)
+			// Standard Error: 142_866
+			.saturating_add(Weight::from_ref_time(1_963_436 as u64).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
@@ -207,21 +207,21 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars CurrentSeasonId (r:1 w:0)
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
 	fn upgrade_storage() -> Weight {
-		// Minimum execution time: 136_194 nanoseconds.
-		Weight::from_ref_time(172_201_000 as u64)
+		// Minimum execution time: 151_438 nanoseconds.
+		Weight::from_ref_time(194_059_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:0 w:1)
 	fn set_organizer() -> Weight {
-		// Minimum execution time: 44_478 nanoseconds.
-		Weight::from_ref_time(56_087_000 as u64)
+		// Minimum execution time: 36_775 nanoseconds.
+		Weight::from_ref_time(49_908_000 as u64)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Treasurer (r:0 w:1)
 	fn set_treasurer() -> Weight {
-		// Minimum execution time: 46_941 nanoseconds.
-		Weight::from_ref_time(52_172_000 as u64)
+		// Minimum execution time: 47_925 nanoseconds.
+		Weight::from_ref_time(69_696_000 as u64)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Treasurer (r:1 w:0)
@@ -231,48 +231,32 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn claim_treasury() -> Weight {
-		// Minimum execution time: 161_317 nanoseconds.
-		Weight::from_ref_time(204_627_000 as u64)
+		// Minimum execution time: 133_794 nanoseconds.
+		Weight::from_ref_time(210_907_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
 	// Storage: AwesomeAvatars Seasons (r:1 w:1)
 	fn set_season() -> Weight {
-		// Minimum execution time: 81_525 nanoseconds.
-		Weight::from_ref_time(96_797_000 as u64)
+		// Minimum execution time: 81_998 nanoseconds.
+		Weight::from_ref_time(139_818_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
 	// Storage: AwesomeAvatars GlobalConfigs (r:0 w:1)
 	fn update_global_config() -> Weight {
-		// Minimum execution time: 63_321 nanoseconds.
-		Weight::from_ref_time(86_476_000 as u64)
+		// Minimum execution time: 73_159 nanoseconds.
+		Weight::from_ref_time(118_797_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
 	// Storage: AwesomeAvatars Accounts (r:1 w:1)
-	fn issue_free_mints() -> Weight {
-		// Minimum execution time: 63_960 nanoseconds.
-		Weight::from_ref_time(82_704_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-	}
-	// Storage: AwesomeAvatars Organizer (r:1 w:0)
-	// Storage: AwesomeAvatars Accounts (r:1 w:1)
-	fn withdraw_free_mints() -> Weight {
-		// Minimum execution time: 79_647 nanoseconds.
-		Weight::from_ref_time(114_278_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-	}
-	// Storage: AwesomeAvatars Organizer (r:1 w:0)
-	// Storage: AwesomeAvatars Accounts (r:1 w:1)
 	fn set_free_mints() -> Weight {
-		// Minimum execution time: 64_072 nanoseconds.
-		Weight::from_ref_time(81_976_000 as u64)
+		// Minimum execution time: 68_762 nanoseconds.
+		Weight::from_ref_time(118_678_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -292,10 +276,10 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Avatars (r:0 w:6)
 	/// The range of component `n` is `[0, 94]`.
 	fn mint_free(n: u32, ) -> Weight {
-		// Minimum execution time: 265_388 nanoseconds.
-		Weight::from_ref_time(468_372_289 as u64)
-			// Standard Error: 114_304
-			.saturating_add(Weight::from_ref_time(695_001 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 244_785 nanoseconds.
+		Weight::from_ref_time(398_333_505 as u64)
+			// Standard Error: 133_877
+			.saturating_add(Weight::from_ref_time(2_098_630 as u64).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().writes(10 as u64))
 	}
@@ -312,10 +296,10 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Avatars (r:0 w:6)
 	/// The range of component `n` is `[0, 94]`.
 	fn mint_normal(n: u32, ) -> Weight {
-		// Minimum execution time: 252_187 nanoseconds.
-		Weight::from_ref_time(530_234_018 as u64)
-			// Standard Error: 149_705
-			.saturating_add(Weight::from_ref_time(1_097_430 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 244_213 nanoseconds.
+		Weight::from_ref_time(481_435_528 as u64)
+			// Standard Error: 180_498
+			.saturating_add(Weight::from_ref_time(2_144_042 as u64).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(10 as u64))
 			.saturating_add(RocksDbWeight::get().writes(11 as u64))
 	}
@@ -333,15 +317,16 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars SeasonStats (r:1 w:1)
 	/// The range of component `n` is `[5, 100]`.
 	fn forge(n: u32, ) -> Weight {
-		// Minimum execution time: 231_976 nanoseconds.
-		Weight::from_ref_time(413_073_177 as u64)
-			// Standard Error: 94_461
-			.saturating_add(Weight::from_ref_time(1_452_125 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 307_119 nanoseconds.
+		Weight::from_ref_time(401_306_776 as u64)
+			// Standard Error: 99_120
+			.saturating_add(Weight::from_ref_time(1_515_709 as u64).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(24 as u64))
 			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
 	// Storage: AwesomeAvatars GlobalConfigs (r:1 w:0)
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
+	// Storage: AwesomeAvatars Trade (r:1 w:0)
 	// Storage: AwesomeAvatars Avatars (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
@@ -349,13 +334,14 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Accounts (r:1 w:0)
 	/// The range of component `n` is `[1, 100]`.
 	fn transfer_avatar_normal(_n: u32, ) -> Weight {
-		// Minimum execution time: 279_238 nanoseconds.
-		Weight::from_ref_time(506_614_201 as u64)
-			.saturating_add(RocksDbWeight::get().reads(8 as u64))
+		// Minimum execution time: 283_030 nanoseconds.
+		Weight::from_ref_time(534_484_708 as u64)
+			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	// Storage: AwesomeAvatars GlobalConfigs (r:1 w:0)
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
+	// Storage: AwesomeAvatars Trade (r:1 w:0)
 	// Storage: AwesomeAvatars Avatars (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
@@ -363,16 +349,16 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Accounts (r:1 w:0)
 	/// The range of component `n` is `[1, 100]`.
 	fn transfer_avatar_organizer(_n: u32, ) -> Weight {
-		// Minimum execution time: 274_635 nanoseconds.
-		Weight::from_ref_time(512_149_052 as u64)
-			.saturating_add(RocksDbWeight::get().reads(8 as u64))
+		// Minimum execution time: 252_848 nanoseconds.
+		Weight::from_ref_time(503_065_973 as u64)
+			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	// Storage: AwesomeAvatars GlobalConfigs (r:1 w:0)
 	// Storage: AwesomeAvatars Accounts (r:2 w:2)
 	fn transfer_free_mints() -> Weight {
-		// Minimum execution time: 112_141 nanoseconds.
-		Weight::from_ref_time(130_095_000 as u64)
+		// Minimum execution time: 122_178 nanoseconds.
+		Weight::from_ref_time(147_446_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
@@ -381,8 +367,8 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars LockedAvatars (r:1 w:0)
 	// Storage: AwesomeAvatars Trade (r:0 w:1)
 	fn set_price() -> Weight {
-		// Minimum execution time: 190_370 nanoseconds.
-		Weight::from_ref_time(225_812_000 as u64)
+		// Minimum execution time: 175_500 nanoseconds.
+		Weight::from_ref_time(221_159_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -390,8 +376,8 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Trade (r:1 w:1)
 	// Storage: AwesomeAvatars Avatars (r:1 w:0)
 	fn remove_price() -> Weight {
-		// Minimum execution time: 172_500 nanoseconds.
-		Weight::from_ref_time(205_093_000 as u64)
+		// Minimum execution time: 173_826 nanoseconds.
+		Weight::from_ref_time(210_433_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -406,10 +392,10 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Accounts (r:2 w:2)
 	/// The range of component `n` is `[1, 100]`.
 	fn buy(n: u32, ) -> Weight {
-		// Minimum execution time: 290_973 nanoseconds.
-		Weight::from_ref_time(456_446_372 as u64)
-			// Standard Error: 121_129
-			.saturating_add(Weight::from_ref_time(2_010_133 as u64).saturating_mul(n as u64))
+		// Minimum execution time: 261_882 nanoseconds.
+		Weight::from_ref_time(478_686_234 as u64)
+			// Standard Error: 142_866
+			.saturating_add(Weight::from_ref_time(1_963_436 as u64).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(12 as u64))
 			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
@@ -419,21 +405,21 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars CurrentSeasonId (r:1 w:0)
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
 	fn upgrade_storage() -> Weight {
-		// Minimum execution time: 136_194 nanoseconds.
-		Weight::from_ref_time(172_201_000 as u64)
+		// Minimum execution time: 151_438 nanoseconds.
+		Weight::from_ref_time(194_059_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:0 w:1)
 	fn set_organizer() -> Weight {
-		// Minimum execution time: 44_478 nanoseconds.
-		Weight::from_ref_time(56_087_000 as u64)
+		// Minimum execution time: 36_775 nanoseconds.
+		Weight::from_ref_time(49_908_000 as u64)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Treasurer (r:0 w:1)
 	fn set_treasurer() -> Weight {
-		// Minimum execution time: 46_941 nanoseconds.
-		Weight::from_ref_time(52_172_000 as u64)
+		// Minimum execution time: 47_925 nanoseconds.
+		Weight::from_ref_time(69_696_000 as u64)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Treasurer (r:1 w:0)
@@ -443,48 +429,32 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Treasury (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn claim_treasury() -> Weight {
-		// Minimum execution time: 161_317 nanoseconds.
-		Weight::from_ref_time(204_627_000 as u64)
+		// Minimum execution time: 133_794 nanoseconds.
+		Weight::from_ref_time(210_907_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(6 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
 	// Storage: AwesomeAvatars Seasons (r:1 w:1)
 	fn set_season() -> Weight {
-		// Minimum execution time: 81_525 nanoseconds.
-		Weight::from_ref_time(96_797_000 as u64)
+		// Minimum execution time: 81_998 nanoseconds.
+		Weight::from_ref_time(139_818_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
 	// Storage: AwesomeAvatars GlobalConfigs (r:0 w:1)
 	fn update_global_config() -> Weight {
-		// Minimum execution time: 63_321 nanoseconds.
-		Weight::from_ref_time(86_476_000 as u64)
+		// Minimum execution time: 73_159 nanoseconds.
+		Weight::from_ref_time(118_797_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
 	// Storage: AwesomeAvatars Accounts (r:1 w:1)
-	fn issue_free_mints() -> Weight {
-		// Minimum execution time: 63_960 nanoseconds.
-		Weight::from_ref_time(82_704_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
-	}
-	// Storage: AwesomeAvatars Organizer (r:1 w:0)
-	// Storage: AwesomeAvatars Accounts (r:1 w:1)
-	fn withdraw_free_mints() -> Weight {
-		// Minimum execution time: 79_647 nanoseconds.
-		Weight::from_ref_time(114_278_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
-	}
-	// Storage: AwesomeAvatars Organizer (r:1 w:0)
-	// Storage: AwesomeAvatars Accounts (r:1 w:1)
 	fn set_free_mints() -> Weight {
-		// Minimum execution time: 64_072 nanoseconds.
-		Weight::from_ref_time(81_976_000 as u64)
+		// Minimum execution time: 68_762 nanoseconds.
+		Weight::from_ref_time(118_678_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
