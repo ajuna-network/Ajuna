@@ -442,6 +442,7 @@ pub mod pallet {
 				},
 			};
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
+			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
 			let fee = transfer.avatar_transfer_fee;
