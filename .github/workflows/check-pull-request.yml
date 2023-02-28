@@ -79,8 +79,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-test-pallets-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-test-pallets-
+          key: ${{ runner.os }}-cargo-test-${{ matrix.pallet }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-${{ matrix.pallet }}-
       - run: cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p ${{ matrix.pallet }}
 
   test-runtime:
@@ -106,8 +106,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-test-runtime-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-test-runtime-
+          key: ${{ runner.os }}-cargo-test-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-${{ matrix.runtime }}-
       - run: cargo test --all-features --all-targets ${{ env.CARGO_ARGS }} -p ${{ matrix.runtime }}
 
   test-full:
