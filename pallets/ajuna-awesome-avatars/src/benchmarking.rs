@@ -264,9 +264,9 @@ benchmarks! {
 		create_seasons::<T>(3)?;
 		let season_id = 1;
 		let treasurer = account::<T>("treasurer");
-		let amount = BalanceOf::<T>::unique_saturated_from(333_u128);
+		let amount = AAvatars::<T>::global_configs().transfer.avatar_transfer_fee;
 		Treasurer::<T>::insert(season_id, treasurer.clone());
-		Treasury::<T>::insert(season_id, amount);
+		AAvatars::<T>::deposit_into_treasury(&season_id, amount);
 		T::Currency::make_free_balance_be(&treasurer, T::Currency::minimum_balance());
 	}: _(RawOrigin::Signed(treasurer.clone()), season_id)
 	verify {
