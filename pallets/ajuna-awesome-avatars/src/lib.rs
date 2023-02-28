@@ -305,6 +305,8 @@ pub mod pallet {
 		TooManyRarityPercentages,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
+		/// Attempt to set fees lower than the existential deposit amount.
+		TooLowFees,
 		/// Minting is not available at the moment.
 		MintClosed,
 		/// Forging is not available at the moment.
@@ -706,6 +708,19 @@ pub mod pallet {
 			new_global_config: GlobalConfigOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
+			ensure!(
+				[
+					new_global_config.mint.fees.one,
+					new_global_config.mint.fees.three,
+					new_global_config.mint.fees.six,
+					new_global_config.transfer.avatar_transfer_fee,
+					new_global_config.trade.min_fee,
+					new_global_config.account.storage_upgrade_fee
+				]
+				.iter()
+				.all(|x| x > &T::Currency::minimum_balance()),
+				Error::<T>::TooLowFees
+			);
 			GlobalConfigs::<T>::put(&new_global_config);
 			Self::deposit_event(Event::UpdatedGlobalConfig(new_global_config));
 			Ok(())

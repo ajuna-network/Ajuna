@@ -311,3 +311,30 @@ pub fn run_to_block(n: u64) {
 		AAvatars::on_initialize(System::block_number());
 	}
 }
+
+impl GlobalConfigOf<Test> {
+	pub(crate) fn mint_fees_one(mut self, amount: MockBalance) -> Self {
+		self.mint.fees.one = amount;
+		self
+	}
+	pub(crate) fn mint_fees_three(mut self, amount: MockBalance) -> Self {
+		self.mint.fees.three = amount;
+		self
+	}
+	pub(crate) fn mint_fees_six(mut self, amount: MockBalance) -> Self {
+		self.mint.fees.six = amount;
+		self
+	}
+	pub(crate) fn transfer_avatar_transfer_fee(mut self, amount: MockBalance) -> Self {
+		self.transfer.avatar_transfer_fee = amount;
+		self
+	}
+	pub(crate) fn trade_min_fee(mut self, amount: MockBalance) -> Self {
+		self.trade.min_fee = amount;
+		self
+	}
+	pub(crate) fn account_storage_upgrade_fe(mut self, amount: MockBalance) -> Self {
+		self.account.storage_upgrade_fee = amount;
+		self
+	}
+}

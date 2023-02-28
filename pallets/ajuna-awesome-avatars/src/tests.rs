@@ -728,16 +728,27 @@ mod config {
 
 	#[test]
 	fn update_global_config_should_work() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let config = GlobalConfigOf::<Test>::default();
-			assert_ok!(AAvatars::update_global_config(
-				RuntimeOrigin::signed(ALICE),
-				config.clone()
-			));
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::UpdatedGlobalConfig(config),
-			));
-		});
+		ExtBuilder::default()
+			.existential_deposit(1)
+			.organizer(ALICE)
+			.build()
+			.execute_with(|| {
+				let config = GlobalConfigOf::<Test>::default()
+					.mint_fees_one(2)
+					.mint_fees_three(2)
+					.mint_fees_six(2)
+					.transfer_avatar_transfer_fee(2)
+					.trade_min_fee(2)
+					.account_storage_upgrade_fe(2);
+
+				assert_ok!(AAvatars::update_global_config(
+					RuntimeOrigin::signed(ALICE),
+					config.clone()
+				));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::UpdatedGlobalConfig(config),
+				));
+			});
 	}
 
 	#[test]
@@ -751,6 +762,36 @@ mod config {
 				DispatchError::BadOrigin
 			);
 		});
+	}
+
+	#[test]
+	fn update_global_config_should_reject_fees_lower_than_existential_deposit() {
+		ExtBuilder::default()
+			.existential_deposit(333)
+			.organizer(CHARLIE)
+			.build()
+			.execute_with(|| {
+				for config in [
+					GlobalConfigOf::<Test>::default().mint_fees_one(12),
+					GlobalConfigOf::<Test>::default().mint_fees_three(34),
+					GlobalConfigOf::<Test>::default().mint_fees_six(56),
+					GlobalConfigOf::<Test>::default().transfer_avatar_transfer_fee(78),
+					GlobalConfigOf::<Test>::default().trade_min_fee(91),
+					GlobalConfigOf::<Test>::default().account_storage_upgrade_fe(99),
+					GlobalConfigOf::<Test>::default()
+						.mint_fees_one(999)
+						.mint_fees_three(999)
+						.mint_fees_six(1)
+						.transfer_avatar_transfer_fee(999)
+						.trade_min_fee(2)
+						.account_storage_upgrade_fe(999),
+				] {
+					assert_noop!(
+						AAvatars::update_global_config(RuntimeOrigin::signed(CHARLIE), config),
+						Error::<Test>::TooLowFees
+					);
+				}
+			});
 	}
 }
 
