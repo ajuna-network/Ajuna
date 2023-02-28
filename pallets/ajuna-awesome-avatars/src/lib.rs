@@ -442,7 +442,7 @@ pub mod pallet {
 				},
 			};
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
-			ensure!(!Self::is_in_trade(&avatar_id), Error::<T>::AvatarInTrade);
+			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
 			let fee = transfer.avatar_transfer_fee;
@@ -732,7 +732,7 @@ pub mod pallet {
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&account, &avatar_id)?;
-			ensure!(!Self::is_in_trade(&avatar_id), Error::<T>::AvatarInTrade);
+			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(&avatar_id)?;
 
 			let asset_id = T::NftHandler::store_as_nft(account, T::NftCollectionId::get(), avatar)?;
@@ -1074,10 +1074,10 @@ pub mod pallet {
 			ensure!(sacrifice_count <= season.max_sacrifices, Error::<T>::TooManySacrifices);
 			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
 			ensure!(
-				sacrifice_ids.iter().all(|id| !Self::is_in_trade(id)),
+				sacrifice_ids.iter().all(|id| Self::ensure_for_trade(id).is_err()),
 				Error::<T>::AvatarInTrade
 			);
-			ensure!(!Self::is_in_trade(leader_id), Error::<T>::AvatarInTrade);
+			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(leader_id)?;
 
 			let deduplicated_sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
@@ -1095,10 +1095,6 @@ pub mod pallet {
 			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
 
 			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
-		}
-
-		fn is_in_trade(avatar_id: &AvatarIdOf<T>) -> bool {
-			Self::trade(avatar_id).is_some()
 		}
 
 		fn ensure_for_trade(
