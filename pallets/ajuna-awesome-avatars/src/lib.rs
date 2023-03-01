@@ -74,11 +74,12 @@ use crate::{types::*, weights::WeightInfo};
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement::AllowDeath, Randomness, WithdrawReasons},
+	PalletId,
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
-	traits::{Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
 	ArithmeticError,
 };
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -108,6 +109,9 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Currency: Currency<Self::AccountId>;
@@ -301,6 +305,8 @@ pub mod pallet {
 		TooManyRarityPercentages,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
+		/// Attempt to set fees lower than the existential deposit amount.
+		TooLowFees,
 		/// Minting is not available at the moment.
 		MintClosed,
 		/// Forging is not available at the moment.
@@ -447,7 +453,7 @@ pub mod pallet {
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
 			let fee = transfer.avatar_transfer_fee;
 			T::Currency::withdraw(&from, fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(avatar.season_id, |bal| bal.saturating_accrue(fee));
+			Self::deposit_into_treasury(&avatar.season_id, fee);
 
 			Self::do_transfer_avatar(&from, &to, &avatar_id)?;
 			Self::deposit_event(Event::AvatarTransferred { from, to, avatar_id });
@@ -565,7 +571,7 @@ pub mod pallet {
 					MAX_PERCENTAGE.unique_saturated_into(),
 			);
 			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(trade_fee));
+			Self::deposit_into_treasury(&season_id, trade_fee);
 
 			Self::do_transfer_avatar(&seller, &buyer, &avatar_id)?;
 			Trade::<T>::remove(avatar_id);
@@ -593,7 +599,7 @@ pub mod pallet {
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
 
 			let season_id = Self::current_season_id();
-			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(upgrade_fee));
+			Self::deposit_into_treasury(&season_id, upgrade_fee);
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
 			Self::deposit_event(Event::StorageTierUpgraded);
@@ -660,7 +666,7 @@ pub mod pallet {
 			let amount = Treasury::<T>::take(season_id);
 			ensure!(!amount.is_zero(), Error::<T>::CannotClaimZero);
 
-			T::Currency::deposit_into_existing(&treasurer, amount)?;
+			T::Currency::transfer(&Self::account_id(), &treasurer, amount, AllowDeath)?;
 			Self::deposit_event(Event::TreasuryClaimed { season_id, treasurer, amount });
 			Ok(())
 		}
@@ -702,6 +708,19 @@ pub mod pallet {
 			new_global_config: GlobalConfigOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
+			ensure!(
+				[
+					new_global_config.mint.fees.one,
+					new_global_config.mint.fees.three,
+					new_global_config.mint.fees.six,
+					new_global_config.transfer.avatar_transfer_fee,
+					new_global_config.trade.min_fee,
+					new_global_config.account.storage_upgrade_fee
+				]
+				.iter()
+				.all(|x| x > &T::Currency::minimum_balance()),
+				Error::<T>::TooLowFees
+			);
 			GlobalConfigs::<T>::put(&new_global_config);
 			Self::deposit_event(Event::UpdatedGlobalConfig(new_global_config));
 			Ok(())
@@ -757,6 +776,16 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// The account ID of the treasury.
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
+		pub(crate) fn deposit_into_treasury(season_id: &SeasonId, amount: BalanceOf<T>) {
+			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(amount));
+			T::Currency::deposit_creating(&Self::account_id(), amount);
+		}
+
 		/// Check that the origin is an organizer account.
 		pub(crate) fn ensure_organizer(
 			origin: OriginFor<T>,
@@ -878,7 +907,7 @@ pub mod pallet {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
-					Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(fee));
+					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintType::Free => {
 					let fee = (mint_option.count as MintCount)

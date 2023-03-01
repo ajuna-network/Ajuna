@@ -82,7 +82,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const MockExistentialDeposit: MockBalance = 321;
+	pub static MockExistentialDeposit: MockBalance = 321;
 }
 
 impl pallet_balances::Config for Test {
@@ -146,10 +146,12 @@ impl pallet_nfts::Config for Test {
 }
 
 parameter_types! {
+	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
 	pub const MockAvatarCollectionId: MockCollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Test {
+	type PalletId = AwesomeAvatarsPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
@@ -175,8 +177,8 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type WeightInfo = ();
 }
 
-#[derive(Default)]
 pub struct ExtBuilder {
+	existential_deposit: MockBalance,
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
 	mint_cooldown: Option<MockBlockNumber>,
@@ -187,7 +189,27 @@ pub struct ExtBuilder {
 	avatar_transfer_fee: Option<MockBalance>,
 }
 
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			existential_deposit: MockExistentialDeposit::get(),
+			organizer: Default::default(),
+			seasons: Default::default(),
+			mint_cooldown: Default::default(),
+			mint_fees: Default::default(),
+			trade_min_fee: Default::default(),
+			balances: Default::default(),
+			free_mints: Default::default(),
+			avatar_transfer_fee: Default::default(),
+		}
+	}
+}
+
 impl ExtBuilder {
+	pub fn existential_deposit(mut self, existential_deposit: MockBalance) -> Self {
+		self.existential_deposit = existential_deposit;
+		self
+	}
 	pub fn organizer(mut self, organizer: MockAccountId) -> Self {
 		self.organizer = Some(organizer);
 		self
@@ -222,6 +244,7 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
+		MOCK_EXISTENTIAL_DEPOSIT.with(|v| *v.borrow_mut() = self.existential_deposit);
 		let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 		pallet_balances::GenesisConfig::<Test> { balances: self.balances }
 			.assimilate_storage(&mut t)
@@ -286,5 +309,32 @@ pub fn run_to_block(n: u64) {
 		System::set_block_number(System::block_number() + 1);
 		System::on_initialize(System::block_number());
 		AAvatars::on_initialize(System::block_number());
+	}
+}
+
+impl GlobalConfigOf<Test> {
+	pub(crate) fn mint_fees_one(mut self, amount: MockBalance) -> Self {
+		self.mint.fees.one = amount;
+		self
+	}
+	pub(crate) fn mint_fees_three(mut self, amount: MockBalance) -> Self {
+		self.mint.fees.three = amount;
+		self
+	}
+	pub(crate) fn mint_fees_six(mut self, amount: MockBalance) -> Self {
+		self.mint.fees.six = amount;
+		self
+	}
+	pub(crate) fn transfer_avatar_transfer_fee(mut self, amount: MockBalance) -> Self {
+		self.transfer.avatar_transfer_fee = amount;
+		self
+	}
+	pub(crate) fn trade_min_fee(mut self, amount: MockBalance) -> Self {
+		self.trade.min_fee = amount;
+		self
+	}
+	pub(crate) fn account_storage_upgrade_fe(mut self, amount: MockBalance) -> Self {
+		self.account.storage_upgrade_fee = amount;
+		self
 	}
 }

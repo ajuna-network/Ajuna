@@ -139,25 +139,33 @@ mod treasurer {
 mod treasury {
 	use super::*;
 
+	fn deposit_into_treasury(season_id: SeasonId, amount: MockBalance) {
+		Treasury::<Test>::insert(season_id, amount);
+		let _ = Balances::deposit_creating(&AAvatars::account_id(), amount);
+	}
+
 	#[test]
 	fn claim_treasury_works() {
 		let season_1 = Season::default().early_start(5).start(10).end(15);
 		let mint_fees = MintFees { one: 12, three: 34, six: 56 };
 		let initial_balance = MockExistentialDeposit::get() + 999_999;
-		let initial_issuance = initial_balance;
+		let total_supply = initial_balance;
 		ExtBuilder::default()
 			.seasons(&[(1, season_1.clone())])
 			.mint_fees(mint_fees)
 			.balances(&[(BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
+				let treasury_account = AAvatars::account_id();
 				Treasurer::<Test>::insert(1, BOB);
 				assert_eq!(AAvatars::treasury(1), 0);
-				assert_eq!(Balances::total_issuance(), initial_issuance);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance);
+				assert_eq!(Balances::free_balance(&treasury_account), 0);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
-				Treasury::<Test>::insert(1, 333);
+				deposit_into_treasury(1, 333);
 				assert_eq!(AAvatars::treasury(1), 333);
+				assert_eq!(Balances::free_balance(&treasury_account), 333);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 1),
 					Error::<Test>::CannotClaimDuringSeason
@@ -166,8 +174,9 @@ mod treasury {
 				run_to_block(season_1.end + 1);
 				assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 1));
 				assert_eq!(AAvatars::treasury(1), 0);
-				assert_eq!(Balances::total_issuance(), initial_issuance + 333);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance + 333);
+				assert_eq!(Balances::free_balance(&treasury_account), 0);
+				assert_eq!(Balances::total_issuance(), total_supply + 333); // total supply increases from injection
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::TreasuryClaimed { season_id: 1, treasurer: BOB, amount: 333 },
 				));
@@ -258,7 +267,7 @@ mod treasury {
 				for (treasurer, season_id) in [(BOB, 2), (CHARLIE, 3)] {
 					for n in (season_1.end + 1)..season_2.early_start {
 						run_to_block(n);
-						Treasury::<Test>::insert(1, 369);
+						deposit_into_treasury(1, 369);
 						assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1));
 						assert_noop!(
 							AAvatars::claim_treasury(RuntimeOrigin::signed(treasurer), season_id),
@@ -275,7 +284,7 @@ mod treasury {
 					] {
 						for n in iter {
 							run_to_block(n);
-							Treasury::<Test>::insert(1, 369);
+							deposit_into_treasury(1, 369);
 							assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1));
 							assert_noop!(
 								AAvatars::claim_treasury(
@@ -292,8 +301,8 @@ mod treasury {
 				for (treasurer, season_id) in [(CHARLIE, 3), (DAVE, 4)] {
 					for n in (season_2.end + 1)..(season_2.end + 5) {
 						run_to_block(n);
-						Treasury::<Test>::insert(1, 369);
-						Treasury::<Test>::insert(2, 369);
+						deposit_into_treasury(1, 369);
+						deposit_into_treasury(2, 369);
 						assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1));
 						assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 2));
 						assert_noop!(
@@ -322,7 +331,7 @@ mod treasury {
 	}
 
 	#[test]
-	fn claim_treasury_rejects_non_existent_account() {
+	fn claim_treasury_rejects_more_than_available() {
 		let season_1 = Season::default();
 		ExtBuilder::default()
 			.seasons(&[(1, season_1.clone())])
@@ -331,9 +340,10 @@ mod treasury {
 				run_to_block(season_1.end + 1);
 				Treasurer::<Test>::insert(1, CHARLIE);
 				Treasury::<Test>::insert(1, 999);
+				assert!(Balances::free_balance(&AAvatars::account_id()) < 999);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
-					pallet_balances::Error::<Test>::DeadAccount
+					pallet_balances::Error::<Test>::InsufficientBalance
 				);
 			})
 	}
@@ -718,16 +728,27 @@ mod config {
 
 	#[test]
 	fn update_global_config_should_work() {
-		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
-			let config = GlobalConfigOf::<Test>::default();
-			assert_ok!(AAvatars::update_global_config(
-				RuntimeOrigin::signed(ALICE),
-				config.clone()
-			));
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::UpdatedGlobalConfig(config),
-			));
-		});
+		ExtBuilder::default()
+			.existential_deposit(1)
+			.organizer(ALICE)
+			.build()
+			.execute_with(|| {
+				let config = GlobalConfigOf::<Test>::default()
+					.mint_fees_one(2)
+					.mint_fees_three(2)
+					.mint_fees_six(2)
+					.transfer_avatar_transfer_fee(2)
+					.trade_min_fee(2)
+					.account_storage_upgrade_fe(2);
+
+				assert_ok!(AAvatars::update_global_config(
+					RuntimeOrigin::signed(ALICE),
+					config.clone()
+				));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::UpdatedGlobalConfig(config),
+				));
+			});
 	}
 
 	#[test]
@@ -741,6 +762,36 @@ mod config {
 				DispatchError::BadOrigin
 			);
 		});
+	}
+
+	#[test]
+	fn update_global_config_should_reject_fees_lower_than_existential_deposit() {
+		ExtBuilder::default()
+			.existential_deposit(333)
+			.organizer(CHARLIE)
+			.build()
+			.execute_with(|| {
+				for config in [
+					GlobalConfigOf::<Test>::default().mint_fees_one(12),
+					GlobalConfigOf::<Test>::default().mint_fees_three(34),
+					GlobalConfigOf::<Test>::default().mint_fees_six(56),
+					GlobalConfigOf::<Test>::default().transfer_avatar_transfer_fee(78),
+					GlobalConfigOf::<Test>::default().trade_min_fee(91),
+					GlobalConfigOf::<Test>::default().account_storage_upgrade_fe(99),
+					GlobalConfigOf::<Test>::default()
+						.mint_fees_one(999)
+						.mint_fees_three(999)
+						.mint_fees_six(1)
+						.transfer_avatar_transfer_fee(999)
+						.trade_min_fee(2)
+						.account_storage_upgrade_fe(999),
+				] {
+					assert_noop!(
+						AAvatars::update_global_config(RuntimeOrigin::signed(CHARLIE), config),
+						Error::<Test>::TooLowFees
+					);
+				}
+			});
 	}
 }
 
@@ -2152,6 +2203,7 @@ mod transferring {
 	fn transfer_avatar_works() {
 		let avatar_transfer_fee = 888;
 		let initial_balance = MockExistentialDeposit::get() + avatar_transfer_fee;
+		let total_supply = initial_balance;
 		let season_id = 999;
 
 		ExtBuilder::default()
@@ -2159,6 +2211,11 @@ mod transferring {
 			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
+				let treasury_account = &AAvatars::account_id();
+				let treasury_balance = 0;
+				assert_eq!(Balances::free_balance(treasury_account), treasury_balance);
+				assert_eq!(Balances::total_issuance(), total_supply);
+
 				let mut alice_avatar_ids = create_avatars(ALICE, 3);
 				let mut bob_avatar_ids = create_avatars(BOB, 6);
 				let avatar_id = alice_avatar_ids[0];
@@ -2184,6 +2241,11 @@ mod transferring {
 				// balance checks
 				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee);
 				assert_eq!(AAvatars::treasury(season_id), avatar_transfer_fee);
+				assert_eq!(
+					Balances::free_balance(treasury_account),
+					treasury_balance + avatar_transfer_fee
+				);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// check organizer transfer
 				GlobalConfigs::<Test>::mutate(|config| config.trade.open = false);
@@ -2465,8 +2527,10 @@ mod trading {
 		let alice_initial_bal = price + min_fee + 20_849;
 		let bob_initial_bal = 103_598;
 		let charlie_initial_bal = MockExistentialDeposit::get() + min_fee + 1357;
+		let total_supply = alice_initial_bal + bob_initial_bal + charlie_initial_bal;
 
 		ExtBuilder::default()
+			.existential_deposit(0)
 			.seasons(&[(1, season.clone())])
 			.balances(&[
 				(ALICE, alice_initial_bal),
@@ -2478,7 +2542,11 @@ mod trading {
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance = 0;
+				let treasury_account = AAvatars::account_id();
+
 				assert_eq!(AAvatars::treasury(1), treasury_balance);
+				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
@@ -2487,6 +2555,7 @@ mod trading {
 				));
 				treasury_balance += mint_fees.three;
 				assert_eq!(AAvatars::treasury(1), treasury_balance);
+				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance);
 
 				let owned_by_alice = AAvatars::owners(ALICE);
 				let owned_by_bob = AAvatars::owners(BOB);
@@ -2499,6 +2568,8 @@ mod trading {
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - min_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price - mint_fees.three);
 				assert_eq!(AAvatars::treasury(1), treasury_balance + min_fee);
+				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance + min_fee);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// check for ownership transfer
 				assert_eq!(AAvatars::owners(ALICE).len(), owned_by_alice.len() + 1);
@@ -2664,27 +2735,41 @@ mod account {
 	#[test]
 	fn upgrade_storage_should_work() {
 		let upgrade_fee = 12_345;
+		let alice_balance = 3 * upgrade_fee;
+		let mut treasury_balance = 0;
+		let total_supply = treasury_balance + alice_balance;
 
 		ExtBuilder::default()
-			.balances(&[(ALICE, 3 * upgrade_fee)])
+			.balances(&[(ALICE, alice_balance)])
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
 
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 25);
+				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 50);
+				treasury_balance += upgrade_fee;
+				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 75);
+				treasury_balance += upgrade_fee;
+				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 100);
+				treasury_balance += upgrade_fee;
+				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(Balances::total_issuance(), total_supply);
 			});
 	}
 

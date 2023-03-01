@@ -671,10 +671,12 @@ impl pallet_preimage::Config for Runtime {
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
+	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
 	pub const AvatarCollectionId: CollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
+	type PalletId = AwesomeAvatarsPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
