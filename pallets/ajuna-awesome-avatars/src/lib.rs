@@ -769,6 +769,21 @@ pub mod pallet {
 			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
 			Ok(())
 		}
+
+		#[pallet::call_index(16)]
+		#[pallet::weight(100_000_000)]
+		pub fn mutate_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+			let account = ensure_signed(origin)?;
+			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
+
+			// We copy the rightmost 4 bits of DNA strand at index 1 to the
+			// DNA strand at index 2
+			avatar.dna[2] = (avatar.dna[2] & 0b1111_0000) | (avatar.dna[1] & 0b0000_1111);
+
+			Avatars::<T>::insert(avatar_id, (account, avatar));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
