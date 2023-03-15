@@ -571,7 +571,7 @@ impl pallet_preimage::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CollectionDeposit: Balance = MICRO_AJUNS;
+	pub const CollectionDeposit: Balance = NANO_AJUNS;
 	pub const ItemDeposit: Balance = NANO_AJUNS;
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
