@@ -555,23 +555,19 @@ pub mod pallet {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = Self::global_configs();
 			ensure!(trade.open, Error::<T>::TradeClosed);
+
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
 			ensure!(buyer != seller, Error::<T>::AlreadyOwned);
-
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
-
-			let current_season_id = Self::current_season_id();
-			let season_id = match Self::seasons(current_season_id) {
-				Some(_) => current_season_id,
-				None => current_season_id.saturating_sub(1),
-			};
 
 			let trade_fee = trade.min_fee.max(
 				price.saturating_mul(trade.percent_fee.unique_saturated_into()) /
 					MAX_PERCENTAGE.unique_saturated_into(),
 			);
 			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
-			Self::deposit_into_treasury(&season_id, trade_fee);
+
+			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
+			Self::deposit_into_treasury(&avatar.season_id, trade_fee);
 
 			Self::do_transfer_avatar(&seller, &buyer, &avatar_id)?;
 			Trade::<T>::remove(avatar_id);
