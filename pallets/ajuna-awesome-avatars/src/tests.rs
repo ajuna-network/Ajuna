@@ -2360,28 +2360,19 @@ mod trading {
 	fn set_price_should_work() {
 		let season = Season::default();
 
-		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
-			.balances(&[(BOB, 999)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
+			let avatar_for_sale = create_avatars(1, BOB, 1)[0];
+			let price = 7357;
 
-				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				let price = 7357;
-
-				assert_eq!(AAvatars::trade(avatar_for_sale), None);
-				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
-				assert_eq!(AAvatars::trade(avatar_for_sale), Some(price));
-				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::AvatarPriceSet { avatar_id: avatar_for_sale, price },
-				));
-			});
+			assert_eq!(AAvatars::trade(avatar_for_sale), None);
+			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
+			assert_eq!(AAvatars::trade(avatar_for_sale), Some(price));
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::AvatarPriceSet {
+				avatar_id: avatar_for_sale,
+				price,
+			}));
+		});
 	}
 
 	#[test]
@@ -2409,56 +2400,36 @@ mod trading {
 	fn set_price_should_reject_incorrect_ownership() {
 		let season = Season::default();
 
-		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
-			.balances(&[(BOB, 999)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
+			let avatar_ids = create_avatars(1, BOB, 2);
 
-				assert_noop!(
-					AAvatars::set_price(
-						RuntimeOrigin::signed(CHARLIE),
-						AAvatars::owners(BOB)[0],
-						101
-					),
-					Error::<Test>::Ownership
-				);
-			});
+			assert_noop!(
+				AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_ids[0], 101),
+				Error::<Test>::Ownership
+			);
+		});
 	}
 
 	#[test]
 	fn remove_price_should_work() {
 		let season = Season::default();
 
-		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
-			.balances(&[(BOB, 999)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
+			let avatar_ids = create_avatars(1, BOB, 2);
+			let avatar_for_sale = avatar_ids[0];
+			let price = 101;
 
-				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				let price = 101;
-				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
+			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 
-				assert_eq!(AAvatars::trade(avatar_for_sale), Some(101));
-				assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(BOB), avatar_for_sale));
-				assert_eq!(AAvatars::trade(avatar_for_sale), None);
-				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::AvatarPriceUnset { avatar_id: avatar_for_sale },
-				));
-			});
+			assert_eq!(AAvatars::trade(avatar_for_sale), Some(101));
+			assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(BOB), avatar_for_sale));
+			assert_eq!(AAvatars::trade(avatar_for_sale), None);
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::AvatarPriceUnset { avatar_id: avatar_for_sale },
+			));
+		});
 	}
 
 	#[test]
@@ -2486,26 +2457,17 @@ mod trading {
 	fn remove_price_should_reject_incorrect_ownership() {
 		let season = Season::default();
 
-		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
-			.balances(&[(BOB, 999)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
+			let avatar_ids = create_avatars(1, BOB, 3);
+			let avatar_for_sale = avatar_ids[0];
 
-				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
-
-				assert_noop!(
-					AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), avatar_for_sale),
-					Error::<Test>::Ownership
-				);
-			});
+			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
+			assert_noop!(
+				AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), avatar_for_sale),
+				Error::<Test>::Ownership
+			);
+		});
 	}
 
 	#[test]
@@ -2687,17 +2649,13 @@ mod trading {
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
-			.balances(&[(ALICE, price - 1), (BOB, 999)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
+			.balances(&[(ALICE, price - 1)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Normal }
-				));
+				let avatar_ids = create_avatars(1, BOB, 3);
+				let avatar_for_sale = avatar_ids[0];
 
-				let avatar_for_sale = AAvatars::owners(BOB)[0];
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 				assert_noop!(
 					AAvatars::buy(RuntimeOrigin::signed(ALICE), avatar_for_sale),
@@ -2710,25 +2668,17 @@ mod trading {
 	fn buy_should_reject_when_buyer_buys_its_own_avatar() {
 		let season = Season::default();
 
-		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
-			.balances(&[(BOB, MockExistentialDeposit::get())])
-			.free_mints(&[(BOB, 1)])
-			.build()
-			.execute_with(|| {
-				run_to_block(season.start);
-				assert_ok!(AAvatars::mint(
-					RuntimeOrigin::signed(BOB),
-					MintOption { count: MintPackSize::One, mint_type: MintType::Free }
-				));
+		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
+			run_to_block(season.start);
+			let avatar_ids = create_avatars(1, BOB, 3);
+			let avatar_for_sale = avatar_ids[0];
 
-				let avatar_for_sale = AAvatars::owners(BOB)[0];
-				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
-				assert_noop!(
-					AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_for_sale),
-					Error::<Test>::AlreadyOwned
-				);
-			});
+			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
+			assert_noop!(
+				AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_for_sale),
+				Error::<Test>::AlreadyOwned
+			);
+		});
 	}
 }
 
