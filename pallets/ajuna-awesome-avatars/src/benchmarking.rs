@@ -69,8 +69,12 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	Ok(())
 }
 
-fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static str> {
-	create_seasons::<T>(3)?;
+fn create_avatars<T: Config>(
+	season_id: SeasonId,
+	name: &'static str,
+	n: u32,
+) -> Result<(), &'static str> {
+	create_seasons::<T>(season_id.into())?;
 
 	let player = account::<T>(name);
 
@@ -97,7 +101,8 @@ benchmarks! {
 	mint_free {
 		let name = "player";
 		let n in 0 .. (MaxAvatarsPerPlayer::get() - 6);
-		create_avatars::<T>(name, n)?;
+		let season_id = 3;
+		create_avatars::<T>(season_id, name, n)?;
 
 		let caller = account::<T>(name);
 		Accounts::<T>::mutate(&caller, |account| account.free_mints =  MintCount::MAX);
@@ -106,14 +111,15 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
-		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
+		let avatar_ids = AAvatars::<T>::owners(caller, season_id)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
 	mint_normal {
 		let name = "player";
 		let n in 0 .. (MaxAvatarsPerPlayer::get() - 6);
-		create_avatars::<T>(name, n)?;
+		let season_id = 3;
+		create_avatars::<T>(season_id, name, n)?;
 
 		let caller = account::<T>(name);
 		let mint_fee = AAvatars::<T>::global_configs().mint.fees.fee_for(&MintPackSize::Six);
@@ -123,17 +129,18 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
-		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
+		let avatar_ids = AAvatars::<T>::owners(caller, season_id)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
 	}
 
 	forge {
 		let name = "player";
 		let n in 5 .. MaxAvatarsPerPlayer::get();
-		create_avatars::<T>(name, n)?;
+		let season_id = 3;
+		create_avatars::<T>(season_id, name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_ids = AAvatars::<T>::owners(&player, season_id);
 		let avatar_id = avatar_ids[0];
 		let (_owner, original_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
 	}: _(RawOrigin::Signed(player), avatar_id, avatar_ids[1..5].to_vec())
@@ -156,9 +163,10 @@ benchmarks! {
 		let from = account::<T>("from");
 		let to = account::<T>("to");
 		let n in 1 .. MaxAvatarsPerPlayer::get();
-		create_avatars::<T>("from", MaxAvatarsPerPlayer::get())?;
-		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let avatar_id = AAvatars::<T>::owners(&from)[n as usize - 1];
+		let season_id = 3;
+		create_avatars::<T>(season_id, "from", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>(season_id, "to", MaxAvatarsPerPlayer::get() - n)?;
+		let avatar_id = AAvatars::<T>::owners(&from, season_id)[n as usize - 1];
 
 		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
 		T::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
@@ -171,9 +179,10 @@ benchmarks! {
 		let organizer = account::<T>("organizer");
 		let to = account::<T>("to");
 		let n in 1 .. MaxAvatarsPerPlayer::get();
-		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
-		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let avatar_id = AAvatars::<T>::owners(&organizer)[n as usize - 1];
+		let season_id = 3;
+		create_avatars::<T>(season_id, "organizer", MaxAvatarsPerPlayer::get())?;
+		create_avatars::<T>(season_id, "to", MaxAvatarsPerPlayer::get() - n)?;
+		let avatar_id = AAvatars::<T>::owners(&organizer, season_id)[n as usize - 1];
 
 		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
 		T::Currency::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
@@ -196,9 +205,10 @@ benchmarks! {
 
 	set_price {
 		let name = "player";
-		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
+		let season_id = 3;
+		create_avatars::<T>(season_id, name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&caller)[0];
+		let avatar_id = AAvatars::<T>::owners(&caller, season_id)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
 	}: _(RawOrigin::Signed(caller), avatar_id, price)
 	verify {
@@ -207,9 +217,10 @@ benchmarks! {
 
 	remove_price {
 		let name = "player";
-		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
+		let season_id = 3;
+		create_avatars::<T>(season_id, name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&caller)[0];
+		let avatar_id = AAvatars::<T>::owners(&caller, season_id)[0];
 		Trade::<T>::insert(avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
@@ -220,8 +231,9 @@ benchmarks! {
 		let (buyer_name, seller_name) = ("buyer", "seller");
 		let (buyer, seller) = (account::<T>(buyer_name), account::<T>(seller_name));
 		let n in 1 .. MaxAvatarsPerPlayer::get();
-		create_avatars::<T>(buyer_name, n- 1)?;
-		create_avatars::<T>(seller_name, n)?;
+		let season_id = 3;
+		create_avatars::<T>(season_id, buyer_name, n- 1)?;
+		create_avatars::<T>(season_id, seller_name, n)?;
 
 		let min_fee = AAvatars::<T>::global_configs().trade.min_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
@@ -229,7 +241,7 @@ benchmarks! {
 		T::Currency::make_free_balance_be(&buyer, sell_fee + trade_fee);
 		T::Currency::make_free_balance_be(&seller, sell_fee);
 
-		let avatar_id = AAvatars::<T>::owners(&seller)[0];
+		let avatar_id = AAvatars::<T>::owners(&seller, season_id)[0];
 		Trade::<T>::insert(avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
