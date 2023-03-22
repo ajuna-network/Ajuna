@@ -3035,7 +3035,7 @@ mod fix_variation {
 			.execute_with(|| {
 				run_to_block(season.start);
 
-				let avatar_id = create_avatars(ALICE, 1)[0];
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
 
 				let (_, mut avatar_before) = Avatars::<Test>::get(avatar_id).unwrap();
 
