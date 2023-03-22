@@ -771,7 +771,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(16)]
-		#[pallet::weight(100_000_000)]
+		#[pallet::weight(T::WeightInfo::fix_variation())]
 		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
