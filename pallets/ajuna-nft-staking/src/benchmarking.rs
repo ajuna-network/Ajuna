@@ -144,6 +144,17 @@ fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> Contract
 	)
 }
 
+fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
+	let collection_config = <T as crate::pallet::Config>::ContractCollectionConfig::get();
+	let collection_id = <T as crate::pallet::Config>::NftHelper::create_collection(
+		account,
+		account,
+		&collection_config,
+	)
+	.expect("Should have create contract collection");
+	collection_id
+}
+
 type ContractClauseOf<T> = ContractClause<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::ContractAttributeKey,
@@ -156,6 +167,15 @@ benchmarks! {
 	}: _(RawOrigin::Root, organizer.clone())
 	verify {
 		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+	}
+
+	set_contract_collection_id {
+		let account = NftStake::<T>::treasury_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		Organizer::<T>::put(&account);
+	}: _(RawOrigin::Signed(account), collection_id)
+	verify {
+		assert_last_event::<T>(Event::ContractCollectionSet { collection_id }.into())
 	}
 
 	set_locked_state {
@@ -175,6 +195,10 @@ benchmarks! {
 	}
 
 	submit_staking_contract_token_reward {
+		let account = NftStake::<T>::treasury_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
 		let caller = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
@@ -187,6 +211,10 @@ benchmarks! {
 	}
 
 	submit_staking_contract_nft_reward {
+		let account = NftStake::<T>::treasury_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
 		let caller = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
 		let nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
@@ -200,6 +228,10 @@ benchmarks! {
 	}
 
 	take_staking_contract {
+		let account = NftStake::<T>::treasury_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
 		let caller = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
@@ -220,6 +252,10 @@ benchmarks! {
 	}
 
 	redeem_staking_contract_token_reward {
+		let account = NftStake::<T>::treasury_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
 		let caller = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
@@ -243,6 +279,10 @@ benchmarks! {
 	}
 
 	redeem_staking_contract_nft_reward {
+		let account = NftStake::<T>::treasury_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
 		let caller = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
 		let reward_nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
@@ -267,6 +307,6 @@ benchmarks! {
 	}
 
 	impl_benchmark_test_suite!(
-		NftStake, crate::mock::ExtBuilder::default().build(), crate::mock::Test
+		NftStake, crate::mock::ExtBuilder::default().create_collection(true).build(), crate::mock::Test
 	);
 }
