@@ -769,6 +769,21 @@ pub mod pallet {
 			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
 			Ok(())
 		}
+
+		#[pallet::call_index(16)]
+		#[pallet::weight(T::WeightInfo::fix_variation())]
+		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+			let account = ensure_signed(origin)?;
+			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
+
+			// Update the variation of the 3nd component to be the same as that of the 2nd by
+			// copying the rightmost 4 bits of dna[1] to the dna[2]
+			avatar.dna[2] = (avatar.dna[2] & 0b1111_0000) | (avatar.dna[1] & 0b0000_1111);
+
+			Avatars::<T>::insert(avatar_id, (account, avatar));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {

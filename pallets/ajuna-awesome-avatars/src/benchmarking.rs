@@ -348,6 +348,20 @@ benchmarks! {
 		assert_last_event::<T>(Event::FreeMintsSet { target, how_many }.into())
 	}
 
+	fix_variation {
+		let name = "player";
+		create_avatars::<T>(name, 1)?;
+
+		let player = account::<T>(name);
+		let avatar_id = AAvatars::<T>::owners(&player)[0];
+		let (_owner, original_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
+	}: _(RawOrigin::Signed(player), avatar_id)
+	verify {
+		let (_owner, updated_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
+		assert!(original_avatar.dna[1] & 0b0000_1111 != original_avatar.dna[2] & 0b0000_1111);
+		assert!(updated_avatar.dna[1] & 0b0000_1111 == updated_avatar.dna[2] & 0b0000_1111);
+	}
+
 	impl_benchmark_test_suite!(
 		AAvatars, crate::mock::ExtBuilder::default().build(), crate::mock::Test
 	);
