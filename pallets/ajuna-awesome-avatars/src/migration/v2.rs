@@ -62,6 +62,10 @@ impl<T: Config> OldGlobalConfig<T> {
 	}
 }
 
+#[frame_support::storage_alias]
+pub type Owners<T: Config> =
+	StorageMap<Pallet<T>, Identity, AccountIdOf<T>, BoundedAvatarIdsOf<T>, ValueQuery>;
+
 pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 	fn on_runtime_upgrade() -> Weight {

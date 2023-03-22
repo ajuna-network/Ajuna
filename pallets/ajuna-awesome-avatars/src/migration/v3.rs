@@ -63,13 +63,23 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV3<T> {
 				translated.saturating_inc();
 				Some(old_value.migrate_to_v3())
 			});
+			log::info!(target: LOG_TARGET, "Updated {} accounts", translated);
+
+			translated = 0;
+			v2::Owners::<T>::iter().for_each(|(account_id, avatar_ids)| {
+				avatar_ids.iter().for_each(|avatar_id| {
+					let maybe_avatar = Avatars::<T>::get(avatar_id);
+					if let Some((_owner, avatar)) = maybe_avatar {
+						translated.saturating_inc();
+						Owners::<T>::try_append(account_id.clone(), avatar.season_id, avatar_id)
+							.unwrap();
+					}
+				});
+			});
+			log::info!(target: LOG_TARGET, "Updated {} avatars", translated);
+
 			current_version.put::<Pallet<T>>();
-			log::info!(
-				target: LOG_TARGET,
-				"Upgraded {} pools, storage to version {:?}",
-				translated,
-				current_version
-			);
+			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(translated + 1, translated + 1)
 		} else {
 			log::info!(
