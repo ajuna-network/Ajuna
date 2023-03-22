@@ -3021,11 +3021,11 @@ mod unlock_avatar {
 	}
 }
 
-mod mutate_avatar {
+mod fix_variation {
 	use super::*;
 
 	#[test]
-	fn mutate_avatar_successfully() {
+	fn fix_variation_successfully() {
 		let season = Season::default();
 
 		ExtBuilder::default()
@@ -3044,7 +3044,7 @@ mod mutate_avatar {
 
 				Avatars::<Test>::insert(avatar_id, (ALICE, avatar_before));
 
-				assert_ok!(AAvatars::mutate_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::fix_variation(RuntimeOrigin::signed(ALICE), avatar_id));
 
 				let (_, avatar_after) = Avatars::<Test>::get(avatar_id).unwrap();
 				assert_eq!(avatar_after.dna[1], 0b0001_1100);

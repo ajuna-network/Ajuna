@@ -772,12 +772,12 @@ pub mod pallet {
 
 		#[pallet::call_index(16)]
 		#[pallet::weight(100_000_000)]
-		pub fn mutate_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
 
-			// We copy the rightmost 4 bits of DNA strand at index 1 to the
-			// DNA strand at index 2
+			// Update the variation of the 3nd component to be the same as that of the 2nd by
+			// copying the rightmost 4 bits of dna[1] to the dna[2]
 			avatar.dna[2] = (avatar.dna[2] & 0b1111_0000) | (avatar.dna[1] & 0b0000_1111);
 
 			Avatars::<T>::insert(avatar_id, (account, avatar));
