@@ -146,12 +146,8 @@ fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> Contract
 
 fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
 	let collection_config = <T as crate::pallet::Config>::ContractCollectionConfig::get();
-	<T as crate::pallet::Config>::NftHelper::create_collection(
-		account,
-		account,
-		&collection_config,
-	)
-	.expect("Should have create contract collection")
+	<T as crate::pallet::Config>::NftHelper::create_collection(account, account, &collection_config)
+		.expect("Should have create contract collection")
 }
 
 type ContractClauseOf<T> = ContractClause<
