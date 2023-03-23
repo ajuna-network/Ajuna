@@ -3020,3 +3020,35 @@ mod unlock_avatar {
 			});
 	}
 }
+
+mod fix_variation {
+	use super::*;
+
+	#[test]
+	fn fix_variation_successfully() {
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+
+				let (_, mut avatar_before) = Avatars::<Test>::get(avatar_id).unwrap();
+
+				avatar_before.dna[1] = 0b0001_1100;
+				avatar_before.dna[2] = 0b0100_0010;
+
+				Avatars::<Test>::insert(avatar_id, (ALICE, avatar_before));
+
+				assert_ok!(AAvatars::fix_variation(RuntimeOrigin::signed(ALICE), avatar_id));
+
+				let (_, avatar_after) = Avatars::<Test>::get(avatar_id).unwrap();
+				assert_eq!(avatar_after.dna[1], 0b0001_1100);
+				assert_eq!(avatar_after.dna[2], 0b0100_1100);
+			});
+	}
+}
