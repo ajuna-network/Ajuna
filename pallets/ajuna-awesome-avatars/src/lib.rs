@@ -95,8 +95,6 @@ pub mod pallet {
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
-	pub(crate) type CollectionIdOf<T> =
-		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
 	pub(crate) type AssetIdOf<T> =
 		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
 
