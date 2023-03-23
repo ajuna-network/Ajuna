@@ -257,6 +257,7 @@ pub mod pallet {
 	pub type TreasuryAccount<T: Config> = StorageValue<_, AccountIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn contract_collection_id)]
 	pub type ContractCollectionId<T: Config> =
 		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractNotFound>>;
 
@@ -289,12 +290,6 @@ pub mod pallet {
 			if T::Currency::free_balance(&account_id) < min {
 				let _ = T::Currency::make_free_balance_be(&account_id, min);
 			}
-
-			let collection_config = T::ContractCollectionConfig::get();
-			let collection_id =
-				T::NftHelper::create_collection(&account_id, &account_id, &collection_config)
-					.expect("Should have create contract collection");
-			ContractCollectionId::<T>::put(collection_id);
 		}
 	}
 
@@ -302,7 +297,9 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// An organizer has been set.
-		OrganizerSet { organizer: T::AccountId },
+		OrganizerSet { organizer: AccountIdOf<T> },
+		/// The collection holding the staking contracts has been set.
+		ContractCollectionSet { collection_id: T::CollectionId },
 		/// The pallet's lock status has been set
 		LockedStateSet { locked_state: PalletLockedState },
 		/// A new staking contract has been successfully created
@@ -324,6 +321,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// There is no account set as the organizer
 		OrganizerNotSet,
+		/// The contract collection is either non-existent or not owned by the organizer.
+		InvalidContractCollection,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
 		/// The treasury doesn't have enough funds to pay the contract rewards.
@@ -353,8 +352,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::set_organizer())]
+		#[pallet::call_index(0)]
 		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 			Organizer::<T>::put(&organizer);
@@ -362,20 +361,38 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(T::WeightInfo::set_contract_collection_id())]
 		#[pallet::call_index(1)]
+		pub fn set_contract_collection_id(
+			origin: OriginFor<T>,
+			collection_id: T::CollectionId,
+		) -> DispatchResult {
+			let account = Self::ensure_organizer(origin)?;
+			ensure!(
+				T::NftHelper::collection_owner(&collection_id)
+					.filter(|owner| *owner == account)
+					.is_some(),
+				Error::<T>::InvalidContractCollection
+			);
+			ContractCollectionId::<T>::put(collection_id);
+			Self::deposit_event(Event::ContractCollectionSet { collection_id });
+			Ok(())
+		}
+
 		#[pallet::weight(T::WeightInfo::set_locked_state())]
+		#[pallet::call_index(2)]
 		pub fn set_locked_state(
 			origin: OriginFor<T>,
 			locked_state: PalletLockedState,
 		) -> DispatchResult {
-			Self::ensure_organizer(origin)?;
+			let _ = Self::ensure_organizer(origin)?;
 			LockedState::<T>::put(locked_state);
 			Self::deposit_event(Event::LockedStateSet { locked_state });
 			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::fund_treasury())]
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		pub fn fund_treasury(origin: OriginFor<T>, fund_amount: BalanceOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 
@@ -404,7 +421,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::submit_staking_contract_nft_reward())]
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		pub fn submit_staking_contract(
 			origin: OriginFor<T>,
 			staking_contract: StakingContractOf<T>,
@@ -433,7 +450,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::take_staking_contract())]
-		#[pallet::call_index(4)]
+		#[pallet::call_index(5)]
 		pub fn take_staking_contract(
 			origin: OriginFor<T>,
 			contract_id: ContractItemIdOf<T>,
@@ -476,7 +493,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::redeem_staking_contract_nft_reward())]
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		pub fn redeem_staking_contract(
 			origin: OriginFor<T>,
 			contract_id: ContractItemIdOf<T>,
@@ -515,11 +532,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn ensure_organizer(origin: OriginFor<T>) -> DispatchResult {
+		fn ensure_organizer(origin: OriginFor<T>) -> Result<AccountIdOf<T>, DispatchError> {
 			let maybe_organizer = ensure_signed(origin)?;
 			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
-			Ok(())
+			Ok(maybe_organizer)
 		}
 
 		fn ensure_unlocked() -> DispatchResult {

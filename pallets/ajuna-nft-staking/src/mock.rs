@@ -17,7 +17,7 @@
 use crate::{self as pallet_nft_staking, *};
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64, Hooks},
+	traits::{tokens::nonfungibles_v2::Create, AsEnsureOriginWithArg, ConstU16, ConstU64, Hooks},
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
@@ -175,6 +175,7 @@ impl pallet_nft_staking::Config for Test {
 
 pub struct ExtBuilder {
 	balances: Vec<(MockAccountId, MockBalance)>,
+	create_collection: bool,
 }
 
 impl Default for ExtBuilder {
@@ -187,6 +188,7 @@ impl Default for ExtBuilder {
 				(BOB, accounts_balance),
 				(CHARLIE, accounts_balance),
 			],
+			create_collection: true,
 		}
 	}
 }
@@ -194,6 +196,11 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
 	pub fn balances(mut self, balances: Vec<(MockAccountId, MockBalance)>) -> Self {
 		self.balances = balances;
+		self
+	}
+
+	pub fn create_collection(mut self, create_collection: bool) -> Self {
+		self.create_collection = create_collection;
 		self
 	}
 
@@ -206,6 +213,20 @@ impl ExtBuilder {
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));
+		if self.create_collection {
+			ext.execute_with(|| {
+				let account_id = <Pallet<Test>>::treasury_account_id();
+				let collection_config =
+					<Test as crate::pallet::Config>::ContractCollectionConfig::get();
+				let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
+					&account_id,
+					&account_id,
+					&collection_config,
+				)
+				.expect("Should have create contract collection");
+				ContractCollectionId::<Test>::put(collection_id);
+			});
+		}
 		ext
 	}
 }

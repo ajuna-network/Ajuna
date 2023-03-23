@@ -50,6 +50,75 @@ mod organizer {
 	}
 }
 
+mod set_contract_collection_id {
+	use super::*;
+
+	#[test]
+	fn set_contract_collection_id_succesfully() {
+		ExtBuilder::default().create_collection(false).build().execute_with(|| {
+			assert!(NftStake::contract_collection_id().is_err());
+
+			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			let collection_config =
+				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
+			let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
+				&ALICE,
+				&ALICE,
+				&collection_config,
+			)
+			.expect("Should have create contract collection");
+
+			assert_ok!(NftStake::set_contract_collection_id(
+				RuntimeOrigin::signed(ALICE),
+				collection_id
+			));
+			assert_eq!(NftStake::contract_collection_id().unwrap(), collection_id);
+
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
+				crate::Event::ContractCollectionSet { collection_id },
+			));
+		});
+	}
+
+	#[test]
+	fn set_contract_collection_id_should_reject_non_existing_collection() {
+		ExtBuilder::default().create_collection(false).build().execute_with(|| {
+			assert!(NftStake::contract_collection_id().is_err());
+
+			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			assert_noop!(
+				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), 17),
+				Error::<Test>::InvalidContractCollection
+			);
+		});
+	}
+
+	#[test]
+	fn set_contract_collection_id_should_reject_non_organizer_owned_collection() {
+		ExtBuilder::default().create_collection(false).build().execute_with(|| {
+			assert!(NftStake::contract_collection_id().is_err());
+
+			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+
+			let collection_config =
+				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
+			let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
+				&BOB,
+				&ALICE,
+				&collection_config,
+			)
+			.expect("Should have created contract collection");
+
+			assert_noop!(
+				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), collection_id),
+				Error::<Test>::InvalidContractCollection
+			);
+		});
+	}
+}
+
 mod set_lock_state {
 	use super::*;
 
