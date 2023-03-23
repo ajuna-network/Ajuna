@@ -259,7 +259,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn contract_collection_id)]
 	pub type ContractCollectionId<T: Config> =
-		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractNotFound>>;
+		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractCollectionNotSet>>;
 
 	#[pallet::type_value]
 	pub fn DefaultContractId<T: Config>() -> ContractItemIdOf<T> {
@@ -321,6 +321,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// There is no account set as the organizer
 		OrganizerNotSet,
+		/// The contract collection id has not been set in storage.
+		ContractCollectionNotSet,
 		/// The contract collection is either non-existent or not owned by the organizer.
 		InvalidContractCollection,
 		/// The pallet is currently locked and cannot be interacted with.

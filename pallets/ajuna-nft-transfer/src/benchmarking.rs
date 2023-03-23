@@ -19,7 +19,9 @@ use super::*;
 #[allow(unused)]
 use crate::Pallet as NftTransfer;
 use frame_benchmarking::benchmarks;
+use frame_support::traits::tokens::nonfungibles_v2::Create;
 use frame_system::RawOrigin;
+use pallet_nfts::CollectionConfig;
 
 fn account<T: Config>(name: &'static str) -> T::AccountId {
 	let index = 0;
@@ -31,12 +33,27 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
+fn create_holding_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
+	let collection_config = CollectionConfig::default();
+	<T as crate::pallet::Config>::NftHelper::create_collection(account, account, &collection_config)
+		.expect("Should have create contract collection")
+}
+
 benchmarks! {
 	set_organizer {
 		let organizer = account::<T>("ALICE");
 	}: _(RawOrigin::Root, organizer.clone())
 	verify {
 		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+	}
+
+	set_holding_collection_id {
+		let account = NftTransfer::<T>::holding_account_id();
+		let collection_id = create_holding_contract_collection::<T>(&account);
+		Organizer::<T>::put(&account);
+	}: _(RawOrigin::Signed(account), collection_id)
+	verify {
+		assert_last_event::<T>(Event::HoldingCollectionSet { collection_id }.into())
 	}
 
 	set_locked_state {
