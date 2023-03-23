@@ -21,7 +21,6 @@ use crate::Pallet as NftTransfer;
 use frame_benchmarking::benchmarks;
 use frame_support::traits::tokens::nonfungibles_v2::Create;
 use frame_system::RawOrigin;
-use pallet_nfts::CollectionConfig;
 
 fn account<T: Config>(name: &'static str) -> T::AccountId {
 	let index = 0;
@@ -34,7 +33,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 }
 
 fn create_holding_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
-	let collection_config = CollectionConfig::default();
+	let collection_config = T::CollectionConfig::default();
 	<T as crate::pallet::Config>::NftHelper::create_collection(account, account, &collection_config)
 		.expect("Should have create contract collection")
 }
