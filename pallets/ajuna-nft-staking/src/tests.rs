@@ -109,7 +109,7 @@ mod set_contract_collection_id {
 				&ALICE,
 				&collection_config,
 			)
-			.expect("Should have create contract collection");
+			.expect("Should have created contract collection");
 
 			assert_noop!(
 				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), collection_id),
