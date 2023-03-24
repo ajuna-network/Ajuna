@@ -2774,6 +2774,7 @@ mod lock_avatar {
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -2916,7 +2917,8 @@ mod lock_avatar {
 	#[test]
 	fn cannot_lock_unowned_avatar() {
 		ExtBuilder::default()
-			.balances(&[(BOB, 1_000_000_000_000)])
+			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, BOB, 1)[0];
@@ -2931,6 +2933,7 @@ mod lock_avatar {
 	fn cannot_lock_avatar_on_trade() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
@@ -2946,6 +2949,7 @@ mod lock_avatar {
 	fn cannot_lock_already_locked_avatar() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
@@ -2965,6 +2969,7 @@ mod unlock_avatar {
 	fn can_unlock_avatar_successfully() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
@@ -2981,6 +2986,7 @@ mod unlock_avatar {
 	fn cannot_unlock_unowned_avatar() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, BOB, 1)[0];
@@ -2999,6 +3005,7 @@ mod unlock_avatar {
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
