@@ -95,8 +95,11 @@ pub mod pallet {
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
-	pub(crate) type AssetIdOf<T> =
-		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
+	pub(crate) type AssetIdOf<T> = <<T as Config>::NftHandler as NftHandler<
+		AccountIdOf<T>,
+		Avatar,
+		<T as Config>::AvatarNftConfig,
+	>>::AssetId;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
