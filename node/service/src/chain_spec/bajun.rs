@@ -169,6 +169,5 @@ fn testnet_genesis(
 		polkadot_xcm: bajun_runtime::PolkadotXcmConfig { safe_xcm_version: Some(SAFE_XCM_VERSION) },
 		awesome_avatars: Default::default(),
 		nft_stake: Default::default(),
-		nft_transfer: Default::default(),
 	}
 }

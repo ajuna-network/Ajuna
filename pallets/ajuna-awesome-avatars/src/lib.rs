@@ -95,8 +95,11 @@ pub mod pallet {
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
-	pub(crate) type AssetIdOf<T> =
-		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
+	pub(crate) type AssetIdOf<T> = <<T as Config>::NftHandler as NftHandler<
+		AccountIdOf<T>,
+		Avatar,
+		<T as Config>::AvatarNftConfig,
+	>>::AssetId;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
@@ -116,7 +119,17 @@ pub mod pallet {
 
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
-		type NftHandler: NftHandler<Self::AccountId, Avatar>;
+		/// Type that holds the specific configuration for an avatar once transformed into an NFT.
+		type AvatarNftConfig: Copy
+			+ Clone
+			+ Default
+			+ PartialEq
+			+ Encode
+			+ Decode
+			+ MaxEncodedLen
+			+ TypeInfo;
+
+		type NftHandler: NftHandler<Self::AccountId, Avatar, Self::AvatarNftConfig>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -745,7 +758,9 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(&avatar_id)?;
 
-			let asset_id = T::NftHandler::store_as_nft(account, avatar)?;
+			// TODO: Use a defined config, either as parameter or as a constant in the pallet config
+			let asset_config = T::AvatarNftConfig::default();
+			let asset_id = T::NftHandler::store_as_nft(account, avatar, asset_config)?;
 			LockedAvatars::<T>::insert(avatar_id, &asset_id);
 			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
+use frame_support::traits::Currency;
 
 #[allow(unused)]
 use crate::Pallet as NftTransfer;
@@ -47,7 +48,8 @@ benchmarks! {
 	}
 
 	set_holding_collection_id {
-		let account = NftTransfer::<T>::holding_account_id();
+		let account = account::<T>("organizer");
+		T::Currency::make_free_balance_be(&account, T::Currency::minimum_balance());
 		let collection_id = create_holding_contract_collection::<T>(&account);
 		Organizer::<T>::put(&account);
 	}: _(RawOrigin::Signed(account), collection_id)

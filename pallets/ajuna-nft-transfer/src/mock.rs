@@ -149,6 +149,7 @@ pub type CollectionConfig =
 
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	#[cfg(feature = "runtime-benchmarks")]
 	type Currency = Balances;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
@@ -178,7 +179,6 @@ impl ExtBuilder {
 		let config = GenesisConfig {
 			system: Default::default(),
 			balances: BalancesConfig { balances: self.balances },
-			nft_transfer: Default::default(),
 		};
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();

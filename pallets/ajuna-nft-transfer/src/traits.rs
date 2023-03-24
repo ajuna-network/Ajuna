@@ -33,13 +33,16 @@ pub trait NftConvertible: Codec {
 }
 
 /// Trait to define the transformation and bridging of assets as NFT.
-pub trait NftHandler<Account, Asset: NftConvertible> {
+pub trait NftHandler<Account, Asset: NftConvertible, AssetConfig> {
 	type AssetId: Codec + Parameter + MaxEncodedLen;
-	type AssetConfig: Default;
 
 	/// Consumes the given **asset** and stores it as an NFT owned by **owner**,
 	/// returns the NFT index for tracking and recovering the asset.
-	fn store_as_nft(owner: Account, asset: Asset) -> Result<Self::AssetId, DispatchError>;
+	fn store_as_nft(
+		owner: Account,
+		asset: Asset,
+		asset_config: AssetConfig,
+	) -> Result<Self::AssetId, DispatchError>;
 	/// Attempts to recover the NFT indexed by **nft_id** and transform it back into an
 	/// asset, returns an appropriate error if the process fails.
 	fn recover_from_nft(owner: Account, asset_id: Self::AssetId) -> Result<Asset, DispatchError>;
