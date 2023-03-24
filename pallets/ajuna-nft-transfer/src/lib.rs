@@ -40,7 +40,7 @@ pub mod pallet {
 				nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
 				AttributeNamespace,
 			},
-			Currency, Locker, ReservableCurrency,
+			Locker,
 		},
 		PalletId,
 	};
@@ -49,6 +49,9 @@ pub mod pallet {
 		traits::{AccountIdConversion, AtLeast32BitUnsigned},
 		Saturating,
 	};
+
+	#[cfg(feature = "runtime-benchmarks")]
+	use frame_support::traits::{Currency, ReservableCurrency};
 
 	pub type EncodedAssetOf<T> = BoundedVec<u8, <T as Config>::MaxAssetEncodedSize>;
 
@@ -82,7 +85,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// The staking balance.
+		#[cfg(feature = "runtime-benchmarks")]
 		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
 		/// Maximum amount of bytes that an asset may be encoded as.
@@ -165,28 +168,6 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
-	#[pallet::genesis_config]
-	pub struct GenesisConfig;
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {
-			// Create Treasury account
-			let account_id = <Pallet<T>>::holding_account_id();
-			let min = T::Currency::minimum_balance();
-			if T::Currency::free_balance(&account_id) < min {
-				let _ = T::Currency::make_free_balance_be(&account_id, min);
-			}
-		}
-	}
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -215,7 +196,7 @@ pub mod pallet {
 		OrganizerNotSet,
 		/// The holding collection id has not been set in storage.
 		HoldingCollectionNotSet,
-		/// The contract collection is either non-existent or not owned by the organizer.
+		/// The holding collection to be set doesn't have any owner.
 		InvalidHoldingCollection,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
@@ -251,12 +232,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 		) -> DispatchResult {
-			let account = Self::ensure_organizer(origin)?;
+			let _ = Self::ensure_organizer(origin)?;
 			ensure!(
-				T::NftHelper::collection_owner(&collection_id)
-					.filter(|owner| *owner == account)
-					.is_some(),
-				Error::<T>::HoldingCollectionNotSet
+				T::NftHelper::collection_owner(&collection_id).is_some(),
+				Error::<T>::InvalidHoldingCollection
 			);
 			HoldingCollectionId::<T>::put(collection_id);
 			Self::deposit_event(Event::HoldingCollectionSet { collection_id });
@@ -306,11 +285,16 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config, Asset: NftConvertible> NftHandler<T::AccountId, Asset> for Pallet<T> {
+	impl<T: Config, Asset: NftConvertible> NftHandler<T::AccountId, Asset, T::ItemConfig>
+		for Pallet<T>
+	{
 		type AssetId = T::ItemId;
-		type AssetConfig = T::ItemConfig;
 
-		fn store_as_nft(owner: T::AccountId, asset: Asset) -> Result<Self::AssetId, DispatchError> {
+		fn store_as_nft(
+			owner: T::AccountId,
+			asset: Asset,
+			asset_config: T::ItemConfig,
+		) -> Result<Self::AssetId, DispatchError> {
 			Pallet::<T>::ensure_unlocked()?;
 
 			let collection_id = HoldingCollectionId::<T>::get()?;
@@ -332,7 +316,7 @@ pub mod pallet {
 				&collection_id,
 				&next_item_id,
 				&Self::holding_account_id(),
-				&Self::AssetConfig::default(),
+				&asset_config,
 				true,
 			)?;
 

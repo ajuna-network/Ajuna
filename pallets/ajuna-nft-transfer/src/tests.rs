@@ -120,8 +120,12 @@ mod set_lock_state {
 			));
 
 			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
+			let asset_config = pallet_nfts::ItemConfig::default();
 
-			assert_noop!(NftTransfer::store_as_nft(BOB, asset), Error::<Test>::PalletLocked);
+			assert_noop!(
+				NftTransfer::store_as_nft(BOB, asset, asset_config),
+				Error::<Test>::PalletLocked
+			);
 		});
 	}
 
@@ -149,8 +153,9 @@ mod store_as_nft {
 		ExtBuilder::default().build().execute_with(|| {
 			let collection_id = create_and_set_random_nft_collection(ALICE);
 			let asset = MockStruct::default();
+			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let result = NftTransfer::store_as_nft(BOB, asset.clone());
+			let result = NftTransfer::store_as_nft(BOB, asset.clone(), asset_config);
 
 			assert_ok!(result);
 
@@ -189,9 +194,10 @@ mod store_as_nft {
 		ExtBuilder::default().build().execute_with(|| {
 			let _ = create_and_set_random_nft_collection(ALICE);
 			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
+			let asset_config = pallet_nfts::ItemConfig::default();
 
 			assert_noop!(
-				NftTransfer::store_as_nft(BOB, asset),
+				NftTransfer::store_as_nft(BOB, asset, asset_config),
 				Error::<Test>::AssetSizeAboveEncodingLimit
 			);
 		});
@@ -206,8 +212,9 @@ mod recover_from_nft {
 		ExtBuilder::default().build().execute_with(|| {
 			let collection_id = create_and_set_random_nft_collection(ALICE);
 			let asset = MockStruct::default();
+			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, asset.clone())
+			let asset_id = NftTransfer::store_as_nft(BOB, asset.clone(), asset_config)
 				.expect("Storage should have been successful!");
 
 			let result = NftTransfer::recover_from_nft(BOB, asset_id);
@@ -239,8 +246,9 @@ mod recover_from_nft {
 		ExtBuilder::default().build().execute_with(|| {
 			let collection_id = create_and_set_random_nft_collection(ALICE);
 			let asset = MockStruct::default();
+			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, asset)
+			let asset_id = NftTransfer::store_as_nft(BOB, asset, asset_config)
 				.expect("Storage should have been successful!");
 
 			LockItemStatus::<Test>::insert(collection_id, asset_id, NftStatus::Uploaded);
@@ -256,8 +264,9 @@ mod recover_from_nft {
 		ExtBuilder::default().build().execute_with(|| {
 			let _ = create_and_set_random_nft_collection(ALICE);
 			let asset = MockStruct::default();
+			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, asset)
+			let asset_id = NftTransfer::store_as_nft(BOB, asset, asset_config)
 				.expect("Storage should have been successful!");
 
 			let result: Result<MockStruct, _> = NftTransfer::recover_from_nft(ALICE, asset_id);
