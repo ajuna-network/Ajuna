@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{self as pallet_nft_transfer};
+use crate::{self as pallet_ajuna_nft_transfer};
 use frame_support::{
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
@@ -45,7 +45,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Nft: pallet_nfts,
 		Balances: pallet_balances,
-		NftTransfer: pallet_nft_transfer,
+		NftTransfer: pallet_ajuna_nft_transfer,
 	}
 );
 
@@ -147,8 +147,9 @@ parameter_types! {
 pub type CollectionConfig =
 	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 
-impl pallet_nft_transfer::Config for Test {
+impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
 	type CollectionConfig = CollectionConfig;
@@ -177,6 +178,7 @@ impl ExtBuilder {
 		let config = GenesisConfig {
 			system: Default::default(),
 			balances: BalancesConfig { balances: self.balances },
+			nft_transfer: Default::default(),
 		};
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();

@@ -95,8 +95,6 @@ pub mod pallet {
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
-	pub(crate) type CollectionIdOf<T> =
-		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::CollectionId;
 	pub(crate) type AssetIdOf<T> =
 		<<T as Config>::NftHandler as NftHandler<AccountIdOf<T>, Avatar>>::AssetId;
 
@@ -119,9 +117,6 @@ pub mod pallet {
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
 		type NftHandler: NftHandler<Self::AccountId, Avatar>;
-
-		#[pallet::constant]
-		type NftCollectionId: Get<CollectionIdOf<Self>>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -750,7 +745,7 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(&avatar_id)?;
 
-			let asset_id = T::NftHandler::store_as_nft(account, T::NftCollectionId::get(), avatar)?;
+			let asset_id = T::NftHandler::store_as_nft(account, avatar)?;
 			LockedAvatars::<T>::insert(avatar_id, &asset_id);
 			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())
@@ -763,7 +758,7 @@ pub mod pallet {
 			let _ = Self::ensure_ownership(&account, &avatar_id)?;
 
 			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
-			let _ = T::NftHandler::recover_from_nft(account, T::NftCollectionId::get(), asset_id)?;
+			let _ = T::NftHandler::recover_from_nft(account, asset_id)?;
 
 			LockedAvatars::<T>::remove(avatar_id);
 			Self::deposit_event(Event::AvatarUnlocked { avatar_id });

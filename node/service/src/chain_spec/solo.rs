@@ -204,5 +204,6 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		democracy: Default::default(),
 		awesome_avatars: Default::default(),
 		nft_staking: Default::default(),
+		nft_transfer: Default::default(),
 	}
 }

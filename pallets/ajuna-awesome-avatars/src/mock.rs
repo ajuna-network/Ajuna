@@ -17,7 +17,10 @@
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64, GenesisBuild, Hooks},
+	traits::{
+		tokens::nonfungibles_v2::Create, AsEnsureOriginWithArg, ConstU16, ConstU64, GenesisBuild,
+		Hooks,
+	},
 	PalletId,
 };
 use frame_system::{
@@ -156,7 +159,6 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type Currency = Balances;
 	type Randomness = Randomness;
 	type NftHandler = NftTransfer;
-	type NftCollectionId = MockAvatarCollectionId;
 	type WeightInfo = ();
 }
 
@@ -166,6 +168,7 @@ parameter_types! {
 
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
 	type MaxAssetEncodedSize = ValueLimit;
 	type CollectionId = MockCollectionId;
 	type CollectionConfig =
@@ -187,6 +190,7 @@ pub struct ExtBuilder {
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 	avatar_transfer_fee: Option<MockBalance>,
+	create_nft_collection: bool,
 }
 
 impl Default for ExtBuilder {
@@ -201,6 +205,7 @@ impl Default for ExtBuilder {
 			balances: Default::default(),
 			free_mints: Default::default(),
 			avatar_transfer_fee: Default::default(),
+			create_nft_collection: Default::default(),
 		}
 	}
 }
@@ -240,6 +245,10 @@ impl ExtBuilder {
 	}
 	pub fn avatar_transfer_fee(mut self, avatar_transfer_fee: MockBalance) -> Self {
 		self.avatar_transfer_fee = Some(avatar_transfer_fee);
+		self
+	}
+	pub fn create_nft_collection(mut self, create_nft_collection: bool) -> Self {
+		self.create_nft_collection = create_nft_collection;
 		self
 	}
 
@@ -289,12 +298,20 @@ impl ExtBuilder {
 				GlobalConfigs::<Test>::mutate(|config| config.transfer.avatar_transfer_fee = x);
 			}
 
-			Nft::force_create(
-				RuntimeOrigin::root(),
-				ALICE,
-				pallet_nfts::CollectionConfig::default(),
-			)
-			.expect("Collection created");
+			if self.create_nft_collection {
+				let collection_id = Nft::create_collection(
+					&ALICE,
+					&ALICE,
+					&pallet_nfts::CollectionConfig::default(),
+				)
+				.expect("Collection created");
+				assert!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE).is_ok());
+				assert!(NftTransfer::set_holding_collection_id(
+					RuntimeOrigin::signed(ALICE),
+					collection_id
+				)
+				.is_ok())
+			}
 		});
 		ext
 	}
