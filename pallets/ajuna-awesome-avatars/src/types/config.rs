@@ -113,10 +113,16 @@ pub struct AccountConfig<Balance> {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct NftTransferConfig {
+	pub open: bool,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,
 	pub transfer: TransferConfig<Balance>,
 	pub trade: TradeConfig<Balance>,
 	pub account: AccountConfig<Balance>,
+	pub nft_transfer: NftTransferConfig,
 }

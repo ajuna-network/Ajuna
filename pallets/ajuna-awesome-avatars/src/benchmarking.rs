@@ -330,7 +330,8 @@ benchmarks! {
 			},
 			account: AccountConfig {
 				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-			}
+			},
+			nft_transfer: NftTransferConfig { open: true },
 		};
 	}: _(RawOrigin::Signed(organizer), config.clone())
 	verify {

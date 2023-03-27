@@ -17,11 +17,12 @@
 pub mod v1;
 pub mod v2;
 pub mod v3;
+pub mod v4;
 
 use super::*;
 use frame_support::traits::OnRuntimeUpgrade;
 
 // The current storage version.
-pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
 const LOG_TARGET: &str = "runtime::ajuna-awesome-avatars";

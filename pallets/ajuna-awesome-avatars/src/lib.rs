@@ -233,6 +233,7 @@ pub mod pallet {
 				account: AccountConfig {
 					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				},
+				nft_transfer: NftTransferConfig { open: true },
 			});
 		}
 	}
@@ -323,6 +324,8 @@ pub mod pallet {
 		TransferClosed,
 		/// Trading is not available at the moment.
 		TradeClosed,
+		/// NFT transfer is not available at the moment.
+		NftTransferClosed,
 		/// Attempt to mint or forge outside of an active season.
 		SeasonClosed,
 		/// Attempt to mint when the season has ended prematurely.
@@ -753,14 +756,15 @@ pub mod pallet {
 		#[pallet::call_index(14)]
 		#[pallet::weight(10_000)]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-			let avatar = Self::ensure_ownership(&account, &avatar_id)?;
+			let player = ensure_signed(origin)?;
+			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
+			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 
 			// TODO: Use a defined config, either as parameter or as a constant in the pallet config
 			let asset_config = T::AvatarNftConfig::default();
-			let asset_id = T::NftHandler::store_as_nft(account, avatar, asset_config)?;
+			let asset_id = T::NftHandler::store_as_nft(player, avatar, asset_config)?;
 			LockedAvatars::<T>::insert(avatar_id, &asset_id);
 			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())
@@ -769,11 +773,13 @@ pub mod pallet {
 		#[pallet::call_index(15)]
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&account, &avatar_id)?;
+			let player = ensure_signed(origin)?;
+			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
+			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 
 			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
-			let _ = T::NftHandler::recover_from_nft(account, asset_id)?;
+			let _ = T::NftHandler::recover_from_nft(player, asset_id)?;
 
 			LockedAvatars::<T>::remove(avatar_id);
 			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
