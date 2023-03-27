@@ -47,7 +47,6 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn set_organizer() -> Weight;
 	fn set_holding_collection_id() -> Weight;
-	fn set_locked_state() -> Weight;
 }
 
 /// Weights for pallet_ajuna_nft_transfer using the Substrate node and recommended hardware.
@@ -68,14 +67,6 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
-	// Storage: NftTransfer Organizer (r:1 w:0)
-	// Storage: NftTransfer LockedState (r:0 w:1)
-	fn set_locked_state() -> Weight {
-		// Minimum execution time: 28_719 nanoseconds.
-		Weight::from_ref_time(29_623_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-	}
 }
 
 // For backwards compatibility and tests
@@ -93,14 +84,6 @@ impl WeightInfo for () {
 		// Minimum execution time: 92_372 nanoseconds.
 		Weight::from_ref_time(134_771_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
-	}
-	// Storage: NftTransfer Organizer (r:1 w:0)
-	// Storage: NftTransfer LockedState (r:0 w:1)
-	fn set_locked_state() -> Weight {
-		// Minimum execution time: 28_719 nanoseconds.
-		Weight::from_ref_time(29_623_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 }

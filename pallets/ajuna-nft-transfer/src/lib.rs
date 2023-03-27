@@ -55,20 +55,6 @@ pub mod pallet {
 
 	pub type EncodedAssetOf<T> = BoundedVec<u8, <T as Config>::MaxAssetEncodedSize>;
 
-	#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Eq, PartialEq)]
-	pub enum PalletLockedState {
-		/// Pallet is unlocked, all operations can be performed
-		Unlocked,
-		/// Pallet is locked, operations are restricted
-		Locked,
-	}
-
-	impl Default for PalletLockedState {
-		fn default() -> Self {
-			PalletLockedState::Unlocked
-		}
-	}
-
 	#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
 	pub enum NftStatus {
 		/// The NFT exists in storage in the chain
@@ -136,10 +122,6 @@ pub mod pallet {
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn lock_status)]
-	pub type LockedState<T: Config> = StorageValue<_, PalletLockedState, ValueQuery>;
-
-	#[pallet::storage]
 	pub type NextItemId<T: Config> =
 		StorageMap<_, Identity, T::CollectionId, T::ItemId, ValueQuery>;
 
@@ -175,8 +157,6 @@ pub mod pallet {
 		OrganizerSet { organizer: T::AccountId },
 		/// The collection holding the staking contracts has been set.
 		HoldingCollectionSet { collection_id: T::CollectionId },
-		/// The pallet's lock status has been set
-		LockedStateSet { locked_state: PalletLockedState },
 		/// Asset has been stored as an NFT [collection_id, asset_id, owner]
 		AssetStored { collection_id: T::CollectionId, asset_id: T::ItemId, owner: T::AccountId },
 		/// Asset has been restored back from its NFT representation [collection_id, asset_id,
@@ -198,8 +178,6 @@ pub mod pallet {
 		HoldingCollectionNotSet,
 		/// The holding collection to be set doesn't have any owner.
 		InvalidHoldingCollection,
-		/// The pallet is currently locked and cannot be interacted with.
-		PalletLocked,
 		/// The given asset resulted in an encoded size larger that the defined encoding limit.
 		AssetSizeAboveEncodingLimit,
 		/// The given NFT id didn't match any entries for the specified collection.
@@ -241,18 +219,6 @@ pub mod pallet {
 			Self::deposit_event(Event::HoldingCollectionSet { collection_id });
 			Ok(())
 		}
-
-		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::set_locked_state())]
-		pub fn set_locked_state(
-			origin: OriginFor<T>,
-			locked_state: PalletLockedState,
-		) -> DispatchResult {
-			let _ = Self::ensure_organizer(origin)?;
-			LockedState::<T>::put(locked_state);
-			Self::deposit_event(Event::LockedStateSet { locked_state });
-			Ok(())
-		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -275,14 +241,6 @@ pub mod pallet {
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
 			Ok(maybe_organizer)
 		}
-
-		fn ensure_unlocked() -> DispatchResult {
-			ensure!(
-				LockedState::<T>::get() == PalletLockedState::Unlocked,
-				Error::<T>::PalletLocked
-			);
-			Ok(())
-		}
 	}
 
 	impl<T: Config, Asset: NftConvertible> NftHandler<T::AccountId, Asset, T::ItemConfig>
@@ -295,8 +253,6 @@ pub mod pallet {
 			asset: Asset,
 			asset_config: T::ItemConfig,
 		) -> Result<Self::AssetId, DispatchError> {
-			Pallet::<T>::ensure_unlocked()?;
-
 			let collection_id = HoldingCollectionId::<T>::get()?;
 
 			let encoded_attributes = asset.get_encoded_attributes();
@@ -352,8 +308,6 @@ pub mod pallet {
 			owner: T::AccountId,
 			asset_id: Self::AssetId,
 		) -> Result<Asset, DispatchError> {
-			Pallet::<T>::ensure_unlocked()?;
-
 			let collection_id = HoldingCollectionId::<T>::get()?;
 
 			ensure!(
@@ -391,14 +345,13 @@ pub mod pallet {
 		}
 
 		fn schedule_nft_upload(_owner: T::AccountId, _asset_id: Self::AssetId) -> DispatchResult {
-			Pallet::<T>::ensure_unlocked()?;
 			todo!()
 		}
 	}
 
 	impl<T: Config> Locker<T::CollectionId, T::ItemId> for Pallet<T> {
-		fn is_locked(collection: T::CollectionId, item: T::ItemId) -> bool {
-			LockItemStatus::<T>::get(collection, item).is_some()
+		fn is_locked(collection_id: T::CollectionId, item_id: T::ItemId) -> bool {
+			LockItemStatus::<T>::contains_key(collection_id, item_id)
 		}
 	}
 }

@@ -98,53 +98,6 @@ mod organizer {
 	}
 }
 
-mod set_lock_state {
-	use super::*;
-
-	#[test]
-	fn set_lock_state_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			assert_ok!(NftTransfer::set_locked_state(
-				RuntimeOrigin::signed(ALICE),
-				PalletLockedState::Locked
-			));
-			assert_eq!(
-				NftTransfer::lock_status(),
-				PalletLockedState::Locked,
-				"Pallet should be locked"
-			);
-			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
-				crate::Event::LockedStateSet { locked_state: PalletLockedState::Locked },
-			));
-
-			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
-			let asset_config = pallet_nfts::ItemConfig::default();
-
-			assert_noop!(
-				NftTransfer::store_as_nft(BOB, asset, asset_config),
-				Error::<Test>::PalletLocked
-			);
-		});
-	}
-
-	#[test]
-	fn set_lock_state_should_fail_with_non_organizer_account() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			assert_noop!(
-				NftTransfer::set_locked_state(
-					RuntimeOrigin::signed(BOB),
-					PalletLockedState::Locked
-				),
-				sp_runtime::DispatchError::BadOrigin
-			);
-		});
-	}
-}
-
 mod store_as_nft {
 	use super::*;
 

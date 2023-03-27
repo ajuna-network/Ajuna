@@ -57,14 +57,6 @@ benchmarks! {
 		assert_last_event::<T>(Event::HoldingCollectionSet { collection_id }.into())
 	}
 
-	set_locked_state {
-		let organizer = account::<T>("ALICE");
-		Organizer::<T>::put(&organizer);
-	}: _(RawOrigin::Signed(organizer), PalletLockedState::Locked)
-	verify {
-		assert_last_event::<T>(Event::LockedStateSet { locked_state: PalletLockedState::Locked }.into())
-	}
-
 	impl_benchmark_test_suite!(
 		NftTransfer, crate::mock::ExtBuilder::default().build(), crate::mock::Test
 	);
