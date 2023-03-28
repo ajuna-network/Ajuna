@@ -149,8 +149,6 @@ pub type CollectionConfig =
 
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Currency = Balances;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
 	type CollectionConfig = CollectionConfig;
@@ -158,7 +156,6 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type HoldingPalletId = HoldingPalletId;
-	type WeightInfo = ();
 }
 
 pub const ALICE: MockAccountId = 1;

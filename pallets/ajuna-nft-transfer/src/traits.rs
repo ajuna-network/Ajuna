@@ -3,6 +3,7 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	Parameter,
 };
+use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each Asset.
@@ -34,20 +35,32 @@ pub trait NftConvertible: Codec {
 
 /// Trait to define the transformation and bridging of assets as NFT.
 pub trait NftHandler<Account, Asset: NftConvertible, AssetConfig> {
+	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
 	type AssetId: Codec + Parameter + MaxEncodedLen;
 
-	/// Consumes the given **asset** and stores it as an NFT owned by **owner**,
-	/// returns the NFT index for tracking and recovering the asset.
+	/// Consumes the given `asset` and its associated `collection_id`, and stores it as an NFT
+	/// owned by `owner`. Returns the index of the NFT for tracking and recovering the asset.
 	fn store_as_nft(
 		owner: Account,
+		collection_id: Self::CollectionId,
 		asset: Asset,
 		asset_config: AssetConfig,
 	) -> Result<Self::AssetId, DispatchError>;
-	/// Attempts to recover the NFT indexed by **nft_id** and transform it back into an
-	/// asset, returns an appropriate error if the process fails.
-	fn recover_from_nft(owner: Account, asset_id: Self::AssetId) -> Result<Asset, DispatchError>;
+
+	/// Recovers the NFT indexed by `collection_id` and `asset_id`, and transforms it back into an
+	/// asset. Returns an appropriate error if the process fails.
+	fn recover_from_nft(
+		owner: Account,
+		collection_id: Self::CollectionId,
+		asset_id: Self::AssetId,
+	) -> Result<Asset, DispatchError>;
+
 	/// Schedules a previously stored NFT asset to be transferred outside of the chain,
 	/// once this process completes the NFT won't be recoverable until the asset is transferred back
 	/// from the outside of the chain.
-	fn schedule_nft_upload(owner: Account, asset_id: Self::AssetId) -> DispatchResult;
+	fn schedule_nft_upload(
+		owner: Account,
+		collection_id: Self::CollectionId,
+		asset_id: Self::AssetId,
+	) -> DispatchResult;
 }
