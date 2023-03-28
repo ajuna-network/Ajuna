@@ -252,6 +252,15 @@ benchmarks! {
 		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
 	}
 
+	set_collection_id {
+		let organizer = account::<T>("organizer");
+		Organizer::<T>::put(&organizer);
+		let collection_id = CollectionIdOf::<T>::unique_saturated_from(u64::MAX);
+	}: _(RawOrigin::Signed(organizer), collection_id.clone())
+	verify {
+		assert_last_event::<T>(Event::CollectionIdSet { collection_id }.into())
+	}
+
 	set_treasurer {
 		let season_id = 369;
 		let treasurer = account::<T>("treasurer");

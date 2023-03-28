@@ -100,6 +100,11 @@ pub mod pallet {
 		Avatar,
 		<T as Config>::AvatarNftConfig,
 	>>::AssetId;
+	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
+		AccountIdOf<T>,
+		Avatar,
+		<T as Config>::AvatarNftConfig,
+	>>::CollectionId;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
 
@@ -178,6 +183,10 @@ pub mod pallet {
 	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, AssetIdOf<T>>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn collection_id)]
+	pub type CollectionId<T: Config> = StorageValue<_, CollectionIdOf<T>, OptionQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
 	pub type Accounts<T: Config> =
 		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
@@ -243,6 +252,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// An organizer has been set.
 		OrganizerSet { organizer: T::AccountId },
+		/// A collection ID has been set.
+		CollectionIdSet { collection_id: CollectionIdOf<T> },
 		/// A treasurer has been set for a season.
 		TreasurerSet { season_id: SeasonId, treasurer: T::AccountId },
 		/// A season's treasury has been claimed by a treasurer.
@@ -283,6 +294,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// There is no account set as the organizer
 		OrganizerNotSet,
+		/// There is no collection ID set for NFT handler.
+		CollectionIdNotSet,
 		/// The season starts before the previous season has ended.
 		EarlyStartTooEarly,
 		/// The season season start later than its early access
@@ -755,6 +768,18 @@ pub mod pallet {
 
 		#[pallet::call_index(14)]
 		#[pallet::weight(10_000)]
+		pub fn set_collection_id(
+			origin: OriginFor<T>,
+			collection_id: CollectionIdOf<T>,
+		) -> DispatchResult {
+			Self::ensure_organizer(origin)?;
+			CollectionId::<T>::put(&collection_id);
+			Self::deposit_event(Event::CollectionIdSet { collection_id });
+			Ok(())
+		}
+
+		#[pallet::call_index(15)]
+		#[pallet::weight(10_000)]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
@@ -764,13 +789,15 @@ pub mod pallet {
 
 			// TODO: Use a defined config, either as parameter or as a constant in the pallet config
 			let asset_config = T::AvatarNftConfig::default();
-			let asset_id = T::NftHandler::store_as_nft(player, avatar, asset_config)?;
+			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
+			let asset_id =
+				T::NftHandler::store_as_nft(player, collection_id, avatar, asset_config)?;
 			LockedAvatars::<T>::insert(avatar_id, &asset_id);
 			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())
 		}
 
-		#[pallet::call_index(15)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -778,15 +805,16 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 
+			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
-			let _ = T::NftHandler::recover_from_nft(player, asset_id)?;
+			let _ = T::NftHandler::recover_from_nft(player, collection_id, asset_id)?;
 
 			LockedAvatars::<T>::remove(avatar_id);
 			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
 			Ok(())
 		}
 
-		#[pallet::call_index(16)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(T::WeightInfo::fix_variation())]
 		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;

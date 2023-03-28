@@ -2759,6 +2759,29 @@ mod account {
 	}
 }
 
+mod nft_transfer {
+	use super::*;
+
+	#[test]
+	fn set_collection_id_works() {
+		ExtBuilder::default().organizer(CHARLIE).build().execute_with(|| {
+			let collection_id = 369;
+			assert_ok!(AAvatars::set_collection_id(RuntimeOrigin::signed(CHARLIE), collection_id));
+			assert_eq!(AAvatars::collection_id(), Some(collection_id));
+		});
+	}
+
+	#[test]
+	fn set_collection_id_rejects_non_organizer_calls() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_collection_id(RuntimeOrigin::signed(BOB), 333),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+}
+
 mod lock_avatar {
 	use super::*;
 	use frame_support::{
