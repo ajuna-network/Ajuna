@@ -787,11 +787,13 @@ pub mod pallet {
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 
+			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
 			// TODO: Use a defined config, either as parameter or as a constant in the pallet config
 			let asset_config = T::AvatarNftConfig::default();
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let asset_id =
 				T::NftHandler::store_as_nft(player, collection_id, avatar, asset_config)?;
+
 			LockedAvatars::<T>::insert(avatar_id, &asset_id);
 			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
 			Ok(())
@@ -801,10 +803,11 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			let _ = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 
+			Self::do_transfer_avatar(&Self::technical_account_id(), &player, &avatar_id)?;
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
 			let _ = T::NftHandler::recover_from_nft(player, collection_id, asset_id)?;

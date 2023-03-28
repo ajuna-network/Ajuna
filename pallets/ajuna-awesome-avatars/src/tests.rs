@@ -2954,6 +2954,12 @@ mod lock_avatar {
 					Force::Thermal
 				);
 
+				// Ensure ownership transferred to technical account
+				let technical_account = AAvatars::technical_account_id();
+				assert!(!AAvatars::owners(ALICE).contains(&avatar_id));
+				assert_eq!(AAvatars::owners(technical_account)[0], avatar_id);
+				assert_eq!(AAvatars::avatars(avatar_id).unwrap().0, technical_account);
+
 				// Ensure locked avatars cannot be used in trading
 				assert_noop!(
 					AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000),
@@ -3030,7 +3036,10 @@ mod lock_avatar {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_noop!(
-					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					AAvatars::lock_avatar(
+						RuntimeOrigin::signed(AAvatars::technical_account_id()),
+						avatar_id
+					),
 					Error::<Test>::AvatarLocked
 				);
 			});
@@ -3085,7 +3094,7 @@ mod unlock_avatar {
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
-					Error::<Test>::Ownership
+					pallet_ajuna_nft_transfer::Error::<Test>::NftNotOwned
 				);
 			});
 	}
