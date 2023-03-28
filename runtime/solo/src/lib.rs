@@ -618,8 +618,6 @@ type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, Coll
 
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Currency = Balances;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
 	type CollectionConfig = CollectionConfig;
@@ -627,7 +625,6 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type HoldingPalletId = HoldingPalletId;
-	type WeightInfo = ();
 }
 
 parameter_types! {
