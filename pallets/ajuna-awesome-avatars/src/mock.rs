@@ -150,7 +150,6 @@ impl pallet_nfts::Config for Test {
 
 parameter_types! {
 	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
-	pub const MockAvatarCollectionId: MockCollectionId = 0;
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Test {

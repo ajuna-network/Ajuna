@@ -3,10 +3,10 @@ use codec::{Decode, Encode};
 use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
 use sp_std::prelude::*;
 
-pub const DNA_ATTRIBUTE_CODE: u16 = 10;
-pub const SOUL_POINTS_ATTRIBUTE_CODE: u16 = 11;
-pub const RARITY_ATTRIBUTE_CODE: u16 = 12;
-pub const FORCE_ATTRIBUTE_CODE: u16 = 13;
+pub const DNA: AttributeCode = 10;
+pub const SOUL_POINTS: AttributeCode = 11;
+pub const RARITY: AttributeCode = 12;
+pub const FORCE: AttributeCode = 13;
 
 impl NftConvertible for Avatar {
 	const ASSET_CODE: u16 = 0;
@@ -22,26 +22,15 @@ impl NftConvertible for Avatar {
 	}
 
 	fn get_attribute_table() -> Vec<AttributeCode> {
-		vec![
-			DNA_ATTRIBUTE_CODE,
-			SOUL_POINTS_ATTRIBUTE_CODE,
-			RARITY_ATTRIBUTE_CODE,
-			FORCE_ATTRIBUTE_CODE,
-		]
+		vec![DNA, SOUL_POINTS, RARITY, FORCE]
 	}
 
 	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)> {
 		vec![
-			(DNA_ATTRIBUTE_CODE, self.dna.clone().encode()),
-			(SOUL_POINTS_ATTRIBUTE_CODE, self.souls.encode()),
-			(
-				RARITY_ATTRIBUTE_CODE,
-				RarityTier::try_from(self.min_tier()).unwrap_or_default().encode(),
-			),
-			(
-				FORCE_ATTRIBUTE_CODE,
-				Force::try_from(self.last_variation()).unwrap_or_default().encode(),
-			),
+			(DNA, self.dna.clone().encode()),
+			(SOUL_POINTS, self.souls.encode()),
+			(RARITY, RarityTier::try_from(self.min_tier()).unwrap_or_default().encode()),
+			(FORCE, Force::try_from(self.last_variation()).unwrap_or_default().encode()),
 		]
 	}
 }

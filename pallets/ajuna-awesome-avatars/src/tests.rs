@@ -124,7 +124,7 @@ mod organizer {
 	}
 }
 
-mod treasurer {
+mod treasury {
 	use super::*;
 
 	#[test]
@@ -162,10 +162,6 @@ mod treasurer {
 			}));
 		});
 	}
-}
-
-mod treasury {
-	use super::*;
 
 	fn deposit_into_treasury(season_id: SeasonId, amount: MockBalance) {
 		Treasury::<Test>::insert(season_id, amount);
@@ -2797,6 +2793,11 @@ mod account {
 
 mod nft_transfer {
 	use super::*;
+	use frame_support::{
+		bounded_vec,
+		traits::tokens::{nonfungibles_v2::Inspect, AttributeNamespace},
+	};
+	use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
 
 	#[test]
 	fn set_collection_id_works() {
@@ -2816,15 +2817,6 @@ mod nft_transfer {
 			);
 		});
 	}
-}
-
-mod lock_avatar {
-	use super::*;
-	use frame_support::{
-		bounded_vec,
-		traits::tokens::{nonfungibles_v2::Inspect, AttributeNamespace},
-	};
-	use pallet_ajuna_nft_transfer::traits::NftConvertible;
 
 	#[test]
 	fn can_lock_avatar_successfully() {
@@ -2861,19 +2853,17 @@ mod lock_avatar {
 				);
 
 				// Ensure correct encoding
-				let encoded_asset = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AssetCode,
-					pallet_ajuna_nft_transfer::EncodedAssetOf<Test>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&<Avatar as NftConvertible>::ASSET_CODE,
-				)
-				.unwrap();
-
 				assert_eq!(
-					encoded_asset,
+					<Nft as Inspect<MockAccountId>>::typed_attribute::<
+						pallet_ajuna_nft_transfer::traits::AssetCode,
+						pallet_ajuna_nft_transfer::EncodedAssetOf<Test>,
+					>(
+						&AAvatars::collection_id().unwrap(),
+						&asset_id,
+						&AttributeNamespace::Pallet,
+						&<Avatar as NftConvertible>::ASSET_CODE,
+					)
+					.unwrap(),
 					AvatarCodec {
 						season_id: avatar.season_id,
 						dna: avatar.dna.clone(),
@@ -2884,75 +2874,25 @@ mod lock_avatar {
 					.encode()
 				);
 
-				// Ensure attribute storage DNA
-				let encoded_dna = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&DNA_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					Dna::decode(&mut encoded_dna.as_slice()).expect("Decode should succeed"),
-					avatar.dna
-				);
-
-				// Ensure attribute storage SOUL POINTS
-				let encoded_soul_points = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&SOUL_POINTS_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					SoulCount::decode(&mut encoded_soul_points.as_slice())
-						.expect("Decode should succeed"),
-					avatar.souls
-				);
-
-				// Ensure attribute storage RARITY
-				let encoded_rarity = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&RARITY_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					RarityTier::decode(&mut encoded_rarity.as_slice())
-						.expect("Decode should succeed"),
-					RarityTier::Common
-				);
-
-				// Ensure attribute storage FORCE
-				let encoded_force = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&FORCE_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					Force::decode(&mut encoded_force.as_slice()).expect("Decode should succeed"),
-					Force::Thermal
-				);
+				// Ensure attributes encoding
+				for (attribute_code, encoded_attribute) in
+					Avatar::get_attribute_table().iter().zip([
+						avatar.dna.encode(),
+						avatar.souls.encode(),
+						RarityTier::Common.encode(),
+						Force::Thermal.encode(),
+					]) {
+					assert_eq!(
+						<Nft as Inspect<MockAccountId>>::typed_attribute::<AttributeCode, Vec<u8>>(
+							&AAvatars::collection_id().unwrap(),
+							&asset_id,
+							&AttributeNamespace::Pallet,
+							attribute_code,
+						)
+						.unwrap(),
+						encoded_attribute
+					);
+				}
 
 				// Ensure ownership transferred to technical account
 				let technical_account = AAvatars::technical_account_id();
@@ -2961,21 +2901,23 @@ mod lock_avatar {
 				assert_eq!(AAvatars::avatars(avatar_id).unwrap().0, technical_account);
 
 				// Ensure locked avatars cannot be used in trading
-				assert_noop!(
-					AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000),
-					Error::<Test>::AvatarLocked
-				);
 
-				// Ensure locked avatars cannot be used in forging
-				run_to_block(season.start);
-				assert_noop!(
-					AAvatars::forge(
-						RuntimeOrigin::signed(ALICE),
+				// Ensure locked avatars cannot be used in trading, transferring and forging
+				for extrinsic in [
+					AAvatars::set_price(RuntimeOrigin::signed(technical_account), avatar_id, 1_000),
+					AAvatars::transfer_avatar(
+						RuntimeOrigin::signed(technical_account),
+						BOB,
 						avatar_id,
-						avatar_ids[1..3].to_vec()
 					),
-					Error::<Test>::AvatarLocked
-				);
+					AAvatars::forge(
+						RuntimeOrigin::signed(technical_account),
+						avatar_id,
+						avatar_ids[1..3].to_vec(),
+					),
+				] {
+					assert_noop!(extrinsic, Error::<Test>::AvatarLocked);
+				}
 			});
 	}
 
@@ -3044,10 +2986,6 @@ mod lock_avatar {
 				);
 			});
 	}
-}
-
-mod unlock_avatar {
-	use super::*;
 
 	#[test]
 	fn can_unlock_avatar_successfully() {
@@ -3116,7 +3054,7 @@ mod unlock_avatar {
 
 				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
 				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
-					MockAvatarCollectionId::get(),
+					AAvatars::collection_id().unwrap(),
 					asset_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
 				);
