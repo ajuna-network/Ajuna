@@ -686,7 +686,7 @@ pub mod pallet {
 			let amount = Treasury::<T>::take(season_id);
 			ensure!(!amount.is_zero(), Error::<T>::CannotClaimZero);
 
-			T::Currency::transfer(&Self::account_id(), &treasurer, amount, AllowDeath)?;
+			T::Currency::transfer(&Self::treasury_account_id(), &treasurer, amount, AllowDeath)?;
 			Self::deposit_event(Event::TreasuryClaimed { season_id, treasurer, amount });
 			Ok(())
 		}
@@ -832,13 +832,13 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// The account ID of the treasury.
-		pub fn account_id() -> T::AccountId {
+		pub fn treasury_account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
 		pub(crate) fn deposit_into_treasury(season_id: &SeasonId, amount: BalanceOf<T>) {
 			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(amount));
-			T::Currency::deposit_creating(&Self::account_id(), amount);
+			T::Currency::deposit_creating(&Self::treasury_account_id(), amount);
 		}
 
 		/// Check that the origin is an organizer account.

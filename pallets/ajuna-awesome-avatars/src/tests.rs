@@ -141,7 +141,7 @@ mod treasury {
 
 	fn deposit_into_treasury(season_id: SeasonId, amount: MockBalance) {
 		Treasury::<Test>::insert(season_id, amount);
-		let _ = Balances::deposit_creating(&AAvatars::account_id(), amount);
+		let _ = Balances::deposit_creating(&AAvatars::treasury_account_id(), amount);
 	}
 
 	#[test]
@@ -156,7 +156,7 @@ mod treasury {
 			.balances(&[(BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
-				let treasury_account = AAvatars::account_id();
+				let treasury_account = AAvatars::treasury_account_id();
 				Treasurer::<Test>::insert(1, BOB);
 				assert_eq!(AAvatars::treasury(1), 0);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance);
@@ -340,7 +340,7 @@ mod treasury {
 				run_to_block(season_1.end + 1);
 				Treasurer::<Test>::insert(1, CHARLIE);
 				Treasury::<Test>::insert(1, 999);
-				assert!(Balances::free_balance(&AAvatars::account_id()) < 999);
+				assert!(Balances::free_balance(&AAvatars::treasury_account_id()) < 999);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
 					pallet_balances::Error::<Test>::InsufficientBalance
@@ -2211,7 +2211,7 @@ mod transferring {
 			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
-				let treasury_account = &AAvatars::account_id();
+				let treasury_account = &AAvatars::treasury_account_id();
 				let treasury_balance = 0;
 				assert_eq!(Balances::free_balance(treasury_account), treasury_balance);
 				assert_eq!(Balances::total_issuance(), total_supply);
@@ -2502,7 +2502,7 @@ mod trading {
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance_season_1 = 0;
-				let treasury_account = AAvatars::account_id();
+				let treasury_account = AAvatars::treasury_account_id();
 
 				assert_eq!(AAvatars::treasury(1), treasury_balance_season_1);
 				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
@@ -2701,28 +2701,40 @@ mod account {
 
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 25);
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 50);
 				treasury_balance += upgrade_fee;
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 75);
 				treasury_balance += upgrade_fee;
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 100);
 				treasury_balance += upgrade_fee;
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
