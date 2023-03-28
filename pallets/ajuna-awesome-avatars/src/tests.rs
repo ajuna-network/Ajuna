@@ -31,6 +31,34 @@ fn create_avatars(season_id: SeasonId, account: MockAccountId, n: u8) -> Vec<Ava
 		.collect()
 }
 
+mod pallet_accounts {
+	use super::*;
+
+	#[test]
+	fn treasury_account_id_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(
+				AAvatars::treasury_account_id(),
+				(b"modl", AwesomeAvatarsPalletId::get(), b"treasury")
+					.using_encoded(|x| MockAccountId::decode(&mut TrailingZeroInput::new(x)))
+					.unwrap()
+			)
+		});
+	}
+
+	#[test]
+	fn technical_account_id_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(
+				AAvatars::technical_account_id(),
+				(b"modl", AwesomeAvatarsPalletId::get(), b"technical")
+					.using_encoded(|x| MockAccountId::decode(&mut TrailingZeroInput::new(x)))
+					.unwrap()
+			)
+		});
+	}
+}
+
 mod organizer {
 	use super::*;
 

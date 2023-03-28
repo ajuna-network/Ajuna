@@ -833,7 +833,12 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// The account ID of the treasury.
 		pub fn treasury_account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
+			T::PalletId::get().into_sub_account_truncating(b"treasury")
+		}
+
+		/// The account ID of the treasury.
+		pub fn technical_account_id() -> T::AccountId {
+			T::PalletId::get().into_sub_account_truncating(b"technical")
 		}
 
 		pub(crate) fn deposit_into_treasury(season_id: &SeasonId, amount: BalanceOf<T>) {
