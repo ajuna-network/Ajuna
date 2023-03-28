@@ -121,7 +121,7 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-type Migrations = (pallet_ajuna_awesome_avatars::migration::v3::MigrateToV3<Runtime>,);
+type Migrations = (pallet_ajuna_awesome_avatars::migration::v4::MigrateToV4<Runtime>,);
 
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
 /// node's balance type.
@@ -266,7 +266,6 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 		!matches!(
 			call,
 			RuntimeCall::Nft(_) |
-				RuntimeCall::NftTransfer(_) |
 				RuntimeCall::NftStake(_) |
 				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::lock_avatar { .. }) |
 				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::unlock_avatar { .. })
@@ -734,8 +733,6 @@ type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, Coll
 
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Currency = Balances;
 	type MaxAssetEncodedSize = MaxAssetEncodedSize;
 	type CollectionId = CollectionId;
 	type CollectionConfig = CollectionConfig;
@@ -743,7 +740,6 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type HoldingPalletId = HoldingPalletId;
-	type WeightInfo = pallet_ajuna_nft_transfer::weights::AjunaWeight<Runtime>;
 }
 
 parameter_types! {
@@ -851,7 +847,6 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
 		[pallet_nfts, Nft]
-		[pallet_ajuna_nft_transfer, NftTransfer]
 		[pallet_ajuna_nft_staking, NftStake]
 	);
 }

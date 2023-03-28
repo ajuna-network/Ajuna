@@ -2759,6 +2759,29 @@ mod account {
 	}
 }
 
+mod nft_transfer {
+	use super::*;
+
+	#[test]
+	fn set_collection_id_works() {
+		ExtBuilder::default().organizer(CHARLIE).build().execute_with(|| {
+			let collection_id = 369;
+			assert_ok!(AAvatars::set_collection_id(RuntimeOrigin::signed(CHARLIE), collection_id));
+			assert_eq!(AAvatars::collection_id(), Some(collection_id));
+		});
+	}
+
+	#[test]
+	fn set_collection_id_rejects_non_organizer_calls() {
+		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_collection_id(RuntimeOrigin::signed(BOB), 333),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+}
+
 mod lock_avatar {
 	use super::*;
 	use frame_support::{
@@ -2915,6 +2938,22 @@ mod lock_avatar {
 	}
 
 	#[test]
+	fn cannot_lock_when_nft_transfer_is_closed() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.create_nft_collection(true)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::NftTransferClosed
+				);
+			})
+	}
+
+	#[test]
 	fn cannot_lock_unowned_avatar() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
@@ -2980,6 +3019,23 @@ mod unlock_avatar {
 					crate::Event::AvatarUnlocked { avatar_id },
 				));
 			});
+	}
+
+	#[test]
+	fn cannot_unlock_when_nft_transfer_is_closed() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.create_nft_collection(true)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
+				assert_noop!(
+					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::NftTransferClosed
+				);
+			})
 	}
 
 	#[test]

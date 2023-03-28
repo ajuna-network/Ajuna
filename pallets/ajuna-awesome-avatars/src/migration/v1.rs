@@ -81,7 +81,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 				},
 			);
 			current_version.put::<Pallet<T>>();
-			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version,);
+			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(2, 2)
 		} else {
 			log::info!(

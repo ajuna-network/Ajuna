@@ -169,8 +169,6 @@ parameter_types! {
 
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Currency = Balances;
 	type MaxAssetEncodedSize = ValueLimit;
 	type CollectionId = MockCollectionId;
 	type CollectionConfig =
@@ -179,7 +177,6 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type HoldingPalletId = HoldingPalletId;
-	type WeightInfo = ();
 }
 
 pub struct ExtBuilder {
@@ -307,12 +304,7 @@ impl ExtBuilder {
 					&pallet_nfts::CollectionConfig::default(),
 				)
 				.expect("Collection created");
-				assert!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE).is_ok());
-				assert!(NftTransfer::set_holding_collection_id(
-					RuntimeOrigin::signed(ALICE),
-					collection_id
-				)
-				.is_ok())
+				CollectionId::<Test>::put(collection_id);
 			}
 		});
 		ext

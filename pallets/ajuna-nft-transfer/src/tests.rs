@@ -51,98 +51,15 @@ impl NftConvertible for MockStruct {
 	}
 }
 
-fn create_and_set_random_nft_collection(organizer: MockAccountId) -> MockCollectionId {
-	let holding_account = Pallet::<Test>::holding_account_id();
-	assert!(NftTransfer::set_organizer(RuntimeOrigin::root(), organizer).is_ok());
-
+fn create_collection(organizer: MockAccountId) -> MockCollectionId {
+	let holding_account = NftTransfer::holding_account_id();
 	let collection_config = CollectionConfig::default();
-	let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
+	<Test as crate::pallet::Config>::NftHelper::create_collection(
 		&organizer,
 		&holding_account,
 		&collection_config,
 	)
-	.expect("Should have create contract collection");
-
-	assert!(NftTransfer::set_holding_collection_id(
-		RuntimeOrigin::signed(organizer),
-		collection_id
-	)
-	.is_ok());
-
-	collection_id
-}
-
-mod organizer {
-	use super::*;
-
-	#[test]
-	fn set_organizer_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(NftTransfer::organizer(), None);
-			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
-			assert_eq!(NftTransfer::organizer(), Some(ALICE), "Organizer should be Alice");
-			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
-				crate::Event::OrganizerSet { organizer: ALICE },
-			));
-		});
-	}
-
-	#[test]
-	fn set_organizer_should_reject_non_root_calls() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_noop!(
-				NftTransfer::set_organizer(RuntimeOrigin::signed(BOB), ALICE),
-				sp_runtime::DispatchError::BadOrigin
-			);
-		});
-	}
-}
-
-mod set_lock_state {
-	use super::*;
-
-	#[test]
-	fn set_lock_state_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			assert_ok!(NftTransfer::set_locked_state(
-				RuntimeOrigin::signed(ALICE),
-				PalletLockedState::Locked
-			));
-			assert_eq!(
-				NftTransfer::lock_status(),
-				PalletLockedState::Locked,
-				"Pallet should be locked"
-			);
-			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
-				crate::Event::LockedStateSet { locked_state: PalletLockedState::Locked },
-			));
-
-			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
-			let asset_config = pallet_nfts::ItemConfig::default();
-
-			assert_noop!(
-				NftTransfer::store_as_nft(BOB, asset, asset_config),
-				Error::<Test>::PalletLocked
-			);
-		});
-	}
-
-	#[test]
-	fn set_lock_state_should_fail_with_non_organizer_account() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftTransfer::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			assert_noop!(
-				NftTransfer::set_locked_state(
-					RuntimeOrigin::signed(BOB),
-					PalletLockedState::Locked
-				),
-				sp_runtime::DispatchError::BadOrigin
-			);
-		});
-	}
+	.expect("Should have create contract collection")
 }
 
 mod store_as_nft {
@@ -151,11 +68,11 @@ mod store_as_nft {
 	#[test]
 	fn asset_properly_stored() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_and_set_random_nft_collection(ALICE);
+			let collection_id = create_collection(ALICE);
 			let asset = MockStruct::default();
 			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let result = NftTransfer::store_as_nft(BOB, asset.clone(), asset_config);
+			let result = NftTransfer::store_as_nft(BOB, collection_id, asset.clone(), asset_config);
 
 			assert_ok!(result);
 
@@ -192,12 +109,12 @@ mod store_as_nft {
 	#[test]
 	fn cannot_store_asset_above_encoding_limit() {
 		ExtBuilder::default().build().execute_with(|| {
-			let _ = create_and_set_random_nft_collection(ALICE);
+			let collection_id = create_collection(ALICE);
 			let asset = MockStruct { data: vec![1; MAX_ENCODING_SIZE as usize] };
 			let asset_config = pallet_nfts::ItemConfig::default();
 
 			assert_noop!(
-				NftTransfer::store_as_nft(BOB, asset, asset_config),
+				NftTransfer::store_as_nft(BOB, collection_id, asset, asset_config),
 				Error::<Test>::AssetSizeAboveEncodingLimit
 			);
 		});
@@ -210,14 +127,15 @@ mod recover_from_nft {
 	#[test]
 	fn asset_properly_recovered() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_and_set_random_nft_collection(ALICE);
+			let collection_id = create_collection(ALICE);
 			let asset = MockStruct::default();
 			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, asset.clone(), asset_config)
-				.expect("Storage should have been successful!");
+			let asset_id =
+				NftTransfer::store_as_nft(BOB, collection_id, asset.clone(), asset_config)
+					.expect("Storage should have been successful!");
 
-			let result = NftTransfer::recover_from_nft(BOB, asset_id);
+			let result = NftTransfer::recover_from_nft(BOB, collection_id, asset_id);
 
 			assert_eq!(result, Ok(asset));
 
@@ -244,16 +162,17 @@ mod recover_from_nft {
 	#[test]
 	fn cannot_restore_uploaded_asset() {
 		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_and_set_random_nft_collection(ALICE);
+			let collection_id = create_collection(ALICE);
 			let asset = MockStruct::default();
 			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, asset, asset_config)
+			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset, asset_config)
 				.expect("Storage should have been successful!");
 
 			LockItemStatus::<Test>::insert(collection_id, asset_id, NftStatus::Uploaded);
 
-			let result: Result<MockStruct, _> = NftTransfer::recover_from_nft(BOB, asset_id);
+			let result: Result<MockStruct, _> =
+				NftTransfer::recover_from_nft(BOB, collection_id, asset_id);
 
 			assert_noop!(result, Error::<Test>::NftOutsideOfChain);
 		});
@@ -262,14 +181,15 @@ mod recover_from_nft {
 	#[test]
 	fn cannot_restore_nft_if_not_claimant() {
 		ExtBuilder::default().build().execute_with(|| {
-			let _ = create_and_set_random_nft_collection(ALICE);
+			let collection_id = create_collection(ALICE);
 			let asset = MockStruct::default();
 			let asset_config = pallet_nfts::ItemConfig::default();
 
-			let asset_id = NftTransfer::store_as_nft(BOB, asset, asset_config)
+			let asset_id = NftTransfer::store_as_nft(BOB, collection_id, asset, asset_config)
 				.expect("Storage should have been successful!");
 
-			let result: Result<MockStruct, _> = NftTransfer::recover_from_nft(ALICE, asset_id);
+			let result: Result<MockStruct, _> =
+				NftTransfer::recover_from_nft(ALICE, collection_id, asset_id);
 
 			assert_noop!(result, Error::<Test>::NftNotOwned);
 		});

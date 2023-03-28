@@ -55,12 +55,31 @@ pub struct OldGlobalConfig<T: Config> {
 	pub account: AccountConfig<BalanceOf<T>>,
 }
 
+#[derive(Decode, Encode, Default)]
+pub struct GlobalConfigV2<Balance, BlockNumber> {
+	pub mint: MintConfig<Balance, BlockNumber>,
+	pub forge: ForgeConfig,
+	pub transfer: TransferConfig<Balance>,
+	pub trade: TradeConfig<Balance>,
+	pub account: AccountConfig<Balance>,
+}
+
 impl<T: Config> OldGlobalConfig<T> {
-	fn migrate_to_v2(self) -> GlobalConfig<BalanceOf<T>, T::BlockNumber> {
+	fn migrate_to_v2(self) -> GlobalConfigV2<BalanceOf<T>, T::BlockNumber> {
 		let (mint, transfer) = self.mint.migrate_to_v2();
-		GlobalConfig { mint, forge: self.forge, transfer, trade: self.trade, account: self.account }
+		GlobalConfigV2 {
+			mint,
+			forge: self.forge,
+			transfer,
+			trade: self.trade,
+			account: self.account,
+		}
 	}
 }
+
+#[frame_support::storage_alias]
+pub(crate) type GlobalConfigs<T: Config> =
+	StorageValue<Pallet<T>, GlobalConfigV2<BalanceOf<T>, BlockNumberFor<T>>, ValueQuery>;
 
 pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
@@ -75,7 +94,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 				})
 			});
 			current_version.put::<Pallet<T>>();
-			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version,);
+			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(2, 2)
 		} else {
 			log::info!(
@@ -89,7 +108,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
 		assert_eq!(Pallet::<T>::on_chain_storage_version(), 2);
-		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
+		let GlobalConfigV2 { transfer, .. } = GlobalConfigs::<T>::get();
 		assert!(transfer.open);
 		assert_eq!(transfer.avatar_transfer_fee, 1_000_000_000_000_u64.unique_saturated_into());
 		Ok(())
