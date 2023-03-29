@@ -26,6 +26,7 @@ use frame_support::{
 		nonfungibles_v2::{Create, Inspect},
 		AttributeNamespace,
 	},
+	BoundedVec,
 };
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug)]
@@ -52,14 +53,42 @@ impl NftConvertible for MockStruct {
 }
 
 fn create_collection(organizer: MockAccountId) -> MockCollectionId {
-	let holding_account = NftTransfer::holding_account_id();
-	let collection_config = CollectionConfig::default();
 	<Test as crate::pallet::Config>::NftHelper::create_collection(
 		&organizer,
-		&holding_account,
-		&collection_config,
+		&NftTransfer::account_id(),
+		&CollectionConfig::default(),
 	)
 	.expect("Should have create contract collection")
+}
+
+#[test]
+fn attributes_cannot_be_mutated_via_extrinsic() {
+	let k = <BoundedVec<u8, KeyLimit>>::try_from(b"key".to_vec()).unwrap();
+	let v = <BoundedVec<u8, ValueLimit>>::try_from(b"value".to_vec()).unwrap();
+
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Nft::create(RuntimeOrigin::signed(ALICE), ALICE, CollectionConfig::default()));
+		for ns in [
+			AttributeNamespace::Pallet,
+			AttributeNamespace::CollectionOwner,
+			AttributeNamespace::ItemOwner,
+			AttributeNamespace::<MockAccountId>::Account(ALICE),
+		] {
+			assert_ok!(Nft::force_set_attribute(
+				RuntimeOrigin::root(),
+				None,
+				0,
+				None,
+				ns.clone(),
+				k.clone(),
+				v.clone()
+			));
+			assert_noop!(
+				Nft::set_attribute(RuntimeOrigin::signed(ALICE), 0, None, ns, k.clone(), v.clone()),
+				pallet_nfts::Error::<Test>::MethodDisabled
+			);
+		}
+	});
 }
 
 mod store_as_nft {
@@ -91,16 +120,12 @@ mod store_as_nft {
 
 			assert_eq!(NftClaimants::<Test>::get(collection_id, asset_id), Some(BOB));
 
-			let stored_asset = <Test as crate::pallet::Config>::NftHelper::typed_attribute::<
-				AssetCode,
-				EncodedAssetOf<Test>,
-			>(
-				&collection_id,
-				&asset_id,
-				&AttributeNamespace::<MockAccountId>::Pallet,
-				&MockStruct::ASSET_CODE,
-			)
-			.map(|item| item.into_inner());
+			let stored_asset =
+				<Test as crate::pallet::Config>::NftHelper::typed_attribute::<
+					AssetCode,
+					EncodedAssetOf<Test>,
+				>(&collection_id, &asset_id, &AttributeNamespace::Pallet, &MockStruct::ASSET_CODE)
+				.map(|item| item.into_inner());
 
 			assert_eq!(stored_asset, Some(asset.encode_into()))
 		});
@@ -145,15 +170,11 @@ mod recover_from_nft {
 
 			assert_eq!(LockItemStatus::<Test>::get(collection_id, asset_id), None);
 
-			let stored_asset = <Test as crate::pallet::Config>::NftHelper::typed_attribute::<
-				AssetCode,
-				EncodedAssetOf<Test>,
-			>(
-				&collection_id,
-				&asset_id,
-				&AttributeNamespace::<MockAccountId>::Pallet,
-				&MockStruct::ASSET_CODE,
-			);
+			let stored_asset =
+				<Test as crate::pallet::Config>::NftHelper::typed_attribute::<
+					AssetCode,
+					EncodedAssetOf<Test>,
+				>(&collection_id, &asset_id, &AttributeNamespace::Pallet, &MockStruct::ASSET_CODE);
 
 			assert_eq!(stored_asset, None);
 		});

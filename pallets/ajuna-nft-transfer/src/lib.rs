@@ -61,6 +61,9 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Maximum amount of bytes that an asset may be encoded as.
@@ -97,24 +100,16 @@ pub mod pallet {
 			+ Create<Self::AccountId, Self::CollectionConfig>
 			+ Mutate<Self::AccountId, Self::ItemConfig>
 			+ Destroy<Self::AccountId>;
-
-		/// The holding's pallet id, used for deriving its sovereign account identifier for the Nft
-		/// holding account.
-		#[pallet::constant]
-		type HoldingPalletId: Get<PalletId>;
 	}
 
 	#[pallet::storage]
+	#[pallet::getter(fn next_item_id)]
 	pub type NextItemId<T: Config> =
 		StorageMap<_, Identity, T::CollectionId, T::ItemId, ValueQuery>;
 
 	#[pallet::storage]
 	pub type LockItemStatus<T: Config> =
 		StorageDoubleMap<_, Identity, T::CollectionId, Identity, T::ItemId, NftStatus, OptionQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn holding_account)]
-	pub type HoldingAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn nft_claimants)]
@@ -162,17 +157,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// The account identifier of the holding account.
-		pub fn holding_account_id() -> T::AccountId {
-			if let Some(account) = Self::holding_account() {
-				account
-			} else {
-				let account: T::AccountId = T::HoldingPalletId::get().into_account_truncating();
-
-				HoldingAccount::<T>::put(account.clone());
-
-				account
-			}
+		/// The account identifier to delegate NFT transfer operations.
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
 		}
 	}
 
@@ -189,29 +176,17 @@ pub mod pallet {
 			asset_config: T::ItemConfig,
 		) -> Result<Self::AssetId, DispatchError> {
 			let encoded_attributes = asset.get_encoded_attributes();
-
 			let encoded_asset: EncodedAssetOf<T> = asset
 				.encode_into()
 				.try_into()
 				.map_err(|_| Error::<T>::AssetSizeAboveEncodingLimit)?;
 
-			let next_item_id = NextItemId::<T>::mutate(collection_id, |item_id| {
-				let next_item_id = *item_id;
-				item_id.saturating_inc();
-				next_item_id
-			});
-
-			T::NftHelper::mint_into(
-				&collection_id,
-				&next_item_id,
-				&Self::holding_account_id(),
-				&asset_config,
-				true,
-			)?;
+			let asset_id = Self::next_item_id(collection_id);
+			T::NftHelper::mint_into(&collection_id, &asset_id, &owner, &asset_config, true)?;
 
 			T::NftHelper::set_typed_attribute(
 				&collection_id,
-				&next_item_id,
+				&asset_id,
 				&Asset::ASSET_CODE,
 				&encoded_asset,
 			)?;
@@ -219,22 +194,18 @@ pub mod pallet {
 			for (attribute_key, attribute) in encoded_attributes {
 				T::NftHelper::set_typed_attribute(
 					&collection_id,
-					&next_item_id,
+					&asset_id,
 					&attribute_key,
 					&attribute,
 				)?;
 			}
 
-			LockItemStatus::<T>::insert(collection_id, next_item_id, NftStatus::Stored);
-			NftClaimants::<T>::insert(collection_id, next_item_id, owner.clone());
+			LockItemStatus::<T>::insert(collection_id, asset_id, NftStatus::Stored);
+			NftClaimants::<T>::insert(collection_id, asset_id, &owner);
+			NextItemId::<T>::mutate(collection_id, |id| id.saturating_inc());
 
-			Self::deposit_event(Event::<T>::AssetStored {
-				collection_id,
-				asset_id: next_item_id,
-				owner,
-			});
-
-			Ok(next_item_id)
+			Self::deposit_event(Event::<T>::AssetStored { collection_id, asset_id, owner });
+			Ok(asset_id)
 		}
 
 		fn recover_from_nft(
@@ -268,11 +239,10 @@ pub mod pallet {
 				T::NftHelper::clear_typed_attribute(&collection_id, &asset_id, &attribute_key)?;
 			}
 
-			T::NftHelper::burn(&collection_id, &asset_id, Some(&Self::holding_account_id()))?;
+			T::NftHelper::burn(&collection_id, &asset_id, Some(&owner))?;
 			LockItemStatus::<T>::remove(collection_id, asset_id);
 
 			Self::deposit_event(Event::<T>::AssetRestored { collection_id, asset_id, owner });
-
 			Ok(asset)
 		}
 

@@ -24,6 +24,7 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
+use pallet_nfts::{PalletFeature, PalletFeatures};
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
@@ -105,7 +106,9 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
-	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
+	pub MockFeatures: PalletFeatures = PalletFeatures::from_disabled(
+		PalletFeature::Attributes.into()
+	);
 }
 
 pub type MockCollectionId = u32;
@@ -131,7 +134,7 @@ impl pallet_nfts::Config for Test {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
-	type Features = ConfigFeatures;
+	type Features = MockFeatures;
 	pallet_nfts::runtime_benchmarks_enabled! {
 		type Helper = ();
 	}
@@ -141,13 +144,14 @@ impl pallet_nfts::Config for Test {
 pub const MAX_ENCODING_SIZE: u32 = 200;
 
 parameter_types! {
-	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+	pub const NftTransferPalletId: PalletId = PalletId(*b"aj/nfttr");
 }
 
 pub type CollectionConfig =
 	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 
 impl pallet_ajuna_nft_transfer::Config for Test {
+	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
@@ -155,7 +159,6 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-	type HoldingPalletId = HoldingPalletId;
 }
 
 pub const ALICE: MockAccountId = 1;
