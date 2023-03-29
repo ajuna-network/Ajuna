@@ -52,6 +52,9 @@ impl NftConvertible for MockStruct {
 	}
 }
 
+type CollectionConfig =
+	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
+
 fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 	<Test as crate::pallet::Config>::NftHelper::create_collection(
 		&organizer,

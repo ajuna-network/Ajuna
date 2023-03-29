@@ -33,7 +33,7 @@ pub mod pallet {
 		pallet_prelude::*,
 		traits::{
 			tokens::{
-				nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
+				nonfungibles_v2::{Destroy, Inspect, Mutate},
 				AttributeNamespace,
 			},
 			Locker,
@@ -73,16 +73,6 @@ pub mod pallet {
 		/// Identifier for the collection of an NFT.
 		type CollectionId: Member + Parameter + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
 
-		/// Type that holds the specific configurations for a collection.
-		type CollectionConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
-
 		/// Identifier for the individual instances of an NFT.
 		type ItemId: Member + Parameter + Default + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
 
@@ -97,7 +87,6 @@ pub mod pallet {
 			+ TypeInfo;
 
 		type NftHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
-			+ Create<Self::AccountId, Self::CollectionConfig>
 			+ Mutate<Self::AccountId, Self::ItemConfig>
 			+ Destroy<Self::AccountId>;
 	}
