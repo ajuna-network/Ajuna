@@ -43,7 +43,7 @@ impl Default for MockStruct {
 impl NftConvertible for MockStruct {
 	const ASSET_CODE: AssetCode = 1;
 
-	fn get_attribute_table() -> Vec<AttributeCode> {
+	fn get_attribute_codes() -> Vec<AttributeCode> {
 		vec![10]
 	}
 

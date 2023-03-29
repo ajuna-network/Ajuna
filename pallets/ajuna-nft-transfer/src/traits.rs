@@ -20,16 +20,15 @@ pub trait NftConvertible: Codec {
 		self.encode()
 	}
 
-	/// Decodes a given byte representation back into it's asset form.
-	/// Returns None if decoding fails or if input is empty.
+	/// Decodes a given byte representation back into its asset form.
 	fn decode_from(input: Vec<u8>) -> Result<Self, CodecError> {
 		Self::decode(&mut input.as_slice())
 	}
 
-	/// Returns the list of attribute keys associated with the specific type.
-	fn get_attribute_table() -> Vec<AttributeCode>;
+	/// Returns the list of attribute codes associated with this type.
+	fn get_attribute_codes() -> Vec<AttributeCode>;
 
-	/// Returns a list of key-value pairs with the attributes to attach to the encoded asset.
+	/// Returns the list of pairs of attribute code and its encoded attribute.
 	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)>;
 }
 

@@ -2876,7 +2876,7 @@ mod nft_transfer {
 
 				// Ensure attributes encoding
 				for (attribute_code, encoded_attribute) in
-					Avatar::get_attribute_table().iter().zip([
+					Avatar::get_attribute_codes().iter().zip([
 						avatar.dna.encode(),
 						avatar.souls.encode(),
 						RarityTier::Common.encode(),

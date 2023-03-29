@@ -21,7 +21,7 @@ impl NftConvertible for Avatar {
 		Ok(Avatar::from(avatar_codec))
 	}
 
-	fn get_attribute_table() -> Vec<AttributeCode> {
+	fn get_attribute_codes() -> Vec<AttributeCode> {
 		vec![DNA, SOUL_POINTS, RARITY, FORCE]
 	}
 

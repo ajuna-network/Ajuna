@@ -224,7 +224,7 @@ pub mod pallet {
 
 			T::NftHelper::clear_typed_attribute(&collection_id, &asset_id, &Asset::ASSET_CODE)?;
 
-			for attribute_key in Asset::get_attribute_table() {
+			for attribute_key in Asset::get_attribute_codes() {
 				T::NftHelper::clear_typed_attribute(&collection_id, &asset_id, &attribute_key)?;
 			}
 
