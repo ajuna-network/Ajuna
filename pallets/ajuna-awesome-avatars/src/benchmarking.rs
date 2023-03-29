@@ -255,7 +255,7 @@ benchmarks! {
 	set_collection_id {
 		let organizer = account::<T>("organizer");
 		Organizer::<T>::put(&organizer);
-		let collection_id = CollectionIdOf::<T>::unique_saturated_from(u64::MAX);
+		let collection_id = CollectionIdOf::<T>::from(u32::MAX);
 	}: _(RawOrigin::Signed(organizer), collection_id.clone())
 	verify {
 		assert_last_event::<T>(Event::CollectionIdSet { collection_id }.into())

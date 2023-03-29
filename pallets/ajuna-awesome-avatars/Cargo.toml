@@ -33,7 +33,11 @@ sp-core                           = { git = "https://github.com/paritytech/subst
 
 [features]
 default = [ "std" ]
-runtime-benchmarks = [ "frame-benchmarking", "pallet-ajuna-nft-transfer/runtime-benchmarks" ]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "pallet-ajuna-nft-transfer/runtime-benchmarks",
+    "pallet-nfts/runtime-benchmarks",
+]
 std = [
     "codec/std",
     "scale-info/std",

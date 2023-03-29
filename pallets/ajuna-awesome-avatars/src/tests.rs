@@ -2837,9 +2837,9 @@ mod nft_transfer {
 				let avatar_id = avatar_ids[0];
 
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
+				assert!(LockedAvatars::<Test>::contains_key(avatar_id));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::AvatarLocked { avatar_id, asset_id },
+					crate::Event::AvatarLocked { avatar_id },
 				));
 
 				let (_, avatar) = AAvatars::avatars(avatar_id).unwrap();
@@ -2855,13 +2855,13 @@ mod nft_transfer {
 				// Ensure correct encoding
 				assert_eq!(
 					<Nft as Inspect<MockAccountId>>::typed_attribute::<
-						pallet_ajuna_nft_transfer::traits::AssetCode,
-						pallet_ajuna_nft_transfer::EncodedAssetOf<Test>,
+						pallet_ajuna_nft_transfer::traits::ItemCode,
+						pallet_ajuna_nft_transfer::EncodedItemOf<Test>,
 					>(
 						&AAvatars::collection_id().unwrap(),
-						&asset_id,
+						&avatar_id,
 						&AttributeNamespace::Pallet,
-						&<Avatar as NftConvertible>::ASSET_CODE,
+						&<Avatar as NftConvertible>::ITEM_CODE,
 					)
 					.unwrap(),
 					AvatarCodec {
@@ -2885,7 +2885,7 @@ mod nft_transfer {
 					assert_eq!(
 						<Nft as Inspect<MockAccountId>>::typed_attribute::<AttributeCode, Vec<u8>>(
 							&AAvatars::collection_id().unwrap(),
-							&asset_id,
+							&avatar_id,
 							&AttributeNamespace::Pallet,
 							attribute_code,
 						)
@@ -3052,10 +3052,9 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 
-				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
 				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
 					AAvatars::collection_id().unwrap(),
-					asset_id,
+					avatar_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
 				);
 

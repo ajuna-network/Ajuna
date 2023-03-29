@@ -60,11 +60,10 @@ mod consts;
 mod impls;
 mod types;
 
-pub use ajuna_primitives::{
-	AccountId, AssetId, Balance, BlockNumber, CollectionId, ContractAttributeKey,
-	ContractAttributeValue, Hash, Index, ItemId, Moment, Signature,
+use ajuna_primitives::{
+	AccountId, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, Moment, Signature,
 };
-pub use consts::{ajuna, currency, time};
+pub use consts::currency;
 use consts::{currency::*, time::*};
 use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
 use types::governance::*;
@@ -588,7 +587,7 @@ parameter_types! {
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = CollectionId;
-	type ItemId = ItemId;
+	type ItemId = Hash;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
@@ -607,7 +606,7 @@ impl pallet_nfts::Config for Runtime {
 	type MaxDeadlineDuration = MaxDeadlineDuration;
 	type Features = NftFeatures;
 	#[cfg(feature = "runtime-benchmarks")]
-	type Helper = ();
+	type Helper = NftBenchmarkHelper;
 	type WeightInfo = ();
 }
 
@@ -618,38 +617,11 @@ parameter_types! {
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type MaxAssetEncodedSize = frame_support::traits::ConstU32<200>;
+	type MaxItemEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
-	type ItemId = ItemId;
+	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-}
-
-type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
-
-parameter_types! {
-	pub const NftStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
-	pub const MinimumStakingTokenReward: Balance = 100;
-	pub ContractCollectionConfig: CollectionConfig = pallet_nfts::CollectionConfig::default();
-	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
-}
-
-impl pallet_ajuna_nft_staking::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type CollectionId = CollectionId;
-	type CollectionConfig = CollectionConfig;
-	type ItemId = ItemId;
-	type ItemConfig = pallet_nfts::ItemConfig;
-	type NftHelper = Nft;
-	type StakingOrigin = EnsureSigned<AccountId>;
-	type TreasuryPalletId = NftStakeTreasuryPalletId;
-	type MinimumStakingTokenReward = MinimumStakingTokenReward;
-	type ContractCollectionConfig = ContractCollectionConfig;
-	type ContractCollectionItemConfig = ContractCollectionItemConfig;
-	type ContractAttributeKey = ContractAttributeKey;
-	type ContractAttributeValue = ContractAttributeValue;
-	type WeightInfo = ();
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -683,7 +655,6 @@ construct_runtime!(
 		Randomness: pallet_randomness_collective_flip = 23,
 		Nft: pallet_nfts = 24,
 		NftTransfer: pallet_ajuna_nft_transfer = 25,
-		NftStaking: pallet_ajuna_nft_staking = 26,
 	}
 );
 
@@ -729,6 +700,20 @@ mod benches {
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 	);
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct NftBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
+	pallet_nfts::BenchmarkHelper<CollectionId, ItemId> for NftBenchmarkHelper
+{
+	fn collection(i: u16) -> CollectionId {
+		i.into()
+	}
+	fn item(i: u16) -> ItemId {
+		[i as u8; 32].into()
+	}
 }
 
 impl_runtime_apis! {

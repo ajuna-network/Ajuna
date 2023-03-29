@@ -45,7 +45,3 @@ pub mod time {
 	pub const HOURS: BlockNumber = 60 * MINUTES;
 	pub const DAYS: BlockNumber = 24 * HOURS;
 }
-
-pub mod ajuna {
-	pub const MAX_ACKNOWLEDGE_BATCH: u32 = 10;
-}

@@ -9,7 +9,7 @@ pub const RARITY: AttributeCode = 12;
 pub const FORCE: AttributeCode = 13;
 
 impl NftConvertible for Avatar {
-	const ASSET_CODE: u16 = 0;
+	const ITEM_CODE: u16 = 0;
 
 	fn encode_into(self) -> Vec<u8> {
 		let avatar_codec = AvatarCodec::from(self);
