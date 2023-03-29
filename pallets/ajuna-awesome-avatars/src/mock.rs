@@ -163,19 +163,17 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 }
 
 parameter_types! {
-	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+	pub const NftTransferPalletId: PalletId = PalletId(*b"aj/nfttr");
 }
 
 impl pallet_ajuna_nft_transfer::Config for Test {
+	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = ValueLimit;
 	type CollectionId = MockCollectionId;
-	type CollectionConfig =
-		pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-	type HoldingPalletId = HoldingPalletId;
 }
 
 pub struct ExtBuilder {

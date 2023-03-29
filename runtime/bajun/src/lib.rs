@@ -696,7 +696,8 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
-	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
+	pub NftFeatures: pallet_nfts::PalletFeatures =
+		pallet_nfts::PalletFeatures::from_disabled(pallet_nfts::PalletFeature::Attributes.into());
 }
 
 impl pallet_nfts::Config for Runtime {
@@ -719,28 +720,27 @@ impl pallet_nfts::Config for Runtime {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
-	type Features = ConfigFeatures;
+	type Features = NftFeatures;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
 	type WeightInfo = weights::pallet_nfts::WeightInfo<Runtime>;
 }
 
 parameter_types! {
-	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+	pub const NftTransferPalletId: PalletId = PalletId(*b"aj/nfttr");
 }
 
-type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
-
 impl pallet_ajuna_nft_transfer::Config for Runtime {
+	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type MaxAssetEncodedSize = MaxAssetEncodedSize;
 	type CollectionId = CollectionId;
-	type CollectionConfig = CollectionConfig;
 	type ItemId = ItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-	type HoldingPalletId = HoldingPalletId;
 }
+
+type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 
 parameter_types! {
 	pub const NftStakeTreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
