@@ -24,6 +24,7 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
+use pallet_nfts::{PalletFeature, PalletFeatures};
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
@@ -33,7 +34,10 @@ use sp_runtime::{
 pub type MockAccountId = u32;
 pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
-pub type MockIndex = u64;
+pub type MockCollectionId = u32;
+
+pub const ALICE: MockAccountId = 1;
+pub const BOB: MockAccountId = 2;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -56,7 +60,7 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = MockIndex;
+	type Index = u64;
 	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -105,16 +109,33 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
-	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
+	pub MockFeatures: PalletFeatures = PalletFeatures::from_disabled(
+		PalletFeature::Attributes.into()
+	);
 }
 
-pub type MockCollectionId = u32;
-pub type MockItemId = u128;
+#[cfg(feature = "runtime-benchmarks")]
+pub struct Helper;
+#[cfg(feature = "runtime-benchmarks")]
+impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
+	pallet_nfts::BenchmarkHelper<CollectionId, ItemId> for Helper
+{
+	fn collection(i: u16) -> CollectionId {
+		i.into()
+	}
+	fn item(i: u16) -> ItemId {
+		let mut id = [0_u8; 32];
+		let bytes = i.to_be_bytes();
+		id[0] = bytes[0];
+		id[1] = bytes[1];
+		id.into()
+	}
+}
 
 impl pallet_nfts::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = MockCollectionId;
-	type ItemId = MockItemId;
+	type ItemId = H256;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<MockAccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<MockAccountId>>;
@@ -131,9 +152,9 @@ impl pallet_nfts::Config for Test {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
-	type Features = ConfigFeatures;
+	type Features = MockFeatures;
 	pallet_nfts::runtime_benchmarks_enabled! {
-		type Helper = ();
+		type Helper = Helper;
 	}
 	type WeightInfo = ();
 }
@@ -141,25 +162,18 @@ impl pallet_nfts::Config for Test {
 pub const MAX_ENCODING_SIZE: u32 = 200;
 
 parameter_types! {
-	pub const HoldingPalletId: PalletId = PalletId(*b"aj/nfttr");
+	pub const NftTransferPalletId: PalletId = PalletId(*b"aj/nfttr");
 }
-
-pub type CollectionConfig =
-	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 
 impl pallet_ajuna_nft_transfer::Config for Test {
+	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type MaxAssetEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
+	type MaxItemEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
-	type CollectionConfig = CollectionConfig;
-	type ItemId = MockItemId;
+	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-	type HoldingPalletId = HoldingPalletId;
 }
-
-pub const ALICE: MockAccountId = 1;
-pub const BOB: MockAccountId = 2;
 
 pub struct ExtBuilder {
 	balances: Vec<(MockAccountId, MockBalance)>,

@@ -27,7 +27,7 @@ sp-io           = { git = "https://github.com/paritytech/substrate", branch = "p
 
 [features]
 default = [ "std" ]
-runtime-benchmarks = [  ]
+runtime-benchmarks = [ "pallet-nfts/runtime-benchmarks" ]
 std = [
     "codec/std",
     "scale-info/std",

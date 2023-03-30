@@ -31,6 +31,34 @@ fn create_avatars(season_id: SeasonId, account: MockAccountId, n: u8) -> Vec<Ava
 		.collect()
 }
 
+mod pallet_accounts {
+	use super::*;
+
+	#[test]
+	fn treasury_account_id_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(
+				AAvatars::treasury_account_id(),
+				(b"modl", AwesomeAvatarsPalletId::get(), b"treasury")
+					.using_encoded(|x| MockAccountId::decode(&mut TrailingZeroInput::new(x)))
+					.unwrap()
+			)
+		});
+	}
+
+	#[test]
+	fn technical_account_id_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(
+				AAvatars::technical_account_id(),
+				(b"modl", AwesomeAvatarsPalletId::get(), b"technical")
+					.using_encoded(|x| MockAccountId::decode(&mut TrailingZeroInput::new(x)))
+					.unwrap()
+			)
+		});
+	}
+}
+
 mod organizer {
 	use super::*;
 
@@ -96,7 +124,7 @@ mod organizer {
 	}
 }
 
-mod treasurer {
+mod treasury {
 	use super::*;
 
 	#[test]
@@ -134,14 +162,10 @@ mod treasurer {
 			}));
 		});
 	}
-}
-
-mod treasury {
-	use super::*;
 
 	fn deposit_into_treasury(season_id: SeasonId, amount: MockBalance) {
 		Treasury::<Test>::insert(season_id, amount);
-		let _ = Balances::deposit_creating(&AAvatars::account_id(), amount);
+		let _ = Balances::deposit_creating(&AAvatars::treasury_account_id(), amount);
 	}
 
 	#[test]
@@ -156,7 +180,7 @@ mod treasury {
 			.balances(&[(BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
-				let treasury_account = AAvatars::account_id();
+				let treasury_account = AAvatars::treasury_account_id();
 				Treasurer::<Test>::insert(1, BOB);
 				assert_eq!(AAvatars::treasury(1), 0);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance);
@@ -340,7 +364,7 @@ mod treasury {
 				run_to_block(season_1.end + 1);
 				Treasurer::<Test>::insert(1, CHARLIE);
 				Treasury::<Test>::insert(1, 999);
-				assert!(Balances::free_balance(&AAvatars::account_id()) < 999);
+				assert!(Balances::free_balance(&AAvatars::treasury_account_id()) < 999);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
 					pallet_balances::Error::<Test>::InsufficientBalance
@@ -1320,13 +1344,13 @@ mod forging {
 	use sp_runtime::testing::H256;
 	use sp_std::collections::btree_set::BTreeSet;
 
-	fn create_avatar(avatar_id_seed: u8, dna: &[u8]) -> AvatarIdOf<Test> {
+	fn create_avatar_for_bob(dna: &[u8]) -> AvatarIdOf<Test> {
 		let avatar = Avatar::default().season_id(1).dna(dna);
 		if avatar.min_tier() == RarityTier::Legendary as u8 {
 			CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
 		}
 
-		let avatar_id = H256::from([avatar_id_seed; 32]);
+		let avatar_id = H256::random();
 		Avatars::<Test>::insert(avatar_id, (BOB, avatar));
 		Owners::<Test>::try_append(BOB, avatar_id).unwrap();
 
@@ -1366,24 +1390,20 @@ mod forging {
 				let dna_after = [0x23, 0x25, 0x24, 0x20, 0x05, 0x25, 0x21, 0x20, 0x22, 0x23, 0x23];
 				assert_eq!(expected_upgraded_components(&dna_before, &dna_after), 2);
 
-				let leader_id = create_avatar(5, &dna_before);
+				let leader_id = create_avatar_for_bob(&dna_before);
 				let sacrifice_ids = [
-					create_avatar(
-						6,
-						&[0x00, 0x00, 0x04, 0x01, 0x03, 0x21, 0x00, 0x00, 0x03, 0x04, 0x04],
-					),
-					create_avatar(
-						7,
-						&[0x04, 0x02, 0x04, 0x21, 0x02, 0x05, 0x02, 0x21, 0x02, 0x23, 0x00],
-					),
-					create_avatar(
-						8,
-						&[0x02, 0x05, 0x22, 0x02, 0x23, 0x05, 0x02, 0x24, 0x05, 0x03, 0x03],
-					),
-					create_avatar(
-						9,
-						&[0x23, 0x24, 0x23, 0x21, 0x25, 0x23, 0x00, 0x25, 0x01, 0x22, 0x05],
-					),
+					create_avatar_for_bob(&[
+						0x00, 0x00, 0x04, 0x01, 0x03, 0x21, 0x00, 0x00, 0x03, 0x04, 0x04,
+					]),
+					create_avatar_for_bob(&[
+						0x04, 0x02, 0x04, 0x21, 0x02, 0x05, 0x02, 0x21, 0x02, 0x23, 0x00,
+					]),
+					create_avatar_for_bob(&[
+						0x02, 0x05, 0x22, 0x02, 0x23, 0x05, 0x02, 0x24, 0x05, 0x03, 0x03,
+					]),
+					create_avatar_for_bob(&[
+						0x23, 0x24, 0x23, 0x21, 0x25, 0x23, 0x00, 0x25, 0x01, 0x22, 0x05,
+					]),
 				];
 
 				assert_ok!(AAvatars::forge(
@@ -1568,10 +1588,10 @@ mod forging {
 
 				let mut max_tier_avatars = 0;
 				let common_avatar_ids = [
-					create_avatar(1, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x02]),
-					create_avatar(2, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
-					create_avatar(3, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
-					create_avatar(4, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x02]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x03]),
 				];
 
 				// `max_tier_avatars` increases when a legendary is forged
@@ -1587,10 +1607,10 @@ mod forging {
 
 				// `max_tier_avatars` decreases when legendaries are sacrificed
 				let legendary_avatar_ids = [
-					create_avatar(5, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(6, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(7, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
-					create_avatar(8, &[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
+					create_avatar_for_bob(&[0x41, 0x42, 0x43, 0x44, 0x45, 0x44, 0x43, 0x42]),
 				];
 				max_tier_avatars += 4;
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, max_tier_avatars);
@@ -2211,7 +2231,7 @@ mod transferring {
 			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
-				let treasury_account = &AAvatars::account_id();
+				let treasury_account = &AAvatars::treasury_account_id();
 				let treasury_balance = 0;
 				assert_eq!(Balances::free_balance(treasury_account), treasury_balance);
 				assert_eq!(Balances::total_issuance(), total_supply);
@@ -2502,7 +2522,7 @@ mod trading {
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance_season_1 = 0;
-				let treasury_account = AAvatars::account_id();
+				let treasury_account = AAvatars::treasury_account_id();
 
 				assert_eq!(AAvatars::treasury(1), treasury_balance_season_1);
 				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
@@ -2701,28 +2721,40 @@ mod account {
 
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::One);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 25);
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Two);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 50);
 				treasury_balance += upgrade_fee;
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Three);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 75);
 				treasury_balance += upgrade_fee;
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier, StorageTier::Four);
 				assert_eq!(AAvatars::accounts(ALICE).storage_tier as isize, 100);
 				treasury_balance += upgrade_fee;
-				assert_eq!(Balances::free_balance(&AAvatars::account_id()), treasury_balance);
+				assert_eq!(
+					Balances::free_balance(&AAvatars::treasury_account_id()),
+					treasury_balance
+				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
@@ -2761,6 +2793,11 @@ mod account {
 
 mod nft_transfer {
 	use super::*;
+	use frame_support::{
+		bounded_vec,
+		traits::tokens::{nonfungibles_v2::Inspect, AttributeNamespace},
+	};
+	use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
 
 	#[test]
 	fn set_collection_id_works() {
@@ -2780,15 +2817,6 @@ mod nft_transfer {
 			);
 		});
 	}
-}
-
-mod lock_avatar {
-	use super::*;
-	use frame_support::{
-		bounded_vec,
-		traits::tokens::{nonfungibles_v2::Inspect, AttributeNamespace},
-	};
-	use pallet_ajuna_nft_transfer::traits::NftConvertible;
 
 	#[test]
 	fn can_lock_avatar_successfully() {
@@ -2809,9 +2837,9 @@ mod lock_avatar {
 				let avatar_id = avatar_ids[0];
 
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
+				assert!(LockedAvatars::<Test>::contains_key(avatar_id));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::AvatarLocked { avatar_id, asset_id },
+					crate::Event::AvatarLocked { avatar_id },
 				));
 
 				let (_, avatar) = AAvatars::avatars(avatar_id).unwrap();
@@ -2825,19 +2853,17 @@ mod lock_avatar {
 				);
 
 				// Ensure correct encoding
-				let encoded_asset = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AssetCode,
-					pallet_ajuna_nft_transfer::EncodedAssetOf<Test>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&<Avatar as NftConvertible>::ASSET_CODE,
-				)
-				.unwrap();
-
 				assert_eq!(
-					encoded_asset,
+					<Nft as Inspect<MockAccountId>>::typed_attribute::<
+						pallet_ajuna_nft_transfer::traits::ItemCode,
+						pallet_ajuna_nft_transfer::EncodedItemOf<Test>,
+					>(
+						&AAvatars::collection_id().unwrap(),
+						&avatar_id,
+						&AttributeNamespace::Pallet,
+						&<Avatar as NftConvertible>::ITEM_CODE,
+					)
+					.unwrap(),
 					AvatarCodec {
 						season_id: avatar.season_id,
 						dna: avatar.dna.clone(),
@@ -2848,92 +2874,50 @@ mod lock_avatar {
 					.encode()
 				);
 
-				// Ensure attribute storage DNA
-				let encoded_dna = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&DNA_ATTRIBUTE_CODE,
-				)
-				.unwrap();
+				// Ensure attributes encoding
+				for (attribute_code, encoded_attribute) in
+					Avatar::get_attribute_codes().iter().zip([
+						avatar.dna.encode(),
+						avatar.souls.encode(),
+						RarityTier::Common.encode(),
+						Force::Thermal.encode(),
+					]) {
+					assert_eq!(
+						<Nft as Inspect<MockAccountId>>::typed_attribute::<AttributeCode, Vec<u8>>(
+							&AAvatars::collection_id().unwrap(),
+							&avatar_id,
+							&AttributeNamespace::Pallet,
+							attribute_code,
+						)
+						.unwrap(),
+						encoded_attribute
+					);
+				}
 
-				assert_eq!(
-					Dna::decode(&mut encoded_dna.as_slice()).expect("Decode should succeed"),
-					avatar.dna
-				);
-
-				// Ensure attribute storage SOUL POINTS
-				let encoded_soul_points = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&SOUL_POINTS_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					SoulCount::decode(&mut encoded_soul_points.as_slice())
-						.expect("Decode should succeed"),
-					avatar.souls
-				);
-
-				// Ensure attribute storage RARITY
-				let encoded_rarity = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&RARITY_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					RarityTier::decode(&mut encoded_rarity.as_slice())
-						.expect("Decode should succeed"),
-					RarityTier::Common
-				);
-
-				// Ensure attribute storage FORCE
-				let encoded_force = <Nft as Inspect<MockAccountId>>::typed_attribute::<
-					pallet_ajuna_nft_transfer::traits::AttributeCode,
-					Vec<u8>,
-				>(
-					&MockAvatarCollectionId::get(),
-					&asset_id,
-					&AttributeNamespace::Pallet,
-					&FORCE_ATTRIBUTE_CODE,
-				)
-				.unwrap();
-
-				assert_eq!(
-					Force::decode(&mut encoded_force.as_slice()).expect("Decode should succeed"),
-					Force::Thermal
-				);
+				// Ensure ownership transferred to technical account
+				let technical_account = AAvatars::technical_account_id();
+				assert!(!AAvatars::owners(ALICE).contains(&avatar_id));
+				assert_eq!(AAvatars::owners(technical_account)[0], avatar_id);
+				assert_eq!(AAvatars::avatars(avatar_id).unwrap().0, technical_account);
 
 				// Ensure locked avatars cannot be used in trading
-				assert_noop!(
-					AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000),
-					Error::<Test>::AvatarLocked
-				);
 
-				// Ensure locked avatars cannot be used in forging
-				run_to_block(season.start);
-				assert_noop!(
-					AAvatars::forge(
-						RuntimeOrigin::signed(ALICE),
+				// Ensure locked avatars cannot be used in trading, transferring and forging
+				for extrinsic in [
+					AAvatars::set_price(RuntimeOrigin::signed(technical_account), avatar_id, 1_000),
+					AAvatars::transfer_avatar(
+						RuntimeOrigin::signed(technical_account),
+						BOB,
 						avatar_id,
-						avatar_ids[1..3].to_vec()
 					),
-					Error::<Test>::AvatarLocked
-				);
+					AAvatars::forge(
+						RuntimeOrigin::signed(technical_account),
+						avatar_id,
+						avatar_ids[1..3].to_vec(),
+					),
+				] {
+					assert_noop!(extrinsic, Error::<Test>::AvatarLocked);
+				}
 			});
 	}
 
@@ -2994,15 +2978,14 @@ mod lock_avatar {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_noop!(
-					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					AAvatars::lock_avatar(
+						RuntimeOrigin::signed(AAvatars::technical_account_id()),
+						avatar_id
+					),
 					Error::<Test>::AvatarLocked
 				);
 			});
 	}
-}
-
-mod unlock_avatar {
-	use super::*;
 
 	#[test]
 	fn can_unlock_avatar_successfully() {
@@ -3049,7 +3032,7 @@ mod unlock_avatar {
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
-					Error::<Test>::Ownership
+					pallet_ajuna_nft_transfer::Error::<Test>::NftNotOwned
 				);
 			});
 	}
@@ -3069,10 +3052,9 @@ mod unlock_avatar {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 
-				let asset_id = LockedAvatars::<Test>::get(avatar_id).unwrap();
 				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
-					MockAvatarCollectionId::get(),
-					asset_id,
+					AAvatars::collection_id().unwrap(),
+					avatar_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
 				);
 

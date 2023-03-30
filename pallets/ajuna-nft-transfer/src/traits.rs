@@ -6,61 +6,59 @@ use frame_support::{
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::vec::Vec;
 
-/// Type used to differentiate attribute codes for each Asset.
-pub type AssetCode = u16;
+/// Type used to differentiate attribute codes for each item.
+pub type ItemCode = u16;
 pub type AttributeCode = u16;
 
-/// Marker trait for Assets that can be converted back and forth into an NFT representation.
+/// Marker trait for items that can be converted back and forth into an NFT representation.
 pub trait NftConvertible: Codec {
-	/// Numeric key used to store this specific asset's attributes in the NFT.
-	const ASSET_CODE: AssetCode;
+	/// Numeric key used to store this specific item's attributes in the NFT.
+	const ITEM_CODE: ItemCode;
 
-	/// Encodes the asset into a byte representation for storage.
+	/// Encodes the item into a byte representation for storage.
 	fn encode_into(self) -> Vec<u8> {
 		self.encode()
 	}
 
-	/// Decodes a given byte representation back into it's asset form.
-	/// Returns None if decoding fails or if input is empty.
+	/// Decodes a given byte representation back into its item form.
 	fn decode_from(input: Vec<u8>) -> Result<Self, CodecError> {
 		Self::decode(&mut input.as_slice())
 	}
 
-	/// Returns the list of attribute keys associated with the specific type.
-	fn get_attribute_table() -> Vec<AttributeCode>;
+	/// Returns the list of attribute codes associated with this type.
+	fn get_attribute_codes() -> Vec<AttributeCode>;
 
-	/// Returns a list of key-value pairs with the attributes to attach to the encoded asset.
+	/// Returns the list of pairs of attribute code and its encoded attribute.
 	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)>;
 }
 
-/// Trait to define the transformation and bridging of assets as NFT.
-pub trait NftHandler<Account, Asset: NftConvertible, AssetConfig> {
+/// Trait to define the transformation and bridging of NFT items.
+pub trait NftHandler<Account, ItemId, Item: NftConvertible, ItemConfig> {
 	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
-	type AssetId: Codec + Parameter + MaxEncodedLen;
 
-	/// Consumes the given `asset` and its associated `collection_id`, and stores it as an NFT
-	/// owned by `owner`. Returns the index of the NFT for tracking and recovering the asset.
+	/// Consumes the given `item` and its associated identifiers, and stores it as an NFT
+	/// owned by `owner`.
 	fn store_as_nft(
 		owner: Account,
 		collection_id: Self::CollectionId,
-		asset: Asset,
-		asset_config: AssetConfig,
-	) -> Result<Self::AssetId, DispatchError>;
+		item_id: ItemId,
+		item: Item,
+		item_config: ItemConfig,
+	) -> DispatchResult;
 
-	/// Recovers the NFT indexed by `collection_id` and `asset_id`, and transforms it back into an
-	/// asset. Returns an appropriate error if the process fails.
+	/// Recovers the NFT item indexed by `collection_id` and `item_id`.
 	fn recover_from_nft(
 		owner: Account,
 		collection_id: Self::CollectionId,
-		asset_id: Self::AssetId,
-	) -> Result<Asset, DispatchError>;
+		item_id: ItemId,
+	) -> Result<Item, DispatchError>;
 
-	/// Schedules a previously stored NFT asset to be transferred outside of the chain,
-	/// once this process completes the NFT won't be recoverable until the asset is transferred back
-	/// from the outside of the chain.
-	fn schedule_nft_upload(
+	/// Schedules the upload of a previously stored NFT item to be teleported out of the chain, into
+	/// an external source. Once this process completes the item is locked until transported back
+	/// from the external source into the chain.
+	fn schedule_upload(
 		owner: Account,
 		collection_id: Self::CollectionId,
-		asset_id: Self::AssetId,
+		item_id: ItemId,
 	) -> DispatchResult;
 }

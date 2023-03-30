@@ -95,13 +95,9 @@ pub mod pallet {
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
 
-	pub(crate) type AssetIdOf<T> = <<T as Config>::NftHandler as NftHandler<
-		AccountIdOf<T>,
-		Avatar,
-		<T as Config>::AvatarNftConfig,
-	>>::AssetId;
 	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
 		AccountIdOf<T>,
+		AvatarIdOf<T>,
 		Avatar,
 		<T as Config>::AvatarNftConfig,
 	>>::CollectionId;
@@ -134,7 +130,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo;
 
-		type NftHandler: NftHandler<Self::AccountId, Avatar, Self::AvatarNftConfig>;
+		type NftHandler: NftHandler<Self::AccountId, Self::Hash, Avatar, Self::AvatarNftConfig>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -180,7 +176,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn locked_avatars)]
-	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, AssetIdOf<T>>;
+	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, ()>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn collection_id)]
@@ -283,7 +279,7 @@ pub mod pallet {
 		/// Avatar has been traded.
 		AvatarTraded { avatar_id: AvatarIdOf<T>, from: T::AccountId, to: T::AccountId },
 		/// Avatar locked.
-		AvatarLocked { avatar_id: AvatarIdOf<T>, asset_id: AssetIdOf<T> },
+		AvatarLocked { avatar_id: AvatarIdOf<T> },
 		/// Avatar unlocked.
 		AvatarUnlocked { avatar_id: AvatarIdOf<T> },
 		/// Storage tier has been upgraded.
@@ -473,6 +469,7 @@ pub mod pallet {
 			};
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
+			Self::ensure_unlocked(&avatar_id)?;
 
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
 			let fee = transfer.avatar_transfer_fee;
@@ -686,7 +683,7 @@ pub mod pallet {
 			let amount = Treasury::<T>::take(season_id);
 			ensure!(!amount.is_zero(), Error::<T>::CannotClaimZero);
 
-			T::Currency::transfer(&Self::account_id(), &treasurer, amount, AllowDeath)?;
+			T::Currency::transfer(&Self::treasury_account_id(), &treasurer, amount, AllowDeath)?;
 			Self::deposit_event(Event::TreasuryClaimed { season_id, treasurer, amount });
 			Ok(())
 		}
@@ -787,13 +784,14 @@ pub mod pallet {
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 
+			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
 			// TODO: Use a defined config, either as parameter or as a constant in the pallet config
-			let asset_config = T::AvatarNftConfig::default();
+			let item_config = T::AvatarNftConfig::default();
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
-			let asset_id =
-				T::NftHandler::store_as_nft(player, collection_id, avatar, asset_config)?;
-			LockedAvatars::<T>::insert(avatar_id, &asset_id);
-			Self::deposit_event(Event::AvatarLocked { avatar_id, asset_id });
+			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar, item_config)?;
+
+			LockedAvatars::<T>::insert(avatar_id, ());
+			Self::deposit_event(Event::AvatarLocked { avatar_id });
 			Ok(())
 		}
 
@@ -801,13 +799,14 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			let _ = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
+			ensure!(LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarUnlocked);
 
+			Self::do_transfer_avatar(&Self::technical_account_id(), &player, &avatar_id)?;
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
-			let asset_id = Self::locked_avatars(avatar_id).ok_or(Error::<T>::AvatarUnlocked)?;
-			let _ = T::NftHandler::recover_from_nft(player, collection_id, asset_id)?;
+			let _ = T::NftHandler::recover_from_nft(player, collection_id, avatar_id)?;
 
 			LockedAvatars::<T>::remove(avatar_id);
 			Self::deposit_event(Event::AvatarUnlocked { avatar_id });
@@ -832,13 +831,18 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// The account ID of the treasury.
-		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
+		pub fn treasury_account_id() -> T::AccountId {
+			T::PalletId::get().into_sub_account_truncating(b"treasury")
+		}
+
+		/// The account ID of the treasury.
+		pub fn technical_account_id() -> T::AccountId {
+			T::PalletId::get().into_sub_account_truncating(b"technical")
 		}
 
 		pub(crate) fn deposit_into_treasury(season_id: &SeasonId, amount: BalanceOf<T>) {
 			Treasury::<T>::mutate(season_id, |bal| bal.saturating_accrue(amount));
-			T::Currency::deposit_creating(&Self::account_id(), amount);
+			T::Currency::deposit_creating(&Self::treasury_account_id(), amount);
 		}
 
 		/// Check that the origin is an organizer account.

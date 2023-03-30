@@ -50,6 +50,13 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV4<T> {
 					old_value.migrate_to_v4()
 				})
 			});
+
+			let treasury_balance = Pallet::<T>::treasury(1);
+			T::Currency::make_free_balance_be(
+				&Pallet::<T>::treasury_account_id(),
+				treasury_balance.saturating_add(T::Currency::minimum_balance()),
+			);
+
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(2, 2)
@@ -67,6 +74,13 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV4<T> {
 		assert_eq!(Pallet::<T>::on_chain_storage_version(), 4);
 		let GlobalConfig { nft_transfer, .. } = GlobalConfigs::<T>::get();
 		assert!(nft_transfer.open);
+
+		let treasury_balance = Pallet::<T>::treasury(1);
+		assert!(treasury_balance > Zero::zero());
+		assert!(
+			T::Currency::free_balance(&Pallet::<T>::treasury_account_id()) ==
+				treasury_balance.saturating_add(T::Currency::minimum_balance())
+		);
 		Ok(())
 	}
 }

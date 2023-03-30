@@ -66,10 +66,3 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
 /// Identifier of a collection of NFTs.
 pub type CollectionId = u32;
-/// Identifier of an NFT.
-pub type ItemId = u128;
-
-/// Contract attribute key used on contract condition evaluation.
-pub type ContractAttributeKey = u32;
-/// Contract attribute value used on contract condition evaluation.
-pub type ContractAttributeValue = u64;
