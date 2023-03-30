@@ -25,7 +25,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use codec::Encode;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{AsEnsureOriginWithArg, KeyOwnerProofSystem},
+	traits::{AsEnsureOriginWithArg, Contains, KeyOwnerProofSystem},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		IdentityFee, Weight,
@@ -66,6 +66,7 @@ use ajuna_primitives::{
 pub use consts::currency;
 use consts::{currency::*, time::*};
 use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
+use pallet_nfts::Call as NftsCall;
 use types::governance::*;
 
 pub use frame_system::Call as SystemCall;
@@ -113,6 +114,13 @@ parameter_types! {
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 42;
+}
+
+pub struct BaseCallFilter;
+impl Contains<RuntimeCall> for BaseCallFilter {
+	fn contains(call: &RuntimeCall) -> bool {
+		!matches!(call, RuntimeCall::Nft(NftsCall::set_attribute { .. }))
+	}
 }
 
 impl frame_system::Config for Runtime {
@@ -580,8 +588,7 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
-	pub NftFeatures: pallet_nfts::PalletFeatures =
-		pallet_nfts::PalletFeatures::from_disabled(pallet_nfts::PalletFeature::Attributes.into());
+	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
 impl pallet_nfts::Config for Runtime {
@@ -712,7 +719,11 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 		i.into()
 	}
 	fn item(i: u16) -> ItemId {
-		[i as u8; 32].into()
+		let mut id = [0_u8; 32];
+		let bytes = i.to_be_bytes();
+		id[0] = bytes[0];
+		id[1] = bytes[1];
+		id.into()
 	}
 }
 

@@ -124,7 +124,11 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 		i.into()
 	}
 	fn item(i: u16) -> ItemId {
-		[i as u8; 32].into()
+		let mut id = [0_u8; 32];
+		let bytes = i.to_be_bytes();
+		id[0] = bytes[0];
+		id[1] = bytes[1];
+		id.into()
 	}
 }
 

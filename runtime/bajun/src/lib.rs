@@ -78,6 +78,7 @@ use ajuna_primitives::{
 	AccountId, Balance, BlockNumber, CollectionId, Hash, Header, Index, Signature,
 };
 use pallet_ajuna_awesome_avatars::Call as AwesomeAvatarsCall;
+use pallet_nfts::Call as NftsCall;
 
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
@@ -264,7 +265,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(call: &RuntimeCall) -> bool {
 		!matches!(
 			call,
-			RuntimeCall::Nft(_) |
+			RuntimeCall::Nft(NftsCall::set_attribute { .. }) |
 				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::lock_avatar { .. }) |
 				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::unlock_avatar { .. })
 		)
@@ -694,8 +695,9 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
-	pub NftFeatures: pallet_nfts::PalletFeatures =
-		pallet_nfts::PalletFeatures::from_disabled(pallet_nfts::PalletFeature::Attributes.into());
+	// NOTE: BaseCallFilter is used to filter unwanted extrinsic calls since disabling features
+	// result in benchmark errors as extrinsics are disabled.
+	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
 impl pallet_nfts::Config for Runtime {
@@ -830,7 +832,11 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 		i.into()
 	}
 	fn item(i: u16) -> ItemId {
-		[i as u8; 32].into()
+		let mut id = [0_u8; 32];
+		let bytes = i.to_be_bytes();
+		id[0] = bytes[0];
+		id[1] = bytes[1];
+		id.into()
 	}
 }
 
