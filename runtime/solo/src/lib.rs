@@ -624,7 +624,6 @@ parameter_types! {
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type MaxItemEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
 	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;

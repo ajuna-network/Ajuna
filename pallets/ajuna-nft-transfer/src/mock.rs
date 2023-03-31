@@ -159,8 +159,6 @@ impl pallet_nfts::Config for Test {
 	type WeightInfo = ();
 }
 
-pub const MAX_ENCODING_SIZE: u32 = 200;
-
 parameter_types! {
 	pub const NftTransferPalletId: PalletId = PalletId(*b"aj/nfttr");
 }
@@ -168,7 +166,6 @@ parameter_types! {
 impl pallet_ajuna_nft_transfer::Config for Test {
 	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type MaxItemEncodedSize = frame_support::traits::ConstU32<MAX_ENCODING_SIZE>;
 	type CollectionId = MockCollectionId;
 	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;

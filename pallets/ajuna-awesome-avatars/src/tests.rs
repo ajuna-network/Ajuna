@@ -2856,7 +2856,7 @@ mod nft_transfer {
 				assert_eq!(
 					<Nft as Inspect<MockAccountId>>::typed_attribute::<
 						pallet_ajuna_nft_transfer::traits::ItemCode,
-						pallet_ajuna_nft_transfer::EncodedItemOf<Test>,
+						Avatar,
 					>(
 						&AAvatars::collection_id().unwrap(),
 						&avatar_id,
@@ -2864,14 +2864,7 @@ mod nft_transfer {
 						&<Avatar as NftConvertible>::ITEM_CODE,
 					)
 					.unwrap(),
-					AvatarCodec {
-						season_id: avatar.season_id,
-						dna: avatar.dna.clone(),
-						soul_points: avatar.souls,
-						rarity: RarityTier::Common.into(),
-						force: Force::Thermal.into(),
-					}
-					.encode()
+					avatar,
 				);
 
 				// Ensure attributes encoding
@@ -3032,7 +3025,7 @@ mod nft_transfer {
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
-					pallet_ajuna_nft_transfer::Error::<Test>::NftNotOwned
+					pallet_nfts::Error::<Test>::NoPermission
 				);
 			});
 	}
@@ -3052,7 +3045,7 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 
-				pallet_ajuna_nft_transfer::LockItemStatus::<Test>::insert(
+				pallet_ajuna_nft_transfer::NftStatuses::<Test>::insert(
 					AAvatars::collection_id().unwrap(),
 					avatar_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
