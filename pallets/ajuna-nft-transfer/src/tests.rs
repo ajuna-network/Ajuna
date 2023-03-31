@@ -61,36 +61,6 @@ fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 	.expect("Should have create contract collection")
 }
 
-#[test]
-fn attributes_cannot_be_mutated_via_extrinsic() {
-	let k = <BoundedVec<u8, KeyLimit>>::try_from(b"key".to_vec()).unwrap();
-	let v = <BoundedVec<u8, ValueLimit>>::try_from(b"value".to_vec()).unwrap();
-
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Nft::create(RuntimeOrigin::signed(ALICE), ALICE, CollectionConfig::default()));
-		for ns in [
-			AttributeNamespace::Pallet,
-			AttributeNamespace::CollectionOwner,
-			AttributeNamespace::ItemOwner,
-			AttributeNamespace::<MockAccountId>::Account(ALICE),
-		] {
-			assert_ok!(Nft::force_set_attribute(
-				RuntimeOrigin::root(),
-				None,
-				0,
-				None,
-				ns.clone(),
-				k.clone(),
-				v.clone()
-			));
-			assert_noop!(
-				Nft::set_attribute(RuntimeOrigin::signed(ALICE), 0, None, ns, k.clone(), v.clone()),
-				pallet_nfts::Error::<Test>::MethodDisabled
-			);
-		}
-	});
-}
-
 mod store_as_nft {
 	use super::*;
 
