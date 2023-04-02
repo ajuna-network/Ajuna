@@ -2981,6 +2981,26 @@ mod nft_transfer {
 	}
 
 	#[test]
+	fn cannot_lock_avatars_above_value_limit() {
+		let value_limit = 3;
+
+		ExtBuilder::default()
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
+			.value_limit(value_limit)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let (_, avatar) = AAvatars::avatars(avatar_id).unwrap();
+				assert!(avatar.encode().len() > value_limit as usize);
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					pallet_nfts::Error::<Test>::IncorrectData
+				);
+			});
+	}
+
+	#[test]
 	fn can_unlock_avatar_successfully() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, 1_000_000_000_000)])

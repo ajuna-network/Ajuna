@@ -156,7 +156,7 @@ mod store_as_nft {
 
 			assert!(item.encode().len() > ValueLimit::get() as usize);
 			assert_err!(
-				// TODO: find why this is not atomic
+				// NOTE: As long as the execution is wrapped in an extrinsic, this is noop.
 				NftTransfer::store_as_nft(BOB, collection_id, item_id, item, item_config),
 				pallet_nfts::Error::<Test>::IncorrectData
 			);
