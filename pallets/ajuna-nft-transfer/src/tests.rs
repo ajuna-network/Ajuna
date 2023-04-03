@@ -77,16 +77,8 @@ mod store_as_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
-			let item_config = pallet_nfts::ItemConfig::default();
 
-			assert_ok!(NftTransfer::store_as_nft(
-				BOB,
-				collection_id,
-				item_id,
-				item.clone(),
-				item_config
-			));
-
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone()));
 			assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 			assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			assert_eq!(
@@ -126,17 +118,10 @@ mod store_as_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
-			let item_config = pallet_nfts::ItemConfig::default();
 
-			assert_ok!(NftTransfer::store_as_nft(
-				ALICE,
-				collection_id,
-				item_id,
-				item.clone(),
-				item_config
-			));
+			assert_ok!(NftTransfer::store_as_nft(ALICE, collection_id, item_id, item.clone()));
 			assert_noop!(
-				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, item_config),
+				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item),
 				pallet_nfts::Error::<Test>::AlreadyExists
 			);
 		});
@@ -152,12 +137,11 @@ mod store_as_nft {
 				field_2: 1,
 				field_3: false,
 			};
-			let item_config = pallet_nfts::ItemConfig::default();
 
 			assert!(item.encode().len() > ValueLimit::get() as usize);
 			assert_err!(
 				// NOTE: As long as the execution is wrapped in an extrinsic, this is noop.
-				NftTransfer::store_as_nft(BOB, collection_id, item_id, item, item_config),
+				NftTransfer::store_as_nft(BOB, collection_id, item_id, item),
 				pallet_nfts::Error::<Test>::IncorrectData
 			);
 		});
@@ -173,15 +157,8 @@ mod recover_from_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
-			let item_config = pallet_nfts::ItemConfig::default();
 
-			assert_ok!(NftTransfer::store_as_nft(
-				BOB,
-				collection_id,
-				item_id,
-				item.clone(),
-				item_config,
-			));
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone()));
 
 			let result = NftTransfer::recover_from_nft(BOB, collection_id, item_id);
 			assert_eq!(result, Ok(item));
@@ -216,9 +193,8 @@ mod recover_from_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
-			let item_config = pallet_nfts::ItemConfig::default();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, item_config));
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item));
 
 			NftStatuses::<Test>::insert(collection_id, item_id, NftStatus::Uploaded);
 
@@ -235,9 +211,8 @@ mod recover_from_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
-			let item_config = pallet_nfts::ItemConfig::default();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, item_config));
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item));
 
 			let result: Result<MockItem, _> =
 				NftTransfer::recover_from_nft(ALICE, collection_id, item_id);

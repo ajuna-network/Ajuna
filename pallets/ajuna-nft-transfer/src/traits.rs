@@ -33,7 +33,7 @@ pub trait NftConvertible: Codec {
 }
 
 /// Trait to define the transformation and bridging of NFT items.
-pub trait NftHandler<Account, ItemId, Item: NftConvertible, ItemConfig> {
+pub trait NftHandler<Account, ItemId, Item: NftConvertible> {
 	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
 
 	/// Consumes the given `item` and its associated identifiers, and stores it as an NFT
@@ -43,7 +43,6 @@ pub trait NftHandler<Account, ItemId, Item: NftConvertible, ItemConfig> {
 		collection_id: Self::CollectionId,
 		item_id: ItemId,
 		item: Item,
-		item_config: ItemConfig,
 	) -> DispatchResult;
 
 	/// Recovers the NFT item indexed by `collection_id` and `item_id`.

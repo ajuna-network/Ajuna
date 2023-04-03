@@ -122,9 +122,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config, Item: NftConvertible> NftHandler<T::AccountId, T::ItemId, Item, T::ItemConfig>
-		for Pallet<T>
-	{
+	impl<T: Config, Item: NftConvertible> NftHandler<T::AccountId, T::ItemId, Item> for Pallet<T> {
 		type CollectionId = T::CollectionId;
 
 		fn store_as_nft(
@@ -132,10 +130,15 @@ pub mod pallet {
 			collection_id: Self::CollectionId,
 			item_id: T::ItemId,
 			item: Item,
-			item_config: T::ItemConfig,
 		) -> DispatchResult {
 			// TODO: Should players pay for the deposit? (Currently the collection owner pays it)
-			T::NftHelper::mint_into(&collection_id, &item_id, &owner, &item_config, true)?;
+			T::NftHelper::mint_into(
+				&collection_id,
+				&item_id,
+				&owner,
+				&T::ItemConfig::default(),
+				true,
+			)?;
 
 			// TODO: Do we need to store the entire item or just its attributes?
 			T::NftHelper::set_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE, &item)?;

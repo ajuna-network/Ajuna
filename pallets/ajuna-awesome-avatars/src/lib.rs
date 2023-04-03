@@ -94,12 +94,10 @@ pub mod pallet {
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
-
 	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
 		AccountIdOf<T>,
 		AvatarIdOf<T>,
 		Avatar,
-		<T as Config>::AvatarNftConfig,
 	>>::CollectionId;
 
 	pub(crate) const MAX_PERCENTAGE: u8 = 100;
@@ -120,17 +118,7 @@ pub mod pallet {
 
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
-		/// Type that holds the specific configuration for an avatar once transformed into an NFT.
-		type AvatarNftConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
-
-		type NftHandler: NftHandler<Self::AccountId, Self::Hash, Avatar, Self::AvatarNftConfig>;
+		type NftHandler: NftHandler<Self::AccountId, Self::Hash, Avatar>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -785,10 +773,8 @@ pub mod pallet {
 			Self::ensure_unlocked(&avatar_id)?;
 
 			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
-			// TODO: Use a defined config, either as parameter or as a constant in the pallet config
-			let item_config = T::AvatarNftConfig::default();
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
-			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar, item_config)?;
+			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar)?;
 
 			LockedAvatars::<T>::insert(avatar_id, ());
 			Self::deposit_event(Event::AvatarLocked { avatar_id });

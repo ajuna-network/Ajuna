@@ -173,7 +173,6 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftConfig = pallet_nfts::ItemConfig;
 	type NftHandler = NftTransfer;
 	type WeightInfo = ();
 }
