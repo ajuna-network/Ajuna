@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod avatar_codec;
 mod force;
 mod nft;
 mod rarity_tier;
 
-pub use avatar_codec::*;
 pub use force::*;
 pub use nft::*;
 pub use rarity_tier::*;
@@ -173,7 +171,6 @@ impl Avatar {
 mod test {
 	use super::*;
 	use crate::{mock::*, types::*};
-	use pallet_ajuna_nft_transfer::traits::NftConvertible;
 
 	impl Avatar {
 		pub(crate) fn season_id(mut self, season_id: SeasonId) -> Self {
@@ -182,10 +179,6 @@ mod test {
 		}
 		pub(crate) fn dna(mut self, dna: &[u8]) -> Self {
 			self.dna = Dna::try_from(dna.to_vec()).unwrap();
-			self
-		}
-		pub(crate) fn souls(mut self, souls: SoulCount) -> Self {
-			self.souls = souls;
 			self
 		}
 	}
@@ -329,27 +322,5 @@ mod test {
 			),
 			(true, BTreeSet::from([1, 9]))
 		);
-	}
-
-	#[test]
-	fn codec_works() {
-		let avatar = Avatar::default().season_id(123).dna(&[0x31, 0x32, 0x33, 0x34]).souls(321);
-		let encoded = avatar.clone().encode_into();
-
-		// check encoding
-		assert_eq!(
-			encoded,
-			AvatarCodec {
-				season_id: avatar.season_id,
-				dna: avatar.dna.clone(),
-				soul_points: avatar.souls,
-				rarity: RarityTier::Epic.into(),
-				force: Force::Astral.into(),
-			}
-			.encode()
-		);
-
-		// check decoding
-		assert_eq!(Avatar::decode_from(encoded), Ok(avatar));
 	}
 }

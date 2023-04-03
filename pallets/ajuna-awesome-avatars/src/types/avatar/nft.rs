@@ -1,5 +1,21 @@
-use crate::types::{Avatar, AvatarCodec, Force, RarityTier};
-use codec::{Decode, Encode};
+// Ajuna Node
+// Copyright (C) 2022 BlogaTech AG
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use crate::types::{Avatar, Force, RarityTier};
+use codec::Encode;
 use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
 use sp_std::prelude::*;
 
@@ -10,16 +26,6 @@ pub const FORCE: AttributeCode = 13;
 
 impl NftConvertible for Avatar {
 	const ITEM_CODE: u16 = 0;
-
-	fn encode_into(self) -> Vec<u8> {
-		let avatar_codec = AvatarCodec::from(self);
-		avatar_codec.encode()
-	}
-
-	fn decode_from(input: Vec<u8>) -> Result<Self, codec::Error> {
-		let avatar_codec = AvatarCodec::decode(&mut input.as_slice())?;
-		Ok(Avatar::from(avatar_codec))
-	}
 
 	fn get_attribute_codes() -> Vec<AttributeCode> {
 		vec![DNA, SOUL_POINTS, RARITY, FORCE]

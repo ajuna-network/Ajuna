@@ -1,4 +1,4 @@
-use codec::{Codec, Error as CodecError, MaxEncodedLen};
+use codec::{Codec, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	Parameter,
@@ -14,16 +14,6 @@ pub type AttributeCode = u16;
 pub trait NftConvertible: Codec {
 	/// Numeric key used to store this specific item's attributes in the NFT.
 	const ITEM_CODE: ItemCode;
-
-	/// Encodes the item into a byte representation for storage.
-	fn encode_into(self) -> Vec<u8> {
-		self.encode()
-	}
-
-	/// Decodes a given byte representation back into its item form.
-	fn decode_from(input: Vec<u8>) -> Result<Self, CodecError> {
-		Self::decode(&mut input.as_slice())
-	}
 
 	/// Returns the list of attribute codes associated with this type.
 	fn get_attribute_codes() -> Vec<AttributeCode>;
