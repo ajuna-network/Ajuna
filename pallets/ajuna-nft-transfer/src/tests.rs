@@ -17,7 +17,7 @@
 use crate::{mock::*, traits::*, Error, *};
 use codec::{Decode, Encode};
 use frame_support::{
-	assert_noop, assert_ok,
+	assert_err, assert_noop, assert_ok,
 	traits::tokens::{
 		nonfungibles_v2::{Create, Inspect},
 		AttributeNamespace,
@@ -67,8 +67,6 @@ fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 }
 
 mod store_as_nft {
-	use frame_support::assert_err;
-
 	use super::*;
 
 	#[test]
@@ -139,8 +137,8 @@ mod store_as_nft {
 			};
 
 			assert!(item.encode().len() > ValueLimit::get() as usize);
+			// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
 			assert_err!(
-				// NOTE: As long as the execution is wrapped in an extrinsic, this is noop.
 				NftTransfer::store_as_nft(BOB, collection_id, item_id, item),
 				pallet_nfts::Error::<Test>::IncorrectData
 			);
@@ -160,9 +158,7 @@ mod recover_from_nft {
 
 			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone()));
 
-			let result = NftTransfer::recover_from_nft(BOB, collection_id, item_id);
-			assert_eq!(result, Ok(item));
-
+			assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
 			assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
 			assert!(Nft::typed_attribute::<ItemCode, MockItem>(
 				&collection_id,
@@ -195,18 +191,17 @@ mod recover_from_nft {
 			let item = MockItem::default();
 
 			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item));
-
 			NftStatuses::<Test>::insert(collection_id, item_id, NftStatus::Uploaded);
 
-			let result: Result<MockItem, _> =
-				NftTransfer::recover_from_nft(BOB, collection_id, item_id);
-
-			assert_noop!(result, Error::<Test>::NftOutsideOfChain);
+			assert_noop!(
+				NftTransfer::recover_from_nft(BOB, collection_id, item_id) as Result<MockItem, _>,
+				Error::<Test>::NftOutsideOfChain
+			);
 		});
 	}
 
 	#[test]
-	fn cannot_restore_nft_if_not_owned() {
+	fn cannot_restore_if_not_owned() {
 		ExtBuilder::default().build().execute_with(|| {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
@@ -214,10 +209,11 @@ mod recover_from_nft {
 
 			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item));
 
-			let result: Result<MockItem, _> =
-				NftTransfer::recover_from_nft(ALICE, collection_id, item_id);
-
-			assert_noop!(result, pallet_nfts::Error::<Test>::NoPermission);
+			// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
+			assert_err!(
+				NftTransfer::recover_from_nft(ALICE, collection_id, item_id) as Result<MockItem, _>,
+				pallet_nfts::Error::<Test>::NoPermission
+			);
 		});
 	}
 }

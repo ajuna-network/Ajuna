@@ -139,7 +139,7 @@ impl pallet_nfts::Config for Test {
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<MockAccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<MockAccountId>>;
-	type Locker = ();
+	type Locker = NftTransfer;
 	type CollectionDeposit = CollectionDeposit;
 	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;

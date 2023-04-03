@@ -184,8 +184,8 @@ pub mod pallet {
 				T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &attribute_key)?;
 			}
 
-			T::NftHelper::burn(&collection_id, &item_id, Some(&owner))?;
 			NftStatuses::<T>::remove(collection_id, item_id);
+			T::NftHelper::burn(&collection_id, &item_id, Some(&owner))?;
 
 			Self::deposit_event(Event::<T>::ItemRestored { collection_id, item_id, owner });
 			Ok(item)
