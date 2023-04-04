@@ -850,7 +850,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(18)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_service_account())]
 		pub fn set_service_account(
 			origin: OriginFor<T>,
 			service_account: T::AccountId,
@@ -862,7 +862,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(19)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&player, &avatar_id)?;
@@ -879,7 +879,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(20)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::unprepare_avatar())]
 		pub fn unprepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&player, &avatar_id)?;
@@ -894,7 +894,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(21)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::prepare_ipfs())]
 		pub fn prepare_ipfs(
 			origin: OriginFor<T>,
 			avatar_id: AvatarIdOf<T>,
