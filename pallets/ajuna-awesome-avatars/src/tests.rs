@@ -39,7 +39,7 @@ mod pallet_accounts {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(
 				AAvatars::treasury_account_id(),
-				(b"modl", AwesomeAvatarsPalletId::get(), b"treasury")
+				(b"modl", AwesomeAvatarsPalletId::get())
 					.using_encoded(|x| MockAccountId::decode(&mut TrailingZeroInput::new(x)))
 					.unwrap()
 			)
