@@ -16,6 +16,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "256"]
 
 mod mock;
 
@@ -394,7 +395,10 @@ benchmarks! {
 			account: AccountConfig {
 				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},
-			nft_transfer: NftTransferConfig { open: true },
+			nft_transfer: NftTransferConfig {
+				open: true,
+				prepare_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			},
 		};
 	}: _(RawOrigin::Signed(organizer), config.clone())
 	verify {
@@ -424,6 +428,7 @@ benchmarks! {
 		let organizer = account::<T>("organizer");
 		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
+		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarLocked { avatar_id })
@@ -442,6 +447,7 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
+		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
 		AAvatars::<T>::lock_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
@@ -460,6 +466,49 @@ benchmarks! {
 		let (_owner, updated_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
 		assert!(original_avatar.dna[1] & 0b0000_1111 != original_avatar.dna[2] & 0b0000_1111);
 		assert!(updated_avatar.dna[1] & 0b0000_1111 == updated_avatar.dna[2] & 0b0000_1111);
+	}
+
+	set_service_account {
+		let service_account = account::<T>("sa");
+	}: _(RawOrigin::Root, service_account.clone())
+	verify {
+		assert_last_event::<T>(Event::<T>::ServiceAccountSet { service_account })
+	}
+
+	prepare_avatar {
+		let name = "player";
+		create_avatars::<T>(name, 1)?;
+		let player = account::<T>(name);
+		let avatar_id = AAvatars::<T>::owners(&player)[0];
+	}: _(RawOrigin::Signed(player), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::<T>::PreparedAvatar { avatar_id })
+	}
+
+	unprepare_avatar {
+		let name = "player";
+		create_avatars::<T>(name, 1)?;
+		let player = account::<T>(name);
+		let avatar_id = AAvatars::<T>::owners(&player)[0];
+		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
+	}: _(RawOrigin::Signed(player), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::<T>::UnpreparedAvatar { avatar_id })
+	}
+
+	prepare_ipfs {
+		let name = "player";
+		create_avatars::<T>(name, 1)?;
+		let player = account::<T>(name);
+		let avatar_id = AAvatars::<T>::owners(&player)[0];
+		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player).into(), avatar_id)?;
+
+		let service_account = account::<T>("sa");
+		ServiceAccount::<T>::put(&service_account);
+		let url = IpfsUrl::try_from(b"ipfs://".to_vec()).unwrap();
+	}: _(RawOrigin::Signed(service_account), avatar_id, url.clone())
+	verify {
+		assert_last_event::<T>(Event::<T>::PreparedIpfsUrl { url })
 	}
 
 	impl_benchmark_test_suite!(
