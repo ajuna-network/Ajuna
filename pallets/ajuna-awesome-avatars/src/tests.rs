@@ -2106,7 +2106,7 @@ mod forging {
 	}
 
 	#[test]
-	pub fn forge_should_reject_avatars_from_different_seasons() {
+	fn forge_should_reject_avatars_from_different_seasons() {
 		let min_sacrifices = 1;
 		let max_sacrifices = 3;
 		let season1 = Season::default()
@@ -3159,6 +3159,31 @@ mod ipfs {
 				avatar_id,
 			}));
 		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_forging_trading_and_transferring() {
+		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_ids = create_avatars(1, ALICE, 5);
+				let avatar_id = avatar_ids[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+
+				for extrinsic in [
+					AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000),
+					AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, avatar_id),
+					AAvatars::forge(
+						RuntimeOrigin::signed(ALICE),
+						avatar_id,
+						avatar_ids[1..3].to_vec(),
+					),
+				] {
+					assert_noop!(extrinsic, Error::<Test>::AlreadyPrepared);
+				}
+			});
 	}
 
 	#[test]
