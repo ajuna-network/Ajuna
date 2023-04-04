@@ -2839,6 +2839,7 @@ mod nft_transfer {
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert!(!Preparation::<Test>::contains_key(avatar_id));
 				assert!(LockedAvatars::<Test>::contains_key(avatar_id));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarLocked { avatar_id },
@@ -2894,8 +2895,6 @@ mod nft_transfer {
 				assert!(!AAvatars::owners(ALICE).contains(&avatar_id));
 				assert_eq!(AAvatars::owners(technical_account)[0], avatar_id);
 				assert_eq!(AAvatars::avatars(avatar_id).unwrap().0, technical_account);
-
-				// Ensure locked avatars cannot be used in trading
 
 				// Ensure locked avatars cannot be used in trading, transferring and forging
 				for extrinsic in [
