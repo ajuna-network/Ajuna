@@ -2,73 +2,60 @@
 
 Ajuna Network Awesome Avatars logic.
 
-## Purpose
-
-TODO
-
-## Dependencies
-
-TODO
-
-### Traits
-
-TODO
-
-### Pallets
-
-TODO
-
-## Installation
+## Integration
 
 ### Runtime `Cargo.toml`
 
 To add this pallet to your runtime, include the following to your runtime's `Cargo.toml` file:
 
-```TOML
-# external pallets
+```toml
 pallet-ajuna-awesome-avatars = { default-features = false, path = "../../pallets/ajuna-awesome-avatars" }
-```
 
-and update your runtime's `std` feature to include this pallet:
-
-```TOML
 std = [
-    'pallet-ajuna-awesome-avatars/std',
+    "pallet-ajuna-awesome-avatars/std",
 ]
 ```
 
 ### Runtime `lib.rs`
 
-You should implement it's trait like so:
+You should implement its trait like so:
 
 ```rust
 parameter_types! {
-
+    pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
 }
 
 impl pallet_ajuna_awesome_avatars::Config for Runtime {
+    type PalletId = AwesomeAvatarsPalletId;
     type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type Randomness = Randomness;
+    type NftHandler = NftTransfer;
+    type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
+}
+
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
+impl pallet_balances::Config for Runtime {
+    // -- snip --
 }
 ```
 
 and include it in your `construct_runtime!` macro:
 
 ```rust
-
 construct_runtime!(
-  pub enum Runtime where
-    Block = Block,
-    NodeBlock = Block,
-    UncheckedExtrinsic = UncheckedExtrinsic,
-  {
-    AAA: pallet_ajuna_awesome_avatars,
-  }
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        AwesomeAvatars: pallet_ajuna_awesome_avatars,
+        Balances: pallet_balances,
+        Randomness: pallet_randomness_collective_flip,
+    }
 );
 ```
-
-### Genesis Configuration
-
-TODO
 
 ## Reference Docs
 
