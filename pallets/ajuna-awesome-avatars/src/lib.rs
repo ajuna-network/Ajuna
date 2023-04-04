@@ -749,7 +749,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(14)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_collection_id())]
 		pub fn set_collection_id(
 			origin: OriginFor<T>,
 			collection_id: CollectionIdOf<T>,
@@ -761,7 +761,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(15)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::lock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
@@ -779,7 +779,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(16)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::unlock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
