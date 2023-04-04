@@ -2858,7 +2858,7 @@ mod nft_transfer {
 				// Ensure correct encoding
 				assert_eq!(
 					<Nft as Inspect<MockAccountId>>::typed_attribute::<
-						pallet_ajuna_nft_transfer::traits::ItemCode,
+						pallet_ajuna_nft_transfer::traits::AttributeCode,
 						Avatar,
 					>(
 						&AAvatars::collection_id().unwrap(),

@@ -171,7 +171,7 @@ pub mod pallet {
 				Error::<T>::NftOutsideOfChain
 			);
 
-			let item = T::NftHelper::typed_attribute::<ItemCode, Item>(
+			let item = T::NftHelper::typed_attribute::<AttributeCode, Item>(
 				&collection_id,
 				&item_id,
 				&AttributeNamespace::Pallet,

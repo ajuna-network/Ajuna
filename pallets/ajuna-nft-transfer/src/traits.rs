@@ -7,13 +7,12 @@ use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each item.
-pub type ItemCode = u16;
 pub type AttributeCode = u16;
 
 /// Marker trait for items that can be converted back and forth into an NFT representation.
 pub trait NftConvertible: Codec {
 	/// Numeric key used to store this specific item's attributes in the NFT.
-	const ITEM_CODE: ItemCode;
+	const ITEM_CODE: AttributeCode;
 
 	/// Returns the list of attribute codes associated with this type.
 	fn get_attribute_codes() -> Vec<AttributeCode>;

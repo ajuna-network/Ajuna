@@ -39,7 +39,7 @@ impl Default for MockItem {
 }
 
 impl NftConvertible for MockItem {
-	const ITEM_CODE: ItemCode = 1;
+	const ITEM_CODE: AttributeCode = 1;
 
 	fn get_attribute_codes() -> Vec<AttributeCode> {
 		vec![111, 222, 333]
@@ -80,7 +80,7 @@ mod store_as_nft {
 			assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 			assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			assert_eq!(
-				Nft::typed_attribute::<ItemCode, MockItem>(
+				Nft::typed_attribute::<AttributeCode, MockItem>(
 					&collection_id,
 					&item_id,
 					&AttributeNamespace::Pallet,
@@ -160,7 +160,7 @@ mod recover_from_nft {
 
 			assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
 			assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
-			assert!(Nft::typed_attribute::<ItemCode, MockItem>(
+			assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
 				&collection_id,
 				&item_id,
 				&AttributeNamespace::Pallet,
