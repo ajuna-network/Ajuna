@@ -33,7 +33,10 @@ impl<T: Config> OldGlobalConfig<T> {
 			transfer: self.transfer,
 			trade: self.trade,
 			account: self.account,
-			nft_transfer: NftTransferConfig { open: true },
+			nft_transfer: NftTransferConfig {
+				open: true,
+				prepare_fee: 5_000_000_000_000_u64.unique_saturated_into(),
+			},
 		}
 	}
 }
@@ -74,6 +77,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV4<T> {
 		assert_eq!(Pallet::<T>::on_chain_storage_version(), 4);
 		let GlobalConfig { nft_transfer, .. } = GlobalConfigs::<T>::get();
 		assert!(nft_transfer.open);
+		assert_eq!(nft_transfer.prepare_fee, 5_000_000_000_000_u64.unique_saturated_into());
 
 		let treasury_balance = Pallet::<T>::treasury(1);
 		assert!(treasury_balance > Zero::zero());
