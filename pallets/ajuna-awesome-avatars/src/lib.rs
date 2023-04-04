@@ -801,7 +801,7 @@ pub mod pallet {
 			Self::ensure_unlocked(&avatar_id)?;
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
 
-			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;	
+			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
 			// can now be removed from preparation.
 			Preparation::<T>::remove(avatar_id);
 
@@ -868,12 +868,7 @@ pub mod pallet {
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
 
-			// check if service account exists
-			let service_account = match ServiceAccount::<T>::get() {
-				Some(account) => account,
-				None => return Err(Error::<T>::NoServiceAccount.into()),
-			};
-
+			let service_account = Self::service_account().ok_or(Error::<T>::NoServiceAccount)?;
 			let prepare_fee = Self::global_configs().nft_transfer.prepare_fee;
 			T::Currency::transfer(&player, &service_account, prepare_fee, AllowDeath)?;
 
