@@ -14,5 +14,6 @@ members = [
     "rpc",
     "runtime/*",
     "pallets/*",
+    "pallets/ajuna-awesome-avatars/benchmarking",
     "primitives",
 ]

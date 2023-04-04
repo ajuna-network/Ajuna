@@ -671,6 +671,7 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-awesome-avatars-benchmarking",
  "pallet-ajuna-nft-staking",
  "pallet-ajuna-nft-transfer",
  "pallet-aura",
@@ -5599,10 +5600,30 @@ dependencies = [
 name = "pallet-ajuna-awesome-avatars"
 version = "0.1.16"
 dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-ajuna-nft-transfer",
+ "pallet-balances",
+ "pallet-nfts",
+ "pallet-randomness-collective-flip",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ajuna-awesome-avatars-benchmarking"
+version = "0.1.16"
+dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log",
+ "pallet-ajuna-awesome-avatars",
  "pallet-ajuna-nft-transfer",
  "pallet-balances",
  "pallet-nfts",
