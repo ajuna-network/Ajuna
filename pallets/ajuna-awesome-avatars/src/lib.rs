@@ -164,10 +164,6 @@ pub mod pallet {
 	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, ()>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn frozen_avatars)]
-	pub type FrozenAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, ()>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn collection_id)]
 	pub type CollectionId<T: Config> = StorageValue<_, CollectionIdOf<T>, OptionQuery>;
 
@@ -401,12 +397,10 @@ pub mod pallet {
 		CannotClaimZero,
 		/// Tried to prepare an already prepared avatar.
 		AlreadyPrepared,
-		/// Tried to prepare an already frozen avatar.
-		AlreadyFrozen,
 		/// Tried to prepare an IPFS URL for an avatar, that is not yet prepared.
 		NotPrepared,
-		/// Tried to prepare an IPFS URL for an avatar, that is not yet frozen.
-		NotFrozen,
+		/// No service account has been set.
+		NoServiceAccount,
 	}
 
 	#[pallet::hooks]
@@ -490,6 +484,7 @@ pub mod pallet {
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(&avatar_id)?;
+			Self::ensure_unprepared(&avatar_id)?;
 
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
 			let fee = transfer.avatar_transfer_fee;
@@ -556,6 +551,7 @@ pub mod pallet {
 			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::ensure_unlocked(&avatar_id)?;
+			Self::ensure_unprepared(&avatar_id)?;
 			Trade::<T>::insert(avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
@@ -803,11 +799,12 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
-
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
-			ensure!(FrozenAvatars::<T>::contains_key(avatar_id), Error::<T>::NotFrozen);
 
-			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
+			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;	
+			// can now be removed from preparation.
+			Preparation::<T>::remove(avatar_id);
+
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
 			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar)?;
 
@@ -869,11 +866,18 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
-			ensure!(!Preparation::<T>::contains_key(avatar_id), Error::<T>::AlreadyPrepared);
-			ensure!(!FrozenAvatars::<T>::contains_key(avatar_id), Error::<T>::AlreadyFrozen);
+			Self::ensure_unprepared(&avatar_id)?;
+
+			// check if service account exists
+			let service_account = match ServiceAccount::<T>::get() {
+				Some(account) => account,
+				None => return Err(Error::<T>::NoServiceAccount.into()),
+			};
+
+			let prepare_fee = Self::global_configs().nft_transfer.prepare_fee;
+			T::Currency::transfer(&player, &service_account, prepare_fee, AllowDeath)?;
 
 			Preparation::<T>::insert(avatar_id, IpfsUrl::default());
-			FrozenAvatars::<T>::insert(avatar_id, ());
 			Self::deposit_event(Event::PreparedAvatar { avatar_id });
 			Ok(())
 		}
@@ -885,10 +889,8 @@ pub mod pallet {
 			let _ = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
-			ensure!(FrozenAvatars::<T>::contains_key(avatar_id), Error::<T>::NotFrozen);
 
 			Preparation::<T>::remove(avatar_id);
-			FrozenAvatars::<T>::remove(avatar_id);
 			Self::deposit_event(Event::UnpreparedAvatar { avatar_id });
 			Ok(())
 		}
@@ -903,7 +905,6 @@ pub mod pallet {
 			let _ = Self::ensure_service_account(origin)?;
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
-			ensure!(FrozenAvatars::<T>::contains_key(avatar_id), Error::<T>::NotFrozen);
 			Preparation::<T>::insert(avatar_id, &url);
 			Self::deposit_event(Event::PreparedIpfsUrl { url });
 			Ok(())
@@ -1257,6 +1258,7 @@ pub mod pallet {
 			);
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(leader_id)?;
+			Self::ensure_unprepared(leader_id)?;
 
 			let deduplicated_sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
 			let sacrifices = deduplicated_sacrifice_ids
@@ -1265,6 +1267,7 @@ pub mod pallet {
 					let avatar = Self::ensure_ownership(player, id)?;
 					ensure!(avatar.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
 					Self::ensure_unlocked(id)?;
+					Self::ensure_unprepared(id)?;
 					Ok(avatar)
 				})
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
@@ -1285,6 +1288,11 @@ pub mod pallet {
 
 		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
 			ensure!(!LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarLocked);
+			Ok(())
+		}
+
+		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+			ensure!(!Preparation::<T>::contains_key(avatar_id), Error::<T>::AlreadyPrepared);
 			Ok(())
 		}
 
