@@ -677,7 +677,6 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftConfig = pallet_nfts::ItemConfig;
 	type NftHandler = NftTransfer;
 	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
@@ -707,7 +706,7 @@ impl pallet_nfts::Config for Runtime {
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type Locker = ();
+	type Locker = NftTransfer;
 	type CollectionDeposit = CollectionDeposit;
 	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -733,7 +732,6 @@ parameter_types! {
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type MaxItemEncodedSize = MaxItemEncodedSize;
 	type CollectionId = CollectionId;
 	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;
@@ -817,7 +815,7 @@ mod benches {
 		[pallet_preimage, Preimage]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
-		[pallet_ajuna_awesome_avatars, AwesomeAvatars]
+		[pallet_ajuna_awesome_avatars, AwesomeAvatarsBench::<Runtime>]
 		[pallet_nfts, Nft]
 	);
 }
@@ -976,6 +974,7 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_ajuna_awesome_avatars_benchmarking::Pallet as AwesomeAvatarsBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 			list_benchmarks!(list, extra);
@@ -994,6 +993,9 @@ impl_runtime_apis! {
 
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
+
+			use pallet_ajuna_awesome_avatars_benchmarking::Pallet as AwesomeAvatarsBench;
+			impl pallet_ajuna_awesome_avatars_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number

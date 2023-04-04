@@ -14,17 +14,48 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::*;
+#![cfg(feature = "runtime-benchmarks")]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#[allow(unused)]
-use crate::{
-	types::{RarityTier::*, *},
-	Pallet as AAvatars,
-};
+mod mock;
+
 use frame_benchmarking::{benchmarks, vec};
-use frame_support::traits::{Currency, Get};
+use frame_support::{
+	pallet_prelude::DispatchResult,
+	traits::{Currency, Get},
+};
 use frame_system::RawOrigin;
-use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
+use pallet_ajuna_awesome_avatars::{
+	types::{RarityTier::*, *},
+	Accounts, Call, Config as AvatarsConfig, CurrentSeasonId, CurrentSeasonStatus, Event,
+	GlobalConfigs, Pallet as AAvatars, Seasons, *,
+};
+use pallet_ajuna_nft_transfer::traits::NftHandler;
+use sp_runtime::traits::{
+	Saturating, StaticLookup, UniqueSaturatedFrom, UniqueSaturatedInto, Zero,
+};
+
+pub struct Pallet<T: Config>(pallet_ajuna_awesome_avatars::Pallet<T>);
+pub trait Config: AvatarsConfig + pallet_nfts::Config + pallet_balances::Config {}
+
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
+type BalanceOf<T> = <CurrencyOf<T> as Currency<AccountIdOf<T>>>::Balance;
+type CurrencyOf<T> = <T as AvatarsConfig>::Currency;
+type CollectionIdOf<T> = <<T as AvatarsConfig>::NftHandler as NftHandler<
+	AccountIdOf<T>,
+	AvatarIdOf<T>,
+	Avatar,
+>>::CollectionId;
+
+type NftCollectionConfigOf<T> =
+	pallet_nfts::CollectionConfig<
+		<<T as pallet_nfts::Config>::Currency as Currency<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance,
+		<T as frame_system::Config>::BlockNumber,
+		<T as pallet_nfts::Config>::CollectionId,
+	>;
 
 fn account<T: Config>(name: &'static str) -> T::AccountId {
 	let index = 0;
@@ -73,24 +104,46 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	create_seasons::<T>(3)?;
 
 	let player = account::<T>(name);
-
 	Accounts::<T>::mutate(&player, |account| {
 		account.free_mints = n as MintCount;
 		account.storage_tier = StorageTier::Max;
 	});
 
+	GlobalConfigs::<T>::mutate(|config| {
+		config.mint.open = true;
+		config.forge.open = true;
+		config.transfer.open = true;
+		config.trade.open = true;
+		config.nft_transfer.open = true;
+	});
 	for _ in 0..n {
-		AAvatars::<T>::do_mint(
-			&player,
-			&MintOption { mint_type: MintType::Free, count: MintPackSize::One },
+		AAvatars::<T>::mint(
+			RawOrigin::Signed(player.clone()).into(),
+			MintOption { mint_type: MintType::Free, count: MintPackSize::One },
 		)?;
 		Accounts::<T>::mutate(&player, |account| account.stats.mint.last = Zero::zero());
 	}
 	Ok(())
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+fn create_collection<T: Config>(organizer: T::AccountId) -> DispatchResult {
+	let collection_setting = NftCollectionConfigOf::<T> {
+		settings: pallet_nfts::CollectionSettings::all_enabled(),
+		max_supply: None,
+		mint_settings: pallet_nfts::MintSettings::default(),
+	};
+	pallet_nfts::Pallet::<T>::create(
+		RawOrigin::Signed(organizer.clone()).into(),
+		T::Lookup::unlookup(organizer),
+		collection_setting,
+	)?;
+	CollectionId::<T>::put(CollectionIdOf::<T>::from(0_u32));
+	Ok(())
+}
+
+fn assert_last_event<T: Config>(avatars_event: Event<T>) {
+	let event = <T as AvatarsConfig>::RuntimeEvent::from(avatars_event);
+	frame_system::Pallet::<T>::assert_last_event(event.into());
 }
 
 benchmarks! {
@@ -107,7 +160,7 @@ benchmarks! {
 	verify {
 		let n = n as usize;
 		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
-		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
+		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
 
 	mint_normal {
@@ -117,14 +170,14 @@ benchmarks! {
 
 		let caller = account::<T>(name);
 		let mint_fee = AAvatars::<T>::global_configs().mint.fees.fee_for(&MintPackSize::Six);
-		T::Currency::make_free_balance_be(&caller, mint_fee);
+		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
 		let mint_option = MintOption { mint_type: MintType::Normal, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
 		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
-		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids }.into())
+		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
 
 	forge {
@@ -149,7 +202,7 @@ benchmarks! {
 				count
 			}
 		);
-		assert_last_event::<T>(Event::AvatarForged { avatar_id, upgraded_components }.into())
+		assert_last_event::<T>(Event::AvatarForged { avatar_id, upgraded_components })
 	}
 
 	transfer_avatar_normal {
@@ -161,10 +214,10 @@ benchmarks! {
 		let avatar_id = AAvatars::<T>::owners(&from)[n as usize - 1];
 
 		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
-		T::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
+		<T as AvatarsConfig>::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
 	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
 	verify {
-		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id }.into())
+		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id })
 	}
 
 	transfer_avatar_organizer {
@@ -176,10 +229,10 @@ benchmarks! {
 		let avatar_id = AAvatars::<T>::owners(&organizer)[n as usize - 1];
 
 		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
-		T::Currency::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
+		CurrencyOf::<T>::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
 	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
 	verify {
-		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id }.into())
+		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id })
 	}
 
 	transfer_free_mints {
@@ -191,7 +244,7 @@ benchmarks! {
 		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
-		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many }.into())
+		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many })
 	}
 
 	set_price {
@@ -202,7 +255,7 @@ benchmarks! {
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
 	}: _(RawOrigin::Signed(caller), avatar_id, price)
 	verify {
-		assert_last_event::<T>(Event::AvatarPriceSet { avatar_id, price }.into())
+		assert_last_event::<T>(Event::AvatarPriceSet { avatar_id, price })
 	}
 
 	remove_price {
@@ -213,7 +266,7 @@ benchmarks! {
 		Trade::<T>::insert(avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
-		assert_last_event::<T>(Event::AvatarPriceUnset { avatar_id }.into())
+		assert_last_event::<T>(Event::AvatarPriceUnset { avatar_id })
 	}
 
 	buy {
@@ -226,30 +279,30 @@ benchmarks! {
 		let min_fee = AAvatars::<T>::global_configs().trade.min_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
 		let trade_fee = sell_fee / BalanceOf::<T>::unique_saturated_from(100_u8);
-		T::Currency::make_free_balance_be(&buyer, sell_fee + trade_fee);
-		T::Currency::make_free_balance_be(&seller, sell_fee);
+		CurrencyOf::<T>::make_free_balance_be(&buyer, sell_fee + trade_fee);
+		CurrencyOf::<T>::make_free_balance_be(&seller, sell_fee);
 
 		let avatar_id = AAvatars::<T>::owners(&seller)[0];
 		Trade::<T>::insert(avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
-		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer }.into())
+		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer })
 	}
 
 	upgrade_storage {
 		let player = account::<T>("player");
 		let upgrade_fee = AAvatars::<T>::global_configs().account.storage_upgrade_fee;
-		T::Currency::make_free_balance_be(&player, upgrade_fee);
+		CurrencyOf::<T>::make_free_balance_be(&player, upgrade_fee);
 	}: _(RawOrigin::Signed(player))
 	verify {
-		assert_last_event::<T>(Event::StorageTierUpgraded.into())
+		assert_last_event::<T>(Event::StorageTierUpgraded)
 	}
 
 	set_organizer {
 		let organizer = account::<T>("organizer");
 	}: _(RawOrigin::Root, organizer.clone())
 	verify {
-		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+		assert_last_event::<T>(Event::<T>::OrganizerSet { organizer })
 	}
 
 	set_collection_id {
@@ -258,7 +311,7 @@ benchmarks! {
 		let collection_id = CollectionIdOf::<T>::from(u32::MAX);
 	}: _(RawOrigin::Signed(organizer), collection_id.clone())
 	verify {
-		assert_last_event::<T>(Event::CollectionIdSet { collection_id }.into())
+		assert_last_event::<T>(Event::CollectionIdSet { collection_id })
 	}
 
 	set_treasurer {
@@ -266,20 +319,21 @@ benchmarks! {
 		let treasurer = account::<T>("treasurer");
 	}: _(RawOrigin::Root, season_id, treasurer.clone())
 	verify {
-		assert_last_event::<T>(Event::TreasurerSet { season_id, treasurer }.into())
+		assert_last_event::<T>(Event::TreasurerSet { season_id, treasurer })
 	}
 
 	claim_treasury {
 		create_seasons::<T>(3)?;
 		let season_id = 1;
 		let treasurer = account::<T>("treasurer");
-		let amount = AAvatars::<T>::global_configs().transfer.avatar_transfer_fee;
+		let amount = 1_000_000_000_000_u64.unique_saturated_into();
 		Treasurer::<T>::insert(season_id, treasurer.clone());
-		AAvatars::<T>::deposit_into_treasury(&season_id, amount);
-		T::Currency::make_free_balance_be(&treasurer, T::Currency::minimum_balance());
+		Treasury::<T>::mutate(season_id, |balance| balance.saturating_accrue(amount));
+		CurrencyOf::<T>::deposit_creating(&AAvatars::<T>::treasury_account_id(), amount);
+		CurrencyOf::<T>::make_free_balance_be(&treasurer, CurrencyOf::<T>::minimum_balance());
 	}: _(RawOrigin::Signed(treasurer.clone()), season_id)
 	verify {
-		assert_last_event::<T>(Event::TreasuryClaimed { season_id, treasurer, amount }.into())
+		assert_last_event::<T>(Event::TreasuryClaimed { season_id, treasurer, amount })
 	}
 
 	set_season {
@@ -307,7 +361,7 @@ benchmarks! {
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {
-		assert_last_event::<T>(Event::UpdatedSeason { season_id, season }.into())
+		assert_last_event::<T>(Event::UpdatedSeason { season_id, season })
 	}
 
 	update_global_config {
@@ -344,7 +398,7 @@ benchmarks! {
 		};
 	}: _(RawOrigin::Signed(organizer), config.clone())
 	verify {
-		assert_last_event::<T>(Event::UpdatedGlobalConfig(config).into())
+		assert_last_event::<T>(Event::UpdatedGlobalConfig(config))
 	}
 
 	set_free_mints {
@@ -355,7 +409,43 @@ benchmarks! {
 		let how_many = MintCount::MAX;
 	}: _(RawOrigin::Signed(organizer), target.clone(), how_many)
 	verify {
-		assert_last_event::<T>(Event::FreeMintsSet { target, how_many }.into())
+		assert_last_event::<T>(Event::FreeMintsSet { target, how_many });
+	}
+
+	lock_avatar {
+		let name = "player";
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+		create_avatars::<T>(name, n)?;
+
+		let player = account::<T>(name);
+		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_id = avatar_ids[avatar_ids.len() - 1];
+
+		let organizer = account::<T>("organizer");
+		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
+		create_collection::<T>(organizer)?;
+	}: _(RawOrigin::Signed(player), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarLocked { avatar_id })
+	}
+
+	unlock_avatar {
+		let name = "player";
+		let n in 1 .. MaxAvatarsPerPlayer::get();
+		create_avatars::<T>(name, n)?;
+
+		let player = account::<T>(name);
+		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_id = avatar_ids[avatar_ids.len() - 1];
+
+		let organizer = account::<T>("organizer");
+		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
+		create_collection::<T>(organizer)?;
+
+		AAvatars::<T>::lock_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
+	}: _(RawOrigin::Signed(player), avatar_id)
+	verify {
+		assert_last_event::<T>(Event::AvatarUnlocked { avatar_id })
 	}
 
 	fix_variation {
@@ -373,6 +463,8 @@ benchmarks! {
 	}
 
 	impl_benchmark_test_suite!(
-		AAvatars, crate::mock::ExtBuilder::default().build(), crate::mock::Test
+		Pallet,
+		crate::mock::new_test_ext(),
+		crate::mock::Runtime
 	);
 }

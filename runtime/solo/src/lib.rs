@@ -528,7 +528,6 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
-	type AvatarNftConfig = pallet_nfts::ItemConfig;
 	type NftHandler = NftTransfer;
 	type WeightInfo = ();
 }
@@ -598,7 +597,7 @@ impl pallet_nfts::Config for Runtime {
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type Locker = ();
+	type Locker = NftTransfer;
 	type CollectionDeposit = CollectionDeposit;
 	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -624,7 +623,6 @@ parameter_types! {
 impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type PalletId = NftTransferPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type MaxItemEncodedSize = frame_support::traits::ConstU32<200>;
 	type CollectionId = CollectionId;
 	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;

@@ -146,8 +146,10 @@ jobs:
             --exclude \
                 ajuna-cli ajuna-node ajuna-primitives ajuna-rpc ajuna-service \
                 ajuna-runtime ajuna-solo-runtime bajun-runtime \
+                pallet-ajuna-awesome-avatars-benchmarking \
             --exclude-files \
                 node/* rpc/* runtime/* \
+                pallets/ajuna-awesome-avatars/benchmarking/* \
                 benchmarking.rs weights.rs
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3

@@ -1,4 +1,4 @@
-use codec::{Codec, Error as CodecError, MaxEncodedLen};
+use codec::{Codec, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	Parameter,
@@ -15,16 +15,6 @@ pub trait NftConvertible: Codec {
 	/// Numeric key used to store this specific item's attributes in the NFT.
 	const ITEM_CODE: ItemCode;
 
-	/// Encodes the item into a byte representation for storage.
-	fn encode_into(self) -> Vec<u8> {
-		self.encode()
-	}
-
-	/// Decodes a given byte representation back into its item form.
-	fn decode_from(input: Vec<u8>) -> Result<Self, CodecError> {
-		Self::decode(&mut input.as_slice())
-	}
-
 	/// Returns the list of attribute codes associated with this type.
 	fn get_attribute_codes() -> Vec<AttributeCode>;
 
@@ -33,7 +23,7 @@ pub trait NftConvertible: Codec {
 }
 
 /// Trait to define the transformation and bridging of NFT items.
-pub trait NftHandler<Account, ItemId, Item: NftConvertible, ItemConfig> {
+pub trait NftHandler<Account, ItemId, Item: NftConvertible> {
 	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
 
 	/// Consumes the given `item` and its associated identifiers, and stores it as an NFT
@@ -43,7 +33,6 @@ pub trait NftHandler<Account, ItemId, Item: NftConvertible, ItemConfig> {
 		collection_id: Self::CollectionId,
 		item_id: ItemId,
 		item: Item,
-		item_config: ItemConfig,
 	) -> DispatchResult;
 
 	/// Recovers the NFT item indexed by `collection_id` and `item_id`.

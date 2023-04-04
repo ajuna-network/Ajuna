@@ -1,0 +1,58 @@
+[package]
+description = "Ajuna Network pallet used for Awesome Avatars benchmarking"
+name        = "pallet-ajuna-awesome-avatars-benchmarking"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
+
+[package.metadata.docs.rs]
+targets = [ "x86_64-unknown-linux-gnu" ]
+
+[dependencies]
+codec      = { default-features = false, features = [ "derive", "max-encoded-len" ], package = "parity-scale-codec", version = "3.0.0" }
+log        = { default-features = false, version = "0.4.17" }
+scale-info = { default-features = false, features = [ "derive" ], version = "2.1.1" }
+
+pallet-ajuna-awesome-avatars = { default-features = false, path = "../../ajuna-awesome-avatars" }
+pallet-ajuna-nft-transfer    = { default-features = false, path = "../../ajuna-nft-transfer" }
+
+frame-benchmarking                = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", optional = true }
+frame-support                     = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+frame-system                      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+pallet-balances                   = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+pallet-nfts                       = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+pallet-randomness-collective-flip = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io                             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime                        = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-std                            = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
+[features]
+default = [ "std" ]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "pallet-ajuna-nft-transfer/runtime-benchmarks",
+    "pallet-nfts/runtime-benchmarks",
+]
+std = [
+    "codec/std",
+    "scale-info/std",
+    "sp-io/std",
+    "pallet-ajuna-awesome-avatars/std",
+    "pallet-ajuna-nft-transfer/std",
+    "pallet-balances/std",
+    "pallet-nfts/std",
+    "pallet-randomness-collective-flip/std",
+    "frame-benchmarking/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "log/std",
+]
+try-runtime = [ "frame-support/try-runtime", "pallet-ajuna-nft-transfer/try-runtime" ]

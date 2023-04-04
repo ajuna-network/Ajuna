@@ -1,5 +1,5 @@
 [package]
-description = "Ajuna Network pallet board pallet"
+description = "Ajuna Network pallet used to play Awesome Avatars"
 name        = "pallet-ajuna-awesome-avatars"
 
 authors.workspace    = true
@@ -18,12 +18,11 @@ scale-info = { default-features = false, features = [ "derive" ], version = "2.1
 
 pallet-ajuna-nft-transfer = { default-features = false, path = "../ajuna-nft-transfer" }
 
-frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", optional = true }
-frame-support      = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-frame-system       = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-io              = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-runtime         = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
-sp-std             = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+frame-system  = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io         = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-std        = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 [dev-dependencies]
 pallet-balances                   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -34,8 +33,6 @@ sp-core                           = { git = "https://github.com/paritytech/subst
 [features]
 default = [ "std" ]
 runtime-benchmarks = [
-    "frame-benchmarking",
-    "pallet-ajuna-nft-transfer/runtime-benchmarks",
     "pallet-nfts/runtime-benchmarks",
 ]
 std = [
@@ -43,7 +40,6 @@ std = [
     "scale-info/std",
     "sp-io/std",
     "pallet-ajuna-nft-transfer/std",
-    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "sp-runtime/std",
