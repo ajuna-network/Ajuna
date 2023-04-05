@@ -27,6 +27,14 @@ use frame_support::pallet_prelude::*;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
+pub type IpfsUrl = BoundedVec<u8, MaxIpfsUrl>;
+pub struct MaxIpfsUrl;
+impl Get<u32> for MaxIpfsUrl {
+	fn get() -> u32 {
+		80
+	}
+}
+
 pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
 pub type SoulCount = u32;

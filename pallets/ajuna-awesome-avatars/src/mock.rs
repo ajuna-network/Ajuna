@@ -194,13 +194,14 @@ pub struct ExtBuilder {
 	existential_deposit: MockBalance,
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
-	mint_cooldown: Option<MockBlockNumber>,
-	mint_fees: Option<MintFees<MockBalance>>,
-	trade_min_fee: Option<MockBalance>,
+	mint_cooldown: MockBlockNumber,
+	mint_fees: MintFees<MockBalance>,
+	trade_min_fee: MockBalance,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
-	avatar_transfer_fee: Option<MockBalance>,
+	avatar_transfer_fee: MockBalance,
 	create_nft_collection: bool,
+	nft_prepare_fee: MockBalance,
 	value_limit: u32,
 }
 
@@ -217,6 +218,7 @@ impl Default for ExtBuilder {
 			free_mints: Default::default(),
 			avatar_transfer_fee: Default::default(),
 			create_nft_collection: Default::default(),
+			nft_prepare_fee: Default::default(),
 			value_limit: MockValueLimit::get(),
 		}
 	}
@@ -236,7 +238,7 @@ impl ExtBuilder {
 		self
 	}
 	pub fn mint_cooldown(mut self, mint_cooldown: MockBlockNumber) -> Self {
-		self.mint_cooldown = Some(mint_cooldown);
+		self.mint_cooldown = mint_cooldown;
 		self
 	}
 	pub fn balances(mut self, balances: &[(MockAccountId, MockBalance)]) -> Self {
@@ -244,7 +246,7 @@ impl ExtBuilder {
 		self
 	}
 	pub fn mint_fees(mut self, mint_fees: MintFees<MockBalance>) -> Self {
-		self.mint_fees = Some(mint_fees);
+		self.mint_fees = mint_fees;
 		self
 	}
 	pub fn free_mints(mut self, free_mints: &[(MockAccountId, MintCount)]) -> Self {
@@ -252,15 +254,19 @@ impl ExtBuilder {
 		self
 	}
 	pub fn trade_min_fee(mut self, trade_min_fee: MockBalance) -> Self {
-		self.trade_min_fee = Some(trade_min_fee);
+		self.trade_min_fee = trade_min_fee;
 		self
 	}
 	pub fn avatar_transfer_fee(mut self, avatar_transfer_fee: MockBalance) -> Self {
-		self.avatar_transfer_fee = Some(avatar_transfer_fee);
+		self.avatar_transfer_fee = avatar_transfer_fee;
 		self
 	}
 	pub fn create_nft_collection(mut self, create_nft_collection: bool) -> Self {
 		self.create_nft_collection = create_nft_collection;
+		self
+	}
+	pub fn nft_prepare_fee(mut self, nft_prepare_fee: MockBalance) -> Self {
+		self.nft_prepare_fee = nft_prepare_fee;
 		self
 	}
 	pub fn value_limit(mut self, value_limit: u32) -> Self {
@@ -294,25 +300,15 @@ impl ExtBuilder {
 				config.mint.open = true;
 				config.forge.open = true;
 				config.trade.open = true;
+				config.mint.cooldown = self.mint_cooldown;
+				config.mint.fees = self.mint_fees;
+				config.trade.min_fee = self.trade_min_fee;
+				config.transfer.avatar_transfer_fee = self.avatar_transfer_fee;
+				config.nft_transfer.prepare_fee = self.nft_prepare_fee;
 			});
-
-			if let Some(x) = self.mint_cooldown {
-				GlobalConfigs::<Test>::mutate(|config| config.mint.cooldown = x);
-			}
-			if let Some(x) = self.mint_fees {
-				GlobalConfigs::<Test>::mutate(|config| config.mint.fees = x);
-			}
-
-			if let Some(x) = self.trade_min_fee {
-				GlobalConfigs::<Test>::mutate(|config| config.trade.min_fee = x);
-			}
 
 			for (account_id, mint_amount) in self.free_mints {
 				Accounts::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
-			}
-
-			if let Some(x) = self.avatar_transfer_fee {
-				GlobalConfigs::<Test>::mutate(|config| config.transfer.avatar_transfer_fee = x);
 			}
 
 			if self.create_nft_collection {

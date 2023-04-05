@@ -7,13 +7,17 @@ use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each item.
-pub type ItemCode = u16;
 pub type AttributeCode = u16;
+
+/// Type to denote an IPFS URL.
+pub type IpfsUrl = Vec<u8>;
 
 /// Marker trait for items that can be converted back and forth into an NFT representation.
 pub trait NftConvertible: Codec {
-	/// Numeric key used to store this specific item's attributes in the NFT.
-	const ITEM_CODE: ItemCode;
+	/// Numeric key used to identify this item as an NFT attribute.
+	const ITEM_CODE: AttributeCode;
+	/// Numeric key used to identify this item's IPFS URL as an NFT attribute.
+	const IPFS_URL_CODE: AttributeCode;
 
 	/// Returns the list of attribute codes associated with this type.
 	fn get_attribute_codes() -> Vec<AttributeCode>;
@@ -33,6 +37,7 @@ pub trait NftHandler<Account, ItemId, Item: NftConvertible> {
 		collection_id: Self::CollectionId,
 		item_id: ItemId,
 		item: Item,
+		ipfs_url: IpfsUrl,
 	) -> DispatchResult;
 
 	/// Recovers the NFT item indexed by `collection_id` and `item_id`.

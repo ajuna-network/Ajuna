@@ -65,6 +65,7 @@ jobs:
       matrix:
         pallet:
           - pallet-ajuna-awesome-avatars
+          - pallet-ajuna-awesome-avatars-benchmarking
           - pallet-ajuna-nft-staking
           - pallet-ajuna-nft-transfer
     steps:

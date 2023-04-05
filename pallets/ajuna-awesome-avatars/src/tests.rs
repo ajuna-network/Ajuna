@@ -1286,29 +1286,33 @@ mod minting {
 	fn mint_should_reject_when_balance_is_insufficient() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
+		ExtBuilder::default()
+			.mint_fees(MintFees { one: 1, three: 2, six: 3 })
+			.seasons(&[(1, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
 
-			for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				assert_noop!(
-					AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption { count: mint_count, mint_type: MintType::Normal }
-					),
-					pallet_balances::Error::<Test>::InsufficientBalance
-				);
-			}
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+					assert_noop!(
+						AAvatars::mint(
+							RuntimeOrigin::signed(ALICE),
+							MintOption { count: mint_count, mint_type: MintType::Normal }
+						),
+						pallet_balances::Error::<Test>::InsufficientBalance
+					);
+				}
 
-			for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				assert_noop!(
-					AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption { count: mint_count, mint_type: MintType::Free }
-					),
-					Error::<Test>::InsufficientFreeMints
-				);
-			}
-		});
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+					assert_noop!(
+						AAvatars::mint(
+							RuntimeOrigin::signed(ALICE),
+							MintOption { count: mint_count, mint_type: MintType::Free }
+						),
+						Error::<Test>::InsufficientFreeMints
+					);
+				}
+			});
 	}
 
 	#[test]
@@ -2106,7 +2110,7 @@ mod forging {
 	}
 
 	#[test]
-	pub fn forge_should_reject_avatars_from_different_seasons() {
+	fn forge_should_reject_avatars_from_different_seasons() {
 		let min_sacrifices = 1;
 		let max_sacrifices = 3;
 		let season1 = Season::default()
@@ -2836,7 +2840,15 @@ mod nft_transfer {
 				let avatar_ids = AAvatars::owners(ALICE);
 				let avatar_id = avatar_ids[0];
 
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert!(!Preparation::<Test>::contains_key(avatar_id));
 				assert!(LockedAvatars::<Test>::contains_key(avatar_id));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarLocked { avatar_id },
@@ -2855,7 +2867,7 @@ mod nft_transfer {
 				// Ensure correct encoding
 				assert_eq!(
 					<Nft as Inspect<MockAccountId>>::typed_attribute::<
-						pallet_ajuna_nft_transfer::traits::ItemCode,
+						pallet_ajuna_nft_transfer::traits::AttributeCode,
 						Avatar,
 					>(
 						&AAvatars::collection_id().unwrap(),
@@ -2892,8 +2904,6 @@ mod nft_transfer {
 				assert!(!AAvatars::owners(ALICE).contains(&avatar_id));
 				assert_eq!(AAvatars::owners(technical_account)[0], avatar_id);
 				assert_eq!(AAvatars::avatars(avatar_id).unwrap().0, technical_account);
-
-				// Ensure locked avatars cannot be used in trading
 
 				// Ensure locked avatars cannot be used in trading, transferring and forging
 				for extrinsic in [
@@ -2969,6 +2979,13 @@ mod nft_transfer {
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_noop!(
 					AAvatars::lock_avatar(
@@ -2976,6 +2993,47 @@ mod nft_transfer {
 						avatar_id
 					),
 					Error::<Test>::AvatarLocked
+				);
+			});
+	}
+
+	#[test]
+	fn cannot_lock_unprepared_avatar() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::NotPrepared
+				);
+			});
+	}
+
+	#[test]
+	fn cannot_lock_prepared_avatar_with_empty_url() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
+
+				// Technically this can't happen but testing just for the sake of completeness.
+				Preparation::<Test>::insert(avatar_id, IpfsUrl::default());
+
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					pallet_ajuna_nft_transfer::Error::<Test>::EmptyIpfsUrl
 				);
 			});
 	}
@@ -2993,6 +3051,8 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				let (_, avatar) = AAvatars::avatars(avatar_id).unwrap();
 				assert!(avatar.encode().len() > value_limit as usize);
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					pallet_nfts::Error::<Test>::IncorrectData
@@ -3008,6 +3068,13 @@ mod nft_transfer {
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_eq!(LockedAvatars::<Test>::get(avatar_id), None);
@@ -3025,6 +3092,13 @@ mod nft_transfer {
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
 				assert_noop!(
@@ -3037,11 +3111,18 @@ mod nft_transfer {
 	#[test]
 	fn cannot_unlock_unowned_avatar() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 1_000_000_000_000)])
+			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 5_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(1, BOB, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(BOB), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3063,6 +3144,13 @@ mod nft_transfer {
 				run_to_block(season.start);
 
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 
 				pallet_ajuna_nft_transfer::NftStatuses::<Test>::insert(
@@ -3070,7 +3158,6 @@ mod nft_transfer {
 					avatar_id,
 					pallet_ajuna_nft_transfer::NftStatus::Uploaded,
 				);
-
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					pallet_ajuna_nft_transfer::Error::<Test>::NftOutsideOfChain
@@ -3108,5 +3195,272 @@ mod fix_variation {
 				assert_eq!(avatar_after.dna[1], 0b0001_1100);
 				assert_eq!(avatar_after.dna[2], 0b0100_1100);
 			});
+	}
+}
+
+mod ipfs {
+	use super::*;
+
+	#[test]
+	fn set_service_account_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(AAvatars::service_account(), None);
+			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+			assert_eq!(AAvatars::service_account(), Some(ALICE));
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::ServiceAccountSet { service_account: ALICE },
+			));
+		});
+	}
+
+	#[test]
+	fn set_service_account_rejects_non_root_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::set_service_account(RuntimeOrigin::signed(BOB), ALICE),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_works() {
+		let prepare_fee = 999;
+		let initial_balance = prepare_fee + MockExistentialDeposit::get();
+
+		ExtBuilder::default()
+			.nft_prepare_fee(prepare_fee)
+			.balances(&[(ALICE, initial_balance)])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), BOB));
+				assert_eq!(Balances::free_balance(ALICE), initial_balance);
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_eq!(Balances::free_balance(ALICE), initial_balance - prepare_fee);
+				assert_eq!(AAvatars::preparation(avatar_id).unwrap().to_vec(), Vec::<u8>::new());
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::PreparedAvatar { avatar_id },
+				));
+			});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_forging_trading_and_transferring() {
+		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_ids = create_avatars(1, ALICE, 5);
+				let avatar_id = avatar_ids[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+
+				for extrinsic in [
+					AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000),
+					AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, avatar_id),
+					AAvatars::forge(
+						RuntimeOrigin::signed(ALICE),
+						avatar_id,
+						avatar_ids[1..3].to_vec(),
+					),
+				] {
+					assert_noop!(extrinsic, Error::<Test>::AlreadyPrepared);
+				}
+			});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_unsigned_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_noop!(
+				AAvatars::prepare_avatar(RuntimeOrigin::none(), avatar_id),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_unowned_avatars() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_noop!(
+				AAvatars::prepare_avatar(RuntimeOrigin::signed(BOB), avatar_id),
+				Error::<Test>::Ownership
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_avatars_in_trade() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1));
+			assert_noop!(
+				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+				Error::<Test>::AvatarInTrade
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_when_closed() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
+			assert_noop!(
+				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+				Error::<Test>::NftTransferClosed
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_locked_avatars() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			LockedAvatars::<Test>::insert(avatar_id, ());
+			assert_noop!(
+				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+				Error::<Test>::AvatarLocked
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_already_prepared_avatars() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let ipfs_url = IpfsUrl::try_from(Vec::new()).unwrap();
+			Preparation::<Test>::insert(avatar_id, ipfs_url);
+			assert_noop!(
+				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+				Error::<Test>::AlreadyPrepared
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_insufficient_balance() {
+		ExtBuilder::default()
+			.nft_prepare_fee(333)
+			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), BOB));
+				assert_noop!(
+					AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					pallet_balances::Error::<Test>::InsufficientBalance
+				);
+			});
+	}
+
+	#[test]
+	fn unprepare_avatar_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+			assert_ok!(AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+			assert!(!Preparation::<Test>::contains_key(avatar_id));
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::UnpreparedAvatar { avatar_id },
+			));
+		});
+	}
+
+	#[test]
+	fn unprepare_avatar_rejects_unsigned_calls() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_noop!(
+				AAvatars::unprepare_avatar(RuntimeOrigin::none(), H256::random()),
+				DispatchError::BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn unprepare_avatar_rejects_unowned_avatars() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_noop!(
+				AAvatars::unprepare_avatar(RuntimeOrigin::signed(BOB), avatar_id),
+				Error::<Test>::Ownership
+			);
+		});
+	}
+
+	#[test]
+	fn unprepare_avatar_rejects_when_closed() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
+			assert_noop!(
+				AAvatars::unprepare_avatar(RuntimeOrigin::signed(BOB), avatar_id),
+				Error::<Test>::Ownership
+			);
+		});
+	}
+
+	#[test]
+	fn unprepare_avatar_rejects_unprepared_avatars() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_noop!(
+				AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+				Error::<Test>::NotPrepared
+			);
+		});
+	}
+
+	#[test]
+	fn prepare_ipfs_works() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+			ServiceAccount::<Test>::put(BOB);
+
+			let ipfs_url = b"ipfs://{CID}/{optional path to resource}".to_vec();
+			let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
+			assert_ok!(AAvatars::prepare_ipfs(
+				RuntimeOrigin::signed(BOB),
+				avatar_id,
+				ipfs_url.clone()
+			));
+			assert_eq!(AAvatars::preparation(avatar_id).unwrap(), ipfs_url);
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::PreparedIpfsUrl { url: ipfs_url },
+			));
+
+			let ipfs_url = b"ipfs://123".to_vec();
+			let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
+			assert_ok!(AAvatars::prepare_ipfs(
+				RuntimeOrigin::signed(BOB),
+				avatar_id,
+				ipfs_url.clone()
+			));
+			assert_eq!(AAvatars::preparation(avatar_id).unwrap(), ipfs_url);
+			System::assert_last_event(mock::RuntimeEvent::AAvatars(
+				crate::Event::PreparedIpfsUrl { url: ipfs_url },
+			));
+		});
+	}
+
+	#[test]
+	fn prepare_ipfs_rejects_empty_url() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+			ServiceAccount::<Test>::put(BOB);
+
+			assert_noop!(
+				AAvatars::prepare_ipfs(RuntimeOrigin::signed(BOB), avatar_id, IpfsUrl::default()),
+				Error::<Test>::EmptyIpfsUrl
+			);
+		});
 	}
 }
