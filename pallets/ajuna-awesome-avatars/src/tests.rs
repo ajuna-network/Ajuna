@@ -3225,15 +3225,24 @@ mod ipfs {
 
 	#[test]
 	fn prepare_avatar_works() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			assert_eq!(AAvatars::preparation(avatar_id).unwrap().into_inner(), Vec::<u8>::new());
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::PreparedAvatar {
-				avatar_id,
-			}));
-		});
+		let prepare_fee = 999;
+		let initial_balance = prepare_fee + MockExistentialDeposit::get();
+
+		ExtBuilder::default()
+			.nft_prepare_fee(prepare_fee)
+			.balances(&[(ALICE, initial_balance)])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), BOB));
+				assert_eq!(Balances::free_balance(ALICE), initial_balance);
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_eq!(Balances::free_balance(ALICE), initial_balance - prepare_fee);
+				assert_eq!(AAvatars::preparation(avatar_id).unwrap().to_vec(), Vec::<u8>::new());
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::PreparedAvatar { avatar_id },
+				));
+			});
 	}
 
 	#[test]
@@ -3330,6 +3339,22 @@ mod ipfs {
 				Error::<Test>::AlreadyPrepared
 			);
 		});
+	}
+
+	#[test]
+	fn prepare_avatar_rejects_insufficient_balance() {
+		ExtBuilder::default()
+			.nft_prepare_fee(333)
+			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), BOB));
+				assert_noop!(
+					AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					pallet_balances::Error::<Test>::InsufficientBalance
+				);
+			});
 	}
 
 	#[test]
