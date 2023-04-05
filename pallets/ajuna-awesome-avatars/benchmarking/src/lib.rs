@@ -22,14 +22,13 @@ mod mock;
 
 use frame_benchmarking::{benchmarks, vec};
 use frame_support::{
-	pallet_prelude::DispatchResult,
+	pallet_prelude::{DispatchError, DispatchResult},
 	traits::{Currency, Get},
 };
 use frame_system::RawOrigin;
 use pallet_ajuna_awesome_avatars::{
 	types::{RarityTier::*, *},
-	Accounts, Call, Config as AvatarsConfig, CurrentSeasonId, CurrentSeasonStatus, Event,
-	GlobalConfigs, Pallet as AAvatars, Seasons, ServiceAccount, *,
+	Config as AvatarsConfig, Pallet as AAvatars, *,
 };
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::traits::{
@@ -146,6 +145,17 @@ fn create_service_account<T: Config>() -> T::AccountId {
 	let service_account = account::<T>("sa");
 	ServiceAccount::<T>::put(&service_account);
 	service_account
+}
+
+fn create_service_account_and_prepare_avatar<T: Config>(
+	player: &T::AccountId,
+	avatar_id: &AvatarIdOf<T>,
+) -> Result<T::AccountId, DispatchError> {
+	let service_account = create_service_account::<T>();
+	let prepare_fee = AAvatars::<T>::global_configs().nft_transfer.prepare_fee;
+	CurrencyOf::<T>::make_free_balance_be(player, prepare_fee);
+	AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), *avatar_id)?;
+	Ok(service_account)
 }
 
 fn assert_last_event<T: Config>(avatars_event: Event<T>) {
@@ -435,9 +445,7 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
-		let service_account = create_service_account::<T>();
-		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
-
+		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://test".to_vec()).unwrap();
 		AAvatars::<T>::prepare_ipfs(RawOrigin::Signed(service_account).into(), avatar_id, url)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
@@ -458,9 +466,7 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
-		let service_account = create_service_account::<T>();
-		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
-
+		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://test".to_vec()).unwrap();
 		AAvatars::<T>::prepare_ipfs(RawOrigin::Signed(service_account).into(), avatar_id, url)?;
 
@@ -497,6 +503,8 @@ benchmarks! {
 		let player = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&player)[0];
 		let _ = create_service_account::<T>();
+		let prepare_fee = AAvatars::<T>::global_configs().nft_transfer.prepare_fee;
+		CurrencyOf::<T>::make_free_balance_be(&player, prepare_fee);
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::<T>::PreparedAvatar { avatar_id })
@@ -507,8 +515,7 @@ benchmarks! {
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&player)[0];
-		let _ = create_service_account::<T>();
-		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
+		let _ = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::<T>::UnpreparedAvatar { avatar_id })
@@ -519,9 +526,7 @@ benchmarks! {
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
 		let avatar_id = AAvatars::<T>::owners(&player)[0];
-		let service_account = create_service_account::<T>();
-		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player).into(), avatar_id)?;
-
+		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://".to_vec()).unwrap();
 	}: _(RawOrigin::Signed(service_account), avatar_id, url.clone())
 	verify {
