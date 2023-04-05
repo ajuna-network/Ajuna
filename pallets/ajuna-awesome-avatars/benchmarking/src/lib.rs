@@ -435,8 +435,11 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
-		let _ = create_service_account::<T>();
+		let service_account = create_service_account::<T>();
 		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
+
+		let url = IpfsUrl::try_from(b"ipfs://test".to_vec()).unwrap();
+		AAvatars::<T>::prepare_ipfs(RawOrigin::Signed(service_account).into(), avatar_id, url)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarLocked { avatar_id })
@@ -455,8 +458,12 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
-		let _ = create_service_account::<T>();
+		let service_account = create_service_account::<T>();
 		AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
+
+		let url = IpfsUrl::try_from(b"ipfs://test".to_vec()).unwrap();
+		AAvatars::<T>::prepare_ipfs(RawOrigin::Signed(service_account).into(), avatar_id, url)?;
+
 		AAvatars::<T>::lock_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {

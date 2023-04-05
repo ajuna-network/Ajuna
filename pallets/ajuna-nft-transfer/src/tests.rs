@@ -40,6 +40,7 @@ impl Default for MockItem {
 
 impl NftConvertible for MockItem {
 	const ITEM_CODE: AttributeCode = 1;
+	const IPFS_URL_CODE: AttributeCode = 2;
 
 	fn get_attribute_codes() -> Vec<AttributeCode> {
 		vec![111, 222, 333]
@@ -75,8 +76,15 @@ mod store_as_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
+			let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone()));
+			assert_ok!(NftTransfer::store_as_nft(
+				BOB,
+				collection_id,
+				item_id,
+				item.clone(),
+				url.clone()
+			));
 			assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 			assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			assert_eq!(
@@ -87,6 +95,15 @@ mod store_as_nft {
 					&MockItem::ITEM_CODE,
 				),
 				Some(item.clone())
+			);
+			assert_eq!(
+				Nft::typed_attribute::<AttributeCode, IpfsUrl>(
+					&collection_id,
+					&item_id,
+					&AttributeNamespace::Pallet,
+					&MockItem::IPFS_URL_CODE,
+				),
+				Some(url)
 			);
 			for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
 				assert_eq!(
@@ -111,15 +128,37 @@ mod store_as_nft {
 	}
 
 	#[test]
+	fn cannot_store_empty_ipfs_url() {
+		ExtBuilder::default().build().execute_with(|| {
+			let collection_id = create_collection(ALICE);
+			let item_id = H256::random();
+			let item = MockItem::default();
+			let url = vec![];
+
+			assert_err!(
+				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, url),
+				Error::<Test>::EmptyIpfsUrl
+			);
+		});
+	}
+
+	#[test]
 	fn cannot_store_duplicates_under_same_collection() {
 		ExtBuilder::default().build().execute_with(|| {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
+			let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(ALICE, collection_id, item_id, item.clone()));
+			assert_ok!(NftTransfer::store_as_nft(
+				ALICE,
+				collection_id,
+				item_id,
+				item.clone(),
+				url.clone()
+			));
 			assert_noop!(
-				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item),
+				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, url),
 				pallet_nfts::Error::<Test>::AlreadyExists
 			);
 		});
@@ -135,11 +174,12 @@ mod store_as_nft {
 				field_2: 1,
 				field_3: false,
 			};
+			let url = b"ipfs://test".to_vec();
 
 			assert!(item.encode().len() > ValueLimit::get() as usize);
 			// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
 			assert_err!(
-				NftTransfer::store_as_nft(BOB, collection_id, item_id, item),
+				NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url),
 				pallet_nfts::Error::<Test>::IncorrectData
 			);
 		});
@@ -155,8 +195,9 @@ mod recover_from_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
+			let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone()));
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone(), url));
 
 			assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
 			assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
@@ -165,6 +206,13 @@ mod recover_from_nft {
 				&item_id,
 				&AttributeNamespace::Pallet,
 				&MockItem::ITEM_CODE,
+			)
+			.is_none());
+			assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
+				&collection_id,
+				&item_id,
+				&AttributeNamespace::Pallet,
+				&MockItem::IPFS_URL_CODE,
 			)
 			.is_none());
 			for attribute_code in MockItem::get_attribute_codes() {
@@ -189,8 +237,9 @@ mod recover_from_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
+			let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item));
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url));
 			NftStatuses::<Test>::insert(collection_id, item_id, NftStatus::Uploaded);
 
 			assert_noop!(
@@ -206,8 +255,9 @@ mod recover_from_nft {
 			let collection_id = create_collection(ALICE);
 			let item_id = H256::random();
 			let item = MockItem::default();
+			let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item));
+			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url));
 
 			// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
 			assert_err!(

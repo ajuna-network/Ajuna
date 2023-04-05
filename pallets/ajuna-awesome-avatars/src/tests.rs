@@ -2838,6 +2838,11 @@ mod nft_transfer {
 
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert!(!Preparation::<Test>::contains_key(avatar_id));
 				assert!(LockedAvatars::<Test>::contains_key(avatar_id));
@@ -2972,6 +2977,11 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_noop!(
 					AAvatars::lock_avatar(
@@ -2979,6 +2989,47 @@ mod nft_transfer {
 						avatar_id
 					),
 					Error::<Test>::AvatarLocked
+				);
+			});
+	}
+
+	#[test]
+	fn cannot_lock_unprepared_avatar() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::NotPrepared
+				);
+			});
+	}
+
+	#[test]
+	fn cannot_lock_prepared_avatar_with_empty_url() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, 1_000_000_000_000)])
+			.create_nft_collection(true)
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
+
+				// Technically this can't happen but testing just for the sake of completeness.
+				Preparation::<Test>::insert(avatar_id, IpfsUrl::default());
+
+				assert_noop!(
+					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					pallet_ajuna_nft_transfer::Error::<Test>::EmptyIpfsUrl
 				);
 			});
 	}
@@ -3015,6 +3066,11 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_eq!(LockedAvatars::<Test>::get(avatar_id), None);
@@ -3034,6 +3090,11 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
 				assert_noop!(
@@ -3053,6 +3114,11 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, BOB, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(BOB), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_noop!(
 					AAvatars::unlock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3076,6 +3142,11 @@ mod nft_transfer {
 				let avatar_id = create_avatars(1, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(ALICE),
+					avatar_id,
+					IpfsUrl::try_from(b"test".to_vec()).unwrap()
+				));
 				assert_ok!(AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 
 				pallet_ajuna_nft_transfer::NftStatuses::<Test>::insert(

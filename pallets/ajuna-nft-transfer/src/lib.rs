@@ -100,6 +100,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// IPFS URL must not be an empty string.
+		EmptyIpfsUrl,
 		/// Item code must be different to attribute codes.
 		DuplicateItemCode,
 		/// The given NFT item doesn't exist.
@@ -130,6 +132,7 @@ pub mod pallet {
 			collection_id: Self::CollectionId,
 			item_id: T::ItemId,
 			item: Item,
+			ipfs_url: IpfsUrl,
 		) -> DispatchResult {
 			// TODO: Should players pay for the deposit? (Currently the collection owner pays it)
 			T::NftHelper::mint_into(
@@ -142,6 +145,14 @@ pub mod pallet {
 
 			// TODO: Do we need to store the entire item or just its attributes?
 			T::NftHelper::set_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE, &item)?;
+
+			ensure!(!ipfs_url.is_empty(), Error::<T>::EmptyIpfsUrl);
+			T::NftHelper::set_typed_attribute(
+				&collection_id,
+				&item_id,
+				&Item::IPFS_URL_CODE,
+				&ipfs_url,
+			)?;
 
 			item.get_encoded_attributes()
 				.iter()
@@ -180,6 +191,7 @@ pub mod pallet {
 			.ok_or(Error::<T>::UnknownItem)?;
 
 			T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE)?;
+			T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &Item::IPFS_URL_CODE)?;
 			for attribute_key in Item::get_attribute_codes() {
 				T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &attribute_key)?;
 			}
