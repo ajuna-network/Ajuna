@@ -1286,29 +1286,33 @@ mod minting {
 	fn mint_should_reject_when_balance_is_insufficient() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
+		ExtBuilder::default()
+			.mint_fees(MintFees { one: 1, three: 2, six: 3 })
+			.seasons(&[(1, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
 
-			for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				assert_noop!(
-					AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption { count: mint_count, mint_type: MintType::Normal }
-					),
-					pallet_balances::Error::<Test>::InsufficientBalance
-				);
-			}
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+					assert_noop!(
+						AAvatars::mint(
+							RuntimeOrigin::signed(ALICE),
+							MintOption { count: mint_count, mint_type: MintType::Normal }
+						),
+						pallet_balances::Error::<Test>::InsufficientBalance
+					);
+				}
 
-			for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				assert_noop!(
-					AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption { count: mint_count, mint_type: MintType::Free }
-					),
-					Error::<Test>::InsufficientFreeMints
-				);
-			}
-		});
+				for mint_count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
+					assert_noop!(
+						AAvatars::mint(
+							RuntimeOrigin::signed(ALICE),
+							MintOption { count: mint_count, mint_type: MintType::Free }
+						),
+						Error::<Test>::InsufficientFreeMints
+					);
+				}
+			});
 	}
 
 	#[test]
