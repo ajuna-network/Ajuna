@@ -25,7 +25,8 @@ pub const RARITY: AttributeCode = 12;
 pub const FORCE: AttributeCode = 13;
 
 impl NftConvertible for Avatar {
-	const ITEM_CODE: u16 = 0;
+	const ITEM_CODE: AttributeCode = 0;
+	const IPFS_URL_CODE: AttributeCode = 1;
 
 	fn get_attribute_codes() -> Vec<AttributeCode> {
 		vec![DNA, SOUL_POINTS, RARITY, FORCE]

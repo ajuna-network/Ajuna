@@ -401,6 +401,8 @@ pub mod pallet {
 		NotPrepared,
 		/// No service account has been set.
 		NoServiceAccount,
+		/// Tried to prepare an IPFS URL for an avatar with an empty URL.
+		EmptyIpfsUrl,
 	}
 
 	#[pallet::hooks]
@@ -802,11 +804,10 @@ pub mod pallet {
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
 
 			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
-			// can now be removed from preparation.
-			Preparation::<T>::remove(avatar_id);
 
 			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
-			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar)?;
+			let url = Preparation::<T>::take(avatar_id).ok_or(Error::<T>::UnknownPreparation)?;
+			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar, url.to_vec())?;
 
 			LockedAvatars::<T>::insert(avatar_id, ());
 			Self::deposit_event(Event::AvatarLocked { avatar_id });
@@ -900,6 +901,7 @@ pub mod pallet {
 			let _ = Self::ensure_service_account(origin)?;
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
+			ensure!(!url.is_empty(), Error::<T>::EmptyIpfsUrl);
 			Preparation::<T>::insert(avatar_id, &url);
 			Self::deposit_event(Event::PreparedIpfsUrl { url });
 			Ok(())
