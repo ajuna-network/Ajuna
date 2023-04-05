@@ -401,6 +401,8 @@ pub mod pallet {
 		NotPrepared,
 		/// No service account has been set.
 		NoServiceAccount,
+		/// Tried to prepare an IPFS URL for an avatar with an empty URL.
+		EmptyIpfsUrl,
 	}
 
 	#[pallet::hooks]
@@ -900,6 +902,7 @@ pub mod pallet {
 			let _ = Self::ensure_service_account(origin)?;
 			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
+			ensure!(!url.is_empty(), Error::<T>::EmptyIpfsUrl);
 			Preparation::<T>::insert(avatar_id, &url);
 			Self::deposit_event(Event::PreparedIpfsUrl { url });
 			Ok(())

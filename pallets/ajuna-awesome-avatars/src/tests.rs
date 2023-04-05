@@ -3348,4 +3348,19 @@ mod ipfs {
 			));
 		});
 	}
+
+	#[test]
+	fn prepare_ipfs_rejects_empty_url() {
+		ExtBuilder::default().build().execute_with(|| {
+			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+			ServiceAccount::<Test>::put(BOB);
+
+			assert_noop!(
+				AAvatars::prepare_ipfs(RuntimeOrigin::signed(BOB), avatar_id, IpfsUrl::default()),
+				Error::<Test>::EmptyIpfsUrl
+			);
+		});
+	}
 }
