@@ -77,7 +77,6 @@ use xcm_executor::XcmExecutor;
 use ajuna_primitives::{
 	AccountId, Balance, BlockNumber, CollectionId, Hash, Header, Index, Signature,
 };
-use pallet_ajuna_awesome_avatars::Call as AwesomeAvatarsCall;
 use pallet_nfts::Call as NftsCall;
 
 /// The address format for describing accounts.
@@ -263,12 +262,7 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(call: &RuntimeCall) -> bool {
-		!matches!(
-			call,
-			RuntimeCall::Nft(NftsCall::set_attribute { .. }) |
-				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::lock_avatar { .. }) |
-				RuntimeCall::AwesomeAvatars(AwesomeAvatarsCall::unlock_avatar { .. })
-		)
+		!matches!(call, RuntimeCall::Nft(NftsCall::set_attribute { .. }))
 	}
 }
 
