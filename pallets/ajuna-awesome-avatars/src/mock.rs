@@ -32,7 +32,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub type MockAccountId = u32;
+pub type MockAccountId = u128;
 pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
 pub type MockIndex = u64;
