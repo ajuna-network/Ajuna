@@ -660,7 +660,7 @@ impl pallet_preimage::Config for Runtime {
 	type ByteDeposit = PreimageByteDeposit;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
@@ -778,7 +778,7 @@ construct_runtime!(
 		CouncilMembership: pallet_membership::<Instance2> = 43,
 
 		// Indexes 50-59 should be reserved for our games.
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 50,
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage} = 50,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
 
 		// Indexes 60-69 should be reserved for NFT related pallets

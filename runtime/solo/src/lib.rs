@@ -517,7 +517,7 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
@@ -657,7 +657,7 @@ construct_runtime!(
 		Utility: pallet_utility = 18,
 		Preimage: pallet_preimage = 19,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
-		Randomness: pallet_randomness_collective_flip = 23,
+		Randomness: pallet_insecure_randomness_collective_flip = 23,
 		Nft: pallet_nfts = 24,
 		NftTransfer: pallet_ajuna_nft_transfer = 25,
 	}

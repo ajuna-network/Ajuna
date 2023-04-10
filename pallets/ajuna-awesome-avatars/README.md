@@ -34,7 +34,7 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
     type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 impl pallet_balances::Config for Runtime {
     // -- snip --
@@ -52,7 +52,7 @@ construct_runtime!(
     {
         AwesomeAvatars: pallet_ajuna_awesome_avatars,
         Balances: pallet_balances,
-        Randomness: pallet_randomness_collective_flip,
+        Randomness: pallet_insecure_randomness_collective_flip,
     }
 );
 ```

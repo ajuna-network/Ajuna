@@ -51,7 +51,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
-		Randomness: pallet_randomness_collective_flip,
+		Randomness: pallet_insecure_randomness_collective_flip,
 		Nft: pallet_nfts,
 		AAvatars: pallet_ajuna_awesome_avatars,
 		NftTransfer: pallet_ajuna_nft_transfer,
@@ -101,7 +101,7 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = [u8; 8];
 }
 
-impl pallet_randomness_collective_flip::Config for Test {}
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 parameter_types! {
 	pub const CollectionDeposit: MockBalance = 1;
