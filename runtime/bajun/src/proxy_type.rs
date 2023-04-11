@@ -59,7 +59,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Scheduler(..) |
 				RuntimeCall::Timestamp(..) |
 				// Specifically omitting the entire Balances pallet
-				RuntimeCall::Authorship(..) |
 				RuntimeCall::Session(..) |
 				RuntimeCall::Council(..) |
 				RuntimeCall::CouncilMembership(..) |
