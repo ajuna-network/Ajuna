@@ -134,6 +134,7 @@ pub mod pallet {
 			item: Item,
 			ipfs_url: IpfsUrl,
 		) -> DispatchResult {
+			// SBP-M3 review: Please resolve this TODO
 			// TODO: Should players pay for the deposit? (Currently the collection owner pays it)
 			T::NftHelper::mint_into(
 				&collection_id,
@@ -203,6 +204,7 @@ pub mod pallet {
 			Ok(item)
 		}
 
+		// SBP-M3 review: Please add definition to this function
 		fn schedule_upload(
 			_owner: T::AccountId,
 			_collection_id: Self::CollectionId,

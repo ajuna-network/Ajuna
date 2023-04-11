@@ -352,6 +352,7 @@ pub mod pallet {
 		ContractNotFound,
 	}
 
+	//SBP-M3 review: Please add documentation in each extrinsic
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::set_organizer())]

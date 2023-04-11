@@ -1,5 +1,7 @@
 # Ajuna NFT-Transfer Pallet
 
+// SBP-M3 review: Readme should contain more pallet related information
+
 This pallet provides utilities for transforming any given asset into a serialized form which can later be uploaded to an IPFS server provider.
 
 ## Integration
