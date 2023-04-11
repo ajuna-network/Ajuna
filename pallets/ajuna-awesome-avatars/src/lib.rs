@@ -128,6 +128,8 @@ pub mod pallet {
 	#[pallet::getter(fn treasurer)]
 	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
 
+	// SBP-M3 review: if we can merge CurrentSeasonId & CurrentSeasonStatus storage into something
+	// like CurrentSeasonInfo storage, we can reduce one read operation (at the time of claim treasury)
 	/// Contains the identifier of the current season.
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_id)]
@@ -683,6 +685,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::claim_treasury())]
 		pub fn claim_treasury(origin: OriginFor<T>, season_id: SeasonId) -> DispatchResult {
@@ -781,6 +784,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::set_collection_id())]
 		pub fn set_collection_id(
@@ -793,6 +797,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::lock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -814,6 +819,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(16)]
 		#[pallet::weight(T::WeightInfo::unlock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -832,6 +838,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(17)]
 		#[pallet::weight(T::WeightInfo::fix_variation())]
 		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -847,6 +854,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(18)]
 		#[pallet::weight(T::WeightInfo::set_service_account())]
 		pub fn set_service_account(
@@ -859,6 +867,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(19)]
 		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -878,6 +887,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(20)]
 		#[pallet::weight(T::WeightInfo::unprepare_avatar())]
 		pub fn unprepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -891,6 +901,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// SBP-M3 review: please add documentation
 		#[pallet::call_index(21)]
 		#[pallet::weight(T::WeightInfo::prepare_ipfs())]
 		pub fn prepare_ipfs(
@@ -1017,6 +1028,9 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
+		// SBP-M3 review: We should validate the user's balance for the Normal MintType.
+		// In my viewpoint, we are wasting our resources (CPU processing) by generating avatar_ids
+		// and some IO operations if the player doesn't have enough balance to mint a new avatar.
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			let GlobalConfig { mint, .. } = Self::global_configs();
