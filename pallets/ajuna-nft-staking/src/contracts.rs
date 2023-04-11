@@ -173,19 +173,13 @@ where
 		let NftAddress(collection_id, item_id) = asset;
 
 		match self {
-			ContractClause::HasAttribute(ns, key) => NftInspector::typed_attribute::<
-				AttributeKey,
-				AttributeValue,
-			>(collection_id, item_id, ns, key)
-			.is_some(),
-			ContractClause::HasAttributeWithValue(ns, key, expected_value) => {
-				if let Some(value) = NftInspector::typed_attribute::<AttributeKey, AttributeValue>(
-					collection_id,
-					item_id,
-					ns,
-					key,
-				) {
-					expected_value.eq(&value)
+			ContractClause::HasAttribute(_ns, key) =>
+				NftInspector::system_attribute(collection_id, item_id, &key.encode()).is_some(),
+			ContractClause::HasAttributeWithValue(_ns, key, expected_value) => {
+				if let Some(value) =
+					NftInspector::system_attribute(collection_id, item_id, &key.encode())
+				{
+					expected_value.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
 				} else {
 					false
 				}
