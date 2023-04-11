@@ -1,5 +1,7 @@
 # Ajuna Network Awesome Avatars Pallet
 
+// SBP-M3 review: Readme should contain more pallet related information
+
 Ajuna Network Awesome Avatars logic.
 
 ## Integration
