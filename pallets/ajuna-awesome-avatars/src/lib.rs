@@ -52,7 +52,7 @@
 //! * `do_mint` - Mint avatar.
 //! * `ensure_season` - Given a season id and a season, validate them.
 
-#![feature(map_first_last, variant_count)]
+#![feature(variant_count)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
