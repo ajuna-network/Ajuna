@@ -170,7 +170,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		Accounts::<T>::mutate(&caller, |account| account.free_mints =  MintCount::MAX);
+		Accounts::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
 
 		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
@@ -258,7 +258,7 @@ benchmarks! {
 		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
 		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
-		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
+		Accounts::<T>::mutate(&from, |account| account.free_mints = MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many })

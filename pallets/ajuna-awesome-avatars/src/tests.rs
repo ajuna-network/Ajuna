@@ -1505,45 +1505,42 @@ mod forging {
 				let leader_id = AAvatars::owners(BOB)[0];
 				assert_eq!(
 					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
-					&[0x01, 0x01, 0x03, 0x04, 0x05, 0x04, 0x04, 0x00]
+					&[0x03, 0x02, 0x02, 0x02, 0x01, 0x01, 0x04, 0x01]
 				);
 
 				// 1st mutation
-				assert_dna(&leader_id, &[0x11, 0x11, 0x13, 0x14, 0x05, 0x04, 0x04, 0x00], None);
+				assert_dna(&leader_id, &[0x13, 0x12, 0x12, 0x12, 0x01, 0x01, 0x04, 0x01], None);
 
 				// 2nd mutation
-				assert_dna(&leader_id, &[0x11, 0x11, 0x13, 0x14, 0x15, 0x14, 0x04, 0x00], None);
+				assert_dna(&leader_id, &[0x13, 0x12, 0x12, 0x12, 0x11, 0x11, 0x04, 0x11], None);
 
 				// 3rd mutation
-				assert_dna(&leader_id, &[0x11, 0x11, 0x13, 0x14, 0x15, 0x14, 0x04, 0x00], None);
+				assert_dna(
+					&leader_id,
+					&[0x13, 0x12, 0x12, 0x12, 0x11, 0x11, 0x14, 0x11],
+					Some(&[0x13, 0x12, 0x12, 0x12, 0x11, 0x11, 0x05, 0x11]),
+				);
 
 				// 4th mutation
 				assert_dna(
 					&leader_id,
-					&[0x11, 0x11, 0x13, 0x14, 0x15, 0x14, 0x14, 0x10],
-					Some(&[0x11, 0x11, 0x13, 0x14, 0x15, 0x14, 0x05, 0x01]),
+					&[0x43, 0x42, 0x42, 0x42, 0x11, 0x11, 0x14, 0x11],
+					Some(&[0x14, 0x13, 0x13, 0x13, 0x11, 0x11, 0x14, 0x11]),
 				);
 
 				// 5th mutation
 				assert_dna(
 					&leader_id,
-					&[0x41, 0x41, 0x43, 0x44, 0x15, 0x14, 0x14, 0x10],
-					Some(&[0x12, 0x12, 0x14, 0x15, 0x15, 0x14, 0x14, 0x10]),
-				);
-
-				// 6th mutation
-				assert_dna(
-					&leader_id,
-					&[0x41, 0x41, 0x43, 0x44, 0x45, 0x44, 0x44, 0x10],
-					Some(&[0x41, 0x41, 0x43, 0x44, 0x16, 0x15, 0x15, 0x10]),
+					&[0x43, 0x42, 0x42, 0x42, 0x41, 0x41, 0x14, 0x11],
+					Some(&[0x43, 0x42, 0x42, 0x42, 0x12, 0x12, 0x14, 0x11]),
 				);
 
 				// force highest tier mint and assert for associated checks
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 0);
 				assert_dna(
 					&leader_id,
-					&[0x41, 0x41, 0x43, 0x44, 0x45, 0x44, 0x44, 0x40],
-					Some(&[0x41, 0x41, 0x43, 0x44, 0x45, 0x44, 0x44, 0x11]),
+					&[0x43, 0x42, 0x42, 0x42, 0x41, 0x41, 0x44, 0x41],
+					Some(&[0x43, 0x42, 0x42, 0x42, 0x41, 0x41, 0x15, 0x12]),
 				);
 				assert_eq!(AAvatars::current_season_status().max_tier_avatars, 1);
 				assert!(AAvatars::current_season_status().early_ended);
@@ -1556,8 +1553,8 @@ mod forging {
 				);
 
 				// check stats for season 1
-				assert_eq!(AAvatars::season_stats(1, BOB).forged, 7);
-				assert_eq!(AAvatars::season_stats(1, BOB).minted, 29);
+				assert_eq!(AAvatars::season_stats(1, BOB).forged, 6);
+				assert_eq!(AAvatars::season_stats(1, BOB).minted, 25);
 
 				// trigger season end and assert for associated checks
 				run_to_block(season.end + 1);
@@ -1647,7 +1644,8 @@ mod forging {
 			.max_components(5)
 			.max_variations(3)
 			.min_sacrifices(1)
-			.max_sacrifices(2);
+			.max_sacrifices(2)
+			.base_prob(100);
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
@@ -1684,7 +1682,7 @@ mod forging {
 				let upgradable_indexes = original_leader.upgradable_indexes::<Test>().unwrap();
 				for (sacrifice, result) in original_sacrifices
 					.iter()
-					.zip([(true, BTreeSet::from([0, 1, 2, 3])), (true, BTreeSet::from([1]))])
+					.zip([(true, BTreeSet::from([0, 2, 3])), (true, BTreeSet::from([0, 2, 3, 4]))])
 				{
 					assert_eq!(
 						original_leader.compare(
@@ -1709,25 +1707,23 @@ mod forging {
 				);
 
 				// check for the upgraded DNA
-				assert_ne!(original_leader.dna[0..=1], forged_leader.dna[0..=1]);
-				assert_eq!(original_leader.dna.to_vec()[0] >> 4, RarityTier::Common as u8);
-				assert_eq!(original_leader.dna.to_vec()[1] >> 4, RarityTier::Common as u8);
-				assert_eq!(forged_leader.dna.to_vec()[0] >> 4, RarityTier::Legendary as u8);
-				assert_eq!(forged_leader.dna.to_vec()[1] >> 4, RarityTier::Legendary as u8);
+				for i in [0, 2] {
+					assert_ne!(original_leader.dna[i], forged_leader.dna[i]);
+					assert_eq!(original_leader.dna.to_vec()[i] >> 4, RarityTier::Common as u8);
+					assert_eq!(forged_leader.dna.to_vec()[i] >> 4, RarityTier::Legendary as u8);
+				}
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarForged { avatar_id: leader_id, upgraded_components: 2 },
 				));
 
 				// variations remain the same
 				assert_eq!(
-					original_leader.dna[0..=1].iter().map(|x| x & 0b0000_1111).collect::<Vec<_>>(),
-					forged_leader.dna[0..=1].iter().map(|x| x & 0b0000_1111).collect::<Vec<_>>(),
+					original_leader.dna.iter().map(|x| x & 0b0000_1111).collect::<Vec<_>>(),
+					forged_leader.dna.iter().map(|x| x & 0b0000_1111).collect::<Vec<_>>(),
 				);
 				// other components remain the same
-				assert_eq!(
-					original_leader.dna[2..season.max_components as usize],
-					forged_leader.dna[2..season.max_components as usize]
-				);
+				assert_eq!(original_leader.dna[1], forged_leader.dna[1]);
+				assert_eq!(original_leader.dna[3..], forged_leader.dna[3..]);
 			});
 	}
 
@@ -1780,7 +1776,7 @@ mod forging {
 						season.max_variations,
 						tiers[tiers.len() - 1].clone() as u8
 					),
-					(false, BTreeSet::new())
+					(false, BTreeSet::from([2]))
 				);
 				// check all sacrifices are burned
 				assert!(!Avatars::<Test>::contains_key(sacrifice_id));
@@ -1822,7 +1818,7 @@ mod forging {
 				let leader_id = AAvatars::owners(ALICE)[0];
 				assert_eq!(
 					AAvatars::avatars(&leader_id).unwrap().1.dna.to_vec(),
-					&[0x01, 0x05, 0x05, 0x04]
+					&[0x04, 0x05, 0x05, 0x03]
 				);
 				assert_eq!(
 					AAvatars::avatars(&leader_id).unwrap().1.min_tier(),
@@ -2793,11 +2789,8 @@ mod account {
 
 mod nft_transfer {
 	use super::*;
-	use frame_support::{
-		bounded_vec,
-		traits::tokens::{nonfungibles_v2::Inspect, AttributeNamespace},
-	};
-	use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
+	use frame_support::{bounded_vec, traits::tokens::nonfungibles_v2::Inspect};
+	use pallet_ajuna_nft_transfer::traits::NftConvertible;
 
 	#[test]
 	fn set_collection_id_works() {
@@ -2855,24 +2848,20 @@ mod nft_transfer {
 					avatar,
 					Avatar {
 						season_id: 1,
-						dna: bounded_vec![0x14, 0x00, 0x13, 0x00, 0x02, 0x00, 0x01, 0x02],
-						souls: 45
+						dna: bounded_vec![0x10, 0x10, 0x13, 0x12, 0x00, 0x22, 0x02, 0x00],
+						souls: 6
 					}
 				);
 
 				// Ensure correct encoding
 				assert_eq!(
-					<Nft as Inspect<MockAccountId>>::typed_attribute::<
-						pallet_ajuna_nft_transfer::traits::AttributeCode,
-						Avatar,
-					>(
+					<Nft as Inspect<MockAccountId>>::system_attribute(
 						&AAvatars::collection_id().unwrap(),
 						&avatar_id,
-						&AttributeNamespace::Pallet,
-						&<Avatar as NftConvertible>::ITEM_CODE,
+						&<Avatar as NftConvertible>::ITEM_CODE.encode(),
 					)
 					.unwrap(),
-					avatar,
+					avatar.encode(),
 				);
 
 				// Ensure attributes encoding
@@ -2881,17 +2870,16 @@ mod nft_transfer {
 						avatar.dna.encode(),
 						avatar.souls.encode(),
 						RarityTier::Common.encode(),
-						Force::Solar.encode(),
+						Force::Kinetic.encode(),
 					]) {
 					assert_eq!(
-						<Nft as Inspect<MockAccountId>>::typed_attribute::<AttributeCode, Vec<u8>>(
+						<Nft as Inspect<MockAccountId>>::system_attribute(
 							&AAvatars::collection_id().unwrap(),
 							&avatar_id,
-							&AttributeNamespace::Pallet,
-							attribute_code,
+							&attribute_code.encode(),
 						)
 						.unwrap(),
-						encoded_attribute
+						encoded_attribute.encode()
 					);
 				}
 
