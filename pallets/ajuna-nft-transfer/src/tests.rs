@@ -18,10 +18,7 @@ use crate::{mock::*, traits::*, Error, *};
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
-	traits::tokens::{
-		nonfungibles_v2::{Create, Inspect},
-		AttributeNamespace,
-	},
+	traits::tokens::nonfungibles_v2::{Create, Inspect},
 };
 use sp_runtime::testing::H256;
 
@@ -88,32 +85,17 @@ mod store_as_nft {
 			assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 			assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			assert_eq!(
-				Nft::typed_attribute::<AttributeCode, MockItem>(
-					&collection_id,
-					&item_id,
-					&AttributeNamespace::Pallet,
-					&MockItem::ITEM_CODE,
-				),
-				Some(item.clone())
+				Nft::system_attribute(&collection_id, &item_id, &MockItem::ITEM_CODE.encode()),
+				Some(item.encode())
 			);
 			assert_eq!(
-				Nft::typed_attribute::<AttributeCode, IpfsUrl>(
-					&collection_id,
-					&item_id,
-					&AttributeNamespace::Pallet,
-					&MockItem::IPFS_URL_CODE,
-				),
-				Some(url)
+				Nft::system_attribute(&collection_id, &item_id, &MockItem::IPFS_URL_CODE.encode()),
+				Some(url.encode())
 			);
 			for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
 				assert_eq!(
-					Nft::typed_attribute(
-						&collection_id,
-						&item_id,
-						&AttributeNamespace::Pallet,
-						&attribute_code,
-					),
-					Some(encoded_attributes)
+					Nft::system_attribute(&collection_id, &item_id, &attribute_code.encode()),
+					Some(encoded_attributes.encode())
 				);
 			}
 
@@ -196,33 +178,18 @@ mod recover_from_nft {
 			let item_id = H256::random();
 			let item = MockItem::default();
 			let url = b"ipfs://test".to_vec();
+			let item_code = MockItem::ITEM_CODE;
+			let url_code = MockItem::IPFS_URL_CODE;
 
 			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone(), url));
 
 			assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
 			assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
-			assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
-				&collection_id,
-				&item_id,
-				&AttributeNamespace::Pallet,
-				&MockItem::ITEM_CODE,
-			)
-			.is_none());
-			assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
-				&collection_id,
-				&item_id,
-				&AttributeNamespace::Pallet,
-				&MockItem::IPFS_URL_CODE,
-			)
-			.is_none());
+			assert!(Nft::system_attribute(&collection_id, &item_id, &item_code.encode()).is_none());
+			assert!(Nft::system_attribute(&collection_id, &item_id, &url_code.encode()).is_none());
 			for attribute_code in MockItem::get_attribute_codes() {
-				assert!(Nft::attribute(
-					&collection_id,
-					&item_id,
-					&AttributeNamespace::Pallet,
-					&attribute_code.encode(),
-				)
-				.is_none());
+				let encoded_attribute_code = attribute_code.encode();
+				assert!(Nft::attribute(&collection_id, &item_id, &encoded_attribute_code).is_none());
 			}
 
 			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
