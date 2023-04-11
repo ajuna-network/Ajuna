@@ -41,7 +41,7 @@ use pallet_grandpa::{
 use pallet_transaction_payment::CurrencyAdapter;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, ConstU64, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -61,7 +61,8 @@ mod impls;
 mod types;
 
 use ajuna_primitives::{
-	AccountId, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, Moment, Signature,
+	AccountId, AccountPublic, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, Moment,
+	Signature,
 };
 pub use consts::currency;
 use consts::{currency::*, time::*};
@@ -203,6 +204,7 @@ impl pallet_grandpa::Config for Runtime {
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
+	type MaxSetIdSessionEntries = ConstU64<0>;
 }
 
 parameter_types! {
@@ -316,6 +318,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 }
 
 impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
@@ -368,6 +371,7 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalOrigin = EnsureAtLeastHalfCouncil;
 	type ExternalMajorityOrigin = EnsureAtLeastThreeFourthsCouncil;
 	type ExternalDefaultOrigin = EnsureAllCouncil;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 	type FastTrackOrigin = EnsureAtLeastThreeFourthsCouncil;
 	type InstantOrigin = EnsureAllCouncil;
 	type InstantAllowed = frame_support::traits::ConstBool<true>;
@@ -588,6 +592,7 @@ parameter_types! {
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
 	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
+	pub const MaxAttributesPerCall: u32 = 10;
 }
 
 impl pallet_nfts::Config for Runtime {
@@ -610,7 +615,10 @@ impl pallet_nfts::Config for Runtime {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type MaxAttributesPerCall = MaxAttributesPerCall;
 	type Features = NftFeatures;
+	type OffchainSignature = Signature;
+	type OffchainPublic = AccountPublic;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = NftBenchmarkHelper;
 	type WeightInfo = ();
@@ -853,6 +861,12 @@ impl_runtime_apis! {
 			len: u32,
 		) -> pallet_transaction_payment::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 
