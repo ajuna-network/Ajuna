@@ -15,7 +15,7 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/substrate"
 clap        = { version = "4.0.9", features = [ "derive" ] }
 codec       = { package = "parity-scale-codec", version = "3.0.0" }
 futures     = { version = "0.3.21", features = [ "thread-pool" ] }
-log         = { version = "0.4.16", optional = true }
+log         = { version = "0.4.17", optional = true }
 parking_lot = "0.12.1"
 
 # Local
