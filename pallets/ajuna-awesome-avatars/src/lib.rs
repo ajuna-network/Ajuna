@@ -129,7 +129,8 @@ pub mod pallet {
 	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
 
 	// SBP-M3 review: if we can merge CurrentSeasonId & CurrentSeasonStatus storage into something
-	// like CurrentSeasonInfo storage, we can reduce one read operation (at the time of claim treasury)
+	// like CurrentSeasonInfo storage, we can reduce one read operation (at the time of claim
+	// treasury)
 	/// Contains the identifier of the current season.
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_id)]
