@@ -51,8 +51,10 @@ pub trait NftHandler<Account, ItemId, Item: NftConvertible> {
 	/// an external source. Once this process completes the item is locked until transported back
 	/// from the external source into the chain.
 	fn schedule_upload(
-		owner: Account,
-		collection_id: Self::CollectionId,
-		item_id: ItemId,
-	) -> DispatchResult;
+		_owner: Account,
+		_collection_id: Self::CollectionId,
+		_item_id: ItemId,
+	) -> DispatchResult {
+		todo!("will be implemented when bridge is ready")
+	}
 }

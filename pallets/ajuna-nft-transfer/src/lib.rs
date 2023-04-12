@@ -203,15 +203,6 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ItemRestored { collection_id, item_id, owner });
 			Ok(item)
 		}
-
-		// SBP-M3 review: Please add definition to this function
-		fn schedule_upload(
-			_owner: T::AccountId,
-			_collection_id: Self::CollectionId,
-			_item_id: T::ItemId,
-		) -> DispatchResult {
-			todo!()
-		}
 	}
 
 	impl<T: Config> Locker<T::CollectionId, T::ItemId> for Pallet<T> {
