@@ -1093,15 +1093,7 @@ pub mod pallet {
 
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			let GlobalConfig { mint, .. } = Self::global_configs();
-			ensure!(mint.open, Error::<T>::MintClosed);
-			let free_mints = Self::ensure_for_mint(player, &mint_option)?;
-
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			let last_block = Self::accounts(player).stats.mint.last;
-			if !last_block.is_zero() {
-				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
-			}
+			Self::ensure_for_mint(player, mint_option)?;
 
 			let season_id = Self::current_season_status().season_id;
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
@@ -1119,11 +1111,7 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
-			ensure!(
-				Self::owners(player).len() <= Self::accounts(player).storage_tier as usize,
-				Error::<T>::MaxOwnershipReached
-			);
-
+			let GlobalConfig { mint, .. } = Self::global_configs();
 			match mint_option.mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
@@ -1134,14 +1122,17 @@ pub mod pallet {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
-						account.free_mints =
-							free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
+						account.free_mints = Self::accounts(player)
+							.free_mints
+							.checked_sub(fee)
+							.ok_or(Error::<T>::InsufficientFreeMints)?;
 						Ok(())
 					})?;
 				},
 			};
 
 			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
+				let current_block = <frame_system::Pallet<T>>::block_number();
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
@@ -1299,7 +1290,16 @@ pub mod pallet {
 		pub(crate) fn ensure_for_mint(
 			player: &T::AccountId,
 			mint_option: &MintOption,
-		) -> Result<MintCount, DispatchError> {
+		) -> DispatchResult {
+			let GlobalConfig { mint, .. } = Self::global_configs();
+			ensure!(mint.open, Error::<T>::MintClosed);
+
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let last_block = Self::accounts(player).stats.mint.last;
+			if !last_block.is_zero() {
+				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
+			}
+
 			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
 			let free_mints = Self::accounts(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
@@ -1307,7 +1307,6 @@ pub mod pallet {
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
 			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
 
-			let GlobalConfig { mint, .. } = Self::global_configs();
 			match mint_option.mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
@@ -1322,7 +1321,10 @@ pub mod pallet {
 				},
 			};
 
-			Ok(free_mints)
+			let new_count = Self::owners(player).len() + mint_option.count as usize;
+			let max_count = Self::accounts(player).storage_tier as usize;
+			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
+			Ok(())
 		}
 
 		fn ensure_for_forge(

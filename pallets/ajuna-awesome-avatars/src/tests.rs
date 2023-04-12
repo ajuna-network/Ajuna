@@ -863,8 +863,8 @@ mod minting {
 					assert!(AAvatars::current_season_status().early);
 
 					// For whitelisted accounts, both mints are available for whitelisted accounts.
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint), 42);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint), 42);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint));
 
 					// For non-whitelisted accounts, only free mint is available (but will fail due
 					// to insufficient free mint balance).
@@ -882,9 +882,9 @@ mod minting {
 				for n in season.start..=season.end {
 					run_to_block(n);
 					assert!(AAvatars::current_season_status().active);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint), 42);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint), 42);
-					assert_ok!(AAvatars::ensure_for_mint(&BOB, &normal_mint), 0);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&BOB, &normal_mint));
 					assert_noop!(
 						AAvatars::ensure_for_mint(&BOB, &free_mint),
 						Error::<Test>::InsufficientFreeMints
@@ -904,7 +904,7 @@ mod minting {
 						Error::<Test>::PrematureSeasonEnd
 					);
 
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint), 42);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint));
 					assert_noop!(
 						AAvatars::ensure_for_mint(&BOB, &free_mint),
 						Error::<Test>::InsufficientFreeMints
