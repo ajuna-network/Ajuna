@@ -387,10 +387,10 @@ mod season {
 			// Check default values at block 1
 			run_to_block(1);
 			assert_eq!(System::block_number(), 1);
-			assert_eq!(AAvatars::current_season_id(), 1);
 			assert_eq!(
 				AAvatars::current_season_status(),
 				SeasonStatus {
+					season_id: 1,
 					early: false,
 					active: false,
 					early_ended: false,
@@ -404,10 +404,10 @@ mod season {
 			// Season 1 early start (block 2..3)
 			for n in season_1.early_start..season_1.start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 1);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 1,
 						early: true,
 						active: false,
 						early_ended: false,
@@ -418,10 +418,10 @@ mod season {
 			// Season 1 start (block 3..4)
 			for n in season_1.start..season_2.early_start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 1);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 1,
 						early: false,
 						active: true,
 						early_ended: false,
@@ -433,10 +433,10 @@ mod season {
 			// Season 2 early start (block 5..6)
 			for n in season_2.early_start..season_2.start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 2);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 2,
 						early: true,
 						active: false,
 						early_ended: false,
@@ -447,10 +447,10 @@ mod season {
 			// Season 2 start (block 7..9)
 			for n in season_2.start..season_2.end {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 2);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 2,
 						early: false,
 						active: true,
 						early_ended: false,
@@ -461,10 +461,10 @@ mod season {
 			// Season 2 end (block 10..22)
 			for n in (season_2.end + 1)..season_3.early_start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 3);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 3,
 						early: false,
 						active: false,
 						early_ended: false,
@@ -476,10 +476,10 @@ mod season {
 			// Season 3 early start (block 23..36)
 			for n in season_3.early_start..season_3.start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 3);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 3,
 						early: true,
 						active: false,
 						early_ended: false,
@@ -490,10 +490,10 @@ mod season {
 			// Season 3 start (block 37..53)
 			for n in season_3.start..=season_3.end {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 3);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 3,
 						early: false,
 						active: true,
 						early_ended: false,
@@ -504,10 +504,10 @@ mod season {
 			// Season 3 end (block 54..63)
 			for n in (season_3.end + 1)..=(season_3.end + 10) {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 4);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 4,
 						early: false,
 						active: false,
 						early_ended: false,
@@ -517,7 +517,7 @@ mod season {
 			}
 
 			// No further seasons exist
-			assert!(AAvatars::seasons(AAvatars::current_season_id()).is_none());
+			assert!(AAvatars::seasons(AAvatars::current_season_status().season_id).is_none());
 		})
 	}
 
@@ -838,6 +838,7 @@ mod minting {
 					assert_eq!(
 						AAvatars::current_season_status(),
 						SeasonStatus {
+							season_id: 1,
 							active: false,
 							early: false,
 							early_ended: false,
@@ -904,6 +905,7 @@ mod minting {
 					assert_eq!(
 						AAvatars::current_season_status(),
 						SeasonStatus {
+							season_id: 2,
 							active: false,
 							early: false,
 							early_ended: false,
@@ -952,7 +954,7 @@ mod minting {
 					let mut minted_count = 0;
 
 					System::set_block_number(1);
-					CurrentSeasonId::<Test>::set(1);
+					CurrentSeasonStatus::<Test>::mutate(|status| status.season_id = 1);
 					SeasonStats::<Test>::mutate(1, ALICE, |info| info.minted = 0);
 					SeasonStats::<Test>::mutate(2, ALICE, |info| info.minted = 0);
 					Owners::<Test>::remove(ALICE);
@@ -1127,7 +1129,7 @@ mod minting {
 					assert_eq!(seasons_participated.into_iter().collect::<Vec<_>>(), vec![1]);
 
 					// current season minted count resets
-					assert_eq!(AAvatars::current_season_id(), 2);
+					assert_eq!(AAvatars::current_season_status().season_id, 2);
 					assert_eq!(AAvatars::season_stats(2, ALICE).minted, 0);
 
 					// check for minted avatars
@@ -1952,8 +1954,10 @@ mod forging {
 	#[test]
 	fn forge_should_reject_unknown_season_calls() {
 		ExtBuilder::default().build().execute_with(|| {
-			CurrentSeasonId::<Test>::put(123);
-			CurrentSeasonStatus::<Test>::mutate(|status| status.active = true);
+			CurrentSeasonStatus::<Test>::mutate(|status| {
+				status.season_id = 123;
+				status.active = true;
+			});
 			assert_noop!(
 				AAvatars::forge(
 					RuntimeOrigin::signed(ALICE),

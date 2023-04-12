@@ -128,14 +128,6 @@ pub mod pallet {
 	#[pallet::getter(fn treasurer)]
 	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
 
-	// SBP-M3 review: if we can merge CurrentSeasonId & CurrentSeasonStatus storage into something
-	// like CurrentSeasonInfo storage, we can reduce one read operation (at the time of claim
-	// treasury)
-	/// Contains the identifier of the current season.
-	#[pallet::storage]
-	#[pallet::getter(fn current_season_id)]
-	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
-
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_status)]
 	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
@@ -207,7 +199,13 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			CurrentSeasonId::<T>::put(1);
+			CurrentSeasonStatus::<T>::put(SeasonStatus {
+				season_id: 1,
+				early: Default::default(),
+				active: Default::default(),
+				early_ended: Default::default(),
+				max_tier_avatars: Default::default(),
+			});
 			GlobalConfigs::<T>::put(GlobalConfig {
 				mint: MintConfig {
 					open: true,
@@ -411,7 +409,7 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			let current_season_id = Self::current_season_id();
+			let current_season_id = Self::current_season_status().season_id;
 			let mut weight = T::DbWeight::get().reads(1);
 
 			if let Some(current_season) = Self::seasons(current_season_id) {
@@ -636,7 +634,7 @@ pub mod pallet {
 			let upgrade_fee = Self::global_configs().account.storage_upgrade_fee;
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
 
-			let season_id = Self::current_season_id();
+			let season_id = Self::current_season_status().season_id;
 			Self::deposit_into_treasury(&season_id, upgrade_fee);
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
@@ -1044,7 +1042,7 @@ pub mod pallet {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
-			let season_id = Self::current_season_id();
+			let season_id = Self::current_season_status().season_id;
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let is_batched = mint_option.count.is_batched();
 			let generated_avatar_ids = (0..mint_option.count as usize)
@@ -1215,17 +1213,17 @@ pub mod pallet {
 		}
 
 		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
-			let mut season_id = Self::current_season_id();
-			let season = match Self::seasons(season_id) {
-				Some(season) if Self::current_season_status().is_in_season() => season,
+			let mut current_status = Self::current_season_status();
+			let season = match Self::seasons(current_status.season_id) {
+				Some(season) if current_status.is_in_season() => season,
 				_ => {
-					if season_id > 1 {
-						season_id.saturating_dec();
+					if current_status.season_id > 1 {
+						current_status.season_id.saturating_dec();
 					}
-					Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?
+					Self::seasons(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
 				},
 			};
-			Ok((season_id, season))
+			Ok((current_status.season_id, season))
 		}
 
 		fn ensure_ownership(
@@ -1335,12 +1333,12 @@ pub mod pallet {
 			let next_season_id = season_id.saturating_add(1);
 
 			CurrentSeasonStatus::<T>::mutate(|status| {
+				status.season_id = next_season_id;
 				status.early = false;
 				status.active = false;
 				status.early_ended = false;
 				status.max_tier_avatars = Zero::zero();
 			});
-			CurrentSeasonId::<T>::put(next_season_id);
 			Self::deposit_event(Event::SeasonFinished(season_id));
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 

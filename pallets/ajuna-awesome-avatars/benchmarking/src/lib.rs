@@ -65,13 +65,14 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 
 fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	CurrentSeasonStatus::<T>::put(SeasonStatus {
+		season_id: 0,
 		early: false,
 		active: true,
 		early_ended: false,
 		max_tier_avatars: 0,
 	});
 	for i in 0..n {
-		CurrentSeasonId::<T>::put(i as SeasonId + 1);
+		CurrentSeasonStatus::<T>::mutate(|status| status.season_id = i as SeasonId + 1);
 		Seasons::<T>::insert(
 			(i + 1) as SeasonId,
 			Season {
@@ -95,7 +96,9 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 		);
 	}
 	frame_system::Pallet::<T>::set_block_number(
-		AAvatars::<T>::seasons(AAvatars::<T>::current_season_id()).unwrap().start,
+		AAvatars::<T>::seasons(AAvatars::<T>::current_season_status().season_id)
+			.unwrap()
+			.start,
 	);
 	Ok(())
 }

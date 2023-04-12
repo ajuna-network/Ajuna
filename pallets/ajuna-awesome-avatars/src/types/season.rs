@@ -21,6 +21,7 @@ use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Debug, Default, PartialEq)]
 pub struct SeasonStatus {
+	pub season_id: SeasonId,
 	pub early: bool,
 	pub active: bool,
 	pub early_ended: bool,
@@ -250,9 +251,25 @@ mod test {
 		}
 	}
 
+	impl SeasonStatus {
+		fn early(mut self, early: bool) -> Self {
+			self.early = early;
+			self
+		}
+		fn active(mut self, active: bool) -> Self {
+			self.active = active;
+			self
+		}
+		fn early_ended(mut self, early_ended: bool) -> Self {
+			self.early_ended = early_ended;
+			self
+		}
+	}
+
 	#[test]
 	fn is_in_season_works() {
 		assert!(!SeasonStatus {
+			season_id: 123,
 			early: false,
 			active: false,
 			early_ended: false,
@@ -261,13 +278,13 @@ mod test {
 		.is_in_season());
 
 		for season_status in [
-			SeasonStatus { early: true, active: false, early_ended: false, max_tier_avatars: 0 },
-			SeasonStatus { early: false, active: true, early_ended: false, max_tier_avatars: 1 },
-			SeasonStatus { early: false, active: false, early_ended: true, max_tier_avatars: 2 },
-			SeasonStatus { early: false, active: true, early_ended: true, max_tier_avatars: 3 },
-			SeasonStatus { early: true, active: false, early_ended: true, max_tier_avatars: 4 },
-			SeasonStatus { early: true, active: true, early_ended: false, max_tier_avatars: 5 },
-			SeasonStatus { early: true, active: true, early_ended: true, max_tier_avatars: 6 },
+			SeasonStatus::default().early(true).active(false).early_ended(false),
+			SeasonStatus::default().early(false).active(true).early_ended(false),
+			SeasonStatus::default().early(false).active(false).early_ended(true),
+			SeasonStatus::default().early(false).active(true).early_ended(true),
+			SeasonStatus::default().early(true).active(false).early_ended(true),
+			SeasonStatus::default().early(true).active(true).early_ended(false),
+			SeasonStatus::default().early(true).active(true).early_ended(true),
 		] {
 			assert!(season_status.is_in_season());
 		}
