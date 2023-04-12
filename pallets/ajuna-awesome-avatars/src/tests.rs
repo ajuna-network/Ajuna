@@ -95,9 +95,8 @@ mod organizer {
 		});
 	}
 
-	// SBP-M3 review: Typo in the test case name
 	#[test]
-	fn ensure_organizer_should_reject_whe_no_organizer_is_set() {
+	fn ensure_organizer_should_reject_when_no_organizer_is_set() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(AAvatars::organizer(), None);
 			assert_noop!(
