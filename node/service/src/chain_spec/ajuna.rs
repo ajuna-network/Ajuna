@@ -136,6 +136,7 @@ fn testnet_genesis(
 		balances: ajuna_runtime::BalancesConfig {
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
+		transaction_payment: Default::default(),
 		sudo: ajuna_runtime::SudoConfig {
 			key: Some(get_account_id_from_seed::<sr25519::Public>("Alice")),
 		},

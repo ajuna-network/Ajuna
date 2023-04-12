@@ -136,6 +136,7 @@ fn testnet_genesis(
 		balances: bajun_runtime::BalancesConfig {
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
+		transaction_payment: Default::default(),
 		sudo: bajun_runtime::SudoConfig {
 			key: Some(get_account_id_from_seed::<sr25519::Public>("Alice")),
 		},

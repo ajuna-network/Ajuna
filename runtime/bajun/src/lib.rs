@@ -219,7 +219,7 @@ const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 0.5 of a second of compute with a 12 second average block time.
 const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
-	cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE as u64,
+	cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64,
 );
 
 /// The version information used to identify this runtime when compiled natively.
@@ -333,14 +333,8 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
 
-parameter_types! {
-	pub const UncleGenerations: u32 = 0;
-}
-
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
 	type EventHandler = (CollatorSelection,);
 }
 
@@ -485,6 +479,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
 	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
+	type PriceForSiblingDelivery = ();
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -740,36 +735,34 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		// System support stuff.
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
-		ParachainSystem: cumulus_pallet_parachain_system::{
-			Pallet, Call, Config, Storage, Inherent, Event<T>, ValidateUnsigned,
-		} = 1,
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
-		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
+		System: frame_system = 0,
+		ParachainSystem: cumulus_pallet_parachain_system = 1,
+		Timestamp: pallet_timestamp = 2,
+		ParachainInfo: parachain_info = 3,
+		Multisig: pallet_multisig = 4,
 		Utility: pallet_utility = 5,
-		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 6,
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 7,
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 8,
-		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 9,
+		Identity: pallet_identity = 6,
+		Proxy: pallet_proxy = 7,
+		Scheduler: pallet_scheduler = 8,
+		Preimage: pallet_preimage = 9,
 
 		// Monetary stuff.
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 16,
+		Balances: pallet_balances = 15,
+		TransactionPayment: pallet_transaction_payment = 16,
 		Vesting: orml_vesting = 17,
 
 		// Collator support. The order of these 4 are important and shall not change.
-		Authorship: pallet_authorship::{Pallet, Call, Storage} = 20,
-		CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 21,
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 22,
-		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 23,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 24,
+		Authorship: pallet_authorship = 20,
+		CollatorSelection: pallet_collator_selection = 21,
+		Session: pallet_session = 22,
+		Aura: pallet_aura = 23,
+		AuraExt: cumulus_pallet_aura_ext = 24,
 
 		// XCM helpers.
-		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 30,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin, Config} = 31,
-		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 32,
-		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
+		XcmpQueue: cumulus_pallet_xcmp_queue = 30,
+		PolkadotXcm: pallet_xcm = 31,
+		CumulusXcm: cumulus_pallet_xcm = 32,
+		DmpQueue: cumulus_pallet_dmp_queue = 33,
 
 		// Governance
 		Sudo: pallet_sudo = 40,
@@ -778,11 +771,11 @@ construct_runtime!(
 		CouncilMembership: pallet_membership::<Instance2> = 43,
 
 		// Indexes 50-59 should be reserved for our games.
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage} = 50,
+		Randomness: pallet_randomness_collective_flip = 50,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
 
 		// Indexes 60-69 should be reserved for NFT related pallets
-		Nft: pallet_nfts::{Pallet, Call, Storage, Event<T>} = 60,
+		Nft: pallet_nfts = 60,
 		NftTransfer: pallet_ajuna_nft_transfer = 61,
 	}
 );
@@ -930,6 +923,12 @@ impl_runtime_apis! {
 			len: u32,
 		) -> pallet_transaction_payment::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 
