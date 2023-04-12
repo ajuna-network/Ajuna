@@ -76,7 +76,10 @@ use frame_support::{
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
-	traits::{AccountIdConversion, Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
+	traits::{
+		AccountIdConversion, CheckedAdd, CheckedSub, Hash, Saturating, TrailingZeroInput,
+		UniqueSaturatedInto, Zero,
+	},
 	ArithmeticError,
 };
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -374,6 +377,8 @@ pub mod pallet {
 		MaxVariationsTooHigh,
 		/// The player has not enough free mints available.
 		InsufficientFreeMints,
+		/// The player has not enough balance available.
+		InsufficientBalance,
 		/// Attempt to transfer, issue or withdraw free mints lower than the minimum allowed.
 		TooLowFreeMints,
 		/// Less than minimum allowed sacrifices are used for forging.
@@ -1019,8 +1024,8 @@ pub mod pallet {
 		) -> Result<SeasonOf<T>, DispatchError> {
 			season.validate::<T>()?;
 
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let prev_season_id = season_id.checked_sub(&1).ok_or(ArithmeticError::Underflow)?;
+			let next_season_id = season_id.checked_add(&1).ok_or(ArithmeticError::Overflow)?;
 
 			if prev_season_id > 0 {
 				let prev_season =
@@ -1086,14 +1091,11 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		// SBP-M3 review: We should validate the user's balance for the Normal MintType.
-		// In my viewpoint, we are wasting our resources (CPU processing) by generating avatar_ids
-		// and some IO operations if the player doesn't have enough balance to mint a new avatar.
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			let GlobalConfig { mint, .. } = Self::global_configs();
 			ensure!(mint.open, Error::<T>::MintClosed);
-			let free_mints = Self::ensure_for_mint(player, &mint_option.mint_type)?;
+			let free_mints = Self::ensure_for_mint(player, &mint_option)?;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let last_block = Self::accounts(player).stats.mint.last;
@@ -1296,17 +1298,30 @@ pub mod pallet {
 
 		pub(crate) fn ensure_for_mint(
 			player: &T::AccountId,
-			mint_type: &MintType,
+			mint_option: &MintOption,
 		) -> Result<MintCount, DispatchError> {
 			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
 			let free_mints = Self::accounts(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
-			let is_free_mint = mint_type == &MintType::Free;
+			let is_free_mint = mint_option.mint_type == MintType::Free;
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
-			ensure!(
-				active || early && is_whitelisted || early && is_free_mint,
-				Error::<T>::SeasonClosed
-			);
+			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
+
+			let GlobalConfig { mint, .. } = Self::global_configs();
+			match mint_option.mint_type {
+				MintType::Normal => {
+					let fee = mint.fees.fee_for(&mint_option.count);
+					T::Currency::free_balance(player)
+						.checked_sub(&fee)
+						.ok_or(Error::<T>::InsufficientBalance)?;
+				},
+				MintType::Free => {
+					let fee = (mint_option.count as MintCount)
+						.saturating_mul(mint.free_mint_fee_multiplier);
+					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
+				},
+			};
+
 			Ok(free_mints)
 		}
 

@@ -826,6 +826,8 @@ mod minting {
 	#[test]
 	fn ensure_for_mint_works() {
 		let season = Season::default().early_start(10).start(20).end(30);
+		let normal_mint = MintOption { mint_type: MintType::Normal, count: MintPackSize::One };
+		let free_mint = MintOption { mint_type: MintType::Free, count: MintPackSize::One };
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
@@ -845,41 +847,48 @@ mod minting {
 							max_tier_avatars: 0
 						}
 					);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_noop!(
-							AAvatars::ensure_for_mint(&ALICE, &mint_type),
-							Error::<Test>::SeasonClosed
-						);
+					for account in [ALICE, BOB, CHARLIE] {
+						for ext in [
+							AAvatars::ensure_for_mint(&account, &normal_mint),
+							AAvatars::ensure_for_mint(&account, &free_mint),
+						] {
+							assert_noop!(ext, Error::<Test>::SeasonClosed);
+						}
 					}
 				}
 
-				// At early start, both mints are available for whitelisted accounts.
+				// At early start
 				for n in season.early_start..season.start {
 					run_to_block(n);
 					assert!(AAvatars::current_season_status().early);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_ok!(AAvatars::ensure_for_mint(&ALICE, &mint_type), 42);
-					}
-				}
-				// At early start, only free mint is available for non-whitelisted accounts.
-				for n in season.early_start..season.start {
-					run_to_block(n);
-					assert!(AAvatars::current_season_status().early);
+
+					// For whitelisted accounts, both mints are available for whitelisted accounts.
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint), 42);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint), 42);
+
+					// For non-whitelisted accounts, only free mint is available (but will fail due
+					// to insufficient free mint balance).
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
+						AAvatars::ensure_for_mint(&BOB, &normal_mint),
 						Error::<Test>::SeasonClosed
 					);
-					assert_ok!(AAvatars::ensure_for_mint(&BOB, &MintType::Free), 0);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &free_mint),
+						Error::<Test>::InsufficientFreeMints
+					);
 				}
 
 				// At official start, both mints are available for all accounts.
 				for n in season.start..=season.end {
 					run_to_block(n);
 					assert!(AAvatars::current_season_status().active);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_ok!(AAvatars::ensure_for_mint(&ALICE, &mint_type), 42);
-						assert_ok!(AAvatars::ensure_for_mint(&BOB, &mint_type), 0);
-					}
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint), 42);
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint), 42);
+					assert_ok!(AAvatars::ensure_for_mint(&BOB, &normal_mint), 0);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &free_mint),
+						Error::<Test>::InsufficientFreeMints
+					);
 				}
 
 				// At premature end, only free mint is available for all accounts.
@@ -887,15 +896,20 @@ mod minting {
 					run_to_block(n);
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = true);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&ALICE, &MintType::Normal),
+						AAvatars::ensure_for_mint(&ALICE, &normal_mint),
 						Error::<Test>::PrematureSeasonEnd
 					);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &MintType::Free), 42);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
+						AAvatars::ensure_for_mint(&BOB, &normal_mint),
 						Error::<Test>::PrematureSeasonEnd
 					);
-					assert_ok!(AAvatars::ensure_for_mint(&BOB, &MintType::Free), 0);
+
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint), 42);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &free_mint),
+						Error::<Test>::InsufficientFreeMints
+					);
+
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = false);
 				}
 
@@ -912,15 +926,13 @@ mod minting {
 							max_tier_avatars: 0
 						}
 					);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_noop!(
-							AAvatars::ensure_for_mint(&ALICE, &mint_type),
-							Error::<Test>::SeasonClosed
-						);
-						assert_noop!(
-							AAvatars::ensure_for_mint(&BOB, &mint_type),
-							Error::<Test>::SeasonClosed
-						);
+					for account in [ALICE, BOB, CHARLIE] {
+						for ext in [
+							AAvatars::ensure_for_mint(&account, &normal_mint),
+							AAvatars::ensure_for_mint(&account, &free_mint),
+						] {
+							assert_noop!(ext, Error::<Test>::SeasonClosed);
+						}
 					}
 				}
 			});
@@ -1301,7 +1313,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption { count: mint_count, mint_type: MintType::Normal }
 						),
-						pallet_balances::Error::<Test>::InsufficientBalance
+						Error::<Test>::InsufficientBalance
 					);
 				}
 
