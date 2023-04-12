@@ -684,7 +684,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Claim treasury of a season.
+		///
+		/// The origin of this call must be signed by a treasurer account associated with the given
+		/// season ID. The treasurer of a season can claim the season's associated treasury once the
+		/// season finishes.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::claim_treasury())]
 		pub fn claim_treasury(origin: OriginFor<T>, season_id: SeasonId) -> DispatchResult {
@@ -783,7 +789,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Set the collection ID to associate avatars with.
+		///
+		/// Externally created collection ID for avatars must be set in the `CollectionId` storage
+		/// to serve as a lookup for locking and unlocking avatars as NFTs.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::set_collection_id())]
 		pub fn set_collection_id(
@@ -796,7 +807,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Locks an avatar to be tokenized as an NFT.
+		///
+		/// The origin of this call must specify an avatar, owned by the origin, to prevent it from
+		/// forging, trading and transferring it to other players. When successful, the ownership of
+		/// the avatar is transferred from the player to the pallet's technical account.
+		///
+		/// Locking an avatar allows for new
+		/// ways of interacting with it currently under development.
+		///
+		/// Weight: `O(n)` where:
+		/// - `n = max avatars per player`
 		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::lock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -818,7 +839,15 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Unlocks an avatar removing its NFT representation.
+		///
+		/// The origin of this call must specify an avatar, owned and locked by the origin, to allow
+		/// forging, trading and transferring it to other players. When successful, the ownership of
+		/// the avatar is transferred from the pallet's technical account back to the player and its
+		/// existing NFT representation is destroyed.
+		///
+		/// Weight: `O(n)` where:
+		/// - `n = max avatars per player`
 		#[pallet::call_index(16)]
 		#[pallet::weight(T::WeightInfo::unlock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -837,14 +866,21 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Fix the variation of an avatar's DNA affected by a bug.
+		///
+		/// A trivial bug was introduced to incorrectly represent the 3rd component's variation,
+		/// which should be the same as that of the 2nd. Instead of fixing the DNAs via migration,
+		/// we allow players freedom to choose to fix these affected DNAs since they might prefer
+		/// the existing looks.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(17)]
 		#[pallet::weight(T::WeightInfo::fix_variation())]
 		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
 
-			// Update the variation of the 3nd component to be the same as that of the 2nd by
+			// Update the variation of the 3rd component to be the same as that of the 2nd by
 			// copying the rightmost 4 bits of dna[1] to the dna[2]
 			avatar.dna[2] = (avatar.dna[2] & 0b1111_0000) | (avatar.dna[1] & 0b0000_1111);
 
@@ -853,7 +889,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Set a service account.
+		///
+		/// The origin of this call must be root. A service account has sufficient privilege to call
+		/// the `prepare_ipfs` extrinsic.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(18)]
 		#[pallet::weight(T::WeightInfo::set_service_account())]
 		pub fn set_service_account(
@@ -866,7 +907,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Prepare an avatar to be uploaded to IPFS.
+		///
+		/// The origin of this call must specify an avatar, owned by the origin, to display the
+		/// intention of uploading it to an IPFS storage. When successful, the `PreparedAvatar`
+		/// event is emitted to be picked up by our external service that interacts with the IPFS.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(19)]
 		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -886,7 +933,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Unprepare an avatar to be detached from IPFS.
+		///
+		/// The origin of this call must specify an avatar, owned by the origin, that is undergoing
+		/// the IPFS upload process.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(20)]
 		#[pallet::weight(T::WeightInfo::unprepare_avatar())]
 		pub fn unprepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -900,7 +952,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Prepare IPFS for an avatar.
+		///
+		/// The origin of this call must be signed by the service account to upload the given avatar
+		/// to an IPFS storage and stores its CID. A third-party service subscribes for the
+		/// `PreparedAvatar` events which triggers preparing assets, their upload to IPFS and
+		/// storing their CIDs.
+		//
+		/// Weight: `O(1)`
 		#[pallet::call_index(21)]
 		#[pallet::weight(T::WeightInfo::prepare_ipfs())]
 		pub fn prepare_ipfs(
