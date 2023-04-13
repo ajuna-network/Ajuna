@@ -225,39 +225,31 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn lock_status)]
 	pub type LockedState<T: Config> = StorageValue<_, PalletLockedState, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn active_contracts)]
 	pub type ActiveContracts<T: Config> =
 		StorageMap<_, Identity, ContractItemIdOf<T>, StakingContractOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn contract_owners)]
 	pub type ContractOwners<T: Config> =
 		StorageMap<_, Identity, ContractItemIdOf<T>, AccountIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn contract_durations)]
 	pub type ContractDurations<T: Config> =
 		StorageMap<_, Identity, ContractItemIdOf<T>, T::BlockNumber, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn contract_staked_assets)]
 	pub type ContractStakedAssets<T: Config> =
 		StorageMap<_, Identity, ContractItemIdOf<T>, StakedAssetsVecOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn treasury_account)]
 	pub type TreasuryAccount<T: Config> = StorageValue<_, AccountIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn contract_collection_id)]
 	pub type ContractCollectionId<T: Config> =
 		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractCollectionNotSet>>;
 
@@ -267,7 +259,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn next_contract_id)]
 	pub type NextContractId<T: Config> =
 		StorageValue<_, ContractItemIdOf<T>, ValueQuery, DefaultContractId<T>>;
 
@@ -466,7 +457,7 @@ pub mod pallet {
 			Self::try_if_contract_can_be_taken_by(&account, &contract_id)?;
 
 			let contract: StakingContractOf<T> =
-				Self::active_contracts(contract_id).ok_or(Error::<T>::ContractNotFound)?;
+				ActiveContracts::<T>::get(contract_id).ok_or(Error::<T>::ContractNotFound)?;
 
 			ensure!(
 				contract.evaluate_for::<T::NftHelper>(&staked_assets),
@@ -508,7 +499,7 @@ pub mod pallet {
 			Self::try_checking_if_contract_can_be_redeemed(&account, &contract_id)?;
 
 			let staked_assets =
-				Self::contract_staked_assets(contract_id).ok_or(Error::<T>::ContractNotFound)?;
+				ContractStakedAssets::<T>::get(contract_id).ok_or(Error::<T>::ContractNotFound)?;
 
 			Self::try_transferring_staked_assets_ownership(
 				&staked_assets,
@@ -517,7 +508,7 @@ pub mod pallet {
 				true,
 			)?;
 
-			let contract_reward = Self::active_contracts(contract_id)
+			let contract_reward = ActiveContracts::<T>::get(contract_id)
 				.ok_or(Error::<T>::ContractNotFound)?
 				.get_reward();
 
@@ -537,7 +528,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		fn ensure_organizer(origin: OriginFor<T>) -> Result<AccountIdOf<T>, DispatchError> {
 			let maybe_organizer = ensure_signed(origin)?;
-			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
+			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
 			Ok(maybe_organizer)
 		}
@@ -552,7 +543,7 @@ pub mod pallet {
 
 		/// The account identifier of the treasury pot.
 		pub fn treasury_account_id() -> AccountIdOf<T> {
-			if let Some(account) = Self::treasury_account() {
+			if let Some(account) = TreasuryAccount::<T>::get() {
 				account
 			} else {
 				let account: AccountIdOf<T> = T::TreasuryPalletId::get().into_account_truncating();
@@ -571,7 +562,7 @@ pub mod pallet {
 
 		#[inline]
 		fn get_next_contract_id() -> ContractItemIdOf<T> {
-			let contract_id: ContractItemIdOf<T> = Self::next_contract_id();
+			let contract_id: ContractItemIdOf<T> = NextContractId::<T>::get();
 
 			if let Some(result) = contract_id.checked_add(&ContractItemIdOf::<T>::one()) {
 				NextContractId::<T>::put(result);
@@ -612,7 +603,7 @@ pub mod pallet {
 			account: &AccountIdOf<T>,
 			contract_id: &ContractItemIdOf<T>,
 		) -> DispatchResult {
-			if let Some(ref contract_owner) = Self::contract_owners(contract_id) {
+			if let Some(ref contract_owner) = ContractOwners::<T>::get(contract_id) {
 				if contract_owner == account {
 					Err(Error::<T>::ContractAlreadyTaken.into())
 				} else {
@@ -739,13 +730,13 @@ pub mod pallet {
 			contract_id: &ContractItemIdOf<T>,
 		) -> DispatchResult {
 			ensure!(
-				Self::contract_owners(contract_id).as_ref() == Some(contract_redeemer),
+				ContractOwners::<T>::get(contract_id).as_ref() == Some(contract_redeemer),
 				Error::<T>::ContractNotOwned
 			);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let contract_expiry =
-				Self::contract_durations(contract_id).ok_or(Error::<T>::ContractNotFound)?;
+				ContractDurations::<T>::get(contract_id).ok_or(Error::<T>::ContractNotFound)?;
 
 			ensure!(current_block >= contract_expiry, Error::<T>::ContractStillActive);
 

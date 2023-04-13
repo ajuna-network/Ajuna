@@ -199,7 +199,7 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
-		let expected_id = NftStake::<T>::next_contract_id();
+		let expected_id = NextContractId::<T>::get();
 	}: submit_staking_contract(RawOrigin::Signed(caller.clone()), contract)
 	verify {
 		assert_last_event::<T>(Event::StakingContractCreated { creator: caller, contract: expected_id }.into())
@@ -216,7 +216,7 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Nft(nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
-		let expected_id = NftStake::<T>::next_contract_id();
+		let expected_id = NextContractId::<T>::get();
 	}: submit_staking_contract(RawOrigin::Signed(caller.clone()), contract)
 	verify {
 		assert_last_event::<T>(Event::StakingContractCreated { creator: caller, contract: expected_id }.into())
@@ -232,7 +232,7 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
-		let contract_id = NftStake::<T>::next_contract_id();
+		let contract_id = NextContractId::<T>::get();
 
 		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
 
@@ -256,7 +256,7 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
-		let contract_id = NftStake::<T>::next_contract_id();
+		let contract_id = NextContractId::<T>::get();
 
 		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
 
@@ -284,7 +284,7 @@ benchmarks! {
 		let reward = StakingRewardOf::<T>::Nft(reward_nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
-		let contract_id = NftStake::<T>::next_contract_id();
+		let contract_id = NextContractId::<T>::get();
 
 		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
 
