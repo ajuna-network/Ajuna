@@ -85,7 +85,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn nft_statuses)]
 	pub type NftStatuses<T: Config> =
 		StorageDoubleMap<_, Identity, T::CollectionId, Identity, T::ItemId, NftStatus, OptionQuery>;
 
