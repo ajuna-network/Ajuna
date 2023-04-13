@@ -134,17 +134,8 @@ pub mod pallet {
 			item: Item,
 			ipfs_url: IpfsUrl,
 		) -> DispatchResult {
-			// SBP-M3 review: Please resolve this TODO
-			// TODO: Should players pay for the deposit? (Currently the collection owner pays it)
-			T::NftHelper::mint_into(
-				&collection_id,
-				&item_id,
-				&owner,
-				&T::ItemConfig::default(),
-				true,
-			)?;
-
-			// TODO: Do we need to store the entire item or just its attributes?
+			let config = T::ItemConfig::default();
+			T::NftHelper::mint_into(&collection_id, &item_id, &owner, &config, false)?;
 			T::NftHelper::set_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE, &item)?;
 
 			ensure!(!ipfs_url.is_empty(), Error::<T>::EmptyIpfsUrl);

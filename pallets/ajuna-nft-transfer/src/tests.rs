@@ -72,117 +72,132 @@ mod store_as_nft {
 
 	#[test]
 	fn can_store_item_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem::default();
-			let url = b"ipfs://test".to_vec();
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(
-				BOB,
-				collection_id,
-				item_id,
-				item.clone(),
-				url.clone()
-			));
-			assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
-			assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
-			assert_eq!(
-				Nft::typed_attribute::<AttributeCode, MockItem>(
-					&collection_id,
-					&item_id,
-					&AttributeNamespace::Pallet,
-					&MockItem::ITEM_CODE,
-				),
-				Some(item.clone())
-			);
-			assert_eq!(
-				Nft::typed_attribute::<AttributeCode, IpfsUrl>(
-					&collection_id,
-					&item_id,
-					&AttributeNamespace::Pallet,
-					&MockItem::IPFS_URL_CODE,
-				),
-				Some(url)
-			);
-			for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
+				assert_ok!(NftTransfer::store_as_nft(
+					BOB,
+					collection_id,
+					item_id,
+					item.clone(),
+					url.clone()
+				));
+				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
+				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				assert_eq!(
-					Nft::typed_attribute(
+					Nft::typed_attribute::<AttributeCode, MockItem>(
 						&collection_id,
 						&item_id,
 						&AttributeNamespace::Pallet,
-						&attribute_code,
+						&MockItem::ITEM_CODE,
 					),
-					Some(encoded_attributes)
+					Some(item.clone())
 				);
-			}
+				assert_eq!(
+					Nft::typed_attribute::<AttributeCode, IpfsUrl>(
+						&collection_id,
+						&item_id,
+						&AttributeNamespace::Pallet,
+						&MockItem::IPFS_URL_CODE,
+					),
+					Some(url)
+				);
+				for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
+					assert_eq!(
+						Nft::typed_attribute(
+							&collection_id,
+							&item_id,
+							&AttributeNamespace::Pallet,
+							&attribute_code,
+						),
+						Some(encoded_attributes)
+					);
+				}
+				assert_eq!(
+					NftTransfer::nft_statuses(collection_id, item_id),
+					Some(NftStatus::Stored)
+				);
 
-			assert_eq!(NftTransfer::nft_statuses(collection_id, item_id), Some(NftStatus::Stored));
+				// check players pay for the item deposit
+				assert_eq!(Balances::free_balance(BOB), 0);
 
-			System::assert_last_event(mock::RuntimeEvent::NftTransfer(crate::Event::ItemStored {
-				collection_id,
-				item_id,
-				owner: BOB,
-			}));
-		});
+				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
+				));
+			});
 	}
 
 	#[test]
 	fn cannot_store_empty_ipfs_url() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem::default();
-			let url = vec![];
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = vec![];
 
-			assert_err!(
-				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, url),
-				Error::<Test>::EmptyIpfsUrl
-			);
-		});
+				assert_err!(
+					NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, url),
+					Error::<Test>::EmptyIpfsUrl
+				);
+			});
 	}
 
 	#[test]
 	fn cannot_store_duplicates_under_same_collection() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem::default();
-			let url = b"ipfs://test".to_vec();
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(
-				ALICE,
-				collection_id,
-				item_id,
-				item.clone(),
-				url.clone()
-			));
-			assert_noop!(
-				NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, url),
-				pallet_nfts::Error::<Test>::AlreadyExists
-			);
-		});
+				assert_ok!(NftTransfer::store_as_nft(
+					ALICE,
+					collection_id,
+					item_id,
+					item.clone(),
+					url.clone()
+				));
+				assert_noop!(
+					NftTransfer::store_as_nft(ALICE, collection_id, item_id, item, url),
+					pallet_nfts::Error::<Test>::AlreadyExists
+				);
+			});
 	}
 
 	#[test]
 	fn cannot_store_item_above_encoding_limit() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem {
-				field_1: vec![1; ValueLimit::get() as usize],
-				field_2: 1,
-				field_3: false,
-			};
-			let url = b"ipfs://test".to_vec();
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem {
+					field_1: vec![1; ValueLimit::get() as usize],
+					field_2: 1,
+					field_3: false,
+				};
+				let url = b"ipfs://test".to_vec();
 
-			assert!(item.encode().len() > ValueLimit::get() as usize);
-			// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
-			assert_err!(
-				NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url),
-				pallet_nfts::Error::<Test>::IncorrectData
-			);
-		});
+				assert!(item.encode().len() > ValueLimit::get() as usize);
+				// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
+				assert_err!(
+					NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url),
+					pallet_nfts::Error::<Test>::IncorrectData
+				);
+			});
 	}
 }
 
@@ -191,79 +206,101 @@ mod recover_from_nft {
 
 	#[test]
 	fn can_recover_item_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem::default();
-			let url = b"ipfs://test".to_vec();
+		let initial_balance = ItemDeposit::get();
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, initial_balance)])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item.clone(), url));
+				assert_ok!(NftTransfer::store_as_nft(
+					BOB,
+					collection_id,
+					item_id,
+					item.clone(),
+					url
+				));
+				assert_eq!(Balances::free_balance(BOB), 0);
 
-			assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
-			assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
-			assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
-				&collection_id,
-				&item_id,
-				&AttributeNamespace::Pallet,
-				&MockItem::ITEM_CODE,
-			)
-			.is_none());
-			assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
-				&collection_id,
-				&item_id,
-				&AttributeNamespace::Pallet,
-				&MockItem::IPFS_URL_CODE,
-			)
-			.is_none());
-			for attribute_code in MockItem::get_attribute_codes() {
-				assert!(Nft::attribute(
+				assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
+				assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
+				assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
 					&collection_id,
 					&item_id,
 					&AttributeNamespace::Pallet,
-					&attribute_code.encode(),
+					&MockItem::ITEM_CODE,
 				)
 				.is_none());
-			}
+				assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
+					&collection_id,
+					&item_id,
+					&AttributeNamespace::Pallet,
+					&MockItem::IPFS_URL_CODE,
+				)
+				.is_none());
+				for attribute_code in MockItem::get_attribute_codes() {
+					assert!(Nft::attribute(
+						&collection_id,
+						&item_id,
+						&AttributeNamespace::Pallet,
+						&attribute_code.encode(),
+					)
+					.is_none());
+				}
 
-			System::assert_last_event(mock::RuntimeEvent::NftTransfer(
-				crate::Event::ItemRestored { collection_id, item_id, owner: BOB },
-			));
-		});
+				// check players are refunded the item deposit
+				assert_eq!(Balances::free_balance(BOB), initial_balance);
+
+				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+					crate::Event::ItemRestored { collection_id, item_id, owner: BOB },
+				));
+			});
 	}
 
 	#[test]
 	fn cannot_restore_uploaded_item() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem::default();
-			let url = b"ipfs://test".to_vec();
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url));
-			NftStatuses::<Test>::insert(collection_id, item_id, NftStatus::Uploaded);
+				assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url));
+				NftStatuses::<Test>::insert(collection_id, item_id, NftStatus::Uploaded);
 
-			assert_noop!(
-				NftTransfer::recover_from_nft(BOB, collection_id, item_id) as Result<MockItem, _>,
-				Error::<Test>::NftOutsideOfChain
-			);
-		});
+				assert_noop!(
+					NftTransfer::recover_from_nft(BOB, collection_id, item_id)
+						as Result<MockItem, _>,
+					Error::<Test>::NftOutsideOfChain
+				);
+			});
 	}
 
 	#[test]
 	fn cannot_restore_if_not_owned() {
-		ExtBuilder::default().build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let item_id = H256::random();
-			let item = MockItem::default();
-			let url = b"ipfs://test".to_vec();
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
 
-			assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url));
+				assert_ok!(NftTransfer::store_as_nft(BOB, collection_id, item_id, item, url));
 
-			// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
-			assert_err!(
-				NftTransfer::recover_from_nft(ALICE, collection_id, item_id) as Result<MockItem, _>,
-				pallet_nfts::Error::<Test>::NoPermission
-			);
-		});
+				// NOTE: As long as the execution is wrapped in an extrinsic, this is a noop.
+				assert_err!(
+					NftTransfer::recover_from_nft(ALICE, collection_id, item_id)
+						as Result<MockItem, _>,
+					pallet_nfts::Error::<Test>::NoPermission
+				);
+			});
 	}
 }

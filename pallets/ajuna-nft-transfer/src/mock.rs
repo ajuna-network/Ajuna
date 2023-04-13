@@ -81,7 +81,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const MockExistentialDeposit: MockBalance = 1000;
+	pub const MockExistentialDeposit: MockBalance = 3;
 }
 
 impl pallet_balances::Config for Test {
@@ -97,8 +97,8 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const CollectionDeposit: MockBalance = 1;
-	pub const ItemDeposit: MockBalance = 1;
+	pub const CollectionDeposit: MockBalance = 999;
+	pub const ItemDeposit: MockBalance = 333;
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
 	pub const ValueLimit: u32 = 64;
@@ -172,17 +172,17 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type NftHelper = Nft;
 }
 
+#[derive(Default)]
 pub struct ExtBuilder {
 	balances: Vec<(MockAccountId, MockBalance)>,
 }
 
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self { balances: vec![(ALICE, 1_000_000_000), (BOB, 1_000_000_000)] }
-	}
-}
-
 impl ExtBuilder {
+	pub fn balances(mut self, balances: &[(MockAccountId, MockBalance)]) -> Self {
+		self.balances = balances.to_vec();
+		self
+	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
 			system: Default::default(),
