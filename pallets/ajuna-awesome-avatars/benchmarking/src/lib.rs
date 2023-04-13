@@ -96,9 +96,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 		);
 	}
 	frame_system::Pallet::<T>::set_block_number(
-		AAvatars::<T>::seasons(AAvatars::<T>::current_season_status().season_id)
-			.unwrap()
-			.start,
+		Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap().start,
 	);
 	Ok(())
 }
@@ -161,7 +159,7 @@ fn create_service_account_and_prepare_avatar<T: Config>(
 	avatar_id: &AvatarIdOf<T>,
 ) -> Result<T::AccountId, DispatchError> {
 	let service_account = create_service_account::<T>();
-	let prepare_fee = AAvatars::<T>::global_configs().nft_transfer.prepare_fee;
+	let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
 	CurrencyOf::<T>::make_free_balance_be(player, prepare_fee);
 	AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), *avatar_id)?;
 	Ok(service_account)
@@ -185,7 +183,7 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
-		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
+		let avatar_ids = Owners::<T>::get(caller)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
 
@@ -195,14 +193,14 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		let mint_fee = AAvatars::<T>::global_configs().mint.fees.fee_for(&MintPackSize::Six);
+		let mint_fee = GlobalConfigs::<T>::get().mint.fees.fee_for(&MintPackSize::Six);
 		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
 		let mint_option = MintOption { mint_type: MintType::Normal, count: MintPackSize::Six };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
-		let avatar_ids = AAvatars::<T>::owners(caller)[n..(n + 6)].to_vec();
+		let avatar_ids = Owners::<T>::get(caller)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
 
@@ -212,12 +210,12 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_ids = Owners::<T>::get(&player);
 		let avatar_id = avatar_ids[0];
-		let (_owner, original_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
+		let (_owner, original_avatar) = Avatars::<T>::get(avatar_id).unwrap();
 	}: _(RawOrigin::Signed(player), avatar_id, avatar_ids[1..5].to_vec())
 	verify {
-		let (_owner, upgraded_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
+		let (_owner, upgraded_avatar) = Avatars::<T>::get(avatar_id).unwrap();
 		let original_tiers = original_avatar.dna.into_iter().map(|x| x >> 4);
 		let upgraded_tiers = upgraded_avatar.dna.into_iter().map(|x| x >> 4);
 		let upgraded_components = original_tiers.zip(upgraded_tiers).fold(
@@ -237,9 +235,9 @@ benchmarks! {
 		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>("from", MaxAvatarsPerPlayer::get())?;
 		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let avatar_id = AAvatars::<T>::owners(&from)[n as usize - 1];
+		let avatar_id = Owners::<T>::get(&from)[n as usize - 1];
 
-		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		<T as AvatarsConfig>::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
 	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
 	verify {
@@ -252,9 +250,9 @@ benchmarks! {
 		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
 		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let avatar_id = AAvatars::<T>::owners(&organizer)[n as usize - 1];
+		let avatar_id = Owners::<T>::get(&organizer)[n as usize - 1];
 
-		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		CurrencyOf::<T>::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
 	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
 	verify {
@@ -264,7 +262,7 @@ benchmarks! {
 	transfer_free_mints {
 		let from = account::<T>("from");
 		let to = account::<T>("to");
-		let GlobalConfig { transfer, .. } = AAvatars::<T>::global_configs();
+		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
 		Accounts::<T>::mutate(&from, |account| account.free_mints =  MintCount::MAX);
@@ -277,7 +275,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&caller)[0];
+		let avatar_id = Owners::<T>::get(&caller)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
 	}: _(RawOrigin::Signed(caller), avatar_id, price)
 	verify {
@@ -288,7 +286,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&caller)[0];
+		let avatar_id = Owners::<T>::get(&caller)[0];
 		Trade::<T>::insert(avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
@@ -302,13 +300,13 @@ benchmarks! {
 		create_avatars::<T>(buyer_name, n- 1)?;
 		create_avatars::<T>(seller_name, n)?;
 
-		let min_fee = AAvatars::<T>::global_configs().trade.min_fee;
+		let min_fee = GlobalConfigs::<T>::get().trade.min_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
 		let trade_fee = sell_fee / BalanceOf::<T>::unique_saturated_from(100_u8);
 		CurrencyOf::<T>::make_free_balance_be(&buyer, sell_fee + trade_fee);
 		CurrencyOf::<T>::make_free_balance_be(&seller, sell_fee);
 
-		let avatar_id = AAvatars::<T>::owners(&seller)[0];
+		let avatar_id = Owners::<T>::get(&seller)[0];
 		Trade::<T>::insert(avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
@@ -317,7 +315,7 @@ benchmarks! {
 
 	upgrade_storage {
 		let player = account::<T>("player");
-		let upgrade_fee = AAvatars::<T>::global_configs().account.storage_upgrade_fee;
+		let upgrade_fee = GlobalConfigs::<T>::get().account.storage_upgrade_fee;
 		CurrencyOf::<T>::make_free_balance_be(&player, upgrade_fee);
 	}: _(RawOrigin::Signed(player))
 	verify {
@@ -447,7 +445,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_ids = Owners::<T>::get(&player);
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
 		let organizer = account::<T>("organizer");
@@ -471,7 +469,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = AAvatars::<T>::owners(&player);
+		let avatar_ids = Owners::<T>::get(&player);
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
 		let organizer = account::<T>("organizer");
@@ -495,11 +493,11 @@ benchmarks! {
 		create_avatars::<T>(name, 1)?;
 
 		let player = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&player)[0];
-		let (_owner, original_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
+		let avatar_id = Owners::<T>::get(&player)[0];
+		let (_owner, original_avatar) = Avatars::<T>::get(avatar_id).unwrap();
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
-		let (_owner, updated_avatar) = AAvatars::<T>::avatars(avatar_id).unwrap();
+		let (_owner, updated_avatar) = Avatars::<T>::get(avatar_id).unwrap();
 		assert!(original_avatar.dna[1] & 0b0000_1111 != original_avatar.dna[2] & 0b0000_1111);
 		assert!(updated_avatar.dna[1] & 0b0000_1111 == updated_avatar.dna[2] & 0b0000_1111);
 	}
@@ -515,9 +513,9 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&player)[0];
+		let avatar_id = Owners::<T>::get(&player)[0];
 		let _ = create_service_account::<T>();
-		let prepare_fee = AAvatars::<T>::global_configs().nft_transfer.prepare_fee;
+		let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
 		CurrencyOf::<T>::make_free_balance_be(&player, prepare_fee);
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
@@ -528,7 +526,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&player)[0];
+		let avatar_id = Owners::<T>::get(&player)[0];
 		let _ = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
@@ -539,7 +537,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let avatar_id = AAvatars::<T>::owners(&player)[0];
+		let avatar_id = Owners::<T>::get(&player)[0];
 		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://".to_vec()).unwrap();
 	}: _(RawOrigin::Signed(service_account), avatar_id, url.clone())
