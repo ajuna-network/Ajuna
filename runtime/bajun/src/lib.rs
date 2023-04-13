@@ -671,8 +671,8 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CollectionDeposit: Balance = MICRO_BAJUN;
-	pub const ItemDeposit: Balance = NANO_BAJUN;
+	pub const CollectionDeposit: Balance = 100 * BAJUN;
+	pub const ItemDeposit: Balance = BAJUN / 10;
 	pub const StringLimit: u32 = 128;
 	pub const KeyLimit: u32 = 32;
 	pub const MaxItemEncodedSize: u32 = 200; // TODO: use max bytes for an avatar
