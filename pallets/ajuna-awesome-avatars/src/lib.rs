@@ -124,67 +124,52 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn organizer)]
 	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn treasurer)]
 	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn current_season_status)]
 	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
 
 	/// Storage for the seasons.
 	#[pallet::storage]
-	#[pallet::getter(fn seasons)]
 	pub type Seasons<T: Config> = StorageMap<_, Identity, SeasonId, SeasonOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn treasury)]
 	pub type Treasury<T: Config> = StorageMap<_, Identity, SeasonId, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn global_configs)]
 	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfigOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn avatars)]
 	pub type Avatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn owners)]
 	pub type Owners<T: Config> =
 		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn locked_avatars)]
 	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, ()>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn collection_id)]
 	pub type CollectionId<T: Config> = StorageValue<_, CollectionIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn accounts)]
 	pub type Accounts<T: Config> =
 		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn season_stats)]
 	pub type SeasonStats<T: Config> =
 		StorageDoubleMap<_, Identity, SeasonId, Identity, T::AccountId, SeasonInfo, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn trade)]
 	pub type Trade<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, BalanceOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn service_account)]
 	pub type ServiceAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn preparation)]
 	pub type Preparation<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, IpfsUrl, OptionQuery>;
 
 	#[pallet::genesis_config]
@@ -414,10 +399,10 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			let current_season_id = Self::current_season_status().season_id;
+			let current_season_id = CurrentSeasonStatus::<T>::get().season_id;
 			let mut weight = T::DbWeight::get().reads(1);
 
-			if let Some(current_season) = Self::seasons(current_season_id) {
+			if let Some(current_season) = Seasons::<T>::get(current_season_id) {
 				weight.saturating_accrue(T::DbWeight::get().reads(1));
 
 				if now <= current_season.end {
@@ -481,7 +466,7 @@ pub mod pallet {
 			to: T::AccountId,
 			avatar_id: AvatarIdOf<T>,
 		) -> DispatchResult {
-			let GlobalConfig { transfer, .. } = Self::global_configs();
+			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 			let from = match Self::ensure_organizer(origin.clone()) {
 				Ok(organizer) => organizer,
 				_ => {
@@ -519,9 +504,9 @@ pub mod pallet {
 			let from = ensure_signed(origin)?;
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
 
-			let GlobalConfig { transfer, .. } = Self::global_configs();
+			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 			ensure!(how_many >= transfer.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
-			let sender_free_mints = Self::accounts(&from)
+			let sender_free_mints = Accounts::<T>::get(&from)
 				.free_mints
 				.checked_sub(
 					how_many
@@ -529,7 +514,7 @@ pub mod pallet {
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
-			let dest_free_mints = Self::accounts(&to)
+			let dest_free_mints = Accounts::<T>::get(&to)
 				.free_mints
 				.checked_add(how_many)
 				.ok_or(ArithmeticError::Overflow)?;
@@ -556,7 +541,7 @@ pub mod pallet {
 			#[pallet::compact] price: BalanceOf<T>,
 		) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
-			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			ensure!(GlobalConfigs::<T>::get().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
@@ -576,7 +561,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::remove_price())]
 		pub fn remove_price(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
-			ensure!(Self::global_configs().trade.open, Error::<T>::TradeClosed);
+			ensure!(GlobalConfigs::<T>::get().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_for_trade(&avatar_id)?;
 			Self::ensure_ownership(&seller, &avatar_id)?;
 			Trade::<T>::remove(avatar_id);
@@ -598,7 +583,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
 		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
-			let GlobalConfig { trade, .. } = Self::global_configs();
+			let GlobalConfig { trade, .. } = GlobalConfigs::<T>::get();
 			ensure!(trade.open, Error::<T>::TradeClosed);
 
 			let (seller, price) = Self::ensure_for_trade(&avatar_id)?;
@@ -633,13 +618,13 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let storage_tier = Self::accounts(&player).storage_tier;
+			let storage_tier = Accounts::<T>::get(&player).storage_tier;
 			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
-			let upgrade_fee = Self::global_configs().account.storage_upgrade_fee;
+			let upgrade_fee = GlobalConfigs::<T>::get().account.storage_upgrade_fee;
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
 
-			let season_id = Self::current_season_status().season_id;
+			let season_id = CurrentSeasonStatus::<T>::get().season_id;
 			Self::deposit_into_treasury(&season_id, upgrade_fee);
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
@@ -700,7 +685,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::claim_treasury())]
 		pub fn claim_treasury(origin: OriginFor<T>, season_id: SeasonId) -> DispatchResult {
 			let maybe_treasurer = ensure_signed(origin)?;
-			let treasurer = Self::treasurer(season_id).ok_or(Error::<T>::UnknownTreasurer)?;
+			let treasurer = Treasurer::<T>::get(season_id).ok_or(Error::<T>::UnknownTreasurer)?;
 			ensure!(maybe_treasurer == treasurer, DispatchError::BadOrigin);
 
 			let (current_season_id, season) = Self::current_season_with_id()?;
@@ -829,13 +814,13 @@ pub mod pallet {
 			let player = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
-			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
+			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
 
 			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
 
-			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
+			let collection_id = CollectionId::<T>::get().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let url = Preparation::<T>::take(avatar_id).ok_or(Error::<T>::UnknownPreparation)?;
 			T::NftHandler::store_as_nft(player, collection_id, avatar_id, avatar, url.to_vec())?;
 
@@ -859,11 +844,11 @@ pub mod pallet {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
-			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
+			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarUnlocked);
 
 			Self::do_transfer_avatar(&Self::technical_account_id(), &player, &avatar_id)?;
-			let collection_id = Self::collection_id().ok_or(Error::<T>::CollectionIdNotSet)?;
+			let collection_id = CollectionId::<T>::get().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let _ = T::NftHandler::recover_from_nft(player, collection_id, avatar_id)?;
 
 			LockedAvatars::<T>::remove(avatar_id);
@@ -925,12 +910,12 @@ pub mod pallet {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
-			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
+			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
 
-			let service_account = Self::service_account().ok_or(Error::<T>::NoServiceAccount)?;
-			let prepare_fee = Self::global_configs().nft_transfer.prepare_fee;
+			let service_account = ServiceAccount::<T>::get().ok_or(Error::<T>::NoServiceAccount)?;
+			let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
 			T::Currency::transfer(&player, &service_account, prepare_fee, AllowDeath)?;
 
 			Preparation::<T>::insert(avatar_id, IpfsUrl::default());
@@ -949,7 +934,7 @@ pub mod pallet {
 		pub fn unprepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&player, &avatar_id)?;
-			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
+			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
 
 			Preparation::<T>::remove(avatar_id);
@@ -973,7 +958,7 @@ pub mod pallet {
 			url: IpfsUrl,
 		) -> DispatchResult {
 			let _ = Self::ensure_service_account(origin)?;
-			ensure!(Self::global_configs().nft_transfer.open, Error::<T>::NftTransferClosed);
+			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
 			ensure!(!url.is_empty(), Error::<T>::EmptyIpfsUrl);
 			Preparation::<T>::insert(avatar_id, &url);
@@ -1003,7 +988,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 		) -> Result<T::AccountId, DispatchError> {
 			let maybe_organizer = ensure_signed(origin)?;
-			let existing_organizer = Self::organizer().ok_or(Error::<T>::OrganizerNotSet)?;
+			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
 			Ok(maybe_organizer)
 		}
@@ -1012,7 +997,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 		) -> Result<T::AccountId, DispatchError> {
 			let maybe_sa = ensure_signed(origin)?;
-			let existing_sa = Self::service_account().ok_or(Error::<T>::OrganizerNotSet)?;
+			let existing_sa = ServiceAccount::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
 			ensure!(maybe_sa == existing_sa, DispatchError::BadOrigin);
 			Ok(maybe_sa)
 		}
@@ -1029,10 +1014,10 @@ pub mod pallet {
 
 			if prev_season_id > 0 {
 				let prev_season =
-					Self::seasons(prev_season_id).ok_or(Error::<T>::NonSequentialSeasonId)?;
+					Seasons::<T>::get(prev_season_id).ok_or(Error::<T>::NonSequentialSeasonId)?;
 				ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
 			}
-			if let Some(next_season) = Self::seasons(next_season_id) {
+			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
 				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
 			}
 			Ok(season)
@@ -1095,8 +1080,8 @@ pub mod pallet {
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			Self::ensure_for_mint(player, mint_option)?;
 
-			let season_id = Self::current_season_status().season_id;
-			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			let season_id = CurrentSeasonStatus::<T>::get().season_id;
+			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let is_batched = mint_option.count.is_batched();
 			let generated_avatar_ids = (0..mint_option.count as usize)
 				.map(|_| {
@@ -1111,7 +1096,7 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
-			let GlobalConfig { mint, .. } = Self::global_configs();
+			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
 			match mint_option.mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
@@ -1122,7 +1107,7 @@ pub mod pallet {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
-						account.free_mints = Self::accounts(player)
+						account.free_mints = Accounts::<T>::get(player)
 							.free_mints
 							.checked_sub(fee)
 							.ok_or(Error::<T>::InsufficientFreeMints)?;
@@ -1158,7 +1143,7 @@ pub mod pallet {
 			leader_id: &AvatarIdOf<T>,
 			sacrifice_ids: &[AvatarIdOf<T>],
 		) -> DispatchResult {
-			let GlobalConfig { forge, .. } = Self::global_configs();
+			let GlobalConfig { forge, .. } = GlobalConfigs::<T>::get();
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
 			let (season_id, season) = Self::current_season_with_id()?;
@@ -1243,15 +1228,15 @@ pub mod pallet {
 			to: &T::AccountId,
 			avatar_id: &AvatarIdOf<T>,
 		) -> DispatchResult {
-			let mut from_avatar_ids = Self::owners(from);
+			let mut from_avatar_ids = Owners::<T>::get(from);
 			from_avatar_ids.retain(|existing_avatar_id| existing_avatar_id != avatar_id);
 
-			let mut to_avatar_ids = Self::owners(to);
+			let mut to_avatar_ids = Owners::<T>::get(to);
 			to_avatar_ids
 				.try_push(*avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 			ensure!(
-				to_avatar_ids.len() <= Self::accounts(to).storage_tier as usize,
+				to_avatar_ids.len() <= Accounts::<T>::get(to).storage_tier as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
@@ -1265,14 +1250,14 @@ pub mod pallet {
 		}
 
 		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
-			let mut current_status = Self::current_season_status();
-			let season = match Self::seasons(current_status.season_id) {
+			let mut current_status = CurrentSeasonStatus::<T>::get();
+			let season = match Seasons::<T>::get(current_status.season_id) {
 				Some(season) if current_status.is_in_season() => season,
 				_ => {
 					if current_status.season_id > 1 {
 						current_status.season_id.saturating_dec();
 					}
-					Self::seasons(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
+					Seasons::<T>::get(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
 				},
 			};
 			Ok((current_status.season_id, season))
@@ -1282,7 +1267,7 @@ pub mod pallet {
 			player: &T::AccountId,
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<Avatar, DispatchError> {
-			let (owner, avatar) = Self::avatars(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
 			ensure!(player == &owner, Error::<T>::Ownership);
 			Ok(avatar)
 		}
@@ -1291,17 +1276,17 @@ pub mod pallet {
 			player: &T::AccountId,
 			mint_option: &MintOption,
 		) -> DispatchResult {
-			let GlobalConfig { mint, .. } = Self::global_configs();
+			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
 			ensure!(mint.open, Error::<T>::MintClosed);
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			let last_block = Self::accounts(player).stats.mint.last;
+			let last_block = Accounts::<T>::get(player).stats.mint.last;
 			if !last_block.is_zero() {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
-			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
-			let free_mints = Self::accounts(player).free_mints;
+			let SeasonStatus { active, early, early_ended, .. } = CurrentSeasonStatus::<T>::get();
+			let free_mints = Accounts::<T>::get(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
 			let is_free_mint = mint_option.mint_type == MintType::Free;
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
@@ -1321,8 +1306,8 @@ pub mod pallet {
 				},
 			};
 
-			let new_count = Self::owners(player).len() + mint_option.count as usize;
-			let max_count = Self::accounts(player).storage_tier as usize;
+			let new_count = Owners::<T>::get(player).len() + mint_option.count as usize;
+			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())
 		}
@@ -1367,8 +1352,8 @@ pub mod pallet {
 		fn ensure_for_trade(
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<(T::AccountId, BalanceOf<T>), DispatchError> {
-			let price = Self::trade(avatar_id).ok_or(Error::<T>::UnknownAvatarForSale)?;
-			let (seller, _) = Self::avatars(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let price = Trade::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatarForSale)?;
+			let (seller, _) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
 			Ok((seller, price))
 		}
 
@@ -1388,7 +1373,7 @@ pub mod pallet {
 			season_id: SeasonId,
 			season: &SeasonOf<T>,
 		) {
-			let is_current_season_active = Self::current_season_status().active;
+			let is_current_season_active = CurrentSeasonStatus::<T>::get().active;
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
 			if !is_current_season_active {
@@ -1418,7 +1403,7 @@ pub mod pallet {
 			Self::deposit_event(Event::SeasonFinished(season_id));
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-			if let Some(next_season) = Self::seasons(next_season_id) {
+			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
 				Self::start_season(weight, block_number, next_season_id, &next_season);
 			}
 		}

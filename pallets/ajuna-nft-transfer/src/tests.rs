@@ -120,7 +120,7 @@ mod store_as_nft {
 					);
 				}
 				assert_eq!(
-					NftTransfer::nft_statuses(collection_id, item_id),
+					NftStatuses::<Test>::get(collection_id, item_id),
 					Some(NftStatus::Stored)
 				);
 
