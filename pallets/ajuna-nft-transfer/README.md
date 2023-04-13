@@ -1,8 +1,16 @@
 # Ajuna NFT-Transfer Pallet
 
-// SBP-M3 review: Readme should contain more pallet related information
+The Ajuna NFT Transfer Pallet provides necessary functionalities to tokenize an arbitrary piece of
+data that supports the SCALE codec into an appropriate NFT representation. It interfaces with the
+non-fungible traits to support their arbitrary NFT standards and underlying storage solutions.
 
-This pallet provides utilities for transforming any given asset into a serialized form which can later be uploaded to an IPFS server provider.
+## Overview
+
+The pallet must be initialized with a collection ID, created externally via `pallet-nfts`, to group
+similar NFTs under the same collection. In order to store and recover NFTs, the `NftConvertible`
+trait must be implemented by the objects of interest. When storing NFTs, the owners pay for the
+associated deposit amount, which is fully refunded when the NFTs are recovered back into their
+original form.
 
 ## Integration
 

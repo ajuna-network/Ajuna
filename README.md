@@ -28,8 +28,7 @@ A game platform [parachain](https://wiki.polkadot.network/docs/learn-parachains)
   cargo build-bajun-rococo
   cargo build-bajun-kusama
 
-  // SBP-M3 review: Please correctly specify the runtime
-  # parachain with Bajun runtime
+  # parachain with Ajuna runtime
   cargo build-ajuna-rococo
   cargo build-ajuna-polkadot
   ```

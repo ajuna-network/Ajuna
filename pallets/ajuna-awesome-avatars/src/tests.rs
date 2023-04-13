@@ -95,9 +95,8 @@ mod organizer {
 		});
 	}
 
-	// SBP-M3 review: Typo in the test case name
 	#[test]
-	fn ensure_organizer_should_reject_whe_no_organizer_is_set() {
+	fn ensure_organizer_should_reject_when_no_organizer_is_set() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(AAvatars::organizer(), None);
 			assert_noop!(
@@ -388,10 +387,10 @@ mod season {
 			// Check default values at block 1
 			run_to_block(1);
 			assert_eq!(System::block_number(), 1);
-			assert_eq!(AAvatars::current_season_id(), 1);
 			assert_eq!(
 				AAvatars::current_season_status(),
 				SeasonStatus {
+					season_id: 1,
 					early: false,
 					active: false,
 					early_ended: false,
@@ -405,10 +404,10 @@ mod season {
 			// Season 1 early start (block 2..3)
 			for n in season_1.early_start..season_1.start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 1);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 1,
 						early: true,
 						active: false,
 						early_ended: false,
@@ -419,10 +418,10 @@ mod season {
 			// Season 1 start (block 3..4)
 			for n in season_1.start..season_2.early_start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 1);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 1,
 						early: false,
 						active: true,
 						early_ended: false,
@@ -434,10 +433,10 @@ mod season {
 			// Season 2 early start (block 5..6)
 			for n in season_2.early_start..season_2.start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 2);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 2,
 						early: true,
 						active: false,
 						early_ended: false,
@@ -448,10 +447,10 @@ mod season {
 			// Season 2 start (block 7..9)
 			for n in season_2.start..season_2.end {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 2);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 2,
 						early: false,
 						active: true,
 						early_ended: false,
@@ -462,10 +461,10 @@ mod season {
 			// Season 2 end (block 10..22)
 			for n in (season_2.end + 1)..season_3.early_start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 3);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 3,
 						early: false,
 						active: false,
 						early_ended: false,
@@ -477,10 +476,10 @@ mod season {
 			// Season 3 early start (block 23..36)
 			for n in season_3.early_start..season_3.start {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 3);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 3,
 						early: true,
 						active: false,
 						early_ended: false,
@@ -491,10 +490,10 @@ mod season {
 			// Season 3 start (block 37..53)
 			for n in season_3.start..=season_3.end {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 3);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 3,
 						early: false,
 						active: true,
 						early_ended: false,
@@ -505,10 +504,10 @@ mod season {
 			// Season 3 end (block 54..63)
 			for n in (season_3.end + 1)..=(season_3.end + 10) {
 				run_to_block(n);
-				assert_eq!(AAvatars::current_season_id(), 4);
 				assert_eq!(
 					AAvatars::current_season_status(),
 					SeasonStatus {
+						season_id: 4,
 						early: false,
 						active: false,
 						early_ended: false,
@@ -518,7 +517,7 @@ mod season {
 			}
 
 			// No further seasons exist
-			assert!(AAvatars::seasons(AAvatars::current_season_id()).is_none());
+			assert!(AAvatars::seasons(AAvatars::current_season_status().season_id).is_none());
 		})
 	}
 
@@ -827,6 +826,8 @@ mod minting {
 	#[test]
 	fn ensure_for_mint_works() {
 		let season = Season::default().early_start(10).start(20).end(30);
+		let normal_mint = MintOption { mint_type: MintType::Normal, count: MintPackSize::One };
+		let free_mint = MintOption { mint_type: MintType::Free, count: MintPackSize::One };
 
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
@@ -839,47 +840,55 @@ mod minting {
 					assert_eq!(
 						AAvatars::current_season_status(),
 						SeasonStatus {
+							season_id: 1,
 							active: false,
 							early: false,
 							early_ended: false,
 							max_tier_avatars: 0
 						}
 					);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_noop!(
-							AAvatars::ensure_for_mint(&ALICE, &mint_type),
-							Error::<Test>::SeasonClosed
-						);
+					for account in [ALICE, BOB, CHARLIE] {
+						for ext in [
+							AAvatars::ensure_for_mint(&account, &normal_mint),
+							AAvatars::ensure_for_mint(&account, &free_mint),
+						] {
+							assert_noop!(ext, Error::<Test>::SeasonClosed);
+						}
 					}
 				}
 
-				// At early start, both mints are available for whitelisted accounts.
+				// At early start
 				for n in season.early_start..season.start {
 					run_to_block(n);
 					assert!(AAvatars::current_season_status().early);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_ok!(AAvatars::ensure_for_mint(&ALICE, &mint_type), 42);
-					}
-				}
-				// At early start, only free mint is available for non-whitelisted accounts.
-				for n in season.early_start..season.start {
-					run_to_block(n);
-					assert!(AAvatars::current_season_status().early);
+
+					// For whitelisted accounts, both mints are available for whitelisted accounts.
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint));
+
+					// For non-whitelisted accounts, only free mint is available (but will fail due
+					// to insufficient free mint balance).
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
+						AAvatars::ensure_for_mint(&BOB, &normal_mint),
 						Error::<Test>::SeasonClosed
 					);
-					assert_ok!(AAvatars::ensure_for_mint(&BOB, &MintType::Free), 0);
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &free_mint),
+						Error::<Test>::InsufficientFreeMints
+					);
 				}
 
 				// At official start, both mints are available for all accounts.
 				for n in season.start..=season.end {
 					run_to_block(n);
 					assert!(AAvatars::current_season_status().active);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_ok!(AAvatars::ensure_for_mint(&ALICE, &mint_type), 42);
-						assert_ok!(AAvatars::ensure_for_mint(&BOB, &mint_type), 0);
-					}
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&BOB, &normal_mint));
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &free_mint),
+						Error::<Test>::InsufficientFreeMints
+					);
 				}
 
 				// At premature end, only free mint is available for all accounts.
@@ -887,15 +896,20 @@ mod minting {
 					run_to_block(n);
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = true);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&ALICE, &MintType::Normal),
+						AAvatars::ensure_for_mint(&ALICE, &normal_mint),
 						Error::<Test>::PrematureSeasonEnd
 					);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &MintType::Free), 42);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, &MintType::Normal),
+						AAvatars::ensure_for_mint(&BOB, &normal_mint),
 						Error::<Test>::PrematureSeasonEnd
 					);
-					assert_ok!(AAvatars::ensure_for_mint(&BOB, &MintType::Free), 0);
+
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &free_mint));
+					assert_noop!(
+						AAvatars::ensure_for_mint(&BOB, &free_mint),
+						Error::<Test>::InsufficientFreeMints
+					);
+
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = false);
 				}
 
@@ -905,21 +919,20 @@ mod minting {
 					assert_eq!(
 						AAvatars::current_season_status(),
 						SeasonStatus {
+							season_id: 2,
 							active: false,
 							early: false,
 							early_ended: false,
 							max_tier_avatars: 0
 						}
 					);
-					for mint_type in [MintType::Normal, MintType::Free] {
-						assert_noop!(
-							AAvatars::ensure_for_mint(&ALICE, &mint_type),
-							Error::<Test>::SeasonClosed
-						);
-						assert_noop!(
-							AAvatars::ensure_for_mint(&BOB, &mint_type),
-							Error::<Test>::SeasonClosed
-						);
+					for account in [ALICE, BOB, CHARLIE] {
+						for ext in [
+							AAvatars::ensure_for_mint(&account, &normal_mint),
+							AAvatars::ensure_for_mint(&account, &free_mint),
+						] {
+							assert_noop!(ext, Error::<Test>::SeasonClosed);
+						}
 					}
 				}
 			});
@@ -953,7 +966,7 @@ mod minting {
 					let mut minted_count = 0;
 
 					System::set_block_number(1);
-					CurrentSeasonId::<Test>::set(1);
+					CurrentSeasonStatus::<Test>::mutate(|status| status.season_id = 1);
 					SeasonStats::<Test>::mutate(1, ALICE, |info| info.minted = 0);
 					SeasonStats::<Test>::mutate(2, ALICE, |info| info.minted = 0);
 					Owners::<Test>::remove(ALICE);
@@ -1128,7 +1141,7 @@ mod minting {
 					assert_eq!(seasons_participated.into_iter().collect::<Vec<_>>(), vec![1]);
 
 					// current season minted count resets
-					assert_eq!(AAvatars::current_season_id(), 2);
+					assert_eq!(AAvatars::current_season_status().season_id, 2);
 					assert_eq!(AAvatars::season_stats(2, ALICE).minted, 0);
 
 					// check for minted avatars
@@ -1300,7 +1313,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption { count: mint_count, mint_type: MintType::Normal }
 						),
-						pallet_balances::Error::<Test>::InsufficientBalance
+						Error::<Test>::InsufficientBalance
 					);
 				}
 
@@ -1953,8 +1966,10 @@ mod forging {
 	#[test]
 	fn forge_should_reject_unknown_season_calls() {
 		ExtBuilder::default().build().execute_with(|| {
-			CurrentSeasonId::<Test>::put(123);
-			CurrentSeasonStatus::<Test>::mutate(|status| status.active = true);
+			CurrentSeasonStatus::<Test>::mutate(|status| {
+				status.season_id = 123;
+				status.active = true;
+			});
 			assert_noop!(
 				AAvatars::forge(
 					RuntimeOrigin::signed(ALICE),

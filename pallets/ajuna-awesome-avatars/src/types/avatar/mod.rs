@@ -166,8 +166,7 @@ impl Avatar {
 		if (current_period == last_variation) || is_in_period {
 			1
 		} else {
-			// SBP-M3 review: please complete this case
-			2 // TODO: move this to config
+			2
 		}
 	}
 

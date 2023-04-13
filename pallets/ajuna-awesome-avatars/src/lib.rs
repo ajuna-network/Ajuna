@@ -76,7 +76,10 @@ use frame_support::{
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
-	traits::{AccountIdConversion, Hash, Saturating, TrailingZeroInput, UniqueSaturatedInto, Zero},
+	traits::{
+		AccountIdConversion, CheckedAdd, CheckedSub, Hash, Saturating, TrailingZeroInput,
+		UniqueSaturatedInto, Zero,
+	},
 	ArithmeticError,
 };
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -127,14 +130,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn treasurer)]
 	pub type Treasurer<T: Config> = StorageMap<_, Identity, SeasonId, T::AccountId, OptionQuery>;
-
-	// SBP-M3 review: if we can merge CurrentSeasonId & CurrentSeasonStatus storage into something
-	// like CurrentSeasonInfo storage, we can reduce one read operation (at the time of claim
-	// treasury)
-	/// Contains the identifier of the current season.
-	#[pallet::storage]
-	#[pallet::getter(fn current_season_id)]
-	pub type CurrentSeasonId<T: Config> = StorageValue<_, SeasonId, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn current_season_status)]
@@ -207,7 +202,13 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			CurrentSeasonId::<T>::put(1);
+			CurrentSeasonStatus::<T>::put(SeasonStatus {
+				season_id: 1,
+				early: Default::default(),
+				active: Default::default(),
+				early_ended: Default::default(),
+				max_tier_avatars: Default::default(),
+			});
 			GlobalConfigs::<T>::put(GlobalConfig {
 				mint: MintConfig {
 					open: true,
@@ -376,6 +377,8 @@ pub mod pallet {
 		MaxVariationsTooHigh,
 		/// The player has not enough free mints available.
 		InsufficientFreeMints,
+		/// The player has not enough balance available.
+		InsufficientBalance,
 		/// Attempt to transfer, issue or withdraw free mints lower than the minimum allowed.
 		TooLowFreeMints,
 		/// Less than minimum allowed sacrifices are used for forging.
@@ -411,7 +414,7 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			let current_season_id = Self::current_season_id();
+			let current_season_id = Self::current_season_status().season_id;
 			let mut weight = T::DbWeight::get().reads(1);
 
 			if let Some(current_season) = Self::seasons(current_season_id) {
@@ -636,7 +639,7 @@ pub mod pallet {
 			let upgrade_fee = Self::global_configs().account.storage_upgrade_fee;
 			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
 
-			let season_id = Self::current_season_id();
+			let season_id = Self::current_season_status().season_id;
 			Self::deposit_into_treasury(&season_id, upgrade_fee);
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
@@ -686,7 +689,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Claim treasury of a season.
+		///
+		/// The origin of this call must be signed by a treasurer account associated with the given
+		/// season ID. The treasurer of a season can claim the season's associated treasury once the
+		/// season finishes.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::claim_treasury())]
 		pub fn claim_treasury(origin: OriginFor<T>, season_id: SeasonId) -> DispatchResult {
@@ -785,7 +794,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Set the collection ID to associate avatars with.
+		///
+		/// Externally created collection ID for avatars must be set in the `CollectionId` storage
+		/// to serve as a lookup for locking and unlocking avatars as NFTs.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::set_collection_id())]
 		pub fn set_collection_id(
@@ -798,7 +812,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Locks an avatar to be tokenized as an NFT.
+		///
+		/// The origin of this call must specify an avatar, owned by the origin, to prevent it from
+		/// forging, trading and transferring it to other players. When successful, the ownership of
+		/// the avatar is transferred from the player to the pallet's technical account.
+		///
+		/// Locking an avatar allows for new
+		/// ways of interacting with it currently under development.
+		///
+		/// Weight: `O(n)` where:
+		/// - `n = max avatars per player`
 		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::lock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -820,7 +844,15 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Unlocks an avatar removing its NFT representation.
+		///
+		/// The origin of this call must specify an avatar, owned and locked by the origin, to allow
+		/// forging, trading and transferring it to other players. When successful, the ownership of
+		/// the avatar is transferred from the pallet's technical account back to the player and its
+		/// existing NFT representation is destroyed.
+		///
+		/// Weight: `O(n)` where:
+		/// - `n = max avatars per player`
 		#[pallet::call_index(16)]
 		#[pallet::weight(T::WeightInfo::unlock_avatar(MaxAvatarsPerPlayer::get()))]
 		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -839,14 +871,21 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Fix the variation of an avatar's DNA affected by a bug.
+		///
+		/// A trivial bug was introduced to incorrectly represent the 3rd component's variation,
+		/// which should be the same as that of the 2nd. Instead of fixing the DNAs via migration,
+		/// we allow players freedom to choose to fix these affected DNAs since they might prefer
+		/// the existing looks.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(17)]
 		#[pallet::weight(T::WeightInfo::fix_variation())]
 		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let account = ensure_signed(origin)?;
 			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
 
-			// Update the variation of the 3nd component to be the same as that of the 2nd by
+			// Update the variation of the 3rd component to be the same as that of the 2nd by
 			// copying the rightmost 4 bits of dna[1] to the dna[2]
 			avatar.dna[2] = (avatar.dna[2] & 0b1111_0000) | (avatar.dna[1] & 0b0000_1111);
 
@@ -855,7 +894,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Set a service account.
+		///
+		/// The origin of this call must be root. A service account has sufficient privilege to call
+		/// the `prepare_ipfs` extrinsic.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(18)]
 		#[pallet::weight(T::WeightInfo::set_service_account())]
 		pub fn set_service_account(
@@ -868,7 +912,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Prepare an avatar to be uploaded to IPFS.
+		///
+		/// The origin of this call must specify an avatar, owned by the origin, to display the
+		/// intention of uploading it to an IPFS storage. When successful, the `PreparedAvatar`
+		/// event is emitted to be picked up by our external service that interacts with the IPFS.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(19)]
 		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -888,7 +938,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Unprepare an avatar to be detached from IPFS.
+		///
+		/// The origin of this call must specify an avatar, owned by the origin, that is undergoing
+		/// the IPFS upload process.
+		///
+		/// Weight: `O(1)`
 		#[pallet::call_index(20)]
 		#[pallet::weight(T::WeightInfo::unprepare_avatar())]
 		pub fn unprepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
@@ -902,7 +957,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// SBP-M3 review: please add documentation
+		/// Prepare IPFS for an avatar.
+		///
+		/// The origin of this call must be signed by the service account to upload the given avatar
+		/// to an IPFS storage and stores its CID. A third-party service subscribes for the
+		/// `PreparedAvatar` events which triggers preparing assets, their upload to IPFS and
+		/// storing their CIDs.
+		//
+		/// Weight: `O(1)`
 		#[pallet::call_index(21)]
 		#[pallet::weight(T::WeightInfo::prepare_ipfs())]
 		pub fn prepare_ipfs(
@@ -962,8 +1024,8 @@ pub mod pallet {
 		) -> Result<SeasonOf<T>, DispatchError> {
 			season.validate::<T>()?;
 
-			let prev_season_id = season_id.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let prev_season_id = season_id.checked_sub(&1).ok_or(ArithmeticError::Underflow)?;
+			let next_season_id = season_id.checked_add(&1).ok_or(ArithmeticError::Overflow)?;
 
 			if prev_season_id > 0 {
 				let prev_season =
@@ -1029,22 +1091,11 @@ pub mod pallet {
 			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 		}
 
-		// SBP-M3 review: We should validate the user's balance for the Normal MintType.
-		// In my viewpoint, we are wasting our resources (CPU processing) by generating avatar_ids
-		// and some IO operations if the player doesn't have enough balance to mint a new avatar.
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			let GlobalConfig { mint, .. } = Self::global_configs();
-			ensure!(mint.open, Error::<T>::MintClosed);
-			let free_mints = Self::ensure_for_mint(player, &mint_option.mint_type)?;
+			Self::ensure_for_mint(player, mint_option)?;
 
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			let last_block = Self::accounts(player).stats.mint.last;
-			if !last_block.is_zero() {
-				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
-			}
-
-			let season_id = Self::current_season_id();
+			let season_id = Self::current_season_status().season_id;
 			let season = Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let is_batched = mint_option.count.is_batched();
 			let generated_avatar_ids = (0..mint_option.count as usize)
@@ -1060,11 +1111,7 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
-			ensure!(
-				Self::owners(player).len() <= Self::accounts(player).storage_tier as usize,
-				Error::<T>::MaxOwnershipReached
-			);
-
+			let GlobalConfig { mint, .. } = Self::global_configs();
 			match mint_option.mint_type {
 				MintType::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
@@ -1075,14 +1122,17 @@ pub mod pallet {
 					let fee = (mint_option.count as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
-						account.free_mints =
-							free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
+						account.free_mints = Self::accounts(player)
+							.free_mints
+							.checked_sub(fee)
+							.ok_or(Error::<T>::InsufficientFreeMints)?;
 						Ok(())
 					})?;
 				},
 			};
 
 			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
+				let current_block = <frame_system::Pallet<T>>::block_number();
 				if stats.mint.first.is_zero() {
 					stats.mint.first = current_block;
 				}
@@ -1215,17 +1265,17 @@ pub mod pallet {
 		}
 
 		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
-			let mut season_id = Self::current_season_id();
-			let season = match Self::seasons(season_id) {
-				Some(season) if Self::current_season_status().is_in_season() => season,
+			let mut current_status = Self::current_season_status();
+			let season = match Self::seasons(current_status.season_id) {
+				Some(season) if current_status.is_in_season() => season,
 				_ => {
-					if season_id > 1 {
-						season_id.saturating_dec();
+					if current_status.season_id > 1 {
+						current_status.season_id.saturating_dec();
 					}
-					Self::seasons(season_id).ok_or(Error::<T>::UnknownSeason)?
+					Self::seasons(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
 				},
 			};
-			Ok((season_id, season))
+			Ok((current_status.season_id, season))
 		}
 
 		fn ensure_ownership(
@@ -1239,18 +1289,42 @@ pub mod pallet {
 
 		pub(crate) fn ensure_for_mint(
 			player: &T::AccountId,
-			mint_type: &MintType,
-		) -> Result<MintCount, DispatchError> {
+			mint_option: &MintOption,
+		) -> DispatchResult {
+			let GlobalConfig { mint, .. } = Self::global_configs();
+			ensure!(mint.open, Error::<T>::MintClosed);
+
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let last_block = Self::accounts(player).stats.mint.last;
+			if !last_block.is_zero() {
+				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
+			}
+
 			let SeasonStatus { active, early, early_ended, .. } = Self::current_season_status();
 			let free_mints = Self::accounts(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
-			let is_free_mint = mint_type == &MintType::Free;
+			let is_free_mint = mint_option.mint_type == MintType::Free;
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
-			ensure!(
-				active || early && is_whitelisted || early && is_free_mint,
-				Error::<T>::SeasonClosed
-			);
-			Ok(free_mints)
+			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
+
+			match mint_option.mint_type {
+				MintType::Normal => {
+					let fee = mint.fees.fee_for(&mint_option.count);
+					T::Currency::free_balance(player)
+						.checked_sub(&fee)
+						.ok_or(Error::<T>::InsufficientBalance)?;
+				},
+				MintType::Free => {
+					let fee = (mint_option.count as MintCount)
+						.saturating_mul(mint.free_mint_fee_multiplier);
+					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
+				},
+			};
+
+			let new_count = Self::owners(player).len() + mint_option.count as usize;
+			let max_count = Self::accounts(player).storage_tier as usize;
+			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
+			Ok(())
 		}
 
 		fn ensure_for_forge(
@@ -1335,12 +1409,12 @@ pub mod pallet {
 			let next_season_id = season_id.saturating_add(1);
 
 			CurrentSeasonStatus::<T>::mutate(|status| {
+				status.season_id = next_season_id;
 				status.early = false;
 				status.active = false;
 				status.early_ended = false;
 				status.max_tier_avatars = Zero::zero();
 			});
-			CurrentSeasonId::<T>::put(next_season_id);
 			Self::deposit_event(Event::SeasonFinished(season_id));
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 

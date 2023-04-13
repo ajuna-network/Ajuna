@@ -65,13 +65,14 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 
 fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	CurrentSeasonStatus::<T>::put(SeasonStatus {
+		season_id: 0,
 		early: false,
 		active: true,
 		early_ended: false,
 		max_tier_avatars: 0,
 	});
 	for i in 0..n {
-		CurrentSeasonId::<T>::put(i as SeasonId + 1);
+		CurrentSeasonStatus::<T>::mutate(|status| status.season_id = i as SeasonId + 1);
 		Seasons::<T>::insert(
 			(i + 1) as SeasonId,
 			Season {
@@ -95,7 +96,9 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 		);
 	}
 	frame_system::Pallet::<T>::set_block_number(
-		AAvatars::<T>::seasons(AAvatars::<T>::current_season_id()).unwrap().start,
+		AAvatars::<T>::seasons(AAvatars::<T>::current_season_status().season_id)
+			.unwrap()
+			.start,
 	);
 	Ok(())
 }
@@ -127,6 +130,12 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 }
 
 fn create_collection<T: Config>(organizer: T::AccountId) -> DispatchResult {
+	let collection_deposit = <T as pallet_nfts::Config>::CollectionDeposit::get();
+	<T as pallet_nfts::Config>::Currency::make_free_balance_be(
+		&organizer,
+		collection_deposit + <T as pallet_nfts::Config>::Currency::minimum_balance(),
+	);
+
 	let collection_setting = NftCollectionConfigOf::<T> {
 		settings: pallet_nfts::CollectionSettings::all_enabled(),
 		max_supply: None,
@@ -442,12 +451,15 @@ benchmarks! {
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
 		let organizer = account::<T>("organizer");
-		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
 		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://test".to_vec()).unwrap();
 		AAvatars::<T>::prepare_ipfs(RawOrigin::Signed(service_account).into(), avatar_id, url)?;
+
+		let item_deposit = <T as pallet_nfts::Config>::ItemDeposit::get();
+		let ed = <T as pallet_nfts::Config>::Currency::minimum_balance();
+		<T as pallet_nfts::Config>::Currency::make_free_balance_be(&player, item_deposit + ed);
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarLocked { avatar_id })
@@ -463,13 +475,15 @@ benchmarks! {
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
 		let organizer = account::<T>("organizer");
-		CurrencyOf::<T>::make_free_balance_be(&organizer, CurrencyOf::<T>::minimum_balance());
 		create_collection::<T>(organizer)?;
 
 		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://test".to_vec()).unwrap();
 		AAvatars::<T>::prepare_ipfs(RawOrigin::Signed(service_account).into(), avatar_id, url)?;
 
+		let item_deposit = <T as pallet_nfts::Config>::ItemDeposit::get();
+		let ed = <T as pallet_nfts::Config>::Currency::minimum_balance();
+		<T as pallet_nfts::Config>::Currency::make_free_balance_be(&player, item_deposit + ed);
 		AAvatars::<T>::lock_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
