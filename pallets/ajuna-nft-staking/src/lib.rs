@@ -246,14 +246,8 @@ pub mod pallet {
 	pub type ContractCollectionId<T: Config> =
 		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractCollectionNotSet>>;
 
-	#[pallet::type_value]
-	pub fn DefaultContractId<T: Config>() -> ContractItemIdOf<T> {
-		ContractItemIdOf::<T>::default()
-	}
-
 	#[pallet::storage]
-	pub type NextContractId<T: Config> =
-		StorageValue<_, ContractItemIdOf<T>, ValueQuery, DefaultContractId<T>>;
+	pub type NextContractId<T: Config> = StorageValue<_, ContractItemIdOf<T>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
