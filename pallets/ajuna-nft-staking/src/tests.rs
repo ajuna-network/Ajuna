@@ -159,62 +159,6 @@ mod set_lock_state {
 	}
 }
 
-mod fund_treasury {
-	use super::*;
-
-	#[test]
-	fn fund_treasury_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = RuntimeOrigin::signed(ALICE);
-			let fund_amount: MockBalance = 1_000_000;
-			let base_reserves = NftStake::treasury_pot_reserve();
-
-			assert_ok!(NftStake::fund_treasury(account, fund_amount));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::TreasuryFunded {
-				funding_account: ALICE,
-				funds: fund_amount,
-			}));
-
-			assert_eq!(NftStake::treasury_pot_reserve(), base_reserves + fund_amount);
-		});
-	}
-
-	#[test]
-	fn cannot_fund_treasury_without_funds() {
-		let account_balance = 1_000;
-		let fund_amount = account_balance * 10;
-		ExtBuilder::default()
-			.balances(vec![(ALICE, account_balance)])
-			.build()
-			.execute_with(|| {
-				let account = RuntimeOrigin::signed(ALICE);
-
-				assert_noop!(
-					NftStake::fund_treasury(account, fund_amount),
-					crate::pallet::Error::<Test>::AccountLacksFunds
-				);
-			});
-	}
-
-	#[test]
-	fn cannot_fund_treasury_if_the_funding_account_would_be_killed() {
-		let account_balance = 1_000;
-		let fund_amount = account_balance - 10;
-		ExtBuilder::default()
-			.balances(vec![(ALICE, account_balance)])
-			.build()
-			.execute_with(|| {
-				let account = RuntimeOrigin::signed(ALICE);
-
-				assert_noop!(
-					NftStake::fund_treasury(account, fund_amount),
-					pallet_balances::Error::<Test>::KeepAlive
-				);
-			});
-	}
-}
-
 mod submit_staking_contract {
 	use super::*;
 

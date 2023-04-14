@@ -171,14 +171,6 @@ benchmarks! {
 		assert_last_event::<T>(Event::LockedStateSet { locked_state: PalletLockedState::Locked }.into())
 	}
 
-	fund_treasury {
-		let caller = prepare_account::<T>("ALICE");
-		let fund_amt: BalanceOf<T> = 1_000_u32.into();
-	}: _(RawOrigin::Signed(caller.clone()), fund_amt)
-	verify {
-		assert_last_event::<T>(Event::TreasuryFunded { funding_account: caller, funds: fund_amt }.into())
-	}
-
 	submit_staking_contract_token_reward {
 		let account = NftStake::<T>::treasury_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);

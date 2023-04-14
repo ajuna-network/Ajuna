@@ -268,8 +268,6 @@ pub mod pallet {
 			contract: ContractItemIdOf<T>,
 			reward: StakingRewardOf<T>,
 		},
-		/// The treasury has received additional funds
-		TreasuryFunded { funding_account: AccountIdOf<T>, funds: BalanceOf<T> },
 	}
 
 	/// Error for the treasury pallet.
@@ -347,35 +345,6 @@ pub mod pallet {
 			let _ = Self::ensure_organizer(origin)?;
 			LockedState::<T>::put(locked_state);
 			Self::deposit_event(Event::LockedStateSet { locked_state });
-			Ok(())
-		}
-
-		#[pallet::weight(T::WeightInfo::fund_treasury())]
-		#[pallet::call_index(3)]
-		pub fn fund_treasury(origin: OriginFor<T>, fund_amount: BalanceOf<T>) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-
-			ensure!(
-				T::Currency::free_balance(&account) > fund_amount,
-				Error::<T>::AccountLacksFunds
-			);
-
-			let treasury_account = Self::treasury_account_id();
-
-			T::Currency::transfer(
-				&account,
-				&treasury_account,
-				fund_amount,
-				ExistenceRequirement::KeepAlive,
-			)?;
-
-			T::Currency::reserve(&treasury_account, fund_amount)?;
-
-			Self::deposit_event(Event::<T>::TreasuryFunded {
-				funding_account: account,
-				funds: fund_amount,
-			});
-
 			Ok(())
 		}
 
