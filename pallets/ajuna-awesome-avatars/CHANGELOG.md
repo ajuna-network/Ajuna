@@ -2,6 +2,14 @@
 # Change Log
 All notable changes to the Awesome Ajuna Avatars will be documented in this file.
  
+ ## [0.1.17] - 2023-04-13
+  
+Fixed Treasury claim, reclaimed burned balances to total issuance (sudo).
+
+### Fixed
+- Add mutate extrinsic
+  Fixed dna swap for old mapping of body color.
+
 ## [0.1.14] - 2023-03-01
   
 Relase following the Season 1 ending, addressing a forging fix and adding the transfer feature.
