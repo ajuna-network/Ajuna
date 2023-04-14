@@ -28,28 +28,26 @@ mod benchmarking;
 pub mod contracts;
 pub mod weights;
 
-use sp_runtime::traits::{AccountIdConversion, Saturating};
-use sp_std::prelude::*;
-
+use codec::HasCompact;
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, Get, ReservableCurrency},
+	traits::{
+		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate, Transfer},
+		BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency,
+	},
 	PalletId,
 };
+use frame_system::pallet_prelude::*;
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, One, Saturating};
+use sp_std::prelude::*;
 
 pub use contracts::*;
 pub use pallet::*;
+pub use weights::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::{weights::WeightInfo, *};
-	use codec::HasCompact;
-	use frame_support::traits::{
-		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate, Transfer},
-		BalanceStatus, ExistenceRequirement,
-	};
-	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, One};
+	use super::*;
 
 	pub(crate) type CollectionIdOf<T> = <T as Config>::CollectionId;
 	pub(crate) type ItemIdOf<T> = <T as Config>::ItemId;
