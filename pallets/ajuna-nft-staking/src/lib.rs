@@ -556,7 +556,6 @@ pub mod pallet {
 			T::Currency::reserved_balance(&Self::treasury_account_id())
 		}
 
-		#[inline]
 		fn get_next_contract_id() -> ContractItemIdOf<T> {
 			let contract_id: ContractItemIdOf<T> = NextContractId::<T>::get();
 
@@ -571,7 +570,6 @@ pub mod pallet {
 
 		/// Tries to create a new Nft using the information provided in the contract as
 		/// supporting data.
-		#[inline]
 		fn try_creating_contract_nft_from(
 			contract_details: StakingContractOf<T>,
 		) -> Result<ContractItemIdOf<T>, DispatchError> {
@@ -594,7 +592,6 @@ pub mod pallet {
 			Ok(contract_id)
 		}
 
-		#[inline]
 		fn try_if_contract_can_be_taken_by(
 			account: &AccountIdOf<T>,
 			contract_id: &ContractItemIdOf<T>,
@@ -610,7 +607,6 @@ pub mod pallet {
 			}
 		}
 
-		#[inline]
 		fn try_transferring_staked_assets_ownership(
 			assets: &StakedAssetsVecOf<T>,
 			from: &AccountIdOf<T>,
@@ -630,7 +626,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_taking_ownership_of_contract(
 			contract_id: &ContractItemIdOf<T>,
 			new_owner: AccountIdOf<T>,
@@ -651,7 +646,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_handing_over_contract_reward_to(
 			account_to_reward: &AccountIdOf<T>,
 			contract_reward: &StakingRewardOf<T>,
@@ -677,7 +671,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_transfer_funds_from_account_to_treasury(
 			account: &AccountIdOf<T>,
 			amount: BalanceOf<T>,
@@ -698,7 +691,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_taking_ownership_of_nft(
 			original_owner: &AccountIdOf<T>,
 			nft_addr: &NftAddressOf<T>,
@@ -720,7 +712,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_checking_if_contract_can_be_redeemed(
 			contract_redeemer: &AccountIdOf<T>,
 			contract_id: &ContractItemIdOf<T>,
@@ -739,7 +730,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_closing_redeemed_contract(
 			contract_id: &ContractItemIdOf<T>,
 			contract_redeemer: &AccountIdOf<T>,
