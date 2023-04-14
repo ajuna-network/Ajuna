@@ -96,6 +96,10 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// The NFT-staking's pallet id, used for deriving its sovereign account ID.
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -155,10 +159,6 @@ pub mod pallet {
 
 		/// The origin which may interact with the staking logic.
 		type StakingOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Self::AccountId>;
-
-		/// The treasury's pallet id, used for deriving its sovereign account identifier.
-		#[pallet::constant]
-		type TreasuryPalletId: Get<PalletId>;
 
 		/// The minimal amount of tokens that can be rewarded in a staking contract.
 		#[pallet::constant]
@@ -243,9 +243,6 @@ pub mod pallet {
 		StorageMap<_, Identity, ContractItemIdOf<T>, StakedAssetsVecOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	pub type TreasuryAccount<T: Config> = StorageValue<_, AccountIdOf<T>, OptionQuery>;
-
-	#[pallet::storage]
 	pub type ContractCollectionId<T: Config> =
 		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractCollectionNotSet>>;
 
@@ -257,28 +254,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type NextContractId<T: Config> =
 		StorageValue<_, ContractItemIdOf<T>, ValueQuery, DefaultContractId<T>>;
-
-	#[pallet::genesis_config]
-	pub struct GenesisConfig;
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {
-			// Create Treasury account
-			let account_id = <Pallet<T>>::treasury_account_id();
-			let min = T::Currency::minimum_balance();
-			if T::Currency::free_balance(&account_id) < min {
-				let _ = T::Currency::make_free_balance_be(&account_id, min);
-			}
-		}
-	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -539,19 +514,10 @@ pub mod pallet {
 
 		/// The account identifier of the treasury pot.
 		pub fn treasury_account_id() -> AccountIdOf<T> {
-			if let Some(account) = TreasuryAccount::<T>::get() {
-				account
-			} else {
-				let account: AccountIdOf<T> = T::TreasuryPalletId::get().into_account_truncating();
-
-				TreasuryAccount::<T>::put(account.clone());
-
-				account
-			}
+			T::PalletId::get().into_sub_account_truncating(b"treasury")
 		}
 
 		/// Return the amount of money available in the treasury reserves.
-		// The existential deposit is not part of the pot so treasury account never gets deleted.
 		pub fn treasury_pot_reserve() -> BalanceOf<T> {
 			T::Currency::reserved_balance(&Self::treasury_account_id())
 		}

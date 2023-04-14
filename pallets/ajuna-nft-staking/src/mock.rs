@@ -148,7 +148,7 @@ impl pallet_nfts::Config for Test {
 }
 
 parameter_types! {
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aj/nftst");
+	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
 	pub const MinimumStakingTokenReward: MockBalance = 100;
 	pub ContractCollectionConfig: CollectionConfig = CollectionConfig::default();
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
@@ -161,6 +161,7 @@ pub type ContractAttributeKey = u32;
 pub type ContractAttributeValue = u64;
 
 impl pallet_nft_staking::Config for Test {
+	type PalletId = NftStakingPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = MockCollectionId;
@@ -169,7 +170,6 @@ impl pallet_nft_staking::Config for Test {
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type StakingOrigin = EnsureSigned<MockAccountId>;
-	type TreasuryPalletId = TreasuryPalletId;
 	type MinimumStakingTokenReward = MinimumStakingTokenReward;
 	type ContractCollectionConfig = ContractCollectionConfig;
 	type ContractCollectionItemConfig = ContractCollectionItemConfig;
@@ -213,7 +213,6 @@ impl ExtBuilder {
 		let config = GenesisConfig {
 			system: Default::default(),
 			balances: BalancesConfig { balances: self.balances },
-			nft_stake: Default::default(),
 		};
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();

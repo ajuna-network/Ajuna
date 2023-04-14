@@ -167,8 +167,7 @@ mod fund_treasury {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = RuntimeOrigin::signed(ALICE);
 			let fund_amount: MockBalance = 1_000_000;
-			let treasury_account = TreasuryAccount::<Test>::get().unwrap();
-			let base_reserves = Balances::reserved_balance(treasury_account);
+			let base_reserves = NftStake::treasury_pot_reserve();
 
 			assert_ok!(NftStake::fund_treasury(account, fund_amount));
 
@@ -177,7 +176,7 @@ mod fund_treasury {
 				funds: fund_amount,
 			}));
 
-			assert_eq!(Balances::reserved_balance(treasury_account), base_reserves + fund_amount);
+			assert_eq!(NftStake::treasury_pot_reserve(), base_reserves + fund_amount);
 		});
 	}
 
@@ -231,8 +230,7 @@ mod submit_staking_contract {
 				let contract_reward = StakingRewardOf::<Test>::Tokens(reward);
 				let contract = StakingContractOf::<Test>::new(contract_reward, 10)
 					.with_clause(ContractClause::HasAttribute(10_u32));
-				let treasury_account = TreasuryAccount::<Test>::get().unwrap();
-				let base_reserves = Balances::reserved_balance(treasury_account);
+				let base_reserves = NftStake::treasury_pot_reserve();
 
 				let expected_contract_id = NextContractId::<Test>::get();
 
@@ -255,7 +253,7 @@ mod submit_staking_contract {
 					Some(NftStake::treasury_account_id())
 				);
 
-				let new_reserve = Balances::reserved_balance(treasury_account);
+				let new_reserve = NftStake::treasury_pot_reserve();
 
 				assert_eq!(Balances::free_balance(account), account_balance - reward);
 				assert_eq!(new_reserve, base_reserves + reward);
