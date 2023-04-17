@@ -140,7 +140,7 @@ mod set_lock_state {
 			let contract_reward = StakingRewardOf::<Test>::Tokens(1_000);
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10);
 			assert_noop!(
-				NftStake::submit_staking_contract(RuntimeOrigin::signed(BOB), contract),
+				NftStake::create(RuntimeOrigin::signed(BOB), contract),
 				Error::<Test>::PalletLocked
 			);
 		});
@@ -159,11 +159,11 @@ mod set_lock_state {
 	}
 }
 
-mod submit_staking_contract {
+mod create {
 	use super::*;
 
 	#[test]
-	fn can_submit_staking_contract_with_tokens_as_reward() {
+	fn can_create_with_tokens_as_reward() {
 		let account = ALICE;
 		let account_balance = 1_000_000;
 		ExtBuilder::default()
@@ -178,17 +178,12 @@ mod submit_staking_contract {
 
 				let expected_contract_id = NextContractId::<Test>::get();
 
-				assert_ok!(NftStake::submit_staking_contract(
-					RuntimeOrigin::signed(account),
-					contract.clone()
-				));
+				assert_ok!(NftStake::create(RuntimeOrigin::signed(account), contract.clone()));
 
-				System::assert_last_event(mock::RuntimeEvent::NftStake(
-					crate::Event::StakingContractCreated {
-						creator: account,
-						contract: expected_contract_id,
-					},
-				));
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
+					creator: account,
+					contract_id: expected_contract_id,
+				}));
 
 				assert_eq!(ActiveContracts::<Test>::get(expected_contract_id), Some(contract));
 
@@ -205,7 +200,7 @@ mod submit_staking_contract {
 	}
 
 	#[test]
-	fn can_submit_staking_contract_with_nft_as_reward() {
+	fn can_create_with_nft_as_reward() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let collection_id = create_random_mock_nft_collection(account);
@@ -217,17 +212,12 @@ mod submit_staking_contract {
 
 			let expected_contract_id = NextContractId::<Test>::get();
 
-			assert_ok!(NftStake::submit_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract.clone()
-			));
+			assert_ok!(NftStake::create(RuntimeOrigin::signed(account), contract.clone()));
 
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractCreated {
-					creator: account,
-					contract: expected_contract_id,
-				},
-			));
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
+				creator: account,
+				contract_id: expected_contract_id,
+			}));
 
 			assert_eq!(ActiveContracts::<Test>::get(expected_contract_id), Some(contract));
 
@@ -241,7 +231,7 @@ mod submit_staking_contract {
 	}
 
 	#[test]
-	fn cannot_submit_staking_contract_without_enough_tokens_for_reward_in_account() {
+	fn cannot_create_without_enough_tokens_for_reward_in_account() {
 		let account = ALICE;
 		let account_balance = 1_000_000;
 		ExtBuilder::default()
@@ -254,14 +244,14 @@ mod submit_staking_contract {
 					.with_clause(ContractClause::HasAttribute(10_u32));
 
 				assert_noop!(
-					NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
+					NftStake::create(RuntimeOrigin::signed(account), contract),
 					Error::<Test>::AccountLacksFunds
 				);
 			});
 	}
 
 	#[test]
-	fn cannot_submit_staking_contract_without_owning_the_nft_reward() {
+	fn cannot_create_without_owning_the_nft_reward() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let other_account = BOB;
@@ -272,14 +262,14 @@ mod submit_staking_contract {
 				.with_clause(ContractClause::HasAttribute(10_u32));
 
 			assert_noop!(
-				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
+				NftStake::create(RuntimeOrigin::signed(account), contract),
 				Error::<Test>::ContractRewardNotOwned
 			);
 		});
 	}
 
 	#[test]
-	fn cannot_submit_staking_contract_with_another_contract_as_reward() {
+	fn cannot_create_with_another_contract_as_reward() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let collection_id = contract_collection_id();
@@ -291,7 +281,7 @@ mod submit_staking_contract {
 				.with_clause(ContractClause::HasAttribute(10_u32));
 
 			assert_noop!(
-				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
+				NftStake::create(RuntimeOrigin::signed(account), contract),
 				Error::<Test>::InvalidContractReward
 			);
 		});
@@ -853,7 +843,7 @@ fn create_and_submit_random_staking_contract_nft(
 	let collection_id = contract_collection_id();
 	let expected_contract_id = NextContractId::<Test>::get();
 
-	assert_ok!(NftStake::submit_staking_contract(RuntimeOrigin::signed(creator), contract.clone()));
+	assert_ok!(NftStake::create(RuntimeOrigin::signed(creator), contract.clone()));
 
 	assert_eq!(ActiveContracts::<Test>::get(expected_contract_id), Some(contract));
 

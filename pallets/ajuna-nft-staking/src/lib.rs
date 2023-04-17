@@ -258,8 +258,8 @@ pub mod pallet {
 		ContractCollectionSet { collection_id: T::CollectionId },
 		/// The pallet's lock status has been set
 		LockedStateSet { locked_state: PalletLockedState },
-		/// A new staking contract has been successfully created
-		StakingContractCreated { creator: AccountIdOf<T>, contract: ContractItemIdOf<T> },
+		/// A new staking contract has been created.
+		Created { creator: AccountIdOf<T>, contract_id: ContractItemIdOf<T> },
 		/// A new staking contract has been successfully created
 		StakingContractTaken { taken_by: AccountIdOf<T>, contract: ContractItemIdOf<T> },
 		/// A new staking contract has been successfully created
@@ -348,31 +348,31 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::submit_staking_contract_nft_reward())]
+		#[pallet::weight(
+			T::WeightInfo::create_token_reward()
+				.max(T::WeightInfo::create_nft_reward())
+		)]
 		#[pallet::call_index(4)]
-		pub fn submit_staking_contract(
+		pub fn create(
 			origin: OriginFor<T>,
 			staking_contract: StakingContractOf<T>,
 		) -> DispatchResult {
 			Self::ensure_unlocked()?;
 
-			let account = T::StakingOrigin::ensure_origin(origin)?;
+			let creator = T::StakingOrigin::ensure_origin(origin)?;
 
 			match staking_contract.get_reward() {
 				StakingReward::Tokens(amount) => {
-					Self::try_transfer_funds_from_account_to_treasury(&account, amount)?;
+					Self::try_transfer_funds_from_account_to_treasury(&creator, amount)?;
 				},
 				StakingReward::Nft(address) => {
-					Self::try_taking_ownership_of_nft(&account, &address)?;
+					Self::try_taking_ownership_of_nft(&creator, &address)?;
 				},
 			}
 
 			let contract_id = Self::try_creating_contract_nft_from(staking_contract)?;
 
-			Self::deposit_event(Event::<T>::StakingContractCreated {
-				creator: account,
-				contract: contract_id,
-			});
+			Self::deposit_event(Event::<T>::Created { creator, contract_id });
 
 			Ok(())
 		}
