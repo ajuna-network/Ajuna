@@ -3,8 +3,7 @@ set -e
 
 RUNTIME=${1?Either bajun or ajuna must be passed}
 
-cargo build-"${RUNTIME}"-benchmarks
-
+# common pallets shared by both networks
 PALLETS=(
   "cumulus-pallet-xcmp-queue"
   "frame-system"
@@ -21,10 +20,16 @@ PALLETS=(
   "pallet-timestamp"
   "pallet-treasury"
   "pallet-utility"
-  "pallet-nfts"
 )
 
+# additional pallets for Bajun network
+if [ "${RUNTIME}" == "bajun" ]; then
+  PALLETS+=("pallet-nfts")
+fi
+
 cd "$(git rev-parse --show-toplevel)" || exit
+cargo build-"${RUNTIME}"-benchmarks
+
 for PALLET in "${PALLETS[@]}"; do
   ./target/release/"${RUNTIME}"-para benchmark pallet \
     --chain=dev \
@@ -39,6 +44,7 @@ for PALLET in "${PALLETS[@]}"; do
     --output="./runtime/${RUNTIME}/src/weights/${PALLET//-/_}.rs"
 done
 
+# custom pallets for Bajun network
 [ "${RUNTIME}" != "bajun" ] && exit 0
 CUSTOM_PALLETS=(
   "pallet-ajuna-awesome-avatars"
