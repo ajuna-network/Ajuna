@@ -32,10 +32,7 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{
-			tokens::{
-				nonfungibles_v2::{Inspect, Mutate},
-				AttributeNamespace,
-			},
+			tokens::nonfungibles_v2::{Inspect, Mutate},
 			Locker,
 		},
 		PalletId,
@@ -51,7 +48,6 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -173,13 +169,9 @@ pub mod pallet {
 				Error::<T>::NftOutsideOfChain
 			);
 
-			let item = T::NftHelper::typed_attribute::<AttributeCode, Item>(
-				&collection_id,
-				&item_id,
-				&AttributeNamespace::Pallet,
-				&Item::ITEM_CODE,
-			)
-			.ok_or(Error::<T>::UnknownItem)?;
+			let item =
+				T::NftHelper::system_attribute(&collection_id, &item_id, &Item::ITEM_CODE.encode())
+					.ok_or(Error::<T>::UnknownItem)?;
 
 			T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE)?;
 			T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &Item::IPFS_URL_CODE)?;
@@ -191,7 +183,7 @@ pub mod pallet {
 			T::NftHelper::burn(&collection_id, &item_id, Some(&owner))?;
 
 			Self::deposit_event(Event::<T>::ItemRestored { collection_id, item_id, owner });
-			Ok(item)
+			Item::decode(&mut item.as_slice()).map_err(|_| Error::<T>::ItemRestoreFailure.into())
 		}
 	}
 

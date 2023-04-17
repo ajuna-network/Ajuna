@@ -18,10 +18,7 @@ use crate::{mock::*, traits::*, Error, *};
 use codec::{Decode, Encode};
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
-	traits::tokens::{
-		nonfungibles_v2::{Create, Inspect},
-		AttributeNamespace,
-	},
+	traits::tokens::nonfungibles_v2::{Create, Inspect},
 };
 use sp_runtime::testing::H256;
 
@@ -91,32 +88,21 @@ mod store_as_nft {
 				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				assert_eq!(
-					Nft::typed_attribute::<AttributeCode, MockItem>(
-						&collection_id,
-						&item_id,
-						&AttributeNamespace::Pallet,
-						&MockItem::ITEM_CODE,
-					),
-					Some(item.clone())
+					Nft::system_attribute(&collection_id, &item_id, &MockItem::ITEM_CODE.encode()),
+					Some(item.encode())
 				);
 				assert_eq!(
-					Nft::typed_attribute::<AttributeCode, IpfsUrl>(
+					Nft::system_attribute(
 						&collection_id,
 						&item_id,
-						&AttributeNamespace::Pallet,
-						&MockItem::IPFS_URL_CODE,
+						&MockItem::IPFS_URL_CODE.encode()
 					),
-					Some(url)
+					Some(url.encode())
 				);
 				for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
 					assert_eq!(
-						Nft::typed_attribute(
-							&collection_id,
-							&item_id,
-							&AttributeNamespace::Pallet,
-							&attribute_code,
-						),
-						Some(encoded_attributes)
+						Nft::system_attribute(&collection_id, &item_id, &attribute_code.encode()),
+						Some(encoded_attributes.encode())
 					);
 				}
 				assert_eq!(
@@ -227,28 +213,21 @@ mod recover_from_nft {
 
 				assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
 				assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
-				assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
+				assert!(Nft::system_attribute(
 					&collection_id,
 					&item_id,
-					&AttributeNamespace::Pallet,
-					&MockItem::ITEM_CODE,
+					&MockItem::ITEM_CODE.encode()
 				)
 				.is_none());
-				assert!(Nft::typed_attribute::<AttributeCode, MockItem>(
+				assert!(Nft::system_attribute(
 					&collection_id,
 					&item_id,
-					&AttributeNamespace::Pallet,
-					&MockItem::IPFS_URL_CODE,
+					&MockItem::IPFS_URL_CODE.encode()
 				)
 				.is_none());
 				for attribute_code in MockItem::get_attribute_codes() {
-					assert!(Nft::attribute(
-						&collection_id,
-						&item_id,
-						&AttributeNamespace::Pallet,
-						&attribute_code.encode(),
-					)
-					.is_none());
+					assert!(Nft::attribute(&collection_id, &item_id, &attribute_code.encode())
+						.is_none());
 				}
 
 				// check players are refunded the item deposit
