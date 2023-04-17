@@ -421,4 +421,12 @@ impl<T: frame_system::Config> pallet_nfts::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(11))
 	}
+
+	fn mint_pre_signed(_n: u32, ) -> Weight {
+		todo!()
+	}
+
+	fn set_attributes_pre_signed(_n: u32, ) -> Weight {
+		todo!()
+	}
 }
