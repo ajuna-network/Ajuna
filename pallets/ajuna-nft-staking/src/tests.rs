@@ -581,7 +581,7 @@ mod accept {
 	}
 }
 
-mod redeem_staking_contract {
+mod claim {
 	use super::*;
 
 	#[test]
@@ -589,14 +589,13 @@ mod redeem_staking_contract {
 		ExtBuilder::default().build().execute_with(|| {
 			let attr_key = 10_u32;
 			let contract_duration = 10;
-			let reward_amt = 1_000;
-			let contract_reward = StakingRewardOf::<Test>::Tokens(reward_amt);
+			let reward_amount = 1_000;
+			let reward = StakingRewardOf::<Test>::Tokens(reward_amount);
 
 			let contract_addr = {
 				let account = ALICE;
-				let contract =
-					StakingContractOf::<Test>::new(contract_reward.clone(), contract_duration)
-						.with_clause(ContractClause::HasAttribute(attr_key));
+				let contract = StakingContractOf::<Test>::new(reward.clone(), contract_duration)
+					.with_clause(ContractClause::HasAttribute(attr_key));
 
 				create_and_submit_random_staking_contract_nft(account, contract)
 			};
@@ -622,20 +621,15 @@ mod redeem_staking_contract {
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			run_to_block(current_block + contract_duration);
 
-			assert_ok!(NftStake::redeem_staking_contract(
-				RuntimeOrigin::signed(account),
+			assert_ok!(NftStake::claim(RuntimeOrigin::signed(account), contract_id,));
+
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Claimed {
+				claimed_by: account,
 				contract_id,
-			));
+				reward,
+			}));
 
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractRedeemed {
-					redeemed_by: account,
-					contract: contract_id,
-					reward: contract_reward,
-				},
-			));
-
-			assert_eq!(Balances::free_balance(account), current_balance + reward_amt);
+			assert_eq!(Balances::free_balance(account), current_balance + reward_amount);
 
 			assert_eq!(Nft::owner(staked_nft.0, staked_nft.1), Some(account));
 
@@ -659,10 +653,10 @@ mod redeem_staking_contract {
 			let collection_id = create_random_mock_nft_collection(creator_account);
 			let nft_reward_addr = create_random_mock_nft(creator_account, collection_id, 1);
 
-			let contract_reward = StakingRewardOf::<Test>::Nft(nft_reward_addr.clone());
+			let reward = StakingRewardOf::<Test>::Nft(nft_reward_addr.clone());
 
 			let contract_addr = {
-				let contract = StakingContractOf::<Test>::new(contract_reward.clone(), 10)
+				let contract = StakingContractOf::<Test>::new(reward.clone(), 10)
 					.with_clause(ContractClause::HasAttribute(10_u32));
 
 				create_and_submit_random_staking_contract_nft(creator_account, contract)
@@ -687,18 +681,13 @@ mod redeem_staking_contract {
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			run_to_block(current_block + contract_duration);
 
-			assert_ok!(NftStake::redeem_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract_id,
-			));
+			assert_ok!(NftStake::claim(RuntimeOrigin::signed(account), contract_id,));
 
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractRedeemed {
-					redeemed_by: account,
-					contract: contract_id,
-					reward: contract_reward,
-				},
-			));
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Claimed {
+				claimed_by: account,
+				contract_id,
+				reward,
+			}));
 
 			assert_eq!(Nft::owner(nft_reward_addr.0, nft_reward_addr.1), Some(account));
 
@@ -747,10 +736,7 @@ mod redeem_staking_contract {
 			run_to_block(expiry_block);
 
 			assert_noop!(
-				NftStake::redeem_staking_contract(
-					RuntimeOrigin::signed(contract_redeemer),
-					taken_contract_id,
-				),
+				NftStake::claim(RuntimeOrigin::signed(contract_redeemer), taken_contract_id,),
 				Error::<Test>::ContractNotOwned
 			);
 		});
@@ -784,10 +770,7 @@ mod redeem_staking_contract {
 			run_to_block(expiry_block - 1);
 
 			assert_noop!(
-				NftStake::redeem_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					taken_contract_id,
-				),
+				NftStake::claim(RuntimeOrigin::signed(contract_taker), taken_contract_id,),
 				Error::<Test>::ContractStillActive
 			);
 		});

@@ -52,8 +52,8 @@ pub trait WeightInfo {
 	fn create_token_reward() -> Weight;
 	fn create_nft_reward() -> Weight;
 	fn accept() -> Weight;
-	fn redeem_staking_contract_token_reward() -> Weight;
-	fn redeem_staking_contract_nft_reward() -> Weight;
+	fn claim_token_reward() -> Weight;
+	fn claim_nft_reward() -> Weight;
 }
 
 /// Weights for pallet_ajuna_nft_staking using the Substrate node and recommended hardware.
@@ -164,7 +164,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft ItemPriceOf (r:0 w:11)
 	// Storage: Nft ItemAttributesApprovalsOf (r:0 w:1)
 	// Storage: Nft PendingSwapOf (r:0 w:11)
-	fn redeem_staking_contract_token_reward() -> Weight {
+	fn claim_token_reward() -> Weight {
 		// Minimum execution time: 544_620 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(33 as u64))
@@ -186,7 +186,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft ItemPriceOf (r:0 w:12)
 	// Storage: Nft ItemAttributesApprovalsOf (r:0 w:1)
 	// Storage: Nft PendingSwapOf (r:0 w:12)
-	fn redeem_staking_contract_nft_reward() -> Weight {
+	fn claim_nft_reward() -> Weight {
 		// Minimum execution time: 565_593 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(37 as u64))
@@ -301,7 +301,7 @@ impl WeightInfo for () {
 	// Storage: Nft ItemPriceOf (r:0 w:11)
 	// Storage: Nft ItemAttributesApprovalsOf (r:0 w:1)
 	// Storage: Nft PendingSwapOf (r:0 w:11)
-	fn redeem_staking_contract_token_reward() -> Weight {
+	fn claim_token_reward() -> Weight {
 		// Minimum execution time: 544_620 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(33 as u64))
@@ -323,7 +323,7 @@ impl WeightInfo for () {
 	// Storage: Nft ItemPriceOf (r:0 w:12)
 	// Storage: Nft ItemAttributesApprovalsOf (r:0 w:1)
 	// Storage: Nft PendingSwapOf (r:0 w:12)
-	fn redeem_staking_contract_nft_reward() -> Weight {
+	fn claim_nft_reward() -> Weight {
 		// Minimum execution time: 565_593 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(37 as u64))

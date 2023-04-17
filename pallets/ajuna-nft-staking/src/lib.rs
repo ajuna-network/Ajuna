@@ -262,10 +262,10 @@ pub mod pallet {
 		Created { creator: AccountIdOf<T>, contract_id: ContractItemIdOf<T> },
 		/// A staking contract has been accepted.
 		Accepted { accepted_by: AccountIdOf<T>, contract_id: ContractItemIdOf<T> },
-		/// A new staking contract has been successfully created
-		StakingContractRedeemed {
-			redeemed_by: AccountIdOf<T>,
-			contract: ContractItemIdOf<T>,
+		/// A staking contract has been claimed.
+		Claimed {
+			claimed_by: AccountIdOf<T>,
+			contract_id: ContractItemIdOf<T>,
 			reward: StakingRewardOf<T>,
 		},
 	}
@@ -417,12 +417,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::redeem_staking_contract_nft_reward())]
+		#[pallet::weight(
+			T::WeightInfo::claim_token_reward()
+				.max(T::WeightInfo::claim_nft_reward())
+		)]
 		#[pallet::call_index(6)]
-		pub fn redeem_staking_contract(
-			origin: OriginFor<T>,
-			contract_id: ContractItemIdOf<T>,
-		) -> DispatchResult {
+		pub fn claim(origin: OriginFor<T>, contract_id: ContractItemIdOf<T>) -> DispatchResult {
 			Self::ensure_unlocked()?;
 
 			let account = T::StakingOrigin::ensure_origin(origin)?;
@@ -439,18 +439,14 @@ pub mod pallet {
 				true,
 			)?;
 
-			let contract_reward = ActiveContracts::<T>::get(contract_id)
+			let reward = ActiveContracts::<T>::get(contract_id)
 				.ok_or(Error::<T>::ContractNotFound)?
 				.get_reward();
 
-			Self::try_handing_over_contract_reward_to(&account, &contract_reward)?;
+			Self::try_handing_over_contract_reward_to(&account, &reward)?;
 			Self::try_closing_redeemed_contract(&contract_id, &account)?;
 
-			Self::deposit_event(Event::<T>::StakingContractRedeemed {
-				redeemed_by: account,
-				contract: contract_id,
-				reward: contract_reward,
-			});
+			Self::deposit_event(Event::<T>::Claimed { claimed_by: account, contract_id, reward });
 
 			Ok(())
 		}
