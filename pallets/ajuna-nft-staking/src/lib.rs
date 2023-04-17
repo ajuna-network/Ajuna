@@ -221,7 +221,7 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	pub type Organizer<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+	pub type Creator<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
 	pub type LockedState<T: Config> = StorageValue<_, PalletLockedState, ValueQuery>;
@@ -252,8 +252,8 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// An organizer has been set.
-		OrganizerSet { organizer: AccountIdOf<T> },
+		/// An creator has been set.
+		CreatorSet { creator: AccountIdOf<T> },
 		/// The collection holding the staking contracts has been set.
 		ContractCollectionSet { collection_id: T::CollectionId },
 		/// The pallet's lock status has been set
@@ -273,11 +273,11 @@ pub mod pallet {
 	/// Error for the treasury pallet.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// There is no account set as the organizer
-		OrganizerNotSet,
+		/// There is no account set as the creator
+		CreatorNotSet,
 		/// The contract collection id has not been set in storage.
 		ContractCollectionNotSet,
-		/// The contract collection is either non-existent or not owned by the organizer.
+		/// The contract collection is either non-existent or not owned by the creator.
 		InvalidContractCollection,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
@@ -309,12 +309,12 @@ pub mod pallet {
 	//SBP-M3 review: Please add documentation in each extrinsic
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::WeightInfo::set_organizer())]
+		#[pallet::weight(T::WeightInfo::set_creator())]
 		#[pallet::call_index(0)]
-		pub fn set_organizer(origin: OriginFor<T>, organizer: T::AccountId) -> DispatchResult {
+		pub fn set_creator(origin: OriginFor<T>, creator: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
-			Organizer::<T>::put(&organizer);
-			Self::deposit_event(Event::OrganizerSet { organizer });
+			Creator::<T>::put(&creator);
+			Self::deposit_event(Event::CreatorSet { creator });
 			Ok(())
 		}
 
@@ -324,7 +324,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 		) -> DispatchResult {
-			let account = Self::ensure_organizer(origin)?;
+			let account = Self::ensure_creator(origin)?;
 			ensure!(
 				T::NftHelper::collection_owner(&collection_id)
 					.filter(|owner| *owner == account)
@@ -342,7 +342,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			locked_state: PalletLockedState,
 		) -> DispatchResult {
-			let _ = Self::ensure_organizer(origin)?;
+			let _ = Self::ensure_creator(origin)?;
 			LockedState::<T>::put(locked_state);
 			Self::deposit_event(Event::LockedStateSet { locked_state });
 			Ok(())
@@ -460,11 +460,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn ensure_organizer(origin: OriginFor<T>) -> Result<AccountIdOf<T>, DispatchError> {
-			let maybe_organizer = ensure_signed(origin)?;
-			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
-			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
-			Ok(maybe_organizer)
+		fn ensure_creator(origin: OriginFor<T>) -> Result<AccountIdOf<T>, DispatchError> {
+			let maybe_creator = ensure_signed(origin)?;
+			let existing_creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
+			ensure!(maybe_creator == existing_creator, DispatchError::BadOrigin);
+			Ok(maybe_creator)
 		}
 
 		fn ensure_unlocked() -> DispatchResult {

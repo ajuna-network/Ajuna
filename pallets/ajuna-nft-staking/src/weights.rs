@@ -45,7 +45,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ajuna_nft_staking.
 pub trait WeightInfo {
-	fn set_organizer() -> Weight;
+	fn set_creator() -> Weight;
 	fn set_contract_collection_id() -> Weight;
 	fn set_locked_state() -> Weight;
 	fn fund_treasury() -> Weight;
@@ -59,13 +59,13 @@ pub trait WeightInfo {
 /// Weights for pallet_ajuna_nft_staking using the Substrate node and recommended hardware.
 pub struct AjunaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
-	// Storage: NftStake Organizer (r:0 w:1)
-	fn set_organizer() -> Weight {
+	// Storage: NftStake Creator (r:0 w:1)
+	fn set_creator() -> Weight {
 		// Minimum execution time: 26_582 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
-	// Storage: NftStake Organizer (r:1 w:0)
+	// Storage: NftStake Creator (r:1 w:0)
 	// Storage: Nft Collection (r:1 w:0)
 	// Storage: NftStake ContractCollectionId (r:0 w:1)
 	fn set_contract_collection_id() -> Weight {
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
-	// Storage: NftStake Organizer (r:1 w:0)
+	// Storage: NftStake Creator (r:1 w:0)
 	// Storage: NftStake LockedState (r:0 w:1)
 	fn set_locked_state() -> Weight {
 		// Minimum execution time: 32_015 nanoseconds.
@@ -196,13 +196,13 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	// Storage: NftStake Organizer (r:0 w:1)
-	fn set_organizer() -> Weight {
+	// Storage: NftStake Creator (r:0 w:1)
+	fn set_creator() -> Weight {
 		// Minimum execution time: 26_582 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
-	// Storage: NftStake Organizer (r:1 w:0)
+	// Storage: NftStake Creator (r:1 w:0)
 	// Storage: Nft Collection (r:1 w:0)
 	// Storage: NftStake ContractCollectionId (r:0 w:1)
 	fn set_contract_collection_id() -> Weight {
@@ -211,7 +211,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
-	// Storage: NftStake Organizer (r:1 w:0)
+	// Storage: NftStake Creator (r:1 w:0)
 	// Storage: NftStake LockedState (r:0 w:1)
 	fn set_locked_state() -> Weight {
 		// Minimum execution time: 32_015 nanoseconds.

@@ -21,26 +21,26 @@ use frame_support::{
 };
 use sp_runtime::bounded_vec;
 
-mod organizer {
+mod creator {
 	use super::*;
 
 	#[test]
-	fn set_organizer_successfully() {
+	fn set_creator_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(Organizer::<Test>::get(), None);
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-			assert_eq!(Organizer::<Test>::get(), Some(ALICE), "Organizer should be Alice");
-			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::OrganizerSet {
-				organizer: ALICE,
+			assert_eq!(Creator::<Test>::get(), None);
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
+			assert_eq!(Creator::<Test>::get(), Some(ALICE), "Creator should be Alice");
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::CreatorSet {
+				creator: ALICE,
 			}));
 		});
 	}
 
 	#[test]
-	fn set_organizer_should_reject_non_root_calls() {
+	fn set_creator_should_reject_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				NftStake::set_organizer(RuntimeOrigin::signed(BOB), ALICE),
+				NftStake::set_creator(RuntimeOrigin::signed(BOB), ALICE),
 				DispatchError::BadOrigin
 			);
 		});
@@ -55,7 +55,7 @@ mod set_contract_collection_id {
 		ExtBuilder::default().create_collection(false).build().execute_with(|| {
 			assert!(ContractCollectionId::<Test>::get().is_err());
 
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
 
 			let collection_config =
 				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
@@ -83,7 +83,7 @@ mod set_contract_collection_id {
 		ExtBuilder::default().create_collection(false).build().execute_with(|| {
 			assert!(ContractCollectionId::<Test>::get().is_err());
 
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
 
 			assert_noop!(
 				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), 17),
@@ -93,11 +93,11 @@ mod set_contract_collection_id {
 	}
 
 	#[test]
-	fn set_contract_collection_id_should_reject_non_organizer_owned_collection() {
+	fn set_contract_collection_id_should_reject_non_creator_owned_collection() {
 		ExtBuilder::default().create_collection(false).build().execute_with(|| {
 			assert!(ContractCollectionId::<Test>::get().is_err());
 
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
 
 			let collection_config =
 				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
@@ -122,7 +122,7 @@ mod set_lock_state {
 	#[test]
 	fn set_lock_state_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
 
 			assert_ok!(NftStake::set_locked_state(
 				RuntimeOrigin::signed(ALICE),
@@ -147,9 +147,9 @@ mod set_lock_state {
 	}
 
 	#[test]
-	fn set_lock_state_should_fail_with_non_organizer_account() {
+	fn set_lock_state_should_fail_with_non_creator_account() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
 
 			assert_noop!(
 				NftStake::set_locked_state(RuntimeOrigin::signed(BOB), PalletLockedState::Locked),

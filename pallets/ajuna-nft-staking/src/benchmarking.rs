@@ -147,26 +147,26 @@ type ContractClauseOf<T> =
 	ContractClause<<T as Config>::ContractAttributeKey, <T as Config>::ContractAttributeValue>;
 
 benchmarks! {
-	set_organizer {
-		let organizer = prepare_account::<T>("ALICE");
-	}: _(RawOrigin::Root, organizer.clone())
+	set_creator {
+		let creator = prepare_account::<T>("ALICE");
+	}: _(RawOrigin::Root, creator.clone())
 	verify {
-		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+		assert_last_event::<T>(Event::CreatorSet { creator }.into())
 	}
 
 	set_contract_collection_id {
 		let account = NftStake::<T>::treasury_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
-		Organizer::<T>::put(&account);
+		Creator::<T>::put(&account);
 	}: _(RawOrigin::Signed(account), collection_id)
 	verify {
 		assert_last_event::<T>(Event::ContractCollectionSet { collection_id }.into())
 	}
 
 	set_locked_state {
-		let organizer = prepare_account::<T>("ALICE");
-		Organizer::<T>::put(&organizer);
-	}: _(RawOrigin::Signed(organizer), PalletLockedState::Locked)
+		let creator = prepare_account::<T>("ALICE");
+		Creator::<T>::put(&creator);
+	}: _(RawOrigin::Signed(creator), PalletLockedState::Locked)
 	verify {
 		assert_last_event::<T>(Event::LockedStateSet { locked_state: PalletLockedState::Locked }.into())
 	}
