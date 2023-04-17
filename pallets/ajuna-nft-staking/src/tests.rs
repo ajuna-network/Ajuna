@@ -17,10 +17,7 @@
 use crate::{mock::*, *};
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::tokens::{
-		nonfungibles_v2::{Create, Mutate},
-		AttributeNamespace,
-	},
+	traits::tokens::nonfungibles_v2::{Create, Mutate},
 };
 use sp_runtime::bounded_vec;
 
@@ -233,7 +230,7 @@ mod submit_staking_contract {
 				let reward = 1_000;
 				let contract_reward = StakingRewardOf::<Test>::Tokens(reward);
 				let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-					.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
+					.with_clause(ContractClause::HasAttribute(10_u32));
 				let treasury_account = TreasuryAccount::<Test>::get().unwrap();
 				let base_reserves = Balances::reserved_balance(treasury_account);
 
@@ -274,7 +271,7 @@ mod submit_staking_contract {
 
 			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr.clone());
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
+				.with_clause(ContractClause::HasAttribute(10_u32));
 
 			let expected_contract_id = NextContractId::<Test>::get();
 
@@ -312,7 +309,7 @@ mod submit_staking_contract {
 				let reward = 2_000_000;
 				let contract_reward = StakingRewardOf::<Test>::Tokens(reward);
 				let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-					.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
+					.with_clause(ContractClause::HasAttribute(10_u32));
 
 				assert_noop!(
 					NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
@@ -330,7 +327,7 @@ mod submit_staking_contract {
 
 			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
+				.with_clause(ContractClause::HasAttribute(10_u32));
 
 			assert_noop!(
 				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
@@ -349,7 +346,7 @@ mod submit_staking_contract {
 
 			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
 			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-				.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
+				.with_clause(ContractClause::HasAttribute(10_u32));
 
 			assert_noop!(
 				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
@@ -372,7 +369,7 @@ mod take_staking_contract {
 				StakingRewardOf::<Test>::Tokens(1_000),
 				contract_duration,
 			)
-			.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, attr_key));
+			.with_clause(ContractClause::HasAttribute(attr_key));
 			let expected_contract_id = NextContractId::<Test>::get();
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
@@ -429,17 +426,9 @@ mod take_staking_contract {
 				StakingRewardOf::<Test>::Tokens(1_000),
 				contract_duration,
 			)
-			.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, attr_key_set[0]))
-			.with_clause(ContractClause::HasAttributeWithValue(
-				AttributeNamespace::Pallet,
-				attr_key_set[1],
-				attr_value_set[1],
-			))
-			.with_clause(ContractClause::HasAttributeWithValue(
-				AttributeNamespace::Pallet,
-				attr_key_set[2],
-				attr_value_set[2],
-			));
+			.with_clause(ContractClause::HasAttribute(attr_key_set[0]))
+			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[1], attr_value_set[1]))
+			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[2], attr_value_set[2]));
 			let expected_contract_id = NextContractId::<Test>::get();
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
@@ -479,10 +468,7 @@ mod take_staking_contract {
 			let attr_key = 10_u32;
 			let contract =
 				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(
-						AttributeNamespace::Pallet,
-						attr_key,
-					));
+					.with_clause(ContractClause::HasAttribute(attr_key));
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			// Contract taken by another
@@ -531,10 +517,7 @@ mod take_staking_contract {
 			let attr_key = 10_u32;
 			let contract =
 				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(
-						AttributeNamespace::Pallet,
-						attr_key,
-					));
+					.with_clause(ContractClause::HasAttribute(attr_key));
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			// Trying to take contract again
@@ -572,10 +555,7 @@ mod take_staking_contract {
 			let attr_key = 10_u32;
 			let contract =
 				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(
-						AttributeNamespace::Pallet,
-						attr_key,
-					));
+					.with_clause(ContractClause::HasAttribute(attr_key));
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			let contract_taker = BOB;
@@ -609,17 +589,9 @@ mod take_staking_contract {
 				StakingRewardOf::<Test>::Tokens(5_000),
 				contract_duration,
 			)
-			.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, attr_key_set[0]))
-			.with_clause(ContractClause::HasAttributeWithValue(
-				AttributeNamespace::Pallet,
-				attr_key_set[1],
-				attr_value_set[1],
-			))
-			.with_clause(ContractClause::HasAttributeWithValue(
-				AttributeNamespace::Pallet,
-				attr_key_set[2],
-				attr_value_set[2],
-			));
+			.with_clause(ContractClause::HasAttribute(attr_key_set[0]))
+			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[1], attr_value_set[1]))
+			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[2], attr_value_set[2]));
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			let contract_taker = BOB;
@@ -654,10 +626,7 @@ mod take_staking_contract {
 			let attr_key = 10_u32;
 			let contract =
 				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(
-						AttributeNamespace::Pallet,
-						attr_key,
-					));
+					.with_clause(ContractClause::HasAttribute(attr_key));
 			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
 
 			// Trying to take contract
@@ -699,10 +668,7 @@ mod redeem_staking_contract {
 				let account = ALICE;
 				let contract =
 					StakingContractOf::<Test>::new(contract_reward.clone(), contract_duration)
-						.with_clause(ContractClause::HasAttribute(
-							AttributeNamespace::Pallet,
-							attr_key,
-						));
+						.with_clause(ContractClause::HasAttribute(attr_key));
 
 				create_and_submit_random_staking_contract_nft(account, contract)
 			};
@@ -769,7 +735,7 @@ mod redeem_staking_contract {
 
 			let contract_addr = {
 				let contract = StakingContractOf::<Test>::new(contract_reward.clone(), 10)
-					.with_clause(ContractClause::HasAttribute(AttributeNamespace::Pallet, 10_u32));
+					.with_clause(ContractClause::HasAttribute(10_u32));
 
 				create_and_submit_random_staking_contract_nft(creator_account, contract)
 			};

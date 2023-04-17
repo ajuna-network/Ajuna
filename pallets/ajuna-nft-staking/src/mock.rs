@@ -25,12 +25,14 @@ use frame_system::{
 };
 use pallet_nfts::PalletFeatures;
 use sp_runtime::{
-	testing::{Header, H256},
-	traits::{BlakeTwo256, IdentityLookup},
+	testing::{Header, TestSignature, H256},
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage,
 };
 
-pub type MockAccountId = u32;
+pub type MockSignature = TestSignature;
+pub type MockAccountPublic = <MockSignature as Verify>::Signer;
+pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
 pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
 pub type MockIndex = u64;
@@ -135,7 +137,10 @@ impl pallet_nfts::Config for Test {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type MaxAttributesPerCall = ConstU32<2>;
 	type Features = ConfigFeatures;
+	type OffchainSignature = MockSignature;
+	type OffchainPublic = MockAccountPublic;
 	pallet_nfts::runtime_benchmarks_enabled! {
 		type Helper = ();
 	}

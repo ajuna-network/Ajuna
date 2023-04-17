@@ -68,7 +68,6 @@ pub mod pallet {
 		BalanceOf<T>,
 		CollectionIdOf<T>,
 		ItemIdOf<T>,
-		AccountIdOf<T>,
 		BlockNumberOf<T>,
 		ContractAttributeKeyOf<T>,
 		ContractAttributeValueOf<T>,
@@ -95,7 +94,6 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -460,7 +458,7 @@ pub mod pallet {
 				ActiveContracts::<T>::get(contract_id).ok_or(Error::<T>::ContractNotFound)?;
 
 			ensure!(
-				contract.evaluate_for::<T::NftHelper>(&staked_assets),
+				contract.evaluate_for::<T::NftHelper, T::AccountId>(&staked_assets),
 				Error::<T>::ContractConditionsNotFulfilled
 			);
 

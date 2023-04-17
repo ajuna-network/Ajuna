@@ -15,9 +15,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::{
-	tokens::{nonfungibles_v2::Inspect, AttributeNamespace, Balance as RewardBalance},
-	ConstU32,
+use frame_support::{
+	pallet_prelude::*,
+	traits::{
+		tokens::{nonfungibles_v2::Inspect, Balance as RewardBalance},
+		ConstU32,
+	},
 };
 use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
@@ -54,7 +57,6 @@ pub struct StakingContract<
 	Balance,
 	CollectionId,
 	ItemId,
-	AccountId,
 	BlockNumber,
 	AttributeKey,
 	AttributeValue,
@@ -68,31 +70,13 @@ pub struct StakingContract<
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 {
 	staking_reward: StakingReward<Balance, CollectionId, ItemId>,
-	contract_clauses:
-		BoundedVec<ContractClause<AccountId, AttributeKey, AttributeValue>, ConstU32<N>>,
+	contract_clauses: BoundedVec<ContractClause<AttributeKey, AttributeValue>, ConstU32<N>>,
 	contract_block_duration: BlockNumber,
 }
 
-impl<
-		Balance,
-		CollectionId,
-		ItemId,
-		AccountId,
-		BlockNumber,
-		AttributeKey,
-		AttributeValue,
-		const N: u32,
-	>
-	StakingContract<
-		Balance,
-		CollectionId,
-		ItemId,
-		AccountId,
-		BlockNumber,
-		AttributeKey,
-		AttributeValue,
-		N,
-	> where
+impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, const N: u32>
+	StakingContract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, N>
+where
 	Balance: RewardBalance,
 	CollectionId: Debug + Copy,
 	ItemId: Debug + Copy,
@@ -111,26 +95,24 @@ impl<
 		}
 	}
 
-	pub fn with_clause(
-		mut self,
-		clause: ContractClause<AccountId, AttributeKey, AttributeValue>,
-	) -> Self {
+	pub fn with_clause(mut self, clause: ContractClause<AttributeKey, AttributeValue>) -> Self {
 		let _ = self.contract_clauses.try_push(clause);
 
 		self
 	}
 
-	pub fn evaluate_for<NftInspector>(
+	pub fn evaluate_for<NftInspector, AccountId>(
 		&self,
 		staked_assets: &StakedAssetsVec<CollectionId, ItemId, N>,
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+		AccountId: Parameter + Member,
 	{
 		(self.contract_clauses.len() == staked_assets.len())
 			.then(|| {
 				self.contract_clauses.iter().zip(staked_assets.iter()).all(|(clause, asset)| {
-					clause.evaluate_for::<NftInspector, CollectionId, ItemId>(asset)
+					clause.evaluate_for::<NftInspector, AccountId, CollectionId, ItemId>(asset)
 				})
 			})
 			.unwrap_or(false)
@@ -146,46 +128,40 @@ impl<
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum ContractClause<AccountId, AttributeKey, AttributeValue>
+pub enum ContractClause<AttributeKey, AttributeValue>
 where
 	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 {
-	HasAttribute(AttributeNamespace<AccountId>, AttributeKey),
-	HasAttributeWithValue(AttributeNamespace<AccountId>, AttributeKey, AttributeValue),
+	HasAttribute(AttributeKey),
+	HasAttributeWithValue(AttributeKey, AttributeValue),
 }
 
-impl<AccountId, AttributeKey, AttributeValue>
-	ContractClause<AccountId, AttributeKey, AttributeValue>
+impl<AttributeKey, AttributeValue> ContractClause<AttributeKey, AttributeValue>
 where
 	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 {
-	pub fn evaluate_for<NftInspector, CollectionId, ItemId>(
+	pub fn evaluate_for<NftInspector, AccountId, CollectionId, ItemId>(
 		&self,
 		asset: &NftAddress<CollectionId, ItemId>,
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+		AccountId: Parameter + Member,
 		CollectionId: Debug + Copy,
 		ItemId: Debug + Copy,
 	{
 		let NftAddress(collection_id, item_id) = asset;
 
 		match self {
-			ContractClause::HasAttribute(ns, key) => NftInspector::typed_attribute::<
-				AttributeKey,
-				AttributeValue,
-			>(collection_id, item_id, ns, key)
-			.is_some(),
-			ContractClause::HasAttributeWithValue(ns, key, expected_value) => {
-				if let Some(value) = NftInspector::typed_attribute::<AttributeKey, AttributeValue>(
-					collection_id,
-					item_id,
-					ns,
-					key,
-				) {
-					expected_value.eq(&value)
+			ContractClause::HasAttribute(key) =>
+				NftInspector::system_attribute(collection_id, item_id, &key.encode()).is_some(),
+			ContractClause::HasAttributeWithValue(key, expected_value) => {
+				if let Some(value) =
+					NftInspector::system_attribute(collection_id, item_id, &key.encode())
+				{
+					expected_value.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
 				} else {
 					false
 				}
