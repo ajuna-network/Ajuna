@@ -260,8 +260,8 @@ pub mod pallet {
 		LockedStateSet { locked_state: PalletLockedState },
 		/// A new staking contract has been created.
 		Created { creator: AccountIdOf<T>, contract_id: ContractItemIdOf<T> },
-		/// A new staking contract has been successfully created
-		StakingContractTaken { taken_by: AccountIdOf<T>, contract: ContractItemIdOf<T> },
+		/// A staking contract has been accepted.
+		Accepted { accepted_by: AccountIdOf<T>, contract_id: ContractItemIdOf<T> },
 		/// A new staking contract has been successfully created
 		StakingContractRedeemed {
 			redeemed_by: AccountIdOf<T>,
@@ -377,9 +377,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::take_staking_contract())]
+		#[pallet::weight(T::WeightInfo::accept())]
 		#[pallet::call_index(5)]
-		pub fn take_staking_contract(
+		pub fn accept(
 			origin: OriginFor<T>,
 			contract_id: ContractItemIdOf<T>,
 			staked_assets: StakedAssetsVecOf<T>,
@@ -412,10 +412,7 @@ pub mod pallet {
 				staked_assets,
 			)?;
 
-			Self::deposit_event(Event::<T>::StakingContractTaken {
-				taken_by: account,
-				contract: contract_id,
-			});
+			Self::deposit_event(Event::<T>::Accepted { accepted_by: account, contract_id });
 
 			Ok(())
 		}

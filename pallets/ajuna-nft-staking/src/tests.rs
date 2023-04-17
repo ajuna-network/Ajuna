@@ -288,11 +288,11 @@ mod create {
 	}
 }
 
-mod take_staking_contract {
+mod accept {
 	use super::*;
 
 	#[test]
-	fn take_staking_contract_successfully() {
+	fn accept_successfully() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let attr_key = 10_u32;
@@ -309,18 +309,16 @@ mod take_staking_contract {
 			let staked_nft = create_random_mock_nft_for(contract_taker);
 			set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
 
-			assert_ok!(NftStake::take_staking_contract(
+			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(contract_taker),
 				contract_addr.1,
 				bounded_vec![staked_nft.clone()],
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractTaken {
-					taken_by: contract_taker,
-					contract: expected_contract_id,
-				},
-			));
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Accepted {
+				accepted_by: contract_taker,
+				contract_id: expected_contract_id,
+			}));
 
 			assert_eq!(
 				Nft::owner(staked_nft.0, staked_nft.1),
@@ -378,18 +376,16 @@ mod take_staking_contract {
 				bounded_vec![staked_nft_1, staked_nft_2, staked_nft_3]
 			};
 
-			assert_ok!(NftStake::take_staking_contract(
+			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(contract_taker),
 				contract_addr.1,
 				staked_nft_vec,
 			));
 
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractTaken {
-					taken_by: contract_taker,
-					contract: expected_contract_id,
-				},
-			));
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Accepted {
+				accepted_by: contract_taker,
+				contract_id: expected_contract_id,
+			}));
 		});
 	}
 
@@ -413,7 +409,7 @@ mod take_staking_contract {
 					bounded_vec![staked_nft]
 				};
 
-				assert_ok!(NftStake::take_staking_contract(
+				assert_ok!(NftStake::accept(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec,
@@ -431,7 +427,7 @@ mod take_staking_contract {
 				};
 
 				assert_noop!(
-					NftStake::take_staking_contract(
+					NftStake::accept(
 						RuntimeOrigin::signed(contract_taker),
 						contract_addr.1,
 						staked_nft_vec,
@@ -462,14 +458,14 @@ mod take_staking_contract {
 					bounded_vec![staked_nft]
 				};
 
-				assert_ok!(NftStake::take_staking_contract(
+				assert_ok!(NftStake::accept(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec.clone(),
 				));
 
 				assert_noop!(
-					NftStake::take_staking_contract(
+					NftStake::accept(
 						RuntimeOrigin::signed(contract_taker),
 						contract_addr.1,
 						staked_nft_vec,
@@ -481,7 +477,7 @@ mod take_staking_contract {
 	}
 
 	#[test]
-	fn fail_to_take_staking_contract_on_unfulfilled_conditions() {
+	fn fail_to_accept_on_unfulfilled_conditions() {
 		ExtBuilder::default().build().execute_with(|| {
 			let account = ALICE;
 			let attr_key = 10_u32;
@@ -500,7 +496,7 @@ mod take_staking_contract {
 			};
 
 			assert_noop!(
-				NftStake::take_staking_contract(
+				NftStake::accept(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec,
@@ -541,7 +537,7 @@ mod take_staking_contract {
 			};
 
 			assert_noop!(
-				NftStake::take_staking_contract(
+				NftStake::accept(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					staked_nft_vec,
@@ -573,7 +569,7 @@ mod take_staking_contract {
 				};
 
 				assert_noop!(
-					NftStake::take_staking_contract(
+					NftStake::accept(
 						RuntimeOrigin::signed(contract_taker),
 						contract_addr.1,
 						staked_nft_vec,
@@ -616,7 +612,7 @@ mod redeem_staking_contract {
 
 			let contract_id = contract_addr.1;
 
-			assert_ok!(NftStake::take_staking_contract(
+			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(account),
 				contract_id,
 				bounded_vec![staked_nft.clone()],
@@ -681,7 +677,7 @@ mod redeem_staking_contract {
 
 			let contract_id = contract_addr.1;
 
-			assert_ok!(NftStake::take_staking_contract(
+			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(account),
 				contract_id,
 				bounded_vec![staked_nft.clone()],
@@ -734,7 +730,7 @@ mod redeem_staking_contract {
 
 				let taker_account = BOB;
 
-				assert_ok!(NftStake::take_staking_contract(
+				assert_ok!(NftStake::accept(
 					RuntimeOrigin::signed(taker_account),
 					contract_addr.1,
 					bounded_vec![],
@@ -773,7 +769,7 @@ mod redeem_staking_contract {
 				let contract_addr =
 					create_and_submit_random_staking_contract_nft(creator_account, contract);
 
-				assert_ok!(NftStake::take_staking_contract(
+				assert_ok!(NftStake::accept(
 					RuntimeOrigin::signed(contract_taker),
 					contract_addr.1,
 					bounded_vec![],

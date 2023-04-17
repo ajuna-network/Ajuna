@@ -51,7 +51,7 @@ pub trait WeightInfo {
 	fn fund_treasury() -> Weight;
 	fn create_token_reward() -> Weight;
 	fn create_nft_reward() -> Weight;
-	fn take_staking_contract() -> Weight;
+	fn accept() -> Weight;
 	fn redeem_staking_contract_token_reward() -> Weight;
 	fn redeem_staking_contract_nft_reward() -> Weight;
 }
@@ -142,7 +142,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft Account (r:0 w:22)
 	// Storage: Nft ItemPriceOf (r:0 w:11)
 	// Storage: Nft PendingSwapOf (r:0 w:11)
-	fn take_staking_contract() -> Weight {
+	fn accept() -> Weight {
 		// Minimum execution time: 789_389 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(42 as u64))
@@ -279,7 +279,7 @@ impl WeightInfo for () {
 	// Storage: Nft Account (r:0 w:22)
 	// Storage: Nft ItemPriceOf (r:0 w:11)
 	// Storage: Nft PendingSwapOf (r:0 w:11)
-	fn take_staking_contract() -> Weight {
+	fn accept() -> Weight {
 		// Minimum execution time: 789_389 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(42 as u64))
