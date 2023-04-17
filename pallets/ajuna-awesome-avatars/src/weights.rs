@@ -95,7 +95,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	/// The range of component `n` is `[0, 194]`.
 	fn mint_free(_n: u32, ) -> Weight {
 		// Minimum execution time: 172_086 nanoseconds.
-		Weight::from_ref_time(446_588_408 as u64)
+		Weight::from_parts(446_588_408, 0)
 			.saturating_add(T::DbWeight::get().reads(8 as u64))
 			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
@@ -120,11 +120,11 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Avatars (r:0 w:6)
 	// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(172), added: 2647, mode: MaxEncodedLen)
 	/// The range of component `n` is `[0, 194]`.
-	fn mint_normal(n: u32, ) -> Weight {
+	fn mint_normal(_n: u32, ) -> Weight {
 		// Minimum execution time: 224_718 nanoseconds.
-		Weight::from_ref_time(528_116_364 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 111_096
-			.saturating_add(Weight::from_ref_time(714_856 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().reads(10 as u64))
 			.saturating_add(T::DbWeight::get().writes(12 as u64))
 	}
@@ -153,11 +153,11 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars SeasonStats (r:1 w:1)
 	// Proof: AwesomeAvatars SeasonStats (max_values: None, max_size: Some(42), added: 2517, mode: MaxEncodedLen)
 	/// The range of component `n` is `[5, 200]`.
-	fn forge(n: u32, ) -> Weight {
+	fn forge(_n: u32, ) -> Weight {
 		// Minimum execution time: 201_859 nanoseconds.
-		Weight::from_ref_time(398_187_347 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 65_391
-			.saturating_add(Weight::from_ref_time(610_072 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().reads(28 as u64))
 			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
@@ -184,7 +184,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	/// The range of component `n` is `[1, 200]`.
 	fn transfer_avatar_normal(_n: u32, ) -> Weight {
 		// Minimum execution time: 225_763 nanoseconds.
-		Weight::from_ref_time(579_879_208 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
@@ -211,7 +211,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	/// The range of component `n` is `[1, 200]`.
 	fn transfer_avatar_organizer(_n: u32, ) -> Weight {
 		// Minimum execution time: 238_540 nanoseconds.
-		Weight::from_ref_time(590_637_328 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
@@ -221,7 +221,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Accounts (max_values: None, max_size: Some(4063), added: 6538, mode: MaxEncodedLen)
 	fn transfer_free_mints() -> Weight {
 		// Minimum execution time: 39_315 nanoseconds.
-		Weight::from_ref_time(96_591_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -237,7 +237,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Trade (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
 	fn set_price() -> Weight {
 		// Minimum execution time: 100_623 nanoseconds.
-		Weight::from_ref_time(124_636_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -249,7 +249,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(172), added: 2647, mode: MaxEncodedLen)
 	fn remove_price() -> Weight {
 		// Minimum execution time: 80_810 nanoseconds.
-		Weight::from_ref_time(129_610_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -268,11 +268,11 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: AwesomeAvatars Accounts (r:2 w:2)
 	// Proof: AwesomeAvatars Accounts (max_values: None, max_size: Some(4063), added: 6538, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 200]`.
-	fn buy(n: u32, ) -> Weight {
+	fn buy(_n: u32, ) -> Weight {
 		// Minimum execution time: 200_277 nanoseconds.
-		Weight::from_ref_time(363_073_274 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 75_988
-			.saturating_add(Weight::from_ref_time(2_243_108 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().reads(11 as u64))
 			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
@@ -288,7 +288,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Treasury (max_values: None, max_size: Some(18), added: 2493, mode: MaxEncodedLen)
 	fn upgrade_storage() -> Weight {
 		// Minimum execution time: 170_285 nanoseconds.
-		Weight::from_ref_time(259_691_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(4 as u64))
 	}
@@ -296,7 +296,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Organizer (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
 	fn set_organizer() -> Weight {
 		// Minimum execution time: 31_701 nanoseconds.
-		Weight::from_ref_time(43_971_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
@@ -305,7 +305,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars CollectionId (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
 	fn set_collection_id() -> Weight {
 		// Minimum execution time: 46_946 nanoseconds.
-		Weight::from_ref_time(63_029_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -313,7 +313,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Treasurer (max_values: None, max_size: Some(34), added: 2509, mode: MaxEncodedLen)
 	fn set_treasurer() -> Weight {
 		// Minimum execution time: 27_884 nanoseconds.
-		Weight::from_ref_time(41_660_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Treasurer (r:1 w:0)
@@ -328,7 +328,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn claim_treasury() -> Weight {
 		// Minimum execution time: 155_925 nanoseconds.
-		Weight::from_ref_time(203_631_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
@@ -338,7 +338,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Seasons (max_values: None, max_size: Some(1152), added: 3627, mode: MaxEncodedLen)
 	fn set_season() -> Weight {
 		// Minimum execution time: 64_366 nanoseconds.
-		Weight::from_ref_time(94_363_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -348,7 +348,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars GlobalConfigs (max_values: Some(1), max_size: Some(128), added: 623, mode: MaxEncodedLen)
 	fn update_global_config() -> Weight {
 		// Minimum execution time: 41_093 nanoseconds.
-		Weight::from_ref_time(49_141_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -358,7 +358,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Accounts (max_values: None, max_size: Some(4063), added: 6538, mode: MaxEncodedLen)
 	fn set_free_mints() -> Weight {
 		// Minimum execution time: 42_505 nanoseconds.
-		Weight::from_ref_time(45_266_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -395,11 +395,11 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft Account (r:0 w:1)
 	// Proof: Nft Account (max_values: None, max_size: Some(116), added: 2591, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 200]`.
-	fn lock_avatar(n: u32, ) -> Weight {
+	fn lock_avatar(_n: u32, ) -> Weight {
 		// Minimum execution time: 407_556 nanoseconds.
-		Weight::from_ref_time(864_812_029 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 147_515
-			.saturating_add(Weight::from_ref_time(282_724 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().reads(20 as u64))
 			.saturating_add(T::DbWeight::get().writes(17 as u64))
 	}
@@ -440,11 +440,11 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft PendingSwapOf (r:0 w:1)
 	// Proof: Nft PendingSwapOf (max_values: None, max_size: Some(127), added: 2602, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 200]`.
-	fn unlock_avatar(n: u32, ) -> Weight {
+	fn unlock_avatar(_n: u32, ) -> Weight {
 		// Minimum execution time: 339_365 nanoseconds.
-		Weight::from_ref_time(726_756_467 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 148_118
-			.saturating_add(Weight::from_ref_time(732_634 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().reads(20 as u64))
 			.saturating_add(T::DbWeight::get().writes(19 as u64))
 	}
@@ -452,7 +452,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(172), added: 2647, mode: MaxEncodedLen)
 	fn fix_variation() -> Weight {
 		// Minimum execution time: 16_791 nanoseconds.
-		Weight::from_ref_time(24_915_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -460,7 +460,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars ServiceAccount (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
 	fn set_service_account() -> Weight {
 		// Minimum execution time: 15_318 nanoseconds.
-		Weight::from_ref_time(16_042_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Avatars (r:1 w:0)
@@ -479,7 +479,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn prepare_avatar() -> Weight {
 		// Minimum execution time: 107_701 nanoseconds.
-		Weight::from_ref_time(260_465_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(8 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
@@ -491,7 +491,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Preparation (max_values: None, max_size: Some(114), added: 2589, mode: MaxEncodedLen)
 	fn unprepare_avatar() -> Weight {
 		// Minimum execution time: 37_196 nanoseconds.
-		Weight::from_ref_time(81_731_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -503,7 +503,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Proof: AwesomeAvatars Preparation (max_values: None, max_size: Some(114), added: 2589, mode: MaxEncodedLen)
 	fn prepare_ipfs() -> Weight {
 		// Minimum execution time: 86_006 nanoseconds.
-		Weight::from_ref_time(94_104_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -532,7 +532,7 @@ impl WeightInfo for () {
 	/// The range of component `n` is `[0, 194]`.
 	fn mint_free(_n: u32, ) -> Weight {
 		// Minimum execution time: 172_086 nanoseconds.
-		Weight::from_ref_time(446_588_408 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(8 as u64))
 			.saturating_add(RocksDbWeight::get().writes(10 as u64))
 	}
@@ -557,11 +557,11 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Avatars (r:0 w:6)
 	// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(172), added: 2647, mode: MaxEncodedLen)
 	/// The range of component `n` is `[0, 194]`.
-	fn mint_normal(n: u32, ) -> Weight {
+	fn mint_normal(_n: u32, ) -> Weight {
 		// Minimum execution time: 224_718 nanoseconds.
-		Weight::from_ref_time(528_116_364 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 111_096
-			.saturating_add(Weight::from_ref_time(714_856 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(RocksDbWeight::get().reads(10 as u64))
 			.saturating_add(RocksDbWeight::get().writes(12 as u64))
 	}
@@ -590,11 +590,11 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars SeasonStats (r:1 w:1)
 	// Proof: AwesomeAvatars SeasonStats (max_values: None, max_size: Some(42), added: 2517, mode: MaxEncodedLen)
 	/// The range of component `n` is `[5, 200]`.
-	fn forge(n: u32, ) -> Weight {
+	fn forge(_n: u32, ) -> Weight {
 		// Minimum execution time: 201_859 nanoseconds.
-		Weight::from_ref_time(398_187_347 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 65_391
-			.saturating_add(Weight::from_ref_time(610_072 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(RocksDbWeight::get().reads(28 as u64))
 			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
@@ -621,7 +621,7 @@ impl WeightInfo for () {
 	/// The range of component `n` is `[1, 200]`.
 	fn transfer_avatar_normal(_n: u32, ) -> Weight {
 		// Minimum execution time: 225_763 nanoseconds.
-		Weight::from_ref_time(579_879_208 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(12 as u64))
 			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
@@ -648,7 +648,7 @@ impl WeightInfo for () {
 	/// The range of component `n` is `[1, 200]`.
 	fn transfer_avatar_organizer(_n: u32, ) -> Weight {
 		// Minimum execution time: 238_540 nanoseconds.
-		Weight::from_ref_time(590_637_328 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(12 as u64))
 			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
@@ -658,7 +658,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Accounts (max_values: None, max_size: Some(4063), added: 6538, mode: MaxEncodedLen)
 	fn transfer_free_mints() -> Weight {
 		// Minimum execution time: 39_315 nanoseconds.
-		Weight::from_ref_time(96_591_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
@@ -674,7 +674,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Trade (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
 	fn set_price() -> Weight {
 		// Minimum execution time: 100_623 nanoseconds.
-		Weight::from_ref_time(124_636_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -686,7 +686,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(172), added: 2647, mode: MaxEncodedLen)
 	fn remove_price() -> Weight {
 		// Minimum execution time: 80_810 nanoseconds.
-		Weight::from_ref_time(129_610_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -705,11 +705,11 @@ impl WeightInfo for () {
 	// Storage: AwesomeAvatars Accounts (r:2 w:2)
 	// Proof: AwesomeAvatars Accounts (max_values: None, max_size: Some(4063), added: 6538, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 200]`.
-	fn buy(n: u32, ) -> Weight {
+	fn buy(_n: u32, ) -> Weight {
 		// Minimum execution time: 200_277 nanoseconds.
-		Weight::from_ref_time(363_073_274 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 75_988
-			.saturating_add(Weight::from_ref_time(2_243_108 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(RocksDbWeight::get().reads(11 as u64))
 			.saturating_add(RocksDbWeight::get().writes(10 as u64))
 	}
@@ -725,7 +725,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Treasury (max_values: None, max_size: Some(18), added: 2493, mode: MaxEncodedLen)
 	fn upgrade_storage() -> Weight {
 		// Minimum execution time: 170_285 nanoseconds.
-		Weight::from_ref_time(259_691_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(6 as u64))
 			.saturating_add(RocksDbWeight::get().writes(4 as u64))
 	}
@@ -733,7 +733,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Organizer (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
 	fn set_organizer() -> Weight {
 		// Minimum execution time: 31_701 nanoseconds.
-		Weight::from_ref_time(43_971_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Organizer (r:1 w:0)
@@ -742,7 +742,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars CollectionId (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
 	fn set_collection_id() -> Weight {
 		// Minimum execution time: 46_946 nanoseconds.
-		Weight::from_ref_time(63_029_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -750,7 +750,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Treasurer (max_values: None, max_size: Some(34), added: 2509, mode: MaxEncodedLen)
 	fn set_treasurer() -> Weight {
 		// Minimum execution time: 27_884 nanoseconds.
-		Weight::from_ref_time(41_660_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Treasurer (r:1 w:0)
@@ -765,7 +765,7 @@ impl WeightInfo for () {
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn claim_treasury() -> Weight {
 		// Minimum execution time: 155_925 nanoseconds.
-		Weight::from_ref_time(203_631_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(6 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
@@ -775,7 +775,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Seasons (max_values: None, max_size: Some(1152), added: 3627, mode: MaxEncodedLen)
 	fn set_season() -> Weight {
 		// Minimum execution time: 64_366 nanoseconds.
-		Weight::from_ref_time(94_363_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -785,7 +785,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars GlobalConfigs (max_values: Some(1), max_size: Some(128), added: 623, mode: MaxEncodedLen)
 	fn update_global_config() -> Weight {
 		// Minimum execution time: 41_093 nanoseconds.
-		Weight::from_ref_time(49_141_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -795,7 +795,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Accounts (max_values: None, max_size: Some(4063), added: 6538, mode: MaxEncodedLen)
 	fn set_free_mints() -> Weight {
 		// Minimum execution time: 42_505 nanoseconds.
-		Weight::from_ref_time(45_266_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -832,11 +832,11 @@ impl WeightInfo for () {
 	// Storage: Nft Account (r:0 w:1)
 	// Proof: Nft Account (max_values: None, max_size: Some(116), added: 2591, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 200]`.
-	fn lock_avatar(n: u32, ) -> Weight {
+	fn lock_avatar(_n: u32, ) -> Weight {
 		// Minimum execution time: 407_556 nanoseconds.
-		Weight::from_ref_time(864_812_029 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 147_515
-			.saturating_add(Weight::from_ref_time(282_724 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(RocksDbWeight::get().reads(20 as u64))
 			.saturating_add(RocksDbWeight::get().writes(17 as u64))
 	}
@@ -877,11 +877,11 @@ impl WeightInfo for () {
 	// Storage: Nft PendingSwapOf (r:0 w:1)
 	// Proof: Nft PendingSwapOf (max_values: None, max_size: Some(127), added: 2602, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 200]`.
-	fn unlock_avatar(n: u32, ) -> Weight {
+	fn unlock_avatar(_n: u32, ) -> Weight {
 		// Minimum execution time: 339_365 nanoseconds.
-		Weight::from_ref_time(726_756_467 as u64)
+		Weight::from_parts(0, 0)
 			// Standard Error: 148_118
-			.saturating_add(Weight::from_ref_time(732_634 as u64).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(RocksDbWeight::get().reads(20 as u64))
 			.saturating_add(RocksDbWeight::get().writes(19 as u64))
 	}
@@ -889,7 +889,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(172), added: 2647, mode: MaxEncodedLen)
 	fn fix_variation() -> Weight {
 		// Minimum execution time: 16_791 nanoseconds.
-		Weight::from_ref_time(24_915_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -897,7 +897,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars ServiceAccount (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
 	fn set_service_account() -> Weight {
 		// Minimum execution time: 15_318 nanoseconds.
-		Weight::from_ref_time(16_042_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: AwesomeAvatars Avatars (r:1 w:0)
@@ -916,7 +916,7 @@ impl WeightInfo for () {
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn prepare_avatar() -> Weight {
 		// Minimum execution time: 107_701 nanoseconds.
-		Weight::from_ref_time(260_465_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(8 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
@@ -928,7 +928,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Preparation (max_values: None, max_size: Some(114), added: 2589, mode: MaxEncodedLen)
 	fn unprepare_avatar() -> Weight {
 		// Minimum execution time: 37_196 nanoseconds.
-		Weight::from_ref_time(81_731_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -940,7 +940,7 @@ impl WeightInfo for () {
 	// Proof: AwesomeAvatars Preparation (max_values: None, max_size: Some(114), added: 2589, mode: MaxEncodedLen)
 	fn prepare_ipfs() -> Weight {
 		// Minimum execution time: 86_006 nanoseconds.
-		Weight::from_ref_time(94_104_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}

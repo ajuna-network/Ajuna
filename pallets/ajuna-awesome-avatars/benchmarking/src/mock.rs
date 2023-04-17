@@ -27,10 +27,13 @@ use frame_system::{
 };
 use sp_runtime::{
 	testing::{Header, H256},
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+	MultiSignature,
 };
 
-pub type MockAccountId = u32;
+pub type MockSignature = MultiSignature;
+pub type MockAccountPublic = <MockSignature as Verify>::Signer;
+pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
 pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
 pub type MockIndex = u64;
@@ -46,7 +49,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
-		Randomness: pallet_randomness_collective_flip,
+		Randomness: pallet_insecure_randomness_collective_flip,
 		Nft: pallet_nfts,
 		AAvatars: pallet_ajuna_awesome_avatars,
 		NftTransfer: pallet_ajuna_nft_transfer,
@@ -96,7 +99,7 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const CollectionDeposit: MockBalance = 1;
@@ -111,6 +114,7 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
+	pub const MaxAttributesPerCall: u32 = 10;
 	pub ConfigFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
@@ -152,7 +156,10 @@ impl pallet_nfts::Config for Runtime {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type MaxAttributesPerCall = MaxAttributesPerCall;
 	type Features = ConfigFeatures;
+	type OffchainSignature = MockSignature;
+	type OffchainPublic = MockAccountPublic;
 	pallet_nfts::runtime_benchmarks_enabled! {
 		type Helper = Helper;
 	}

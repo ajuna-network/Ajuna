@@ -326,7 +326,7 @@ mod test {
 				&other,
 				&[1, 8, 9, 10],
 				season.max_variations,
-				*season.tiers.last().unwrap() as u8,
+				RarityTier::Legendary as u8,
 			),
 			(true, BTreeSet::from([1, 9]))
 		);
