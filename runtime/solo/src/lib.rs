@@ -25,7 +25,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use codec::Encode;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{AsEnsureOriginWithArg, Contains, KeyOwnerProofSystem},
+	traits::{AsEnsureOriginWithArg, Contains},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		IdentityFee, Weight,
@@ -61,7 +61,8 @@ mod impls;
 mod types;
 
 use ajuna_primitives::{
-	AccountId, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, Moment, Signature,
+	AccountId, AccountPublic, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, Moment,
+	Signature,
 };
 pub use consts::currency;
 use consts::{currency::*, time::*};
@@ -188,22 +189,11 @@ impl pallet_aura::Config for Runtime {
 
 impl pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-
-	type KeyOwnerProof =
-		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-
-	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-		KeyTypeId,
-		GrandpaId,
-	)>>::IdentificationTuple;
-
-	type KeyOwnerProofSystem = ();
-
-	type HandleEquivocation = ();
-
+	type KeyOwnerProof = sp_core::Void;
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
 	type MaxSetIdSessionEntries = frame_support::traits::ConstU64<0>;
+	type EquivocationReportSystem = ();
 }
 
 parameter_types! {
@@ -317,6 +307,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 }
 
 impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
@@ -369,6 +360,7 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalOrigin = EnsureAtLeastHalfCouncil;
 	type ExternalMajorityOrigin = EnsureAtLeastThreeFourthsCouncil;
 	type ExternalDefaultOrigin = EnsureAllCouncil;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 	type FastTrackOrigin = EnsureAtLeastThreeFourthsCouncil;
 	type InstantOrigin = EnsureAllCouncil;
 	type InstantAllowed = frame_support::traits::ConstBool<true>;
@@ -518,7 +510,7 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
@@ -588,6 +580,7 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
+	pub const MaxAttributesPerCall: u32 = 10;
 	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
 
@@ -611,7 +604,10 @@ impl pallet_nfts::Config for Runtime {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type MaxAttributesPerCall = MaxAttributesPerCall;
 	type Features = NftFeatures;
+	type OffchainSignature = Signature;
+	type OffchainPublic = AccountPublic;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = NftBenchmarkHelper;
 	type WeightInfo = ();
@@ -658,7 +654,7 @@ construct_runtime!(
 		Utility: pallet_utility = 18,
 		Preimage: pallet_preimage = 19,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
-		Randomness: pallet_randomness_collective_flip = 23,
+		Randomness: pallet_insecure_randomness_collective_flip = 23,
 		Nft: pallet_nfts = 24,
 		NftTransfer: pallet_ajuna_nft_transfer = 25,
 	}
