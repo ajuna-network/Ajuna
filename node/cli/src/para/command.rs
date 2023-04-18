@@ -310,9 +310,10 @@ pub fn run() -> Result<()> {
 		},
 		#[cfg(feature = "try-runtime")]
 		Some(Subcommand::TryRuntime(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-
 			use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
+			use try_runtime_cli::block_building_info::timestamp_with_aura_info;
+
+			let runner = cli.create_runner(cmd)?;
 			type HostFunctionsOf<E> = ExtendedHostFunctions<
 				sp_io::SubstrateHostFunctions,
 				<E as NativeExecutionDispatch>::ExtendHostFunctions,
@@ -328,14 +329,21 @@ pub fn run() -> Result<()> {
 			if cfg!(feature = "ajuna") {
 				return runner.async_run(|_| {
 					Ok((
-						cmd.run::<AjunaBlock, HostFunctionsOf<AjunaRuntimeExecutor>>(),
+						cmd.run::<AjunaBlock, HostFunctionsOf<AjunaRuntimeExecutor>, _>(Some(
+							timestamp_with_aura_info::<AjunaBlock>(6000),
+						)),
 						task_manager,
 					))
 				})
 			}
 			#[cfg(feature = "bajun")]
 			runner.async_run(|_| {
-				Ok((cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>>(), task_manager))
+				Ok((
+					cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>, _>(Some(
+						timestamp_with_aura_info::<BajunBlock>(6000),
+					)),
+					task_manager,
+				))
 			})
 		},
 		#[cfg(not(feature = "try-runtime"))]

@@ -19,10 +19,7 @@ use super::*;
 #[allow(unused)]
 use crate::Pallet as NftStake;
 use frame_benchmarking::{benchmarks, whitelist_account};
-use frame_support::traits::tokens::{
-	nonfungibles_v2::{Create, Mutate},
-	AttributeNamespace,
-};
+use frame_support::traits::tokens::nonfungibles_v2::{Create, Mutate};
 use frame_system::RawOrigin;
 use sp_runtime::traits::Bounded;
 
@@ -49,7 +46,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 fn create_staking_contract<T: Config>(
 	reward: StakingRewardOf<T>,
 	duration: BlockNumberOf<T>,
-	clause: ContractClause<AccountIdOf<T>, ContractAttributeKeyOf<T>, ContractAttributeValueOf<T>>,
+	clause: ContractClause<ContractAttributeKeyOf<T>, ContractAttributeValueOf<T>>,
 ) -> StakingContractOf<T> {
 	StakingContractOf::<T>::new(reward, duration)
 		.with_clause(clause.clone())
@@ -137,11 +134,7 @@ fn set_attribute_for_nft<T: Config>(
 }
 
 fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> ContractClauseOf<T> {
-	ContractClauseOf::<T>::HasAttributeWithValue(
-		AttributeNamespace::Pallet,
-		attr_key.into(),
-		attr_value.into(),
-	)
+	ContractClauseOf::<T>::HasAttributeWithValue(attr_key.into(), attr_value.into())
 }
 
 fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
@@ -150,11 +143,8 @@ fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::C
 		.expect("Should have create contract collection")
 }
 
-type ContractClauseOf<T> = ContractClause<
-	<T as frame_system::Config>::AccountId,
-	<T as Config>::ContractAttributeKey,
-	<T as Config>::ContractAttributeValue,
->;
+type ContractClauseOf<T> =
+	ContractClause<<T as Config>::ContractAttributeKey, <T as Config>::ContractAttributeValue>;
 
 benchmarks! {
 	set_organizer {

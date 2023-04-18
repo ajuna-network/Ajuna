@@ -75,7 +75,7 @@ use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
 
 use ajuna_primitives::{
-	AccountId, Balance, BlockNumber, CollectionId, Hash, Header, Index, Signature,
+	AccountId, AccountPublic, Balance, BlockNumber, CollectionId, Hash, Header, Index, Signature,
 };
 use pallet_nfts::Call as NftsCall;
 
@@ -393,6 +393,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 }
 
 type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
@@ -655,7 +656,7 @@ impl pallet_preimage::Config for Runtime {
 	type ByteDeposit = PreimageByteDeposit;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const AwesomeAvatarsPalletId: PalletId = PalletId(*b"aj/aaatr");
@@ -683,6 +684,7 @@ parameter_types! {
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
+	pub const MaxAttributesPerCall: u32 = 10;
 	// NOTE: BaseCallFilter is used to filter unwanted extrinsic calls since disabling features
 	// result in benchmark errors as extrinsics are disabled.
 	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
@@ -708,7 +710,10 @@ impl pallet_nfts::Config for Runtime {
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
 	type MaxDeadlineDuration = MaxDeadlineDuration;
+	type MaxAttributesPerCall = MaxAttributesPerCall;
 	type Features = NftFeatures;
+	type OffchainSignature = Signature;
+	type OffchainPublic = AccountPublic;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = NftBenchmarkHelper;
 	type WeightInfo = weights::pallet_nfts::WeightInfo<Runtime>;
@@ -771,7 +776,7 @@ construct_runtime!(
 		CouncilMembership: pallet_membership::<Instance2> = 43,
 
 		// Indexes 50-59 should be reserved for our games.
-		Randomness: pallet_randomness_collective_flip = 50,
+		Randomness: pallet_insecure_randomness_collective_flip = 50,
 		AwesomeAvatars: pallet_ajuna_awesome_avatars = 51,
 
 		// Indexes 60-69 should be reserved for NFT related pallets

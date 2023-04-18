@@ -62,7 +62,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: NftStake Organizer (r:0 w:1)
 	fn set_organizer() -> Weight {
 		// Minimum execution time: 26_582 nanoseconds.
-		Weight::from_ref_time(29_651_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: NftStake Organizer (r:1 w:0)
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: NftStake ContractCollectionId (r:0 w:1)
 	fn set_contract_collection_id() -> Weight {
 		// Minimum execution time: 84_672 nanoseconds.
-		Weight::from_ref_time(120_691_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: NftStake LockedState (r:0 w:1)
 	fn set_locked_state() -> Weight {
 		// Minimum execution time: 32_015 nanoseconds.
-		Weight::from_ref_time(35_383_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -86,7 +86,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: System Account (r:1 w:1)
 	fn fund_treasury() -> Weight {
 		// Minimum execution time: 71_758 nanoseconds.
-		Weight::from_ref_time(80_696_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -103,7 +103,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft Account (r:0 w:1)
 	fn submit_staking_contract_token_reward() -> Weight {
 		// Minimum execution time: 139_906 nanoseconds.
-		Weight::from_ref_time(144_343_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
@@ -122,7 +122,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft PendingSwapOf (r:0 w:1)
 	fn submit_staking_contract_nft_reward() -> Weight {
 		// Minimum execution time: 178_955 nanoseconds.
-		Weight::from_ref_time(198_565_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(13 as u64))
 			.saturating_add(T::DbWeight::get().writes(12 as u64))
 	}
@@ -144,7 +144,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft PendingSwapOf (r:0 w:11)
 	fn take_staking_contract() -> Weight {
 		// Minimum execution time: 789_389 nanoseconds.
-		Weight::from_ref_time(842_530_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(42 as u64))
 			.saturating_add(T::DbWeight::get().writes(59 as u64))
 	}
@@ -166,7 +166,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft PendingSwapOf (r:0 w:11)
 	fn redeem_staking_contract_token_reward() -> Weight {
 		// Minimum execution time: 544_620 nanoseconds.
-		Weight::from_ref_time(602_590_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(33 as u64))
 			.saturating_add(T::DbWeight::get().writes(62 as u64))
 	}
@@ -188,7 +188,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft PendingSwapOf (r:0 w:12)
 	fn redeem_staking_contract_nft_reward() -> Weight {
 		// Minimum execution time: 565_593 nanoseconds.
-		Weight::from_ref_time(621_952_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(37 as u64))
 			.saturating_add(T::DbWeight::get().writes(67 as u64))
 	}
@@ -199,7 +199,7 @@ impl WeightInfo for () {
 	// Storage: NftStake Organizer (r:0 w:1)
 	fn set_organizer() -> Weight {
 		// Minimum execution time: 26_582 nanoseconds.
-		Weight::from_ref_time(29_651_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: NftStake Organizer (r:1 w:0)
@@ -207,7 +207,7 @@ impl WeightInfo for () {
 	// Storage: NftStake ContractCollectionId (r:0 w:1)
 	fn set_contract_collection_id() -> Weight {
 		// Minimum execution time: 84_672 nanoseconds.
-		Weight::from_ref_time(120_691_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -215,7 +215,7 @@ impl WeightInfo for () {
 	// Storage: NftStake LockedState (r:0 w:1)
 	fn set_locked_state() -> Weight {
 		// Minimum execution time: 32_015 nanoseconds.
-		Weight::from_ref_time(35_383_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -223,7 +223,7 @@ impl WeightInfo for () {
 	// Storage: System Account (r:1 w:1)
 	fn fund_treasury() -> Weight {
 		// Minimum execution time: 71_758 nanoseconds.
-		Weight::from_ref_time(80_696_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
@@ -240,7 +240,7 @@ impl WeightInfo for () {
 	// Storage: Nft Account (r:0 w:1)
 	fn submit_staking_contract_token_reward() -> Weight {
 		// Minimum execution time: 139_906 nanoseconds.
-		Weight::from_ref_time(144_343_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
@@ -259,7 +259,7 @@ impl WeightInfo for () {
 	// Storage: Nft PendingSwapOf (r:0 w:1)
 	fn submit_staking_contract_nft_reward() -> Weight {
 		// Minimum execution time: 178_955 nanoseconds.
-		Weight::from_ref_time(198_565_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(13 as u64))
 			.saturating_add(RocksDbWeight::get().writes(12 as u64))
 	}
@@ -281,7 +281,7 @@ impl WeightInfo for () {
 	// Storage: Nft PendingSwapOf (r:0 w:11)
 	fn take_staking_contract() -> Weight {
 		// Minimum execution time: 789_389 nanoseconds.
-		Weight::from_ref_time(842_530_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(42 as u64))
 			.saturating_add(RocksDbWeight::get().writes(59 as u64))
 	}
@@ -303,7 +303,7 @@ impl WeightInfo for () {
 	// Storage: Nft PendingSwapOf (r:0 w:11)
 	fn redeem_staking_contract_token_reward() -> Weight {
 		// Minimum execution time: 544_620 nanoseconds.
-		Weight::from_ref_time(602_590_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(33 as u64))
 			.saturating_add(RocksDbWeight::get().writes(62 as u64))
 	}
@@ -325,7 +325,7 @@ impl WeightInfo for () {
 	// Storage: Nft PendingSwapOf (r:0 w:12)
 	fn redeem_staking_contract_nft_reward() -> Weight {
 		// Minimum execution time: 565_593 nanoseconds.
-		Weight::from_ref_time(621_952_000 as u64)
+		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(37 as u64))
 			.saturating_add(RocksDbWeight::get().writes(67 as u64))
 	}

@@ -69,9 +69,9 @@ impl Extensions {
 }
 
 type AuraId = sp_consensus_aura::sr25519::AuthorityId;
-type GrandpaId = sp_finality_grandpa::AuthorityId;
-type GrandpaWeight = sp_finality_grandpa::AuthorityWeight;
-pub type AuthorityPublicKey = (AuraId, (GrandpaId, GrandpaWeight));
+type GrandpaId = sp_consensus_grandpa::AuthorityId;
+type GrandpaWeight = sp_consensus_grandpa::AuthorityWeight;
+type AuthorityPublicKey = (AuraId, (GrandpaId, GrandpaWeight));
 
 // Generate an authority key.
 fn authority_keys_from_seed(s: &str) -> AuthorityPublicKey {
