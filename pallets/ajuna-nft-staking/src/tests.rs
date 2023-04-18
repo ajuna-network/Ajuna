@@ -21,15 +21,15 @@ use frame_support::{
 };
 use sp_runtime::bounded_vec;
 
-mod creator {
+mod set_creator {
 	use super::*;
 
 	#[test]
-	fn set_creator_successfully() {
+	fn works() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_eq!(Creator::<Test>::get(), None);
 			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
-			assert_eq!(Creator::<Test>::get(), Some(ALICE), "Creator should be Alice");
+			assert_eq!(Creator::<Test>::get(), Some(ALICE));
 			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::CreatorSet {
 				creator: ALICE,
 			}));
@@ -37,7 +37,7 @@ mod creator {
 	}
 
 	#[test]
-	fn set_creator_should_reject_non_root_calls() {
+	fn rejects_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
 				NftStake::set_creator(RuntimeOrigin::signed(BOB), ALICE),
@@ -51,26 +51,21 @@ mod set_contract_collection_id {
 	use super::*;
 
 	#[test]
-	fn set_contract_collection_id_succesfully() {
-		ExtBuilder::default().create_collection(false).build().execute_with(|| {
-			assert!(ContractCollectionId::<Test>::get().is_err());
-
-			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
-
-			let collection_config =
-				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
+	fn works() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
 				&ALICE,
 				&ALICE,
-				&collection_config,
+				&pallet_nfts::CollectionConfig::default(),
 			)
-			.expect("Should have create contract collection");
+			.unwrap();
 
+			assert_eq!(ContractCollectionId::<Test>::get(), None);
 			assert_ok!(NftStake::set_contract_collection_id(
 				RuntimeOrigin::signed(ALICE),
 				collection_id
 			));
-			assert_eq!(ContractCollectionId::<Test>::get().unwrap(), collection_id);
+			assert_eq!(ContractCollectionId::<Test>::get(), Some(collection_id));
 
 			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::ContractCollectionSet { collection_id },
@@ -79,38 +74,28 @@ mod set_contract_collection_id {
 	}
 
 	#[test]
-	fn set_contract_collection_id_should_reject_non_existing_collection() {
-		ExtBuilder::default().create_collection(false).build().execute_with(|| {
-			assert!(ContractCollectionId::<Test>::get().is_err());
-
-			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
-
+	fn rejects_non_existing_collection() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			assert_noop!(
 				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), 17),
-				Error::<Test>::InvalidContractCollection
+				Error::<Test>::UnknownCollection
 			);
 		});
 	}
 
 	#[test]
-	fn set_contract_collection_id_should_reject_non_creator_owned_collection() {
-		ExtBuilder::default().create_collection(false).build().execute_with(|| {
-			assert!(ContractCollectionId::<Test>::get().is_err());
-
-			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
-
-			let collection_config =
-				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
+	fn rejects_non_creator_owned_collection() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
 				&BOB,
 				&ALICE,
-				&collection_config,
+				&pallet_nfts::CollectionConfig::default(),
 			)
-			.expect("Should have created contract collection");
+			.unwrap();
 
 			assert_noop!(
 				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), collection_id),
-				Error::<Test>::InvalidContractCollection
+				Error::<Test>::Ownership
 			);
 		});
 	}

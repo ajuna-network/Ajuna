@@ -150,7 +150,6 @@ impl pallet_nfts::Config for Test {
 parameter_types! {
 	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
 	pub const MinimumStakingTokenReward: MockBalance = 100;
-	pub ContractCollectionConfig: CollectionConfig = CollectionConfig::default();
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
 
@@ -171,34 +170,25 @@ impl pallet_nft_staking::Config for Test {
 	type NftHelper = Nft;
 	type StakingOrigin = EnsureSigned<MockAccountId>;
 	type MinimumStakingTokenReward = MinimumStakingTokenReward;
-	type ContractCollectionConfig = ContractCollectionConfig;
 	type ContractCollectionItemConfig = ContractCollectionItemConfig;
 	type ContractAttributeKey = ContractAttributeKey;
 	type ContractAttributeValue = ContractAttributeValue;
 	type WeightInfo = ();
 }
 
+#[derive(Default)]
 pub struct ExtBuilder {
+	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	create_collection: bool,
 }
 
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		let accounts_balance: MockBalance = 1_000_000_000_000;
-
-		Self {
-			balances: vec![
-				(ALICE, accounts_balance),
-				(BOB, accounts_balance),
-				(CHARLIE, accounts_balance),
-			],
-			create_collection: true,
-		}
-	}
-}
-
 impl ExtBuilder {
+	pub fn set_creator(mut self, creator: MockAccountId) -> Self {
+		self.creator = Some(creator);
+		self
+	}
+
 	pub fn balances(mut self, balances: Vec<(MockAccountId, MockBalance)>) -> Self {
 		self.balances = balances;
 		self
@@ -217,15 +207,19 @@ impl ExtBuilder {
 
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| {
+			if let Some(creator) = self.creator {
+				Creator::<Test>::put(creator)
+			}
+		});
+
 		if self.create_collection {
 			ext.execute_with(|| {
 				let account_id = <Pallet<Test>>::treasury_account_id();
-				let collection_config =
-					<Test as crate::pallet::Config>::ContractCollectionConfig::get();
 				let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
 					&account_id,
 					&account_id,
-					&collection_config,
+					&pallet_nfts::CollectionConfig::default(),
 				)
 				.expect("Should have create contract collection");
 				ContractCollectionId::<Test>::put(collection_id);

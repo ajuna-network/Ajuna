@@ -22,8 +22,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+// #[cfg(feature = "runtime-benchmarks")]
+// mod benchmarking;
 
 pub mod contracts;
 pub mod weights;
@@ -107,18 +107,7 @@ pub mod pallet {
 		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
 		/// Identifier for the collection of an Nft.
-		type CollectionId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ AtLeast32BitUnsigned
-			+ sp_std::fmt::Display
-			+ sp_std::cmp::PartialOrd
-			+ sp_std::cmp::Ord;
+		type CollectionId: Member + Parameter + MaxEncodedLen + Copy + AtLeast32BitUnsigned;
 
 		/// Type that holds the specific configurations for a collection.
 		type CollectionConfig: Copy
@@ -163,10 +152,6 @@ pub mod pallet {
 		/// The minimal amount of tokens that can be rewarded in a staking contract.
 		#[pallet::constant]
 		type MinimumStakingTokenReward: Get<BalanceOf<Self>>;
-
-		/// The configuration for the contract Nft collection
-		#[pallet::constant]
-		type ContractCollectionConfig: Get<Self::CollectionConfig>;
 
 		/// The configuration for the contract Nft collection
 		#[pallet::constant]
@@ -243,8 +228,7 @@ pub mod pallet {
 		StorageMap<_, Identity, ContractItemIdOf<T>, StakedAssetsVecOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	pub type ContractCollectionId<T: Config> =
-		StorageValue<_, CollectionIdOf<T>, ResultQuery<Error<T>::ContractCollectionNotSet>>;
+	pub type ContractCollectionId<T: Config> = StorageValue<_, CollectionIdOf<T>>;
 
 	#[pallet::storage]
 	pub type NextContractId<T: Config> = StorageValue<_, ContractItemIdOf<T>, ValueQuery>;
@@ -277,8 +261,10 @@ pub mod pallet {
 		CreatorNotSet,
 		/// The contract collection id has not been set in storage.
 		ContractCollectionNotSet,
-		/// The contract collection is either non-existent or not owned by the creator.
-		InvalidContractCollection,
+		/// The given collection doesn't exist.
+		UnknownCollection,
+		/// The given collection belongs to someone else.
+		Ownership,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
 		/// The treasury doesn't have enough funds to pay the contract rewards.
@@ -324,13 +310,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 		) -> DispatchResult {
-			let account = Self::ensure_creator(origin)?;
-			ensure!(
-				T::NftHelper::collection_owner(&collection_id)
-					.filter(|owner| *owner == account)
-					.is_some(),
-				Error::<T>::InvalidContractCollection
-			);
+			let creator = Self::ensure_creator(origin)?;
+			let owner = T::NftHelper::collection_owner(&collection_id)
+				.ok_or(Error::<T>::UnknownCollection)?;
+			ensure!(owner == creator, Error::<T>::Ownership);
 			ContractCollectionId::<T>::put(collection_id);
 			Self::deposit_event(Event::ContractCollectionSet { collection_id });
 			Ok(())
