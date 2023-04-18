@@ -163,12 +163,13 @@ benchmarks! {
 		assert_last_event::<T>(Event::ContractCollectionSet { collection_id }.into())
 	}
 
-	set_locked_state {
+	set_global_config {
 		let creator = prepare_account::<T>("ALICE");
 		Creator::<T>::put(&creator);
-	}: _(RawOrigin::Signed(creator), PalletLockedState::Locked)
+		let new_config = GlobalConfig::default();
+	}: _(RawOrigin::Signed(creator), new_config)
 	verify {
-		assert_last_event::<T>(Event::LockedStateSet { locked_state: PalletLockedState::Locked }.into())
+		assert_last_event::<T>(Event::SetGlobalConfig { new_config }.into())
 	}
 
 	create_token_reward {

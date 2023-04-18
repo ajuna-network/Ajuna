@@ -78,16 +78,13 @@ pub mod pallet {
 		StakingReward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
 	#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Eq, PartialEq)]
-	pub enum PalletLockedState {
-		/// Pallet is unlocked, all operations can be performed
-		Unlocked,
-		/// Pallet is locked, operations are restricted
-		Locked,
+	pub struct GlobalConfig {
+		pub pallet_locked: bool,
 	}
 
-	impl Default for PalletLockedState {
+	impl Default for GlobalConfig {
 		fn default() -> Self {
-			PalletLockedState::Unlocked
+			GlobalConfig { pallet_locked: true }
 		}
 	}
 
@@ -209,7 +206,7 @@ pub mod pallet {
 	pub type Creator<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	pub type LockedState<T: Config> = StorageValue<_, PalletLockedState, ValueQuery>;
+	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig, ValueQuery>;
 
 	#[pallet::storage]
 	pub type ActiveContracts<T: Config> =
@@ -240,8 +237,8 @@ pub mod pallet {
 		CreatorSet { creator: AccountIdOf<T> },
 		/// The collection holding the staking contracts has been set.
 		ContractCollectionSet { collection_id: T::CollectionId },
-		/// The pallet's lock status has been set
-		LockedStateSet { locked_state: PalletLockedState },
+		/// The pallet's global config has been set.
+		SetGlobalConfig { new_config: GlobalConfig },
 		/// A new staking contract has been created.
 		Created { creator: AccountIdOf<T>, contract_id: ContractItemIdOf<T> },
 		/// A staking contract has been accepted.
@@ -319,15 +316,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::set_locked_state())]
+		#[pallet::weight(T::WeightInfo::set_global_config())]
 		#[pallet::call_index(2)]
-		pub fn set_locked_state(
-			origin: OriginFor<T>,
-			locked_state: PalletLockedState,
-		) -> DispatchResult {
+		pub fn set_global_config(origin: OriginFor<T>, new_config: GlobalConfig) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
-			LockedState::<T>::put(locked_state);
-			Self::deposit_event(Event::LockedStateSet { locked_state });
+			GlobalConfigs::<T>::put(new_config);
+			Self::deposit_event(Event::SetGlobalConfig { new_config });
 			Ok(())
 		}
 
@@ -444,10 +438,7 @@ pub mod pallet {
 		}
 
 		fn ensure_unlocked() -> DispatchResult {
-			ensure!(
-				LockedState::<T>::get() == PalletLockedState::Unlocked,
-				Error::<T>::PalletLocked
-			);
+			ensure!(!GlobalConfigs::<T>::get().pallet_locked, Error::<T>::PalletLocked);
 			Ok(())
 		}
 

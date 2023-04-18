@@ -47,7 +47,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn set_creator() -> Weight;
 	fn set_contract_collection_id() -> Weight;
-	fn set_locked_state() -> Weight;
+	fn set_global_config() -> Weight;
 	fn fund_treasury() -> Weight;
 	fn create_token_reward() -> Weight;
 	fn create_nft_reward() -> Weight;
@@ -76,7 +76,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	}
 	// Storage: NftStake Creator (r:1 w:0)
 	// Storage: NftStake LockedState (r:0 w:1)
-	fn set_locked_state() -> Weight {
+	fn set_global_config() -> Weight {
 		// Minimum execution time: 32_015 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
@@ -213,7 +213,7 @@ impl WeightInfo for () {
 	}
 	// Storage: NftStake Creator (r:1 w:0)
 	// Storage: NftStake LockedState (r:0 w:1)
-	fn set_locked_state() -> Weight {
+	fn set_global_config() -> Weight {
 		// Minimum execution time: 32_015 nanoseconds.
 		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))

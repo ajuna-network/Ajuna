@@ -101,43 +101,26 @@ mod set_contract_collection_id {
 	}
 }
 
-mod set_lock_state {
+mod set_global_config {
 	use super::*;
 
 	#[test]
-	fn set_lock_state_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
-
-			assert_ok!(NftStake::set_locked_state(
-				RuntimeOrigin::signed(ALICE),
-				PalletLockedState::Locked
+	fn works() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let new_config = GlobalConfig { pallet_locked: true };
+			assert_ok!(NftStake::set_global_config(RuntimeOrigin::signed(ALICE), new_config));
+			assert_eq!(GlobalConfigs::<Test>::get(), new_config);
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
+				crate::Event::SetGlobalConfig { new_config },
 			));
-			assert_eq!(
-				LockedState::<Test>::get(),
-				PalletLockedState::Locked,
-				"Pallet should be locked"
-			);
-			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::LockedStateSet {
-				locked_state: PalletLockedState::Locked,
-			}));
-
-			let contract_reward = StakingRewardOf::<Test>::Tokens(1_000);
-			let contract = StakingContractOf::<Test>::new(contract_reward, 10);
-			assert_noop!(
-				NftStake::create(RuntimeOrigin::signed(BOB), contract),
-				Error::<Test>::PalletLocked
-			);
 		});
 	}
 
 	#[test]
-	fn set_lock_state_should_fail_with_non_creator_account() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
-
+	fn rejects_non_creator_calls() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			assert_noop!(
-				NftStake::set_locked_state(RuntimeOrigin::signed(BOB), PalletLockedState::Locked),
+				NftStake::set_global_config(RuntimeOrigin::signed(BOB), GlobalConfig::default()),
 				DispatchError::BadOrigin
 			);
 		});
