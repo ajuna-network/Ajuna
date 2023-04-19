@@ -44,11 +44,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 }
 
 fn create_staking_contract<T: Config>(
-	reward: StakingRewardOf<T>,
+	reward: RewardOf<T>,
 	duration: BlockNumberOf<T>,
-	clause: ContractClause<ContractAttributeKeyOf<T>, ContractAttributeValueOf<T>>,
-) -> StakingContractOf<T> {
-	StakingContractOf::<T>::new(reward, duration)
+	clause: Clause<ContractAttributeKeyOf<T>, ContractAttributeValueOf<T>>,
+) -> ContractOf<T> {
+	ContractOf::<T>::new(reward, duration)
 		.with_clause(clause.clone())
 		.with_clause(clause.clone())
 		.with_clause(clause.clone())
@@ -133,8 +133,8 @@ fn set_attribute_for_nft<T: Config>(
 	.expect("Should add attribute Nft");
 }
 
-fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> ContractClauseOf<T> {
-	ContractClauseOf::<T>::HasAttributeWithValue(attr_key.into(), attr_value.into())
+fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> ClauseOf<T> {
+	ClauseOf::<T>::HasAttributeWithValue(attr_key.into(), attr_value.into())
 }
 
 fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
@@ -143,8 +143,8 @@ fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::C
 		.expect("Should have create contract collection")
 }
 
-type ContractClauseOf<T> =
-	ContractClause<<T as Config>::ContractAttributeKey, <T as Config>::ContractAttributeValue>;
+type ClauseOf<T> =
+	Clause<<T as Config>::ContractAttributeKey, <T as Config>::ContractAttributeValue>;
 
 benchmarks! {
 	set_creator {
@@ -179,7 +179,7 @@ benchmarks! {
 
 		let caller = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
-		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
+		let reward = RewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
 		let expected_id = NextContractId::<T>::get();
@@ -196,7 +196,7 @@ benchmarks! {
 		let caller = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
 		let nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
-		let reward = StakingRewardOf::<T>::Nft(nft_addr);
+		let reward = RewardOf::<T>::Nft(nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
 		let expected_id = NextContractId::<T>::get();
@@ -212,7 +212,7 @@ benchmarks! {
 
 		let creator = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
-		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
+		let reward = RewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
 		let contract_id = NextContractId::<T>::get();
@@ -236,7 +236,7 @@ benchmarks! {
 
 		let creator = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
-		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
+		let reward = RewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
 		let contract_id = NextContractId::<T>::get();
@@ -264,7 +264,7 @@ benchmarks! {
 		let creator = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(creator.clone());
 		let reward_nft_addr = create_random_nft::<T>(&creator, collection_id, 0_u32.into());
-		let reward = StakingRewardOf::<T>::Nft(reward_nft_addr);
+		let reward = RewardOf::<T>::Nft(reward_nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
 		let contract_id = NextContractId::<T>::get();

@@ -180,7 +180,7 @@ impl pallet_nft_staking::Config for Test {
 pub struct ExtBuilder {
 	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
-	create_collection: bool,
+	create_contract_collection: bool,
 }
 
 impl ExtBuilder {
@@ -194,8 +194,8 @@ impl ExtBuilder {
 		self
 	}
 
-	pub fn create_collection(mut self, create_collection: bool) -> Self {
-		self.create_collection = create_collection;
+	pub fn create_contract_collection(mut self) -> Self {
+		self.create_contract_collection = true;
 		self
 	}
 
@@ -211,20 +211,17 @@ impl ExtBuilder {
 			if let Some(creator) = self.creator {
 				Creator::<Test>::put(creator)
 			}
-		});
-
-		if self.create_collection {
-			ext.execute_with(|| {
-				let account_id = <Pallet<Test>>::treasury_account_id();
-				let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
-					&account_id,
-					&account_id,
+			if self.create_contract_collection {
+				let treasury_account_id = NftStake::treasury_account_id();
+				let collection_id = <Test as Config>::NftHelper::create_collection(
+					&treasury_account_id,
+					&treasury_account_id,
 					&pallet_nfts::CollectionConfig::default(),
 				)
-				.expect("Should have create contract collection");
+				.unwrap();
 				ContractCollectionId::<Test>::put(collection_id);
-			});
-		}
+			}
+		});
 		ext
 	}
 }

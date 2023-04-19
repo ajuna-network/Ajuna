@@ -18,7 +18,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		tokens::{nonfungibles_v2::Inspect, Balance as RewardBalance},
+		tokens::{nonfungibles_v2::Inspect, Balance as BalanceT},
 		ConstU32,
 	},
 };
@@ -29,23 +29,15 @@ use sp_std::fmt::Debug;
 /// Struct that represents a combination of an Nft collection id and item id.
 /// Used in combination of an [`Inspect`] capable provider.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct NftAddress<CollectionId, ItemId>(pub CollectionId, pub ItemId)
-where
-	CollectionId: Debug,
-	ItemId: Debug;
+pub struct NftAddress<CollectionId, ItemId>(pub CollectionId, pub ItemId);
 
 /// List of Nft assets to be used for contract validation and staking.
-/// See also: [`NftAddress`], [`StakingContract`]
+/// See also: [`NftAddress`], [`Contract`]
 pub type StakedAssetsVec<CollectionId, ItemId, const N: u32> =
 	BoundedVec<NftAddress<CollectionId, ItemId>, ConstU32<N>>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum StakingReward<Balance, CollectionId, ItemId>
-where
-	Balance: RewardBalance,
-	CollectionId: Debug + Copy,
-	ItemId: Debug + Copy,
-{
+pub enum Reward<Balance, CollectionId, ItemId> {
 	Tokens(Balance),
 	Nft(NftAddress<CollectionId, ItemId>),
 }
@@ -53,7 +45,7 @@ where
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
 /// with a given reward after the duration is complete.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct StakingContract<
+pub struct Contract<
 	Balance,
 	CollectionId,
 	ItemId,
@@ -61,41 +53,27 @@ pub struct StakingContract<
 	AttributeKey,
 	AttributeValue,
 	const N: u32,
-> where
-	Balance: RewardBalance,
-	CollectionId: Debug + Copy,
-	ItemId: Debug + Copy,
-	BlockNumber: Debug + Copy,
-	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-{
-	staking_reward: StakingReward<Balance, CollectionId, ItemId>,
-	contract_clauses: BoundedVec<ContractClause<AttributeKey, AttributeValue>, ConstU32<N>>,
-	contract_block_duration: BlockNumber,
+> {
+	pub reward: Reward<Balance, CollectionId, ItemId>,
+	contract_clauses: BoundedVec<Clause<AttributeKey, AttributeValue>, ConstU32<N>>,
+	pub duration: BlockNumber,
 }
 
 impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, const N: u32>
-	StakingContract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, N>
+	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, N>
 where
-	Balance: RewardBalance,
+	Balance: BalanceT,
 	CollectionId: Debug + Copy,
 	ItemId: Debug + Copy,
 	BlockNumber: Debug + Copy,
 	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 {
-	pub fn new(
-		reward: StakingReward<Balance, CollectionId, ItemId>,
-		duration: BlockNumber,
-	) -> Self {
-		Self {
-			staking_reward: reward,
-			contract_block_duration: duration,
-			contract_clauses: BoundedVec::default(),
-		}
+	pub fn new(reward: Reward<Balance, CollectionId, ItemId>, duration: BlockNumber) -> Self {
+		Self { reward, duration, contract_clauses: BoundedVec::default() }
 	}
 
-	pub fn with_clause(mut self, clause: ContractClause<AttributeKey, AttributeValue>) -> Self {
+	pub fn with_clause(mut self, clause: Clause<AttributeKey, AttributeValue>) -> Self {
 		let _ = self.contract_clauses.try_push(clause);
 
 		self
@@ -117,27 +95,15 @@ where
 			})
 			.unwrap_or(false)
 	}
-
-	pub fn get_reward(&self) -> StakingReward<Balance, CollectionId, ItemId> {
-		self.staking_reward.clone()
-	}
-
-	pub fn get_duration(&self) -> BlockNumber {
-		self.contract_block_duration
-	}
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum ContractClause<AttributeKey, AttributeValue>
-where
-	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-{
+pub enum Clause<AttributeKey, AttributeValue> {
 	HasAttribute(AttributeKey),
 	HasAttributeWithValue(AttributeKey, AttributeValue),
 }
 
-impl<AttributeKey, AttributeValue> ContractClause<AttributeKey, AttributeValue>
+impl<AttributeKey, AttributeValue> Clause<AttributeKey, AttributeValue>
 where
 	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
@@ -155,9 +121,9 @@ where
 		let NftAddress(collection_id, item_id) = asset;
 
 		match self {
-			ContractClause::HasAttribute(key) =>
+			Clause::HasAttribute(key) =>
 				NftInspector::system_attribute(collection_id, item_id, &key.encode()).is_some(),
-			ContractClause::HasAttributeWithValue(key, expected_value) => {
+			Clause::HasAttributeWithValue(key, expected_value) => {
 				if let Some(value) =
 					NftInspector::system_attribute(collection_id, item_id, &key.encode())
 				{
