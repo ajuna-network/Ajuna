@@ -15,12 +15,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	pallet_prelude::*,
-	traits::{
-		tokens::{nonfungibles_v2::Inspect, Balance as BalanceT},
-		ConstU32,
-	},
+use frame_support::traits::{
+	tokens::{nonfungibles_v2::Inspect, Balance as BalanceT},
+	ConstU32,
 };
 use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
@@ -40,6 +37,12 @@ pub type StakedAssetsVec<CollectionId, ItemId, const N: u32> =
 pub enum Reward<Balance, CollectionId, ItemId> {
 	Tokens(Balance),
 	Nft(NftAddress<CollectionId, ItemId>),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub enum Clause<AttributeKey, AttributeValue> {
+	HasAttribute(AttributeKey),
+	HasAttributeWithValue(AttributeKey, AttributeValue),
 }
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
@@ -79,59 +82,36 @@ where
 		self
 	}
 
-	pub fn evaluate_for<NftInspector, AccountId>(
+	pub fn evaluate_for<AccountId, NftInspector>(
 		&self,
-		staked_assets: &StakedAssetsVec<CollectionId, ItemId, N>,
+		staked_assets: &[NftAddress<CollectionId, ItemId>],
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
-		AccountId: Parameter + Member,
 	{
 		(self.contract_clauses.len() == staked_assets.len())
 			.then(|| {
 				self.contract_clauses.iter().zip(staked_assets.iter()).all(|(clause, asset)| {
-					clause.evaluate_for::<NftInspector, AccountId, CollectionId, ItemId>(asset)
+					let NftAddress(collection_id, item_id) = asset;
+					match clause {
+						Clause::HasAttribute(key) =>
+							NftInspector::system_attribute(collection_id, item_id, &key.encode())
+								.is_some(),
+						Clause::HasAttributeWithValue(key, expected_value) => {
+							if let Some(value) = NftInspector::system_attribute(
+								collection_id,
+								item_id,
+								&key.encode(),
+							) {
+								expected_value
+									.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
+							} else {
+								false
+							}
+						},
+					}
 				})
 			})
 			.unwrap_or(false)
-	}
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum Clause<AttributeKey, AttributeValue> {
-	HasAttribute(AttributeKey),
-	HasAttributeWithValue(AttributeKey, AttributeValue),
-}
-
-impl<AttributeKey, AttributeValue> Clause<AttributeKey, AttributeValue>
-where
-	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-{
-	pub fn evaluate_for<NftInspector, AccountId, CollectionId, ItemId>(
-		&self,
-		asset: &NftAddress<CollectionId, ItemId>,
-	) -> bool
-	where
-		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
-		AccountId: Parameter + Member,
-		CollectionId: Debug + Copy,
-		ItemId: Debug + Copy,
-	{
-		let NftAddress(collection_id, item_id) = asset;
-
-		match self {
-			Clause::HasAttribute(key) =>
-				NftInspector::system_attribute(collection_id, item_id, &key.encode()).is_some(),
-			Clause::HasAttributeWithValue(key, expected_value) => {
-				if let Some(value) =
-					NftInspector::system_attribute(collection_id, item_id, &key.encode())
-				{
-					expected_value.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
-				} else {
-					false
-				}
-			},
-		}
 	}
 }

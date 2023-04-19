@@ -149,7 +149,7 @@ impl pallet_nfts::Config for Test {
 
 parameter_types! {
 	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
-	pub const MinimumStakingTokenReward: MockBalance = 100;
+	pub const MaxClauses: u32 = 10;
 	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
 
@@ -168,8 +168,7 @@ impl pallet_nft_staking::Config for Test {
 	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-	type StakingOrigin = EnsureSigned<MockAccountId>;
-	type MinimumStakingTokenReward = MinimumStakingTokenReward;
+	type MaxClauses = MaxClauses;
 	type ContractCollectionItemConfig = ContractCollectionItemConfig;
 	type ContractAttributeKey = ContractAttributeKey;
 	type ContractAttributeValue = ContractAttributeValue;

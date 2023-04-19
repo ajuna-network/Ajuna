@@ -148,7 +148,7 @@ mod create {
 				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 
 				assert_ok!(NftStake::create(RuntimeOrigin::signed(ALICE), contract.clone()));
-				assert_eq!(ActiveContracts::<Test>::get(contract_id), Some(contract));
+				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
 				assert_eq!(
 					Nft::owner(contract_collection_id, contract_id),
 					Some(NftStake::treasury_account_id())
@@ -180,7 +180,7 @@ mod create {
 				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 
 				assert_ok!(NftStake::create(RuntimeOrigin::signed(ALICE), contract.clone()));
-				assert_eq!(ActiveContracts::<Test>::get(contract_id), Some(contract));
+				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
 				assert_eq!(
 					Nft::owner(collection_id, nft_addr.1),
 					Some(NftStake::treasury_account_id())
