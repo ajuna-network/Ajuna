@@ -155,7 +155,7 @@ benchmarks! {
 	}
 
 	set_contract_collection_id {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		Creator::<T>::put(&account);
 	}: _(RawOrigin::Signed(account), collection_id)
@@ -173,7 +173,7 @@ benchmarks! {
 	}
 
 	create_token_reward {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
@@ -189,7 +189,7 @@ benchmarks! {
 	}
 
 	create_nft_reward {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
@@ -206,7 +206,7 @@ benchmarks! {
 	}
 
 	accept {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
@@ -230,7 +230,7 @@ benchmarks! {
 	}
 
 	claim_token_reward {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
@@ -257,7 +257,7 @@ benchmarks! {
 	}
 
 	claim_nft_reward {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 

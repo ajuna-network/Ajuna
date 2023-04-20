@@ -182,8 +182,7 @@ impl pallet_nft_staking::Config for Test {
 	type WeightInfo = ();
 }
 
-type MockClause =
-	Clause<MockCollectionId, MockItemId, ContractAttributeKey, ContractAttributeValue>;
+type MockClause = Clause<MockCollectionId, ContractAttributeKey, ContractAttributeValue>;
 
 #[derive(Default)]
 pub struct ExtBuilder {
@@ -252,19 +251,20 @@ impl ExtBuilder {
 				NftStake::create_contract(creator, contract).unwrap();
 			});
 
-			self.stakes.iter().for_each(|(staker, clauses)| {
+			self.stakes.iter().enumerate().for_each(|(i, (staker, clauses))| {
 				clauses.iter().for_each(|clause| {
-					let NftAddress(collection_id, item_id) = match clause {
-						Clause::HasAttribute(staking, _) => staking,
-						Clause::HasAttributeWithValue(staking, _, _) => staking,
+					let collection_id = match clause {
+						Clause::HasAttribute(collection_id, _) => collection_id,
+						Clause::HasAttributeWithValue(collection_id, _, _) => collection_id,
 					};
-					let _ = mint_item(*staker, *collection_id, *item_id);
+					let item_id = i as MockItemId;
+					let _ = mint_item(*staker, *collection_id, item_id);
 
 					let (key, value) = match clause {
 						Clause::HasAttribute(_, key) => (key, &0),
 						Clause::HasAttributeWithValue(_, key, value) => (key, value),
 					};
-					set_attribute(*collection_id, *item_id, *key, *value);
+					set_attribute(*collection_id, item_id, *key, *value);
 				})
 			});
 		});

@@ -129,7 +129,7 @@ mod create {
 				let reward_amount = 1_000;
 				let reward = Reward::Tokens(reward_amount);
 				let contract = Contract::new(reward, 10, Default::default());
-				let base_reserves = NftStake::treasury_pot_reserve();
+				let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
 
 				let contract_id = NextContractId::<Test>::get();
 				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
@@ -138,13 +138,13 @@ mod create {
 				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
 				assert_eq!(
 					Nft::owner(contract_collection_id, contract_id),
-					Some(NftStake::treasury_account_id())
+					Some(NftStake::account_id())
 				);
 				assert_eq!(
 					Balances::free_balance(ALICE),
 					initial_balance - reward_amount - ItemDeposit::get()
 				);
-				assert_eq!(NftStake::treasury_pot_reserve(), base_reserves + reward_amount);
+				assert_eq!(NftStake::account_balance(), base_reserves + reward_amount);
 				assert_eq!(NextContractId::<Test>::get(), contract_id + 1);
 
 				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
@@ -172,13 +172,10 @@ mod create {
 
 				assert_ok!(NftStake::create(RuntimeOrigin::signed(ALICE), contract.clone()));
 				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
-				assert_eq!(
-					Nft::owner(collection_id, nft_addr.1),
-					Some(NftStake::treasury_account_id())
-				);
+				assert_eq!(Nft::owner(collection_id, nft_addr.1), Some(NftStake::account_id()));
 				assert_eq!(
 					Nft::owner(contract_collection_id, contract_id),
-					Some(NftStake::treasury_account_id())
+					Some(NftStake::account_id())
 				);
 				assert_eq!(NextContractId::<Test>::get(), contract_id + 1);
 
@@ -204,6 +201,23 @@ mod create {
 				assert_noop!(
 					NftStake::create(RuntimeOrigin::signed(BOB), contract),
 					DispatchError::BadOrigin
+				);
+			});
+	}
+
+	#[test]
+	fn rejects_when_pallet_is_locked() {
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.build()
+			.execute_with(|| {
+				let reward = Reward::Tokens(333);
+				let contract = Contract::new(reward, 10, Default::default());
+				GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
+				assert_noop!(
+					NftStake::create(RuntimeOrigin::signed(ALICE), contract),
+					Error::<Test>::PalletLocked
 				);
 			});
 	}
