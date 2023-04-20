@@ -33,7 +33,9 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate, Transfer},
-		BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency,
+		BalanceStatus, Currency,
+		ExistenceRequirement::AllowDeath,
+		Get, Imbalance, ReservableCurrency, WithdrawReasons,
 	},
 	PalletId,
 };
@@ -71,7 +73,7 @@ pub mod pallet {
 	>;
 	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
-	pub(crate) type StakedAssetsOf<T> = BoundedVec<NftAddressOf<T>, <T as Config>::MaxClauses>;
+	pub(crate) type StakedItemsOf<T> = BoundedVec<NftAddressOf<T>, <T as Config>::MaxClauses>;
 
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
@@ -191,8 +193,8 @@ pub mod pallet {
 		StorageMap<_, Identity, ItemIdOf<T>, T::BlockNumber, OptionQuery>;
 
 	#[pallet::storage]
-	pub type ContractStakedAssets<T: Config> =
-		StorageMap<_, Identity, ItemIdOf<T>, StakedAssetsOf<T>, OptionQuery>;
+	pub type ContractStakedItems<T: Config> =
+		StorageMap<_, Identity, ItemIdOf<T>, StakedItemsOf<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -293,8 +295,7 @@ pub mod pallet {
 		pub fn create(origin: OriginFor<T>, contract: ContractOf<T>) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
-			Self::lock_reward(&creator, &contract.reward)?;
-			let contract_id = Self::create_contract_nft(&contract)?;
+			let contract_id = Self::create_contract(&creator, &contract)?;
 			Self::deposit_event(Event::<T>::Created { creator, contract_id });
 			Ok(())
 		}
@@ -304,51 +305,47 @@ pub mod pallet {
 		pub fn accept(
 			origin: OriginFor<T>,
 			contract_id: ItemIdOf<T>,
-			staked_assets: StakedAssetsOf<T>,
+			stakes: StakedItemsOf<T>,
 		) -> DispatchResult {
 			let staker = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
-			Self::ensure_acceptable(&contract_id, &staker, &staked_assets)?;
-			Self::transfer_items(&staked_assets, &Self::treasury_account_id())?;
-			Self::transfer_contract(&contract_id, &staker)?;
-			Self::persist_contract_acceptance(&contract_id, &staked_assets)?;
+			Self::ensure_acceptable(&contract_id, &staker, &stakes)?;
+			Self::accept_contract(&contract_id, &staker, &stakes)?;
 			Self::deposit_event(Event::<T>::Accepted { accepted_by: staker, contract_id });
 			Ok(())
 		}
 
-		#[pallet::weight(
-			T::WeightInfo::claim_token_reward()
-				.max(T::WeightInfo::claim_nft_reward())
-		)]
-		#[pallet::call_index(6)]
-		pub fn claim(origin: OriginFor<T>, contract_id: ItemIdOf<T>) -> DispatchResult {
-			Self::ensure_pallet_unlocked()?;
+		// #[pallet::weight(
+		// 	T::WeightInfo::claim_token_reward()
+		// 		.max(T::WeightInfo::claim_nft_reward())
+		// )]
+		// #[pallet::call_index(6)]
+		// pub fn claim(origin: OriginFor<T>, contract_id: ItemIdOf<T>) -> DispatchResult {
+		// 	Self::ensure_pallet_unlocked()?;
 
-			let account = T::StakingOrigin::ensure_origin(origin)?;
+		// 	let account = ensure_signed(origin)?;
 
-			Self::try_checking_if_contract_can_be_redeemed(&account, &contract_id)?;
+		// 	Self::try_checking_if_contract_can_be_redeemed(&account, &contract_id)?;
 
-			let staked_assets =
-				ContractStakedAssets::<T>::get(contract_id).ok_or(Error::<T>::ContractNotFound)?;
+		// 	let staked_assets =
+		// 		ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 
-			Self::try_transferring_staked_assets_ownership(
-				&staked_assets,
-				&Self::treasury_account_id(),
-				&account,
-				true,
-			)?;
+		// 	Self::transfer_items(
+		// 		&staked_assets,
+		// 		&account,
+		// 	)?;
 
-			let reward = ActiveContracts::<T>::get(contract_id)
-				.ok_or(Error::<T>::ContractNotFound)?
-				.reward;
+		// 	let reward = Contracts::<T>::get(contract_id)
+		// 		.ok_or(Error::<T>::UnknownContract)?
+		// 		.reward;
 
-			Self::try_handing_over_contract_reward_to(&account, &reward)?;
-			Self::try_closing_redeemed_contract(&contract_id, &account)?;
+		// 	Self::try_handing_over_contract_reward_to(&account, &reward)?;
+		// 	Self::try_closing_redeemed_contract(&contract_id, &account)?;
 
-			Self::deposit_event(Event::<T>::Claimed { claimed_by: account, contract_id, reward });
+		// 	Self::deposit_event(Event::<T>::Claimed { claimed_by: account, contract_id, reward });
 
-			Ok(())
-		}
+		// 	Ok(())
+		// }
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -360,6 +357,12 @@ pub mod pallet {
 		/// Return the amount of money available in the treasury reserves.
 		pub fn treasury_pot_reserve() -> BalanceOf<T> {
 			T::Currency::free_balance(&Self::treasury_account_id())
+		}
+
+		fn contract_collection_id() -> Result<CollectionIdOf<T>, DispatchError> {
+			let id =
+				ContractCollectionId::<T>::get().ok_or(Error::<T>::UnknownContractCollection)?;
+			Ok(id)
 		}
 
 		fn ensure_creator(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
@@ -400,8 +403,7 @@ pub mod pallet {
 			who: &T::AccountId,
 			stakes: &[NftAddressOf<T>],
 		) -> DispatchResult {
-			let collection_id =
-				ContractCollectionId::<T>::get().ok_or(Error::<T>::UnknownContractCollection)?;
+			let collection_id = Self::contract_collection_id()?;
 			ensure!(
 				Self::ensure_item_ownership(who, &collection_id, contract_id).is_err(),
 				Error::<T>::AlreadyAccepted
@@ -420,89 +422,70 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn lock_reward(from: &T::AccountId, reward: &RewardOf<T>) -> DispatchResult {
-			let dest = Self::treasury_account_id();
-			match reward {
-				Reward::Tokens(amount) =>
-					T::Currency::transfer(from, &dest, *amount, ExistenceRequirement::AllowDeath),
+		pub(crate) fn create_contract(
+			creator: &T::AccountId,
+			contract: &ContractOf<T>,
+		) -> Result<ItemIdOf<T>, DispatchError> {
+			// Lock contract rewards in treasury account.
+			let treasury_account_id = Self::treasury_account_id();
+			match &contract.reward {
+				Reward::Tokens(amount) => {
+					let imbalance = T::Currency::withdraw(
+						creator,
+						*amount,
+						WithdrawReasons::TRANSFER,
+						AllowDeath,
+					)?;
+					T::Currency::deposit_creating(&Self::treasury_account_id(), imbalance.peek());
+					Ok(())
+				},
 				Reward::Nft(address) => {
 					let NftAddress(collection_id, item_id) = address;
-					Self::ensure_item_ownership(from, collection_id, item_id)?;
-					T::NftHelper::transfer(collection_id, item_id, &dest)
+					Self::ensure_item_ownership(creator, collection_id, item_id)?;
+					T::NftHelper::transfer(collection_id, item_id, &treasury_account_id)
 				},
 			}?;
-			Ok(())
-		}
 
-		fn create_contract_nft(contract: &ContractOf<T>) -> Result<ItemIdOf<T>, DispatchError> {
-			let collection_id =
-				ContractCollectionId::<T>::get().ok_or(Error::<T>::UnknownContractCollection)?;
+			// Create a contract NFT.
+			let collection_id = Self::contract_collection_id()?;
 			let contract_id = NextContractId::<T>::get();
 			T::NftHelper::mint_into(
 				&collection_id,
 				&contract_id,
-				&Self::treasury_account_id(),
+				&treasury_account_id,
 				&T::ContractCollectionItemConfig::get(),
 				true,
 			)?;
-
 			Contracts::<T>::insert(contract_id, contract);
 			NextContractId::<T>::mutate(|id| id.saturating_inc());
+
 			Ok(contract_id)
+		}
+
+		fn accept_contract(
+			contract_id: &ItemIdOf<T>,
+			who: &T::AccountId,
+			stakes: &[NftAddressOf<T>],
+		) -> DispatchResult {
+			let contract_address = NftAddress(Self::contract_collection_id()?, *contract_id);
+			Self::transfer_items(&[contract_address], who)?;
+			Self::transfer_items(stakes, &Self::treasury_account_id())?;
+
+			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let current_block_number = frame_system::Pallet::<T>::block_number();
+			let contract_end = current_block_number.saturating_add(contract.duration);
+			ContractDurations::<T>::insert(contract_id, contract_end);
+
+			let bounded_stakes = StakedItemsOf::<T>::truncate_from(stakes.to_vec());
+			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
+
+			Ok(())
 		}
 
 		fn transfer_items(addresses: &[NftAddressOf<T>], to: &T::AccountId) -> DispatchResult {
 			addresses.iter().try_for_each(|NftAddress(collection_id, item_id)| {
 				T::NftHelper::transfer(collection_id, item_id, to)
 			})
-		}
-
-		fn transfer_contract(contract_id: &ItemIdOf<T>, to: &T::AccountId) -> DispatchResult {
-			let collection_id =
-				ContractCollectionId::<T>::get().ok_or(Error::<T>::UnknownContractCollection)?;
-			T::NftHelper::transfer(&collection_id, contract_id, to)
-		}
-
-		fn persist_contract_acceptance(
-			contract_id: &ItemIdOf<T>,
-			stakes: &[NftAddressOf<T>],
-		) -> DispatchResult {
-			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			let current_block_number = frame_system::Pallet::<T>::block_number();
-			ContractDurations::<T>::insert(
-				contract_id,
-				current_block_number.saturating_add(contract.duration),
-			);
-
-			let bounded_stakes = StakedAssetsOf::<T>::try_from(stakes.to_vec())
-				.map_err(|_| Error::<T>::IncorrectData)?;
-			ContractStakedAssets::<T>::insert(contract_id, bounded_stakes);
-			Ok(())
-		}
-
-		fn try_handing_over_contract_reward_to(
-			account_to_reward: &T::AccountId,
-			contract_reward: &RewardOf<T>,
-		) -> DispatchResult {
-			match contract_reward {
-				RewardOf::<T>::Tokens(amount) => {
-					ensure!(
-						Self::treasury_pot_reserve() >= *amount,
-						Error::<T>::TreasuryLacksFunds
-					);
-					T::Currency::repatriate_reserved(
-						&Self::treasury_account_id(),
-						account_to_reward,
-						*amount,
-						BalanceStatus::Free,
-					)?;
-				},
-				RewardOf::<T>::Nft(asset) => {
-					T::NftHelper::transfer(&asset.0, &asset.1, account_to_reward)?;
-				},
-			}
-
-			Ok(())
 		}
 
 		fn try_checking_if_contract_can_be_redeemed(

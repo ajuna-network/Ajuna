@@ -37,9 +37,16 @@ pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
 pub type MockIndex = u64;
 
+pub type CurrencyOf<T> = <T as Config>::Currency;
+pub type NftHelperOf<T> = <T as Config>::NftHelper;
+
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
 pub const CHARLIE: MockAccountId = 3;
+
+pub const RESERVED_COLLECTION_0: MockCollectionId = 0;
+pub const RESERVED_COLLECTION_1: MockCollectionId = 1;
+pub const RESERVED_COLLECTION_2: MockCollectionId = 2;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -83,7 +90,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const MockExistentialDeposit: MockBalance = 321;
+	pub const MockExistentialDeposit: MockBalance = 3;
 }
 
 impl pallet_balances::Config for Test {
@@ -102,8 +109,8 @@ pub type MockCollectionId = u32;
 pub type MockItemId = u128;
 
 parameter_types! {
-	pub const CollectionDeposit: MockBalance = 0;
-	pub const ItemDeposit: MockBalance = 0;
+	pub const CollectionDeposit: MockBalance = 333;
+	pub const ItemDeposit: MockBalance = 33;
 	pub const MetadataDepositBase: MockBalance = 0;
 	pub const AttributeDepositBase: MockBalance = 0;
 	pub const DepositPerByte: MockBalance = 0;
@@ -175,11 +182,16 @@ impl pallet_nft_staking::Config for Test {
 	type WeightInfo = ();
 }
 
+type MockClause =
+	Clause<MockCollectionId, MockItemId, ContractAttributeKey, ContractAttributeValue>;
+
 #[derive(Default)]
 pub struct ExtBuilder {
 	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	create_contract_collection: bool,
+	contracts: Vec<(MockAccountId, ContractOf<Test>)>,
+	stakes: Vec<(MockAccountId, Vec<MockClause>)>,
 }
 
 impl ExtBuilder {
@@ -187,17 +199,22 @@ impl ExtBuilder {
 		self.creator = Some(creator);
 		self
 	}
-
 	pub fn balances(mut self, balances: Vec<(MockAccountId, MockBalance)>) -> Self {
 		self.balances = balances;
 		self
 	}
-
 	pub fn create_contract_collection(mut self) -> Self {
 		self.create_contract_collection = true;
 		self
 	}
-
+	pub fn contracts(mut self, contracts: Vec<(MockAccountId, ContractOf<Test>)>) -> Self {
+		self.contracts = contracts;
+		self
+	}
+	pub fn stakes(mut self, stakes: Vec<(MockAccountId, Vec<MockClause>)>) -> Self {
+		self.stakes = stakes;
+		self
+	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		let config = GenesisConfig {
 			system: Default::default(),
@@ -207,22 +224,78 @@ impl ExtBuilder {
 		let mut ext: sp_io::TestExternalities = config.build_storage().unwrap().into();
 		ext.execute_with(|| System::set_block_number(1));
 		ext.execute_with(|| {
+			// Create collections to reserve collection IDs from 0 to 2.
+			create_collection(BOB); // reserve collection 0
+			create_collection(BOB); // reserve collection 1
+			create_collection(BOB); // reserve collection 2
+
 			if let Some(creator) = self.creator {
 				Creator::<Test>::put(creator)
 			}
 			if self.create_contract_collection {
-				let treasury_account_id = NftStake::treasury_account_id();
-				let collection_id = <Test as Config>::NftHelper::create_collection(
-					&treasury_account_id,
-					&treasury_account_id,
-					&pallet_nfts::CollectionConfig::default(),
-				)
-				.unwrap();
+				let creator = Creator::<Test>::get().unwrap();
+				let collection_id = create_collection(creator);
 				ContractCollectionId::<Test>::put(collection_id);
 			}
+
+			self.contracts.iter().for_each(|(creator, contract)| {
+				// Fund creator enough to create contracts.
+				match &contract.reward {
+					Reward::Tokens(amount) => {
+						let _ = CurrencyOf::<Test>::deposit_creating(
+							creator,
+							ItemDeposit::get() + amount,
+						);
+					},
+					Reward::Nft(address) => {},
+				}
+				NftStake::create_contract(creator, contract).unwrap();
+			});
+
+			self.stakes.iter().for_each(|(staker, clauses)| {
+				clauses.iter().for_each(|clause| {
+					let NftAddress(collection_id, item_id) = match clause {
+						Clause::HasAttribute(staking, _) => staking,
+						Clause::HasAttributeWithValue(staking, _, _) => staking,
+					};
+					let _ = mint_item(*staker, *collection_id, *item_id);
+
+					let (key, value) = match clause {
+						Clause::HasAttribute(_, key) => (key, &0),
+						Clause::HasAttributeWithValue(_, key, value) => (key, value),
+					};
+					set_attribute(*collection_id, *item_id, *key, *value);
+				})
+			});
 		});
 		ext
 	}
+}
+
+pub fn create_collection(account: MockAccountId) -> MockCollectionId {
+	let _ = CurrencyOf::<Test>::deposit_creating(&account, CollectionDeposit::get());
+	let config = CollectionConfig::default();
+	NftHelperOf::<Test>::create_collection(&account, &account, &config).unwrap()
+}
+
+pub fn mint_item(
+	owner: MockAccountId,
+	collection_id: MockCollectionId,
+	item_id: MockItemId,
+) -> NftAddressOf<Test> {
+	let _ = CurrencyOf::<Test>::deposit_creating(&owner, ItemDeposit::get());
+	let config = pallet_nfts::ItemConfig::default();
+	NftHelperOf::<Test>::mint_into(&collection_id, &item_id, &owner, &config, false).unwrap();
+	NftAddress(collection_id, item_id)
+}
+
+fn set_attribute(
+	collection_id: MockCollectionId,
+	item_id: MockItemId,
+	key: ContractAttributeKey,
+	value: ContractAttributeValue,
+) {
+	NftHelperOf::<Test>::set_typed_attribute(&collection_id, &item_id, &key, &value).unwrap()
 }
 
 pub fn run_to_block(n: u64) {

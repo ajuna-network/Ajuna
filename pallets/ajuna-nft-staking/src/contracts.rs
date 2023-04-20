@@ -23,15 +23,9 @@ use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
 use sp_std::fmt::Debug;
 
-/// Struct that represents a combination of an Nft collection id and item id.
-/// Used in combination of an [`Inspect`] capable provider.
+/// Type to represent the collection and item IDs of an NFT.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct NftAddress<CollectionId, ItemId>(pub CollectionId, pub ItemId);
-
-/// List of Nft assets to be used for contract validation and staking.
-/// See also: [`NftAddress`], [`Contract`]
-pub type StakedAssetsVec<CollectionId, ItemId, const N: u32> =
-	BoundedVec<NftAddress<CollectionId, ItemId>, ConstU32<N>>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub enum Reward<Balance, CollectionId, ItemId> {
@@ -40,9 +34,9 @@ pub enum Reward<Balance, CollectionId, ItemId> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum Clause<AttributeKey, AttributeValue> {
-	HasAttribute(AttributeKey),
-	HasAttributeWithValue(AttributeKey, AttributeValue),
+pub enum Clause<CollectionId, ItemId, AttributeKey, AttributeValue> {
+	HasAttribute(NftAddress<CollectionId, ItemId>, AttributeKey),
+	HasAttributeWithValue(NftAddress<CollectionId, ItemId>, AttributeKey, AttributeValue),
 }
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
@@ -58,7 +52,8 @@ pub struct Contract<
 	const N: u32,
 > {
 	pub reward: Reward<Balance, CollectionId, ItemId>,
-	contract_clauses: BoundedVec<Clause<AttributeKey, AttributeValue>, ConstU32<N>>,
+	pub staking_clauses:
+		BoundedVec<Clause<CollectionId, ItemId, AttributeKey, AttributeValue>, ConstU32<N>>,
 	pub duration: BlockNumber,
 }
 
@@ -66,50 +61,54 @@ impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, c
 	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, N>
 where
 	Balance: BalanceT,
-	CollectionId: Debug + Copy,
-	ItemId: Debug + Copy,
+	CollectionId: Debug + Copy + PartialEq,
+	ItemId: Debug + Copy + PartialEq,
 	BlockNumber: Debug + Copy,
 	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
 {
-	pub fn new(reward: Reward<Balance, CollectionId, ItemId>, duration: BlockNumber) -> Self {
-		Self { reward, duration, contract_clauses: BoundedVec::default() }
-	}
-
-	pub fn with_clause(mut self, clause: Clause<AttributeKey, AttributeValue>) -> Self {
-		let _ = self.contract_clauses.try_push(clause);
-
-		self
+	pub fn new(
+		reward: Reward<Balance, CollectionId, ItemId>,
+		duration: BlockNumber,
+		staking_clauses: BoundedVec<
+			Clause<CollectionId, ItemId, AttributeKey, AttributeValue>,
+			ConstU32<N>,
+		>,
+	) -> Self {
+		Self { reward, duration, staking_clauses }
 	}
 
 	pub fn evaluate_for<AccountId, NftInspector>(
 		&self,
-		staked_assets: &[NftAddress<CollectionId, ItemId>],
+		stakes: &[NftAddress<CollectionId, ItemId>],
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 	{
-		(self.contract_clauses.len() == staked_assets.len())
+		(self.staking_clauses.len() == stakes.len())
 			.then(|| {
-				self.contract_clauses.iter().zip(staked_assets.iter()).all(|(clause, asset)| {
-					let NftAddress(collection_id, item_id) = asset;
-					match clause {
-						Clause::HasAttribute(key) =>
-							NftInspector::system_attribute(collection_id, item_id, &key.encode())
-								.is_some(),
-						Clause::HasAttributeWithValue(key, expected_value) => {
-							if let Some(value) = NftInspector::system_attribute(
-								collection_id,
-								item_id,
-								&key.encode(),
-							) {
-								expected_value
-									.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
-							} else {
-								false
-							}
-						},
-					}
+				self.staking_clauses.iter().zip(stakes.iter()).all(|(staking_clause, stake)| {
+					let staking = match staking_clause {
+						Clause::HasAttribute(staking, _) => staking,
+						Clause::HasAttributeWithValue(staking, _, _) => staking,
+					};
+					staking == stake &&
+						match staking_clause {
+							Clause::HasAttribute(_, key) =>
+								NftInspector::system_attribute(&stake.0, &stake.1, &key.encode())
+									.is_some(),
+							Clause::HasAttributeWithValue(_, key, expected_value) =>
+								if let Some(value) = NftInspector::system_attribute(
+									&stake.0,
+									&stake.1,
+									&key.encode(),
+								) {
+									expected_value
+										.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
+								} else {
+									false
+								},
+						}
 				})
 			})
 			.unwrap_or(false)
