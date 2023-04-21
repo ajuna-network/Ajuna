@@ -110,16 +110,8 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo;
 
-		/// Identifier for the individual instances of an Nft.
-		type ItemId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ AtLeast32BitUnsigned;
+		/// The type used to identify a unique item within a collection.
+		type ItemId: Member + Parameter + MaxEncodedLen + Copy + Default + AtLeast32BitUnsigned;
 
 		/// Type that holds the specific configurations for an item.
 		type ItemConfig: Copy
@@ -226,8 +218,10 @@ pub mod pallet {
 		UnknownItem,
 		/// The given contract doesn't exist.
 		UnknownContract,
-		/// The given collection belongs to someone else.
+		/// The given collection or item belongs to someone else.
 		Ownership,
+		/// The given contract belongs to someone else.
+		ContractOwnership,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
 		/// The given contract is already accepted by an account.
@@ -359,69 +353,6 @@ pub mod pallet {
 			T::Currency::free_balance(&Self::account_id())
 		}
 
-		fn contract_collection_id() -> Result<CollectionIdOf<T>, DispatchError> {
-			let id =
-				ContractCollectionId::<T>::get().ok_or(Error::<T>::UnknownContractCollection)?;
-			Ok(id)
-		}
-
-		fn ensure_creator(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
-			let maybe_creator = ensure_signed(origin)?;
-			let existing_creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
-			ensure!(maybe_creator == existing_creator, DispatchError::BadOrigin);
-			Ok(maybe_creator)
-		}
-
-		fn ensure_pallet_unlocked() -> DispatchResult {
-			ensure!(!GlobalConfigs::<T>::get().pallet_locked, Error::<T>::PalletLocked);
-			Ok(())
-		}
-
-		fn ensure_collection_ownership(
-			who: &T::AccountId,
-			collection_id: &CollectionIdOf<T>,
-		) -> DispatchResult {
-			let owner = T::NftHelper::collection_owner(collection_id)
-				.ok_or(Error::<T>::UnknownCollection)?;
-			ensure!(who == &owner, Error::<T>::Ownership);
-			Ok(())
-		}
-
-		fn ensure_item_ownership(
-			who: &T::AccountId,
-			collection_id: &CollectionIdOf<T>,
-			item_id: &ItemIdOf<T>,
-		) -> DispatchResult {
-			let owner =
-				T::NftHelper::owner(collection_id, item_id).ok_or(Error::<T>::UnknownItem)?;
-			ensure!(who == &owner, Error::<T>::Ownership);
-			Ok(())
-		}
-
-		fn ensure_acceptable(
-			contract_id: &ItemIdOf<T>,
-			who: &T::AccountId,
-			stake_addresses: &[NftAddressOf<T>],
-		) -> DispatchResult {
-			let collection_id = Self::contract_collection_id()?;
-			ensure!(
-				Self::ensure_item_ownership(who, &collection_id, contract_id).is_err(),
-				Error::<T>::AlreadyAccepted
-			);
-
-			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
-				Self::ensure_item_ownership(who, collection_id, contract_id)
-			})?;
-
-			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			ensure!(
-				contract.evaluate_for::<T::AccountId, T::NftHelper>(stake_addresses),
-				Error::<T>::UnfulfilledClause
-			);
-
-			Ok(())
-		}
-
 		pub(crate) fn create_contract(
 			creator: &T::AccountId,
 			contract: &ContractOf<T>,
@@ -501,25 +432,80 @@ pub mod pallet {
 			let contract_expiry =
 				ContractDurations::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 
-			ensure!(current_block >= contract_expiry, Error::<T>::ContractStillActive);
+	// Implementation of ensure checks.
+	impl<T: Config> Pallet<T> {
+		fn ensure_creator(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
+			let maybe_creator = ensure_signed(origin)?;
+			let existing_creator = Self::creator()?;
+			ensure!(maybe_creator == existing_creator, DispatchError::BadOrigin);
+			Ok(maybe_creator)
+		}
 
+		fn ensure_pallet_unlocked() -> DispatchResult {
+			ensure!(!GlobalConfigs::<T>::get().pallet_locked, Error::<T>::PalletLocked);
 			Ok(())
 		}
 
-		fn try_closing_redeemed_contract(
-			contract_id: &ItemIdOf<T>,
-			contract_redeemer: &T::AccountId,
+		fn ensure_collection_ownership(
+			who: &T::AccountId,
+			collection_id: &CollectionIdOf<T>,
 		) -> DispatchResult {
-			ContractStakedAssets::<T>::remove(contract_id);
-			ContractDurations::<T>::remove(contract_id);
-			ContractOwners::<T>::remove(contract_id);
-			Contracts::<T>::remove(contract_id);
+			let owner = T::NftHelper::collection_owner(collection_id)
+				.ok_or(Error::<T>::UnknownCollection)?;
+			ensure!(who == &owner, Error::<T>::Ownership);
+			Ok(())
+		}
 
-			let contract_collection = ContractCollectionId::<T>::get()
-				.expect("Contract collection id should not be empty");
-			T::NftHelper::burn(&contract_collection, contract_id, Some(contract_redeemer))?;
+		fn ensure_item_ownership(
+			who: &T::AccountId,
+			collection_id: &CollectionIdOf<T>,
+			item_id: &ItemIdOf<T>,
+		) -> DispatchResult {
+			let owner =
+				T::NftHelper::owner(collection_id, item_id).ok_or(Error::<T>::UnknownItem)?;
+			ensure!(who == &owner, Error::<T>::Ownership);
+			Ok(())
+		}
+
+		fn ensure_contract_available(
+			contract_id: &ItemIdOf<T>,
+		) -> Result<ContractOf<T>, DispatchError> {
+			let collection_id = Self::contract_collection_id()?;
+			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Self::ensure_item_ownership(&Self::account_id(), &collection_id, contract_id)
+				.map_err(|_| Error::<T>::ContractOwnership)?;
+			Ok(contract)
+		}
+
+		fn ensure_acceptable(
+			contract_id: &ItemIdOf<T>,
+			who: &T::AccountId,
+			stake_addresses: &[NftAddressOf<T>],
+		) -> DispatchResult {
+			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
+				Self::ensure_item_ownership(who, collection_id, contract_id)
+			})?;
+
+			let contract = Self::ensure_contract_available(contract_id)?;
+			ensure!(
+				contract.evaluate_for::<T::AccountId, T::NftHelper>(stake_addresses),
+				Error::<T>::UnfulfilledClause
+			);
 
 			Ok(())
+		}
+	}
+
+	// Implementation of storage getters.
+	impl<T: Config> Pallet<T> {
+		fn contract_collection_id() -> Result<T::CollectionId, DispatchError> {
+			let id =
+				ContractCollectionId::<T>::get().ok_or(Error::<T>::UnknownContractCollection)?;
+			Ok(id)
+		}
+		fn creator() -> Result<T::AccountId, DispatchError> {
+			let creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
+			Ok(creator)
 		}
 	}
 }
