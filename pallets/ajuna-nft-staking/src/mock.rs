@@ -157,7 +157,6 @@ impl pallet_nfts::Config for Test {
 parameter_types! {
 	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
 	pub const MaxClauses: u32 = 10;
-	pub ContractCollectionItemConfig: pallet_nfts::ItemConfig = pallet_nfts::ItemConfig::default();
 }
 
 pub type CollectionConfig =
@@ -176,7 +175,6 @@ impl pallet_nft_staking::Config for Test {
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type MaxClauses = MaxClauses;
-	type ContractCollectionItemConfig = ContractCollectionItemConfig;
 	type ContractAttributeKey = AttributeKey;
 	type ContractAttributeValue = AttributeValue;
 	type WeightInfo = ();
@@ -227,8 +225,9 @@ pub struct ExtBuilder {
 	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	create_contract_collection: bool,
-	contracts: Vec<ContractOf<Test>>,
+	contract: Option<ContractOf<Test>>,
 	stakes: Vec<(MockAccountId, MockStakes)>,
+	accept_contract: Option<MockAccountId>,
 }
 
 impl ExtBuilder {
@@ -244,12 +243,21 @@ impl ExtBuilder {
 		self.create_contract_collection = true;
 		self
 	}
-	pub fn contracts(mut self, contracts: Vec<ContractOf<Test>>) -> Self {
-		self.contracts = contracts;
+	pub fn create_contract(mut self, contract: ContractOf<Test>) -> Self {
+		self.contract = Some(contract);
 		self
 	}
-	pub fn stakes(mut self, stakes: Vec<(MockAccountId, MockStakes)>) -> Self {
+	pub fn mint_stakes(mut self, stakes: Vec<(MockAccountId, MockStakes)>) -> Self {
 		self.stakes = stakes;
+		self
+	}
+	pub fn accept_contract(
+		mut self,
+		stakes: Vec<(MockAccountId, MockStakes)>,
+		by: MockAccountId,
+	) -> Self {
+		self = self.mint_stakes(stakes);
+		self.accept_contract = Some(by);
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -275,10 +283,9 @@ impl ExtBuilder {
 				ContractCollectionId::<Test>::put(collection_id);
 			}
 
-			self.contracts.iter().for_each(|contract| {
+			// Fund / mint into creator enough to create contracts.
+			if let Some(contract) = self.contract {
 				let creator = Creator::<Test>::get().unwrap();
-
-				// Fund creator enough to create contracts.
 				match &contract.reward {
 					Reward::Tokens(amount) => {
 						let _ = CurrencyOf::<Test>::deposit_creating(
@@ -286,20 +293,31 @@ impl ExtBuilder {
 							ItemDeposit::get() + amount,
 						);
 					},
-					Reward::Nft(address) => {},
+					Reward::Nft(NftAddress(collection_id, item_id)) => {
+						let _ = mint_item(&creator, collection_id, item_id);
+					},
 				}
-				NftStake::create_contract(&creator, contract).unwrap();
-			});
+				let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
+				NftStake::create_contract(creator, contract).unwrap();
+			}
 
-			self.stakes.into_iter().for_each(|(staker, stakes)| {
-				stakes
-					.0
-					.into_iter()
-					.for_each(|(NftAddress(collection_id, item_id), key, value)| {
-						let _ = mint_item(staker, collection_id, item_id);
-						set_attribute(collection_id, item_id, key, value);
-					})
+			self.stakes.iter().for_each(|(staker, stakes)| {
+				stakes.0.iter().for_each(|(NftAddress(collection_id, item_id), key, value)| {
+					let _ = mint_item(staker, collection_id, item_id);
+					set_attribute(collection_id, item_id, key, value);
+				})
 			});
+			if let Some(who) = self.accept_contract {
+				let addresses = self
+					.stakes
+					.into_iter()
+					.filter(|(staker, _)| staker == &who)
+					.flat_map(|(_, stakes)| {
+						stakes.0.into_iter().map(|(address, _, _)| address).collect::<Vec<_>>()
+					})
+					.collect::<Vec<_>>();
+				NftStake::accept_contract(0, who, &addresses).unwrap();
+			}
 		});
 		ext
 	}
@@ -312,23 +330,23 @@ pub fn create_collection(account: MockAccountId) -> MockCollectionId {
 }
 
 pub fn mint_item(
-	owner: MockAccountId,
-	collection_id: MockCollectionId,
-	item_id: MockItemId,
+	owner: &MockAccountId,
+	collection_id: &MockCollectionId,
+	item_id: &MockItemId,
 ) -> NftAddressOf<Test> {
-	let _ = CurrencyOf::<Test>::deposit_creating(&owner, ItemDeposit::get());
+	let _ = CurrencyOf::<Test>::deposit_creating(owner, ItemDeposit::get());
 	let config = pallet_nfts::ItemConfig::default();
-	NftHelperOf::<Test>::mint_into(&collection_id, &item_id, &owner, &config, false).unwrap();
-	NftAddress(collection_id, item_id)
+	NftHelperOf::<Test>::mint_into(collection_id, item_id, owner, &config, false).unwrap();
+	NftAddress(*collection_id, *item_id)
 }
 
 fn set_attribute(
-	collection_id: MockCollectionId,
-	item_id: MockItemId,
-	key: AttributeKey,
-	value: AttributeValue,
+	collection_id: &MockCollectionId,
+	item_id: &MockItemId,
+	key: &AttributeKey,
+	value: &AttributeValue,
 ) {
-	NftHelperOf::<Test>::set_typed_attribute(&collection_id, &item_id, &key, &value).unwrap()
+	NftHelperOf::<Test>::set_typed_attribute(collection_id, item_id, key, value).unwrap()
 }
 
 pub fn run_to_block(n: u64) {

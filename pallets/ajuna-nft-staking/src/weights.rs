@@ -137,7 +137,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	// Storage: Nft ItemConfigOf (r:11 w:0)
 	// Storage: System Account (r:1 w:1)
 	// Storage: NftStake ContractCollectionId (r:1 w:0)
-	// Storage: NftStake ContractDurations (r:0 w:1)
+	// Storage: NftStake ContractEnds (r:0 w:1)
 	// Storage: NftStake ContractStakedItems (r:0 w:1)
 	// Storage: Nft Account (r:0 w:22)
 	// Storage: Nft ItemPriceOf (r:0 w:11)
@@ -150,7 +150,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	}
 	// Storage: NftStake LockedState (r:1 w:0)
 	// Storage: NftStake ContractOwners (r:1 w:1)
-	// Storage: NftStake ContractDurations (r:1 w:1)
+	// Storage: NftStake ContractEnds (r:1 w:1)
 	// Storage: NftStake ContractStakedItems (r:1 w:1)
 	// Storage: NftStake TreasuryAccount (r:1 w:0)
 	// Storage: Nft Collection (r:2 w:1)
@@ -172,7 +172,7 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 	}
 	// Storage: NftStake LockedState (r:1 w:0)
 	// Storage: NftStake ContractOwners (r:1 w:1)
-	// Storage: NftStake ContractDurations (r:1 w:1)
+	// Storage: NftStake ContractEnds (r:1 w:1)
 	// Storage: NftStake ContractStakedItems (r:1 w:1)
 	// Storage: NftStake TreasuryAccount (r:1 w:0)
 	// Storage: Nft Collection (r:3 w:1)
@@ -274,7 +274,7 @@ impl WeightInfo for () {
 	// Storage: Nft ItemConfigOf (r:11 w:0)
 	// Storage: System Account (r:1 w:1)
 	// Storage: NftStake ContractCollectionId (r:1 w:0)
-	// Storage: NftStake ContractDurations (r:0 w:1)
+	// Storage: NftStake ContractEnds (r:0 w:1)
 	// Storage: NftStake ContractStakedItems (r:0 w:1)
 	// Storage: Nft Account (r:0 w:22)
 	// Storage: Nft ItemPriceOf (r:0 w:11)
@@ -287,7 +287,7 @@ impl WeightInfo for () {
 	}
 	// Storage: NftStake LockedState (r:1 w:0)
 	// Storage: NftStake ContractOwners (r:1 w:1)
-	// Storage: NftStake ContractDurations (r:1 w:1)
+	// Storage: NftStake ContractEnds (r:1 w:1)
 	// Storage: NftStake ContractStakedItems (r:1 w:1)
 	// Storage: NftStake TreasuryAccount (r:1 w:0)
 	// Storage: Nft Collection (r:2 w:1)
@@ -309,7 +309,7 @@ impl WeightInfo for () {
 	}
 	// Storage: NftStake LockedState (r:1 w:0)
 	// Storage: NftStake ContractOwners (r:1 w:1)
-	// Storage: NftStake ContractDurations (r:1 w:1)
+	// Storage: NftStake ContractEnds (r:1 w:1)
 	// Storage: NftStake ContractStakedItems (r:1 w:1)
 	// Storage: NftStake TreasuryAccount (r:1 w:0)
 	// Storage: Nft Collection (r:3 w:1)

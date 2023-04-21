@@ -86,7 +86,7 @@ fn create_random_nft<T: Config>(
 	collection_id: CollectionIdOf<T>,
 	item_id: ItemIdOf<T>,
 ) -> NftAddressOf<T> {
-	let item_config = T::ContractCollectionItemConfig::get();
+	let item_config = T::ItemId::get();
 	T::NftHelper::mint_into(&collection_id, &item_id, owner, &item_config, true)
 		.expect("Should create Nft");
 
