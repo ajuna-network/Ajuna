@@ -626,6 +626,29 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type NftHelper = Nft;
 }
 
+parameter_types! {
+	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
+	pub const MaxClauses: u32 = 10;
+}
+
+type AttributeKey = u32;
+type AttributeValue = u64;
+
+impl pallet_ajuna_nft_staking::Config for Runtime {
+	type PalletId = NftStakingPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type CollectionId = CollectionId;
+	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+	type ItemId = Hash;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type NftHelper = Nft;
+	type MaxClauses = MaxClauses;
+	type ContractAttributeKey = AttributeKey;
+	type ContractAttributeValue = AttributeValue;
+	type WeightInfo = ();
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -657,6 +680,7 @@ construct_runtime!(
 		Randomness: pallet_insecure_randomness_collective_flip = 23,
 		Nft: pallet_nfts = 24,
 		NftTransfer: pallet_ajuna_nft_transfer = 25,
+		NftStaking: pallet_ajuna_nft_staking = 26,
 	}
 );
 
