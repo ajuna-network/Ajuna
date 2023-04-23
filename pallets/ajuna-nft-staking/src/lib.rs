@@ -110,7 +110,7 @@ pub mod pallet {
 			+ TypeInfo;
 
 		/// The type used to identify a unique item within a collection.
-		type ItemId: Member + Parameter + MaxEncodedLen + Copy + Default + AtLeast32BitUnsigned;
+		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
 
 		/// Type that holds the specific configurations for an item.
 		type ItemConfig: Copy
@@ -163,9 +163,6 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type ContractCollectionId<T: Config> = StorageValue<_, T::CollectionId>;
-
-	#[pallet::storage]
-	pub type NextContractId<T: Config> = StorageValue<_, T::ItemId, ValueQuery>;
 
 	#[pallet::storage]
 	pub type Contracts<T: Config> = StorageMap<_, Identity, T::ItemId, ContractOf<T>>;
@@ -277,10 +274,14 @@ pub mod pallet {
 				.max(T::WeightInfo::create_nft_reward())
 		)]
 		#[pallet::call_index(4)]
-		pub fn create(origin: OriginFor<T>, contract: ContractOf<T>) -> DispatchResult {
+		pub fn create(
+			origin: OriginFor<T>,
+			contract_id: T::ItemId,
+			contract: ContractOf<T>,
+		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
-			Self::create_contract(creator, contract)
+			Self::create_contract(creator, contract_id, contract)
 		}
 
 		#[pallet::weight(T::WeightInfo::accept())]
@@ -322,6 +323,7 @@ pub mod pallet {
 
 		pub(crate) fn create_contract(
 			creator: T::AccountId,
+			contract_id: T::ItemId,
 			contract: ContractOf<T>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
@@ -346,7 +348,6 @@ pub mod pallet {
 
 			// Create a contract NFT.
 			let collection_id = Self::contract_collection_id()?;
-			let contract_id = NextContractId::<T>::get();
 			T::NftHelper::mint_into(
 				&collection_id,
 				&contract_id,
@@ -355,7 +356,6 @@ pub mod pallet {
 				true,
 			)?;
 			Contracts::<T>::insert(contract_id, contract);
-			NextContractId::<T>::mutate(|id| id.saturating_inc());
 
 			Self::deposit_event(Event::<T>::Created { creator, contract_id });
 			Ok(())
