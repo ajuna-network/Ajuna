@@ -639,7 +639,6 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;

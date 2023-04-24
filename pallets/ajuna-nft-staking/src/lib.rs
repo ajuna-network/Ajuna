@@ -31,7 +31,7 @@ pub mod weights;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate, Transfer},
+		tokens::nonfungibles_v2::{Destroy, Inspect, Mutate, Transfer},
 		Currency,
 		ExistenceRequirement::AllowDeath,
 		Get, Imbalance, WithdrawReasons,
@@ -99,31 +99,13 @@ pub mod pallet {
 		/// Identifier for the collection of an Nft.
 		type CollectionId: Member + Parameter + MaxEncodedLen + Copy + AtLeast32BitUnsigned;
 
-		/// Type that holds the specific configurations for a collection.
-		type CollectionConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
-
 		/// The type used to identify a unique item within a collection.
 		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
 
 		/// Type that holds the specific configurations for an item.
-		type ItemConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
+		type ItemConfig: Default + MaxEncodedLen + TypeInfo;
 
 		type NftHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
-			+ Create<Self::AccountId, Self::CollectionConfig>
 			+ Mutate<Self::AccountId, Self::ItemConfig>
 			+ Destroy<Self::AccountId>
 			+ Transfer<Self::AccountId>;
