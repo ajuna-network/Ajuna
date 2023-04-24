@@ -29,7 +29,11 @@ pallet-nfts     = { git = "https://github.com/paritytech/substrate", branch = "p
 
 [features]
 default = [ "std" ]
-runtime-benchmarks = [ "frame-benchmarking", "hex/alloc" ]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "hex/alloc",
+    "pallet-nfts/runtime-benchmarks",
+]
 std = [
     "codec/std",
     "scale-info/std",

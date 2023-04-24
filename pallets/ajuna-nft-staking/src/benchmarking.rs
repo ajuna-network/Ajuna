@@ -44,11 +44,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 }
 
 fn create_staking_contract<T: Config>(
-	reward: StakingRewardOf<T>,
+	reward: RewardOf<T>,
 	duration: BlockNumberOf<T>,
-	clause: ContractClause<ContractAttributeKeyOf<T>, ContractAttributeValueOf<T>>,
-) -> StakingContractOf<T> {
-	StakingContractOf::<T>::new(reward, duration)
+	clause: Clause<ContractAttributeKeyOf<T>, ContractAttributeValueOf<T>>,
+) -> ContractOf<T> {
+	ContractOf::<T>::new(reward, duration)
 		.with_clause(clause.clone())
 		.with_clause(clause.clone())
 		.with_clause(clause.clone())
@@ -86,7 +86,7 @@ fn create_random_nft<T: Config>(
 	collection_id: CollectionIdOf<T>,
 	item_id: ItemIdOf<T>,
 ) -> NftAddressOf<T> {
-	let item_config = T::ContractCollectionItemConfig::get();
+	let item_config = T::ItemId::get();
 	T::NftHelper::mint_into(&collection_id, &item_id, owner, &item_config, true)
 		.expect("Should create Nft");
 
@@ -133,8 +133,8 @@ fn set_attribute_for_nft<T: Config>(
 	.expect("Should add attribute Nft");
 }
 
-fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> ContractClauseOf<T> {
-	ContractClauseOf::<T>::HasAttributeWithValue(attr_key.into(), attr_value.into())
+fn create_contract_clause<T: Config>(attr_key: u32, attr_value: u64) -> ClauseOf<T> {
+	ClauseOf::<T>::HasAttributeWithValue(attr_key.into(), attr_value.into())
 }
 
 fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::CollectionId {
@@ -143,152 +143,145 @@ fn create_staking_contract_collection<T: Config>(account: &T::AccountId) -> T::C
 		.expect("Should have create contract collection")
 }
 
-type ContractClauseOf<T> =
-	ContractClause<<T as Config>::ContractAttributeKey, <T as Config>::ContractAttributeValue>;
+type ClauseOf<T> =
+	Clause<<T as Config>::ContractAttributeKey, <T as Config>::ContractAttributeValue>;
 
 benchmarks! {
-	set_organizer {
-		let organizer = prepare_account::<T>("ALICE");
-	}: _(RawOrigin::Root, organizer.clone())
+	set_creator {
+		let creator = prepare_account::<T>("ALICE");
+	}: _(RawOrigin::Root, creator.clone())
 	verify {
-		assert_last_event::<T>(Event::OrganizerSet { organizer }.into())
+		assert_last_event::<T>(Event::CreatorSet { creator }.into())
 	}
 
 	set_contract_collection_id {
-		let account = NftStake::<T>::treasury_account_id();
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
-		Organizer::<T>::put(&account);
+		Creator::<T>::put(&account);
 	}: _(RawOrigin::Signed(account), collection_id)
 	verify {
 		assert_last_event::<T>(Event::ContractCollectionSet { collection_id }.into())
 	}
 
-	set_locked_state {
-		let organizer = prepare_account::<T>("ALICE");
-		Organizer::<T>::put(&organizer);
-	}: _(RawOrigin::Signed(organizer), PalletLockedState::Locked)
+	set_global_config {
+		let creator = prepare_account::<T>("ALICE");
+		Creator::<T>::put(&creator);
+		let new_config = GlobalConfig::default();
+	}: _(RawOrigin::Signed(creator), new_config)
 	verify {
-		assert_last_event::<T>(Event::LockedStateSet { locked_state: PalletLockedState::Locked }.into())
+		assert_last_event::<T>(Event::SetGlobalConfig { new_config }.into())
 	}
 
-	fund_treasury {
-		let caller = prepare_account::<T>("ALICE");
-		let fund_amt: BalanceOf<T> = 1_000_u32.into();
-	}: _(RawOrigin::Signed(caller.clone()), fund_amt)
-	verify {
-		assert_last_event::<T>(Event::TreasuryFunded { funding_account: caller, funds: fund_amt }.into())
-	}
-
-	submit_staking_contract_token_reward {
-		let account = NftStake::<T>::treasury_account_id();
+	create_token_reward {
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
 		let caller = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
-		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
+		let reward = RewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
 		let expected_id = NextContractId::<T>::get();
-	}: submit_staking_contract(RawOrigin::Signed(caller.clone()), contract)
+	}: create(RawOrigin::Signed(caller.clone()), contract)
 	verify {
-		assert_last_event::<T>(Event::StakingContractCreated { creator: caller, contract: expected_id }.into())
+		assert_last_event::<T>(Event::Created { creator: caller, contract_id: expected_id }.into())
 	}
 
-	submit_staking_contract_nft_reward {
-		let account = NftStake::<T>::treasury_account_id();
+	create_nft_reward {
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
 		let caller = prepare_account::<T>("ALICE");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
 		let nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
-		let reward = StakingRewardOf::<T>::Nft(nft_addr);
+		let reward = RewardOf::<T>::Nft(nft_addr);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
 		let expected_id = NextContractId::<T>::get();
-	}: submit_staking_contract(RawOrigin::Signed(caller.clone()), contract)
+	}: create(RawOrigin::Signed(caller.clone()), contract)
 	verify {
-		assert_last_event::<T>(Event::StakingContractCreated { creator: caller, contract: expected_id }.into())
+		assert_last_event::<T>(Event::Created { creator: caller, contract_id: expected_id }.into())
 	}
 
-	take_staking_contract {
-		let account = NftStake::<T>::treasury_account_id();
+	accept {
+		let account = NftStake::<T>::technical_account_id();
 		let collection_id = create_staking_contract_collection::<T>(&account);
 		ContractCollectionId::<T>::put(collection_id);
 
-		let caller = prepare_account::<T>("ALICE");
+		let creator = prepare_account::<T>("ALICE");
 		let reward_amt: BalanceOf<T> = 1_000_u32.into();
-		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
+		let reward = RewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward, 10_u32.into(), clause);
 		let contract_id = NextContractId::<T>::get();
 
-		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
+		NftStake::<T>::create(RawOrigin::Signed(creator).into(), contract)?;
 
-		let taker_caller = prepare_account::<T>("BOB");
-		let collection_id = create_random_nft_collection::<T>(taker_caller.clone());
-		let nft_batch = create_random_nft_batch::<T>(&taker_caller, collection_id, MAXIMUM_CLAUSES_PER_CONTRACT);
-		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
-		let staking_vec = create_staking_vector_from::<T>(nft_batch);
-	}: _(RawOrigin::Signed(taker_caller.clone()), contract_id, staking_vec)
-	verify {
-		assert_last_event::<T>(Event::StakingContractTaken { taken_by: taker_caller, contract: contract_id }.into())
-	}
-
-	redeem_staking_contract_token_reward {
-		let account = NftStake::<T>::treasury_account_id();
-		let collection_id = create_staking_contract_collection::<T>(&account);
-		ContractCollectionId::<T>::put(collection_id);
-
-		let caller = prepare_account::<T>("ALICE");
-		let reward_amt: BalanceOf<T> = 1_000_u32.into();
-		let reward = StakingRewardOf::<T>::Tokens(reward_amt);
-		let clause = create_contract_clause::<T>(10, 10);
-		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
-		let contract_id = NextContractId::<T>::get();
-
-		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
-
-		let taker_caller = prepare_account::<T>("BOB");
-		let collection_id = create_random_nft_collection::<T>(taker_caller.clone());
-		let nft_batch = create_random_nft_batch::<T>(&taker_caller, collection_id, MAXIMUM_CLAUSES_PER_CONTRACT);
-		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
-		let staking_vec = create_staking_vector_from::<T>(nft_batch);
-
-		NftStake::<T>::take_staking_contract(RawOrigin::Signed(taker_caller.clone()).into(), contract_id, staking_vec)?;
-
-	}: redeem_staking_contract(RawOrigin::Signed(taker_caller.clone()), contract_id)
-	verify {
-		assert_last_event::<T>(Event::StakingContractRedeemed { redeemed_by: taker_caller, contract: contract_id, reward }.into())
-	}
-
-	redeem_staking_contract_nft_reward {
-		let account = NftStake::<T>::treasury_account_id();
-		let collection_id = create_staking_contract_collection::<T>(&account);
-		ContractCollectionId::<T>::put(collection_id);
-
-		let caller = prepare_account::<T>("ALICE");
+		let caller = prepare_account::<T>("BOB");
 		let collection_id = create_random_nft_collection::<T>(caller.clone());
-		let reward_nft_addr = create_random_nft::<T>(&caller, collection_id, 0_u32.into());
-		let reward = StakingRewardOf::<T>::Nft(reward_nft_addr);
+		let nft_batch = create_random_nft_batch::<T>(&caller, collection_id, MAXIMUM_CLAUSES_PER_CONTRACT);
+		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
+		let staking_vec = create_staking_vector_from::<T>(nft_batch);
+	}: _(RawOrigin::Signed(caller.clone()), contract_id, staking_vec)
+	verify {
+		assert_last_event::<T>(Event::Accepted { accepted_by: caller, contract_id }.into())
+	}
+
+	claim_token_reward {
+		let account = NftStake::<T>::technical_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
+		let creator = prepare_account::<T>("ALICE");
+		let reward_amt: BalanceOf<T> = 1_000_u32.into();
+		let reward = RewardOf::<T>::Tokens(reward_amt);
 		let clause = create_contract_clause::<T>(10, 10);
 		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
 		let contract_id = NextContractId::<T>::get();
 
-		NftStake::<T>::submit_staking_contract(RawOrigin::Signed(caller).into(), contract)?;
+		NftStake::<T>::create(RawOrigin::Signed(creator).into(), contract)?;
 
-		let taker_caller = prepare_account::<T>("BOB");
-		let collection_id = create_random_nft_collection::<T>(taker_caller.clone());
-		let nft_batch = create_random_nft_batch::<T>(&taker_caller, collection_id, MAXIMUM_CLAUSES_PER_CONTRACT);
+		let caller = prepare_account::<T>("BOB");
+		let collection_id = create_random_nft_collection::<T>(caller.clone());
+		let nft_batch = create_random_nft_batch::<T>(&caller, collection_id, MAXIMUM_CLAUSES_PER_CONTRACT);
 		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
 		let staking_vec = create_staking_vector_from::<T>(nft_batch);
 
-		NftStake::<T>::take_staking_contract(RawOrigin::Signed(taker_caller.clone()).into(), contract_id, staking_vec)?;
+		NftStake::<T>::accept(RawOrigin::Signed(caller.clone()).into(), contract_id, staking_vec)?;
 
-	}: redeem_staking_contract(RawOrigin::Signed(taker_caller.clone()), contract_id)
+	}: claim(RawOrigin::Signed(caller.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::StakingContractRedeemed { redeemed_by: taker_caller, contract: contract_id, reward }.into())
+		assert_last_event::<T>(Event::Claimed { claimed_by: caller, contract_id, reward }.into())
+	}
+
+	claim_nft_reward {
+		let account = NftStake::<T>::technical_account_id();
+		let collection_id = create_staking_contract_collection::<T>(&account);
+		ContractCollectionId::<T>::put(collection_id);
+
+		let creator = prepare_account::<T>("ALICE");
+		let collection_id = create_random_nft_collection::<T>(creator.clone());
+		let reward_nft_addr = create_random_nft::<T>(&creator, collection_id, 0_u32.into());
+		let reward = RewardOf::<T>::Nft(reward_nft_addr);
+		let clause = create_contract_clause::<T>(10, 10);
+		let contract = create_staking_contract::<T>(reward.clone(), 0_u32.into(), clause);
+		let contract_id = NextContractId::<T>::get();
+
+		NftStake::<T>::create(RawOrigin::Signed(creator).into(), contract)?;
+
+		let caller = prepare_account::<T>("BOB");
+		let collection_id = create_random_nft_collection::<T>(caller.clone());
+		let nft_batch = create_random_nft_batch::<T>(&caller, collection_id, MAXIMUM_CLAUSES_PER_CONTRACT);
+		set_attribute_for_nft_batch::<T>(&nft_batch, 10_u32, 10_u64);
+		let staking_vec = create_staking_vector_from::<T>(nft_batch);
+
+		NftStake::<T>::accept(RawOrigin::Signed(caller.clone()).into(), contract_id, staking_vec)?;
+
+	}: claim(RawOrigin::Signed(caller.clone()), contract_id)
+	verify {
+		assert_last_event::<T>(Event::Claimed { claimed_by: caller, contract_id, reward }.into())
 	}
 
 	impl_benchmark_test_suite!(

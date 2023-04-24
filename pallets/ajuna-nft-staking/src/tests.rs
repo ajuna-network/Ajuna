@@ -15,32 +15,29 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{mock::*, *};
-use frame_support::{
-	assert_noop, assert_ok,
-	traits::tokens::nonfungibles_v2::{Create, Mutate},
-};
-use sp_runtime::bounded_vec;
+use frame_support::{assert_noop, assert_ok};
+use sp_runtime::testing::H256;
 
-mod organizer {
+mod set_creator {
 	use super::*;
 
 	#[test]
-	fn set_organizer_successfully() {
+	fn works() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(Organizer::<Test>::get(), None);
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-			assert_eq!(Organizer::<Test>::get(), Some(ALICE), "Organizer should be Alice");
-			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::OrganizerSet {
-				organizer: ALICE,
+			assert_eq!(Creator::<Test>::get(), None);
+			assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
+			assert_eq!(Creator::<Test>::get(), Some(ALICE));
+			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::CreatorSet {
+				creator: ALICE,
 			}));
 		});
 	}
 
 	#[test]
-	fn set_organizer_should_reject_non_root_calls() {
+	fn rejects_non_root_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				NftStake::set_organizer(RuntimeOrigin::signed(BOB), ALICE),
+				NftStake::set_creator(RuntimeOrigin::signed(BOB), ALICE),
 				DispatchError::BadOrigin
 			);
 		});
@@ -51,27 +48,15 @@ mod set_contract_collection_id {
 	use super::*;
 
 	#[test]
-	fn set_contract_collection_id_succesfully() {
-		ExtBuilder::default().create_collection(false).build().execute_with(|| {
-			assert!(ContractCollectionId::<Test>::get().is_err());
-
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			let collection_config =
-				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
-			let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
-				&ALICE,
-				&ALICE,
-				&collection_config,
-			)
-			.expect("Should have create contract collection");
-
+	fn works() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let collection_id = create_collection(ALICE);
+			assert_eq!(ContractCollectionId::<Test>::get(), None);
 			assert_ok!(NftStake::set_contract_collection_id(
 				RuntimeOrigin::signed(ALICE),
 				collection_id
 			));
-			assert_eq!(ContractCollectionId::<Test>::get().unwrap(), collection_id);
-
+			assert_eq!(ContractCollectionId::<Test>::get(), Some(collection_id));
 			System::assert_last_event(mock::RuntimeEvent::NftStake(
 				crate::Event::ContractCollectionSet { collection_id },
 			));
@@ -79,851 +64,619 @@ mod set_contract_collection_id {
 	}
 
 	#[test]
-	fn set_contract_collection_id_should_reject_non_existing_collection() {
-		ExtBuilder::default().create_collection(false).build().execute_with(|| {
-			assert!(ContractCollectionId::<Test>::get().is_err());
-
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-
+	fn rejects_non_existing_collection() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			assert_noop!(
 				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), 17),
-				Error::<Test>::InvalidContractCollection
+				Error::<Test>::UnknownCollection
 			);
 		});
 	}
 
 	#[test]
-	fn set_contract_collection_id_should_reject_non_organizer_owned_collection() {
-		ExtBuilder::default().create_collection(false).build().execute_with(|| {
-			assert!(ContractCollectionId::<Test>::get().is_err());
-
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			let collection_config =
-				<Test as crate::pallet::Config>::ContractCollectionConfig::get();
-			let collection_id = <Test as crate::pallet::Config>::NftHelper::create_collection(
-				&BOB,
-				&ALICE,
-				&collection_config,
-			)
-			.expect("Should have created contract collection");
-
+	fn rejects_non_creator_owned_collection() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let collection_id = create_collection(BOB);
 			assert_noop!(
 				NftStake::set_contract_collection_id(RuntimeOrigin::signed(ALICE), collection_id),
-				Error::<Test>::InvalidContractCollection
+				Error::<Test>::Ownership
 			);
 		});
 	}
 }
 
-mod set_lock_state {
+mod set_global_config {
 	use super::*;
 
 	#[test]
-	fn set_lock_state_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-
-			assert_ok!(NftStake::set_locked_state(
-				RuntimeOrigin::signed(ALICE),
-				PalletLockedState::Locked
+	fn works() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let new_config = GlobalConfig { pallet_locked: true };
+			assert_ok!(NftStake::set_global_config(RuntimeOrigin::signed(ALICE), new_config));
+			assert_eq!(GlobalConfigs::<Test>::get(), new_config);
+			System::assert_last_event(mock::RuntimeEvent::NftStake(
+				crate::Event::SetGlobalConfig { new_config },
 			));
-			assert_eq!(
-				LockedState::<Test>::get(),
-				PalletLockedState::Locked,
-				"Pallet should be locked"
-			);
-			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::LockedStateSet {
-				locked_state: PalletLockedState::Locked,
-			}));
-
-			let contract_reward = StakingRewardOf::<Test>::Tokens(1_000);
-			let contract = StakingContractOf::<Test>::new(contract_reward, 10);
-			assert_noop!(
-				NftStake::submit_staking_contract(RuntimeOrigin::signed(BOB), contract),
-				Error::<Test>::PalletLocked
-			);
 		});
 	}
 
 	#[test]
-	fn set_lock_state_should_fail_with_non_organizer_account() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(NftStake::set_organizer(RuntimeOrigin::root(), ALICE));
-
+	fn rejects_non_creator_calls() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			assert_noop!(
-				NftStake::set_locked_state(RuntimeOrigin::signed(BOB), PalletLockedState::Locked),
+				NftStake::set_global_config(RuntimeOrigin::signed(BOB), GlobalConfig::default()),
 				DispatchError::BadOrigin
 			);
 		});
 	}
 }
 
-mod fund_treasury {
+mod create {
 	use super::*;
 
 	#[test]
-	fn fund_treasury_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = RuntimeOrigin::signed(ALICE);
-			let fund_amount: MockBalance = 1_000_000;
-			let treasury_account = TreasuryAccount::<Test>::get().unwrap();
-			let base_reserves = Balances::reserved_balance(treasury_account);
-
-			assert_ok!(NftStake::fund_treasury(account, fund_amount));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::TreasuryFunded {
-				funding_account: ALICE,
-				funds: fund_amount,
-			}));
-
-			assert_eq!(Balances::reserved_balance(treasury_account), base_reserves + fund_amount);
-		});
-	}
-
-	#[test]
-	fn cannot_fund_treasury_without_funds() {
-		let account_balance = 1_000;
-		let fund_amount = account_balance * 10;
+	fn works_with_token_reward() {
+		let initial_balance = 1_000_000;
 		ExtBuilder::default()
-			.balances(vec![(ALICE, account_balance)])
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.balances(vec![(ALICE, initial_balance)])
 			.build()
 			.execute_with(|| {
-				let account = RuntimeOrigin::signed(ALICE);
+				let reward_amount = 1_000;
+				let reward = Reward::Tokens(reward_amount);
+				let contract = Contract::new(reward, 10, Default::default());
+				let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
 
-				assert_noop!(
-					NftStake::fund_treasury(account, fund_amount),
-					crate::pallet::Error::<Test>::AccountLacksFunds
-				);
-			});
-	}
+				let contract_id = H256::random();
+				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 
-	#[test]
-	fn cannot_fund_treasury_if_the_funding_account_would_be_killed() {
-		let account_balance = 1_000;
-		let fund_amount = account_balance - 10;
-		ExtBuilder::default()
-			.balances(vec![(ALICE, account_balance)])
-			.build()
-			.execute_with(|| {
-				let account = RuntimeOrigin::signed(ALICE);
-
-				assert_noop!(
-					NftStake::fund_treasury(account, fund_amount),
-					pallet_balances::Error::<Test>::KeepAlive
-				);
-			});
-	}
-}
-
-mod submit_staking_contract {
-	use super::*;
-
-	#[test]
-	fn can_submit_staking_contract_with_tokens_as_reward() {
-		let account = ALICE;
-		let account_balance = 1_000_000;
-		ExtBuilder::default()
-			.balances(vec![(account, account_balance)])
-			.build()
-			.execute_with(|| {
-				let reward = 1_000;
-				let contract_reward = StakingRewardOf::<Test>::Tokens(reward);
-				let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-					.with_clause(ContractClause::HasAttribute(10_u32));
-				let treasury_account = TreasuryAccount::<Test>::get().unwrap();
-				let base_reserves = Balances::reserved_balance(treasury_account);
-
-				let expected_contract_id = NextContractId::<Test>::get();
-
-				assert_ok!(NftStake::submit_staking_contract(
-					RuntimeOrigin::signed(account),
+				assert_ok!(NftStake::create(
+					RuntimeOrigin::signed(ALICE),
+					contract_id,
 					contract.clone()
 				));
-
-				System::assert_last_event(mock::RuntimeEvent::NftStake(
-					crate::Event::StakingContractCreated {
-						creator: account,
-						contract: expected_contract_id,
-					},
-				));
-
-				assert_eq!(ActiveContracts::<Test>::get(expected_contract_id), Some(contract));
-
+				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
 				assert_eq!(
-					Nft::owner(contract_collection_id(), expected_contract_id),
-					Some(NftStake::treasury_account_id())
+					Nft::owner(contract_collection_id, contract_id),
+					Some(NftStake::account_id())
 				);
+				assert_eq!(
+					Balances::free_balance(ALICE),
+					initial_balance - reward_amount - ItemDeposit::get()
+				);
+				assert_eq!(NftStake::account_balance(), base_reserves + reward_amount);
 
-				let new_reserve = Balances::reserved_balance(treasury_account);
-
-				assert_eq!(Balances::free_balance(account), account_balance - reward);
-				assert_eq!(new_reserve, base_reserves + reward);
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
+					creator: ALICE,
+					contract_id,
+				}));
 			});
 	}
 
 	#[test]
-	fn can_submit_staking_contract_with_nft_as_reward() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let collection_id = create_random_mock_nft_collection(account);
-			let nft_addr = create_random_mock_nft(account, collection_id, 1);
-
-			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr.clone());
-			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-				.with_clause(ContractClause::HasAttribute(10_u32));
-
-			let expected_contract_id = NextContractId::<Test>::get();
-
-			assert_ok!(NftStake::submit_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract.clone()
-			));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractCreated {
-					creator: account,
-					contract: expected_contract_id,
-				},
-			));
-
-			assert_eq!(ActiveContracts::<Test>::get(expected_contract_id), Some(contract));
-
-			assert_eq!(
-				Nft::owner(contract_collection_id(), expected_contract_id),
-				Some(NftStake::treasury_account_id())
-			);
-
-			assert_eq!(Nft::owner(collection_id, nft_addr.1), Some(NftStake::treasury_account_id()))
-		});
-	}
-
-	#[test]
-	fn cannot_submit_staking_contract_without_enough_tokens_for_reward_in_account() {
-		let account = ALICE;
-		let account_balance = 1_000_000;
+	fn works_with_nft_reward() {
 		ExtBuilder::default()
-			.balances(vec![(account, account_balance)])
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.balances(vec![(ALICE, ItemDeposit::get())])
 			.build()
 			.execute_with(|| {
-				let reward = 2_000_000;
-				let contract_reward = StakingRewardOf::<Test>::Tokens(reward);
-				let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-					.with_clause(ContractClause::HasAttribute(10_u32));
+				let collection_id = create_collection(ALICE);
+				let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
+				let reward = Reward::Nft(nft_addr.clone());
+				let contract = Contract::new(reward, 10, Default::default());
 
+				let contract_id = H256::random();
+				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+
+				assert_ok!(NftStake::create(
+					RuntimeOrigin::signed(ALICE),
+					contract_id,
+					contract.clone()
+				));
+				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
+				assert_eq!(Nft::owner(collection_id, nft_addr.1), Some(NftStake::account_id()));
+				assert_eq!(
+					Nft::owner(contract_collection_id, contract_id),
+					Some(NftStake::account_id())
+				);
+
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
+					creator: ALICE,
+					contract_id,
+				}));
+			});
+	}
+
+	#[test]
+	fn rejects_non_creator_calls() {
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.balances(vec![(ALICE, ItemDeposit::get())])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
+				let reward = Reward::Nft(nft_addr);
+				let contract = Contract::new(reward, 10, Default::default());
+				let contract_id = H256::random();
 				assert_noop!(
-					NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
-					Error::<Test>::AccountLacksFunds
+					NftStake::create(RuntimeOrigin::signed(BOB), contract_id, contract),
+					DispatchError::BadOrigin
 				);
 			});
 	}
 
 	#[test]
-	fn cannot_submit_staking_contract_without_owning_the_nft_reward() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let other_account = BOB;
-			let nft_addr = create_random_mock_nft_for(other_account);
-
-			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
-			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-				.with_clause(ContractClause::HasAttribute(10_u32));
-
+	fn rejects_when_pallet_is_locked() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let reward = Reward::Tokens(333);
+			let contract = Contract::new(reward, 10, Default::default());
+			let contract_id = H256::random();
+			GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 			assert_noop!(
-				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
-				Error::<Test>::ContractRewardNotOwned
+				NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+				Error::<Test>::PalletLocked
 			);
 		});
 	}
 
 	#[test]
-	fn cannot_submit_staking_contract_with_another_contract_as_reward() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let collection_id = contract_collection_id();
-			let item_id = NextContractId::<Test>::get() + 100;
-			let nft_addr = create_random_mock_nft(account, collection_id, item_id);
+	fn rejects_insufficient_balance() {
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.balances(vec![(ALICE, 333)])
+			.build()
+			.execute_with(|| {
+				let reward = Reward::Tokens(2_000_000);
+				let contract = Contract::new(reward, 10, Default::default());
+				let contract_id = H256::random();
+				assert_noop!(
+					NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+					pallet_balances::Error::<Test>::InsufficientBalance,
+				);
+			});
+	}
 
-			let contract_reward = StakingRewardOf::<Test>::Nft(nft_addr);
-			let contract = StakingContractOf::<Test>::new(contract_reward, 10)
-				.with_clause(ContractClause::HasAttribute(10_u32));
-
+	#[test]
+	fn rejects_unowned_nfts() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let collection_id = create_collection(BOB);
+			let nft_addr = mint_item(&BOB, &collection_id, &H256::random());
+			let reward = Reward::Nft(nft_addr);
+			let contract = Contract::new(reward, 10, Default::default());
+			let contract_id = H256::random();
 			assert_noop!(
-				NftStake::submit_staking_contract(RuntimeOrigin::signed(account), contract),
-				Error::<Test>::InvalidContractReward
+				NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+				Error::<Test>::Ownership
+			);
+		});
+	}
+
+	#[test]
+	fn rejects_when_contract_collection_id_is_not_set() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let collection_id = create_collection(ALICE);
+			let nft_addr = mint_item(&ALICE, &collection_id, &H256::random());
+			let reward = Reward::Nft(nft_addr);
+			let contract = Contract::new(reward, 10, Default::default());
+			let contract_id = H256::random();
+			assert_noop!(
+				NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+				Error::<Test>::UnknownContractCollection
 			);
 		});
 	}
 }
 
-mod take_staking_contract {
+mod accept {
 	use super::*;
 
 	#[test]
-	fn take_staking_contract_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key = 10_u32;
-			let contract_duration = 10;
-			let contract = StakingContractOf::<Test>::new(
-				StakingRewardOf::<Test>::Tokens(1_000),
-				contract_duration,
-			)
-			.with_clause(ContractClause::HasAttribute(attr_key));
-			let expected_contract_id = NextContractId::<Test>::get();
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
+	fn works() {
+		let stake_clauses = vec![
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 4),
+			Clause::HasAttribute(RESERVED_COLLECTION_1, 5),
+			Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7),
+		];
+		let duration = 4;
+		let contract =
+			Contract::new(Reward::Tokens(123), duration, stake_clauses.clone().try_into().unwrap());
+		let contract_id = H256::random();
 
-			let contract_taker = BOB;
-			let staked_nft = create_random_mock_nft_for(contract_taker);
-			set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
+		let stakes = MockStakes::from(MockClauses(stake_clauses));
+		let staking_addresses = StakedItemsOf::<Test>::truncate_from(
+			stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>(),
+		);
 
-			assert_ok!(NftStake::take_staking_contract(
-				RuntimeOrigin::signed(contract_taker),
-				contract_addr.1,
-				bounded_vec![staked_nft.clone()],
-			));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractTaken {
-					taken_by: contract_taker,
-					contract: expected_contract_id,
-				},
-			));
-
-			assert_eq!(
-				Nft::owner(staked_nft.0, staked_nft.1),
-				Some(NftStake::treasury_account_id())
-			);
-
-			assert_eq!(
-				Nft::owner(contract_collection_id(), expected_contract_id),
-				Some(contract_taker)
-			);
-
-			assert_eq!(ContractOwners::<Test>::get(expected_contract_id), Some(contract_taker));
-
-			let current_block = <frame_system::Pallet<Test>>::block_number();
-			assert_eq!(
-				ContractDurations::<Test>::get(expected_contract_id),
-				Some(current_block + contract_duration)
-			);
-
-			assert_eq!(
-				ContractStakedAssets::<Test>::get(expected_contract_id),
-				Some(bounded_vec![staked_nft])
-			);
-		});
-	}
-
-	#[test]
-	fn take_a_complex_staking_contract_successfully() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key_set = vec![10_u32, 15_u32, 57_u32];
-			let attr_value_set = vec![0_u64, 11_u64, 2812_u64];
-			let contract_duration = 10;
-			let contract = StakingContractOf::<Test>::new(
-				StakingRewardOf::<Test>::Tokens(1_000),
-				contract_duration,
-			)
-			.with_clause(ContractClause::HasAttribute(attr_key_set[0]))
-			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[1], attr_value_set[1]))
-			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[2], attr_value_set[2]));
-			let expected_contract_id = NextContractId::<Test>::get();
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
-
-			let contract_taker = BOB;
-			let staked_nft_vec: StakedAssetsVecOf<Test> = {
-				let staked_nft_1 = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft_1, attr_key_set[0], attr_value_set[0]);
-
-				let staked_nft_2 = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft_2, attr_key_set[1], attr_value_set[1]);
-
-				let staked_nft_3 = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft_3, attr_key_set[2], attr_value_set[2]);
-
-				bounded_vec![staked_nft_1, staked_nft_2, staked_nft_3]
-			};
-
-			assert_ok!(NftStake::take_staking_contract(
-				RuntimeOrigin::signed(contract_taker),
-				contract_addr.1,
-				staked_nft_vec,
-			));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractTaken {
-					taken_by: contract_taker,
-					contract: expected_contract_id,
-				},
-			));
-		});
-	}
-
-	#[test]
-	fn fail_to_take_an_already_taken_by_other_staking_contract() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key = 10_u32;
-			let contract =
-				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(attr_key));
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
-
-			// Contract taken by another
-			{
-				let contract_taker = BOB;
-				let staked_nft_vec = {
-					let staked_nft = create_random_mock_nft_for(contract_taker);
-					set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
-
-					bounded_vec![staked_nft]
-				};
-
-				assert_ok!(NftStake::take_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					contract_addr.1,
-					staked_nft_vec,
-				));
-			};
-
-			// Trying to take already taken contract
-			{
-				let contract_taker = CHARLIE;
-				let staked_nft_vec = {
-					let staked_nft = create_random_mock_nft_for(contract_taker);
-					set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
-
-					bounded_vec![staked_nft]
-				};
-
-				assert_noop!(
-					NftStake::take_staking_contract(
-						RuntimeOrigin::signed(contract_taker),
-						contract_addr.1,
-						staked_nft_vec,
-					),
-					Error::<Test>::ContractTakenByOther
-				);
-			};
-		});
-	}
-
-	#[test]
-	fn fail_to_take_an_already_taken_by_self_staking_contract() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key = 10_u32;
-			let contract =
-				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(attr_key));
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
-
-			// Trying to take contract again
-			{
-				let contract_taker = BOB;
-				let staked_nft_vec: StakedAssetsVecOf<Test> = {
-					let staked_nft = create_random_mock_nft_for(contract_taker);
-					set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
-
-					bounded_vec![staked_nft]
-				};
-
-				assert_ok!(NftStake::take_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					contract_addr.1,
-					staked_nft_vec.clone(),
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.mint_stakes(vec![(BOB, stakes)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(NftStake::accept(
+					RuntimeOrigin::signed(BOB),
+					contract_id,
+					staking_addresses.clone()
 				));
 
-				assert_noop!(
-					NftStake::take_staking_contract(
-						RuntimeOrigin::signed(contract_taker),
-						contract_addr.1,
-						staked_nft_vec,
-					),
-					Error::<Test>::ContractAlreadyTaken
-				);
-			};
-		});
+				// Contract ownership transferred to staker
+				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+				assert_eq!(Nft::owner(contract_collection_id, contract_id), Some(BOB));
+
+				// Stake ownership transferred to pallet account
+				for NftAddress(collection_id, item_id) in staking_addresses.clone() {
+					assert_eq!(Nft::owner(collection_id, item_id), Some(NftStake::account_id()));
+				}
+				assert_eq!(ContractStakedItems::<Test>::get(contract_id), Some(staking_addresses));
+
+				// Check contract duration
+				let current_block = <frame_system::Pallet<Test>>::block_number();
+				assert_eq!(ContractEnds::<Test>::get(contract_id), Some(current_block + duration));
+
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Accepted {
+					accepted_by: BOB,
+					contract_id,
+				}));
+			});
 	}
 
 	#[test]
-	fn fail_to_take_staking_contract_on_unfulfilled_conditions() {
+	fn rejects_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key = 10_u32;
-			let contract =
-				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(attr_key));
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
-
-			let contract_taker = BOB;
-			let nft_attr_key = 13_u32;
-			let staked_nft_vec = {
-				let staked_nft = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft, nft_attr_key, 42_u64);
-
-				bounded_vec![staked_nft]
-			};
-
 			assert_noop!(
-				NftStake::take_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					contract_addr.1,
-					staked_nft_vec,
-				),
-				Error::<Test>::ContractConditionsNotFulfilled
+				NftStake::accept(RuntimeOrigin::none(), Default::default(), Default::default()),
+				DispatchError::BadOrigin
 			);
 		});
 	}
 
 	#[test]
-	fn fail_to_take_a_complex_staking_contract_on_unfulfilled_conditions() {
+	fn rejects_when_pallet_is_locked() {
 		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key_set = vec![10_u32, 15_u32, 57_u32];
-			let attr_value_set = vec![0_u64, 11_u64, 2812_u64];
-			let contract_duration = 10;
-			let contract = StakingContractOf::<Test>::new(
-				StakingRewardOf::<Test>::Tokens(5_000),
-				contract_duration,
-			)
-			.with_clause(ContractClause::HasAttribute(attr_key_set[0]))
-			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[1], attr_value_set[1]))
-			.with_clause(ContractClause::HasAttributeWithValue(attr_key_set[2], attr_value_set[2]));
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
-
-			let contract_taker = BOB;
-			let staked_nft_vec: StakedAssetsVecOf<Test> = {
-				let staked_nft_1 = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft_1, attr_key_set[0], attr_value_set[0]);
-
-				let staked_nft_2 = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft_2, attr_key_set[1], attr_value_set[1]);
-
-				let staked_nft_3 = create_random_mock_nft_for(contract_taker);
-				set_attribute_for_nft(&staked_nft_3, attr_key_set[2], attr_value_set[1]);
-
-				bounded_vec![staked_nft_1, staked_nft_2, staked_nft_3]
-			};
-
+			GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 			assert_noop!(
-				NftStake::take_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					contract_addr.1,
-					staked_nft_vec,
-				),
-				Error::<Test>::ContractConditionsNotFulfilled
+				NftStake::accept(RuntimeOrigin::none(), Default::default(), Default::default()),
+				DispatchError::BadOrigin
 			);
 		});
 	}
 
 	#[test]
-	fn fail_to_take_a_staking_contract_with_non_owned_assets() {
-		ExtBuilder::default().build().execute_with(|| {
-			let account = ALICE;
-			let attr_key = 10_u32;
-			let contract =
-				StakingContractOf::<Test>::new(StakingRewardOf::<Test>::Tokens(1_000), 10)
-					.with_clause(ContractClause::HasAttribute(attr_key));
-			let contract_addr = create_and_submit_random_staking_contract_nft(account, contract);
-
-			// Trying to take contract
-			{
-				let contract_taker = BOB;
-				let nft_owner = CHARLIE;
-				let staked_nft_vec: StakedAssetsVecOf<Test> = {
-					let staked_nft = create_random_mock_nft_for(nft_owner);
-					set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
-
-					bounded_vec![staked_nft]
-				};
-
+	fn rejects_when_contract_collection_id_is_not_set() {
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.build()
+			.execute_with(|| {
+				ContractCollectionId::<Test>::kill();
 				assert_noop!(
-					NftStake::take_staking_contract(
-						RuntimeOrigin::signed(contract_taker),
-						contract_addr.1,
-						staked_nft_vec,
+					NftStake::accept(
+						RuntimeOrigin::signed(ALICE),
+						Default::default(),
+						Default::default()
 					),
-					Error::<Test>::StakedAssetNotOwned
+					Error::<Test>::UnknownContractCollection
 				);
-			};
+			});
+	}
+
+	#[test]
+	fn rejects_when_contract_is_already_accepted() {
+		let clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
+		let contract = Contract::new(Reward::Tokens(123), 123, clauses.clone().try_into().unwrap());
+		let contract_id = H256::random();
+
+		let alice_stakes = MockStakes::from(MockClauses(clauses));
+		let bob_stakes = alice_stakes
+			.clone()
+			.into_iter()
+			.map(|(NftAddress(collection_id, _item_id), key, value)| {
+				(NftAddress(collection_id, H256::random()), key, value)
+			})
+			.collect::<Vec<_>>();
+		let charlie_stakes = bob_stakes
+			.clone()
+			.into_iter()
+			.map(|(NftAddress(collection_id, _item_id), key, value)| {
+				(NftAddress(collection_id, H256::random()), key, value)
+			})
+			.collect::<Vec<_>>();
+
+		let alice_stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			alice_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
+		);
+		let bob_stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			bob_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
+		);
+		let charlie_stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			charlie_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
+		);
+
+		ExtBuilder::default()
+			.set_creator(BOB)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.mint_stakes(vec![(ALICE, alice_stakes), (BOB, bob_stakes), (CHARLIE, charlie_stakes)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(NftStake::accept(
+					RuntimeOrigin::signed(ALICE),
+					contract_id,
+					alice_stake_addresses.clone()
+				));
+
+				for (staker, address, err) in [
+					// alice has already staked
+					(ALICE, alice_stake_addresses, Error::<Test>::Ownership),
+					(BOB, bob_stake_addresses, Error::<Test>::ContractOwnership),
+					(CHARLIE, charlie_stake_addresses, Error::<Test>::ContractOwnership),
+				] {
+					assert_noop!(
+						NftStake::accept(RuntimeOrigin::signed(staker), contract_id, address),
+						err
+					);
+				}
+			});
+	}
+
+	#[test]
+	fn rejects_unowned_stakes() {
+		let clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
+		let contract = Contract::new(Reward::Tokens(123), 123, clauses.clone().try_into().unwrap());
+		let contract_id = H256::random();
+
+		let stakes = MockStakes::from(MockClauses(clauses));
+		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
+		);
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.mint_stakes(vec![(BOB, stakes)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					NftStake::accept(RuntimeOrigin::signed(CHARLIE), contract_id, stake_addresses),
+					Error::<Test>::Ownership
+				);
+			});
+	}
+
+	#[test]
+	fn rejects_when_contract_is_not_created() {
+		let clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
+		let contract = Contract::new(Reward::Tokens(123), 123, clauses.clone().try_into().unwrap());
+		let contract_id = H256::random();
+
+		let stakes = MockStakes::from(MockClauses(clauses));
+		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
+		);
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.mint_stakes(vec![(BOB, stakes)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					NftStake::accept(RuntimeOrigin::signed(BOB), H256::random(), stake_addresses),
+					Error::<Test>::UnknownContract
+				);
+			});
+	}
+
+	#[test]
+	fn rejects_unfulfilling_stakes() {
+		let clauses = vec![
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 123),
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 456),
+			Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 12, 34),
+			Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 56, 78),
+		];
+		let contract = Contract::new(Reward::Tokens(123), 123, clauses.clone().try_into().unwrap());
+		let contract_id = H256::random();
+
+		let mut stakes = MockStakes::from(MockClauses(clauses));
+		stakes.iter_mut().for_each(|(_, key, value)| {
+			*key += 1;
+			*value += 1;
 		});
+		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
+		);
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.mint_stakes(vec![(BOB, stakes)])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					NftStake::accept(RuntimeOrigin::signed(BOB), contract_id, stake_addresses),
+					Error::<Test>::UnfulfilledClause
+				);
+			});
 	}
 }
 
-mod redeem_staking_contract {
+mod claim {
 	use super::*;
 
 	#[test]
-	fn redeem_a_staking_contract_successfully_with_token_reward() {
-		ExtBuilder::default().build().execute_with(|| {
-			let attr_key = 10_u32;
-			let contract_duration = 10;
-			let reward_amt = 1_000;
-			let contract_reward = StakingRewardOf::<Test>::Tokens(reward_amt);
+	fn works_with_token_reward() {
+		let stake_clauses = vec![
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 4),
+			Clause::HasAttribute(RESERVED_COLLECTION_1, 5),
+			Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7),
+		];
+		let duration = 4;
+		let reward_amount = 135;
+		let contract = Contract::new(
+			Reward::Tokens(reward_amount),
+			duration,
+			stake_clauses.clone().try_into().unwrap(),
+		);
+		let contract_id = H256::random();
 
-			let contract_addr = {
-				let account = ALICE;
-				let contract =
-					StakingContractOf::<Test>::new(contract_reward.clone(), contract_duration)
-						.with_clause(ContractClause::HasAttribute(attr_key));
+		let stakes = MockStakes::from(MockClauses(stake_clauses));
+		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>(),
+		);
+		let initial_balance = 333;
 
-				create_and_submit_random_staking_contract_nft(account, contract)
-			};
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.balances(vec![(BOB, initial_balance)])
+			.create_contract_collection()
+			.create_contract(contract_id, contract.clone())
+			.accept_contract(vec![(BOB, stakes)], contract_id, BOB)
+			.build()
+			.execute_with(|| {
+				run_to_block(System::block_number() + duration);
 
-			let account = BOB;
-			let current_balance = Balances::free_balance(account);
+				assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), contract_id));
 
-			let staked_nft = {
-				let staked_nft = create_random_mock_nft_for(account);
-				set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
-				staked_nft
-			};
+				for NftAddress(collection_id, item_id) in stake_addresses {
+					assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
+				}
+				assert_eq!(Balances::free_balance(BOB), initial_balance + reward_amount);
 
-			let contract_id = contract_addr.1;
+				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+				assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
+				assert_eq!(ContractOwners::<Test>::get(contract_id), None);
+				assert_eq!(ContractEnds::<Test>::get(contract_id), None);
+				assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
 
-			assert_ok!(NftStake::take_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract_id,
-				bounded_vec![staked_nft.clone()],
-			));
-
-			// Run to block
-			let current_block = <frame_system::Pallet<Test>>::block_number();
-			run_to_block(current_block + contract_duration);
-
-			assert_ok!(NftStake::redeem_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract_id,
-			));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractRedeemed {
-					redeemed_by: account,
-					contract: contract_id,
-					reward: contract_reward,
-				},
-			));
-
-			assert_eq!(Balances::free_balance(account), current_balance + reward_amt);
-
-			assert_eq!(Nft::owner(staked_nft.0, staked_nft.1), Some(account));
-
-			assert_eq!(Nft::owner(contract_collection_id(), contract_id), None);
-
-			assert_eq!(ContractOwners::<Test>::get(contract_id), None);
-
-			assert_eq!(ContractDurations::<Test>::get(contract_id), None);
-
-			assert_eq!(ContractStakedAssets::<Test>::get(contract_id), None);
-		});
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Claimed {
+					claimed_by: BOB,
+					contract_id,
+					reward: contract.reward,
+				}));
+			});
 	}
 
 	#[test]
-	fn redeem_a_staking_contract_successfully_with_nft_reward() {
-		ExtBuilder::default().build().execute_with(|| {
-			let attr_key = 10_u32;
-			let contract_duration = 10;
+	fn works_with_nft_reward() {
+		let stake_clauses = vec![
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 4),
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 5),
+			Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 6, 7),
+		];
+		let duration = 8;
+		let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
+		let contract = Contract::new(
+			Reward::Nft(reward_addr.clone()),
+			duration,
+			stake_clauses.clone().try_into().unwrap(),
+		);
+		let contract_id = H256::random();
 
-			let creator_account = ALICE;
-			let collection_id = create_random_mock_nft_collection(creator_account);
-			let nft_reward_addr = create_random_mock_nft(creator_account, collection_id, 1);
+		let stakes = MockStakes::from(MockClauses(stake_clauses));
+		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
+			stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>(),
+		);
 
-			let contract_reward = StakingRewardOf::<Test>::Nft(nft_reward_addr.clone());
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract.clone())
+			.accept_contract(vec![(BOB, stakes)], contract_id, BOB)
+			.build()
+			.execute_with(|| {
+				run_to_block(System::block_number() + duration);
 
-			let contract_addr = {
-				let contract = StakingContractOf::<Test>::new(contract_reward.clone(), 10)
-					.with_clause(ContractClause::HasAttribute(10_u32));
+				assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), contract_id));
 
-				create_and_submit_random_staking_contract_nft(creator_account, contract)
-			};
+				for NftAddress(collection_id, item_id) in stake_addresses {
+					assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
+				}
+				assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(BOB));
 
-			let account = BOB;
-			let staked_nft = {
-				let staked_nft = create_random_mock_nft_for(account);
-				set_attribute_for_nft(&staked_nft, attr_key, 42_u64);
-				staked_nft
-			};
+				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+				assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
+				assert_eq!(ContractOwners::<Test>::get(contract_id), None);
+				assert_eq!(ContractEnds::<Test>::get(contract_id), None);
+				assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
 
-			let contract_id = contract_addr.1;
-
-			assert_ok!(NftStake::take_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract_id,
-				bounded_vec![staked_nft.clone()],
-			));
-
-			// Run to block
-			let current_block = <frame_system::Pallet<Test>>::block_number();
-			run_to_block(current_block + contract_duration);
-
-			assert_ok!(NftStake::redeem_staking_contract(
-				RuntimeOrigin::signed(account),
-				contract_id,
-			));
-
-			System::assert_last_event(mock::RuntimeEvent::NftStake(
-				crate::Event::StakingContractRedeemed {
-					redeemed_by: account,
-					contract: contract_id,
-					reward: contract_reward,
-				},
-			));
-
-			assert_eq!(Nft::owner(nft_reward_addr.0, nft_reward_addr.1), Some(account));
-
-			assert_eq!(Nft::owner(staked_nft.0, staked_nft.1), Some(account));
-
-			assert_eq!(Nft::owner(contract_collection_id(), contract_id), None);
-
-			assert_eq!(ActiveContracts::<Test>::get(contract_id), None);
-
-			assert_eq!(ContractOwners::<Test>::get(contract_id), None);
-
-			assert_eq!(ContractDurations::<Test>::get(contract_id), None);
-
-			assert_eq!(ContractStakedAssets::<Test>::get(contract_id), None);
-		});
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Claimed {
+					claimed_by: BOB,
+					contract_id,
+					reward: contract.reward,
+				}));
+			});
 	}
 
 	#[test]
-	fn cannot_redeem_non_owned_contract() {
+	fn rejects_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (taken_contract_id, expiry_block) = {
-				let creator_account = ALICE;
-				let contract_reward = StakingRewardOf::<Test>::Tokens(1_000);
-				let contract_duration = 10;
-				let contract = StakingContractOf::<Test>::new(contract_reward, contract_duration);
-
-				let contract_addr =
-					create_and_submit_random_staking_contract_nft(creator_account, contract);
-
-				let taker_account = BOB;
-
-				assert_ok!(NftStake::take_staking_contract(
-					RuntimeOrigin::signed(taker_account),
-					contract_addr.1,
-					bounded_vec![],
-				));
-
-				let contract_expiry =
-					ContractDurations::<Test>::get(contract_addr.1).expect("Should contain expiry");
-
-				(contract_addr.1, contract_expiry)
-			};
-
-			let contract_redeemer = CHARLIE;
-
-			run_to_block(expiry_block);
-
 			assert_noop!(
-				NftStake::redeem_staking_contract(
-					RuntimeOrigin::signed(contract_redeemer),
-					taken_contract_id,
-				),
-				Error::<Test>::ContractNotOwned
+				NftStake::claim(RuntimeOrigin::none(), Default::default()),
+				DispatchError::BadOrigin
 			);
 		});
 	}
 
 	#[test]
-	fn cannot_redeem_active_contract() {
+	fn rejects_when_pallet_is_locked() {
 		ExtBuilder::default().build().execute_with(|| {
-			let contract_taker = BOB;
-			let (taken_contract_id, expiry_block) = {
-				let creator_account = ALICE;
-				let contract_reward = StakingRewardOf::<Test>::Tokens(1_000);
-				let contract_duration = 10;
-				let contract = StakingContractOf::<Test>::new(contract_reward, contract_duration);
-
-				let contract_addr =
-					create_and_submit_random_staking_contract_nft(creator_account, contract);
-
-				assert_ok!(NftStake::take_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					contract_addr.1,
-					bounded_vec![],
-				));
-
-				let contract_expiry =
-					ContractDurations::<Test>::get(contract_addr.1).expect("Should contain expiry");
-
-				(contract_addr.1, contract_expiry)
-			};
-
-			run_to_block(expiry_block - 1);
-
+			GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 			assert_noop!(
-				NftStake::redeem_staking_contract(
-					RuntimeOrigin::signed(contract_taker),
-					taken_contract_id,
-				),
-				Error::<Test>::ContractStillActive
+				NftStake::claim(RuntimeOrigin::signed(ALICE), Default::default()),
+				Error::<Test>::PalletLocked
 			);
 		});
 	}
-}
 
-fn contract_collection_id() -> MockCollectionId {
-	ContractCollectionId::<Test>::get().expect("Should get contract collection id")
-}
+	#[test]
+	fn rejects_when_contract_is_not_owned() {
+		let contract = Contract::new(Reward::Tokens(321), 123, Default::default());
+		let contract_id = H256::random();
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					NftStake::claim(RuntimeOrigin::signed(BOB), contract_id),
+					Error::<Test>::ContractOwnership
+				);
+			});
+	}
 
-fn create_random_mock_nft_collection(account: MockAccountId) -> MockCollectionId {
-	let collection_config = CollectionConfig::default();
-	<Test as crate::pallet::Config>::NftHelper::create_collection(
-		&account,
-		&account,
-		&collection_config,
-	)
-	.expect("Should have create contract collection")
-}
+	#[test]
+	fn rejects_when_contract_is_active() {
+		let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 4)];
+		let duration = 3;
+		let contract =
+			Contract::new(Reward::Tokens(321), duration, stake_clauses.clone().try_into().unwrap());
+		let contract_id = H256::random();
+		let stakes = MockStakes::from(MockClauses(stake_clauses));
 
-fn create_random_mock_nft(
-	owner: MockAccountId,
-	collection_id: MockCollectionId,
-	item_id: MockItemId,
-) -> NftAddressOf<Test> {
-	let item_config = pallet_nfts::ItemConfig::default();
-	<Test as crate::pallet::Config>::NftHelper::mint_into(
-		&collection_id,
-		&item_id,
-		&owner,
-		&item_config,
-		true,
-	)
-	.expect("Should create NFT");
-
-	NftAddress(collection_id, item_id)
-}
-
-fn create_random_mock_nft_for(owner: MockAccountId) -> NftAddressOf<Test> {
-	let collection_id = create_random_mock_nft_collection(owner);
-	let item_id = 1;
-	create_random_mock_nft(owner, collection_id, item_id)
-}
-
-fn create_and_submit_random_staking_contract_nft(
-	creator: MockAccountId,
-	contract: StakingContractOf<Test>,
-) -> NftAddressOf<Test> {
-	let collection_id = contract_collection_id();
-	let expected_contract_id = NextContractId::<Test>::get();
-
-	assert_ok!(NftStake::submit_staking_contract(RuntimeOrigin::signed(creator), contract.clone()));
-
-	assert_eq!(ActiveContracts::<Test>::get(expected_contract_id), Some(contract));
-
-	NftAddress(collection_id, expected_contract_id)
-}
-
-fn set_attribute_for_nft(nft_addr: &NftAddressOf<Test>, nft_attr_key: u32, nft_attr_value: u64) {
-	<Test as crate::pallet::Config>::NftHelper::set_typed_attribute::<u32, u64>(
-		&nft_addr.0,
-		&nft_addr.1,
-		&nft_attr_key,
-		&nft_attr_value,
-	)
-	.expect("Should add attribute NFT");
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.accept_contract(vec![(BOB, stakes)], contract_id, BOB)
+			.build()
+			.execute_with(|| {
+				for i in 0..(duration - 1) {
+					run_to_block(System::block_number() + i);
+					assert_noop!(
+						NftStake::claim(RuntimeOrigin::signed(BOB), contract_id),
+						Error::<Test>::ContractStillActive
+					);
+				}
+			});
+	}
 }
