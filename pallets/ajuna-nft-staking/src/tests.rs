@@ -201,9 +201,8 @@ mod create {
 				let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
 				let reward = Reward::Nft(nft_addr);
 				let contract = Contract::new(reward, 10, Default::default());
-				let contract_id = H256::random();
 				assert_noop!(
-					NftStake::create(RuntimeOrigin::signed(BOB), contract_id, contract),
+					NftStake::create(RuntimeOrigin::signed(BOB), H256::random(), contract),
 					DispatchError::BadOrigin
 				);
 			});
@@ -212,13 +211,32 @@ mod create {
 	#[test]
 	fn rejects_when_pallet_is_locked() {
 		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
-			let reward = Reward::Tokens(333);
-			let contract = Contract::new(reward, 10, Default::default());
-			let contract_id = H256::random();
 			GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 			assert_noop!(
-				NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+				NftStake::create(
+					RuntimeOrigin::signed(ALICE),
+					H256::random(),
+					Contract::new(Reward::Tokens(333), 10, Default::default())
+				),
 				Error::<Test>::PalletLocked
+			);
+		});
+	}
+
+	#[test]
+	fn rejects_out_of_bound_clauses() {
+		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
+			let clauses = (0..MaxClauses::get() + 1)
+				.map(|i| Clause::HasAttribute(RESERVED_COLLECTION_0, i))
+				.collect::<Vec<_>>();
+			assert!(clauses.len() as u32 > MaxClauses::get());
+			assert_noop!(
+				NftStake::create(
+					RuntimeOrigin::signed(ALICE),
+					H256::random(),
+					Contract::new(Reward::Tokens(1), 10, clauses.try_into().unwrap())
+				),
+				Error::<Test>::MaxClauses
 			);
 		});
 	}
@@ -230,11 +248,12 @@ mod create {
 			.balances(vec![(ALICE, 333)])
 			.build()
 			.execute_with(|| {
-				let reward = Reward::Tokens(2_000_000);
-				let contract = Contract::new(reward, 10, Default::default());
-				let contract_id = H256::random();
 				assert_noop!(
-					NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+					NftStake::create(
+						RuntimeOrigin::signed(ALICE),
+						H256::random(),
+						Contract::new(Reward::Tokens(2_000_000), 10, Default::default())
+					),
 					pallet_balances::Error::<Test>::InsufficientBalance,
 				);
 			});
@@ -247,9 +266,8 @@ mod create {
 			let nft_addr = mint_item(&BOB, &collection_id, &H256::random());
 			let reward = Reward::Nft(nft_addr);
 			let contract = Contract::new(reward, 10, Default::default());
-			let contract_id = H256::random();
 			assert_noop!(
-				NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+				NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract),
 				Error::<Test>::Ownership
 			);
 		});
@@ -262,9 +280,8 @@ mod create {
 			let nft_addr = mint_item(&ALICE, &collection_id, &H256::random());
 			let reward = Reward::Nft(nft_addr);
 			let contract = Contract::new(reward, 10, Default::default());
-			let contract_id = H256::random();
 			assert_noop!(
-				NftStake::create(RuntimeOrigin::signed(ALICE), contract_id, contract),
+				NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract),
 				Error::<Test>::UnknownContractCollection
 			);
 		});
@@ -346,6 +363,27 @@ mod accept {
 		});
 	}
 
+	#[test]
+	fn rejects_out_of_bound_stakes() {
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.build()
+			.execute_with(|| {
+				let stake_addresses = (0..MaxClauses::get() + 1)
+					.map(|_| NftAddress(RESERVED_COLLECTION_0, H256::random()))
+					.collect::<Vec<_>>();
+				assert!(stake_addresses.len() as u32 > MaxClauses::get());
+				assert_noop!(
+					NftStake::accept(
+						RuntimeOrigin::signed(ALICE),
+						Default::default(),
+						stake_addresses
+					),
+					Error::<Test>::MaxStakes
+				);
+			});
+	}
 	#[test]
 	fn rejects_when_contract_collection_id_is_not_set() {
 		ExtBuilder::default()

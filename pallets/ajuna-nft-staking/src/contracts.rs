@@ -36,25 +36,20 @@ pub enum Clause<CollectionId, AttributeKey, AttributeValue> {
 	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue),
 }
 
+type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
+	BoundedVec<Clause<CollectionId, AttributeKey, AttributeValue>, ConstU32<100>>;
+
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
 /// with a given reward after the duration is complete.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct Contract<
-	Balance,
-	CollectionId,
-	ItemId,
-	BlockNumber,
-	AttributeKey,
-	AttributeValue,
-	const N: u32,
-> {
+pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue> {
 	pub reward: Reward<Balance, CollectionId, ItemId>,
-	pub stake_clauses: BoundedVec<Clause<CollectionId, AttributeKey, AttributeValue>, ConstU32<N>>,
+	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 	pub duration: BlockNumber,
 }
 
-impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, const N: u32>
-	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, N>
+impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>
+	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>
 where
 	CollectionId: PartialEq,
 	ItemId: PartialEq,
@@ -64,7 +59,7 @@ where
 	pub fn new(
 		reward: Reward<Balance, CollectionId, ItemId>,
 		duration: BlockNumber,
-		stake_clauses: BoundedVec<Clause<CollectionId, AttributeKey, AttributeValue>, ConstU32<N>>,
+		stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 	) -> Self {
 		Self { reward, duration, stake_clauses }
 	}

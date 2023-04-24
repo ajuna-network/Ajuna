@@ -50,25 +50,18 @@ pub use weights::*;
 pub mod pallet {
 	use super::*;
 
-	pub(crate) type CollectionIdOf<T> = <T as Config>::CollectionId;
-	pub(crate) type ItemIdOf<T> = <T as Config>::ItemId;
-	pub(crate) type ContractAttributeKeyOf<T> = <T as Config>::ContractAttributeKey;
-	pub(crate) type ContractAttributeValueOf<T> = <T as Config>::ContractAttributeValue;
-
 	pub(crate) type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-	pub(crate) type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-
-	pub const MAXIMUM_CLAUSES_PER_CONTRACT: u32 = 10;
+	pub(crate) type CollectionIdOf<T> = <T as Config>::CollectionId;
+	pub(crate) type ItemIdOf<T> = <T as Config>::ItemId;
 
 	pub(crate) type ContractOf<T> = Contract<
 		BalanceOf<T>,
 		CollectionIdOf<T>,
 		ItemIdOf<T>,
-		BlockNumberOf<T>,
-		ContractAttributeKeyOf<T>,
-		ContractAttributeValueOf<T>,
-		MAXIMUM_CLAUSES_PER_CONTRACT,
+		<T as frame_system::Config>::BlockNumber,
+		<T as Config>::ContractAttributeKey,
+		<T as Config>::ContractAttributeValue,
 	>;
 	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
@@ -187,6 +180,10 @@ pub mod pallet {
 		ContractStillActive,
 		/// The given data cannot be bounded.
 		IncorrectData,
+		/// The number of the given clauses exceeds maximum allowed.
+		MaxClauses,
+		/// The number of the given stakes exceeds maximum allowed.
+		MaxStakes,
 	}
 
 	//SBP-M3 review: Please add documentation in each extrinsic
@@ -235,6 +232,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
+			Self::ensure_contract(&contract)?;
 			Self::create_contract(creator, contract_id, contract)
 		}
 
@@ -329,7 +327,8 @@ pub mod pallet {
 			let contract_end = current_block_number.saturating_add(contract.duration);
 			ContractEnds::<T>::insert(contract_id, contract_end);
 
-			let bounded_stakes = StakedItemsOf::<T>::truncate_from(stake_addresses.to_vec());
+			let bounded_stakes = StakedItemsOf::<T>::try_from(stake_addresses.to_vec())
+				.map_err(|_| Error::<T>::IncorrectData)?;
 			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
 
 			Self::deposit_event(Event::<T>::Accepted { accepted_by: who, contract_id });
@@ -414,11 +413,21 @@ pub mod pallet {
 			Ok(contract)
 		}
 
+		fn ensure_contract(contract: &ContractOf<T>) -> DispatchResult {
+			ensure!(
+				contract.stake_clauses.len() as u32 <= T::MaxClauses::get(),
+				Error::<T>::MaxClauses
+			);
+			Ok(())
+		}
+
 		fn ensure_acceptable(
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 			stake_addresses: &[NftAddressOf<T>],
 		) -> DispatchResult {
+			ensure!(stake_addresses.len() as u32 <= T::MaxClauses::get(), Error::<T>::MaxStakes);
+
 			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
 			})?;
