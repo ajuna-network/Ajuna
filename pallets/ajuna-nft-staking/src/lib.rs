@@ -241,7 +241,7 @@ pub mod pallet {
 		pub fn accept(
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
-			stakes: StakedItemsOf<T>,
+			stakes: Vec<NftAddressOf<T>>,
 		) -> DispatchResult {
 			let staker = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;

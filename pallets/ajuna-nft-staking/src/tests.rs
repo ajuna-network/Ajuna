@@ -304,9 +304,8 @@ mod accept {
 		let contract_id = H256::random();
 
 		let stakes = MockStakes::from(MockClauses(stake_clauses));
-		let staking_addresses = StakedItemsOf::<Test>::truncate_from(
-			stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>(),
-		);
+		let stake_addresses =
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 		ExtBuilder::default()
 			.set_creator(ALICE)
@@ -318,7 +317,7 @@ mod accept {
 				assert_ok!(NftStake::accept(
 					RuntimeOrigin::signed(BOB),
 					contract_id,
-					staking_addresses.clone()
+					stake_addresses.clone()
 				));
 
 				// Contract ownership transferred to staker
@@ -326,10 +325,13 @@ mod accept {
 				assert_eq!(Nft::owner(contract_collection_id, contract_id), Some(BOB));
 
 				// Stake ownership transferred to pallet account
-				for NftAddress(collection_id, item_id) in staking_addresses.clone() {
+				for NftAddress(collection_id, item_id) in stake_addresses.clone() {
 					assert_eq!(Nft::owner(collection_id, item_id), Some(NftStake::account_id()));
 				}
-				assert_eq!(ContractStakedItems::<Test>::get(contract_id), Some(staking_addresses));
+				assert_eq!(
+					ContractStakedItems::<Test>::get(contract_id),
+					Some(stake_addresses.try_into().unwrap())
+				);
 
 				// Check contract duration
 				let current_block = <frame_system::Pallet<Test>>::block_number();
@@ -384,6 +386,7 @@ mod accept {
 				);
 			});
 	}
+
 	#[test]
 	fn rejects_when_contract_collection_id_is_not_set() {
 		ExtBuilder::default()
@@ -425,15 +428,12 @@ mod accept {
 			})
 			.collect::<Vec<_>>();
 
-		let alice_stake_addresses = StakedItemsOf::<Test>::truncate_from(
-			alice_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
-		);
-		let bob_stake_addresses = StakedItemsOf::<Test>::truncate_from(
-			bob_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
-		);
-		let charlie_stake_addresses = StakedItemsOf::<Test>::truncate_from(
-			charlie_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
-		);
+		let alice_stake_addresses =
+			alice_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
+		let bob_stake_addresses =
+			bob_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
+		let charlie_stake_addresses =
+			charlie_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 		ExtBuilder::default()
 			.set_creator(BOB)
@@ -469,9 +469,8 @@ mod accept {
 		let contract_id = H256::random();
 
 		let stakes = MockStakes::from(MockClauses(clauses));
-		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
-			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
-		);
+		let stake_addresses =
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 		ExtBuilder::default()
 			.set_creator(ALICE)
@@ -494,9 +493,8 @@ mod accept {
 		let contract_id = H256::random();
 
 		let stakes = MockStakes::from(MockClauses(clauses));
-		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
-			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
-		);
+		let stake_addresses =
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 		ExtBuilder::default()
 			.set_creator(ALICE)
@@ -528,9 +526,8 @@ mod accept {
 			*key += 1;
 			*value += 1;
 		});
-		let stake_addresses = StakedItemsOf::<Test>::truncate_from(
-			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>(),
-		);
+		let stake_addresses =
+			stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 		ExtBuilder::default()
 			.set_creator(ALICE)
