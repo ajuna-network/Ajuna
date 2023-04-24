@@ -15,10 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::{
-	tokens::{nonfungibles_v2::Inspect, Balance as BalanceT},
-	ConstU32,
-};
+use frame_support::traits::{tokens::nonfungibles_v2::Inspect, ConstU32};
 use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
 use sp_std::fmt::Debug;
@@ -59,12 +56,10 @@ pub struct Contract<
 impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, const N: u32>
 	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue, N>
 where
-	Balance: BalanceT,
-	CollectionId: Debug + Copy + PartialEq,
-	ItemId: Debug + Copy + PartialEq,
-	BlockNumber: Debug + Copy,
-	AttributeKey: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
-	AttributeValue: Debug + Clone + Encode + Decode + Eq + PartialEq + Ord + PartialOrd,
+	CollectionId: PartialEq,
+	ItemId: PartialEq,
+	AttributeKey: Encode,
+	AttributeValue: Encode + Decode + PartialEq,
 {
 	pub fn new(
 		reward: Reward<Balance, CollectionId, ItemId>,

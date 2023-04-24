@@ -115,23 +115,10 @@ pub mod pallet {
 		type MaxClauses: Get<u32>;
 
 		/// Type of the contract attributes keys, used on contract condition evaluation
-		type ContractAttributeKey: Member
-			+ Encode
-			+ Decode
-			+ Ord
-			+ PartialOrd
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ sp_std::fmt::Display;
+		type ContractAttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
 		/// Type of the contract attributes values, used on contract condition evaluation
-		type ContractAttributeValue: Member
-			+ Encode
-			+ Decode
-			+ Ord
-			+ PartialOrd
-			+ MaxEncodedLen
-			+ TypeInfo;
+		type ContractAttributeValue: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
 		/// The weight calculations
 		type WeightInfo: WeightInfo;
