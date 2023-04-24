@@ -181,23 +181,8 @@ pub mod pallet {
 		ContractOwnership,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
-		/// The given contract is already accepted by an account.
-		AlreadyAccepted,
-		/// The treasury doesn't have enough funds to pay the contract rewards.
-		TreasuryLacksFunds,
-		/// Account doesn't have enough the minimum amount of funds necessary to contribute.
-		AccountLacksFunds,
 		/// The given contract clause is unfulfilled.
 		UnfulfilledClause,
-		/// The contract reward is not valid. Either an invalid Nft or not enough tokens.
-		InvalidContractReward,
-		/// The account that tried to take a staking contract didn't own one or more of the
-		/// staked assets.
-		StakedAssetNotOwned,
-		/// The account that tried to create a contract didn't actually own it's reward.
-		ContractRewardNotOwned,
-		/// The account that tried to redeemed a contract didn't own it
-		ContractNotOwned,
 		/// The contract is still active, so it cannot be redeemed
 		ContractStillActive,
 		/// The given data cannot be bounded.
