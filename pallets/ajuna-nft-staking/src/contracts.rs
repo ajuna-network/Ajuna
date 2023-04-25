@@ -36,6 +36,41 @@ pub enum Clause<CollectionId, AttributeKey, AttributeValue> {
 	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue),
 }
 
+impl<CollectionId, AttributeKey, AttributeValue>
+	Clause<CollectionId, AttributeKey, AttributeValue>
+{
+	pub fn evaluate_for<AccountId, NftInspector, ItemId>(
+		&self,
+		address: &NftAddress<CollectionId, ItemId>,
+	) -> bool
+	where
+		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+		CollectionId: PartialEq,
+		ItemId: PartialEq,
+		AttributeKey: Encode,
+		AttributeValue: Encode + Decode + PartialEq,
+	{
+		let clause_collection_id = match self {
+			Clause::HasAttribute(collection_id, _) => collection_id,
+			Clause::HasAttributeWithValue(collection_id, _, _) => collection_id,
+		};
+		let NftAddress(collection_id, item_id) = address;
+		clause_collection_id == collection_id &&
+			(match self {
+				Clause::HasAttribute(_, key) =>
+					NftInspector::system_attribute(collection_id, item_id, &key.encode()).is_some(),
+				Clause::HasAttributeWithValue(_, key, expected_value) =>
+					if let Some(value) =
+						NftInspector::system_attribute(collection_id, item_id, &key.encode())
+					{
+						expected_value.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
+					} else {
+						false
+					},
+			})
+	}
+}
+
 type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
 	BoundedVec<Clause<CollectionId, AttributeKey, AttributeValue>, ConstU32<100>>;
 
@@ -44,8 +79,9 @@ type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue> {
 	pub reward: Reward<Balance, CollectionId, ItemId>,
-	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 	pub duration: BlockNumber,
+	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
+	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 }
 
 impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>
@@ -60,11 +96,12 @@ where
 		reward: Reward<Balance, CollectionId, ItemId>,
 		duration: BlockNumber,
 		stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
+		fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 	) -> Self {
-		Self { reward, duration, stake_clauses }
+		Self { reward, duration, stake_clauses, fee_clauses }
 	}
 
-	pub fn evaluate_for<AccountId, NftInspector>(
+	pub fn evaluate_stakes<AccountId, NftInspector>(
 		&self,
 		stakes: &[NftAddress<CollectionId, ItemId>],
 	) -> bool
@@ -74,32 +111,23 @@ where
 		(self.stake_clauses.len() == stakes.len())
 			.then(|| {
 				self.stake_clauses.iter().zip(stakes.iter()).all(|(stake_clause, stake)| {
-					let required_collection_id = match stake_clause {
-						Clause::HasAttribute(collection_id, _) => collection_id,
-						Clause::HasAttributeWithValue(collection_id, _, _) => collection_id,
-					};
-					let NftAddress(staking_collection_id, staking_item_id) = stake;
+					stake_clause.evaluate_for::<AccountId, NftInspector, ItemId>(stake)
+				})
+			})
+			.unwrap_or(false)
+	}
 
-					required_collection_id == staking_collection_id &&
-						match stake_clause {
-							Clause::HasAttribute(_, key) => NftInspector::system_attribute(
-								staking_collection_id,
-								staking_item_id,
-								&key.encode(),
-							)
-							.is_some(),
-							Clause::HasAttributeWithValue(_, key, expected_value) =>
-								if let Some(value) = NftInspector::system_attribute(
-									staking_collection_id,
-									staking_item_id,
-									&key.encode(),
-								) {
-									expected_value
-										.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
-								} else {
-									false
-								},
-						}
+	pub fn evaluate_fees<AccountId, NftInspector>(
+		&self,
+		fees: &[NftAddress<CollectionId, ItemId>],
+	) -> bool
+	where
+		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+	{
+		(self.fee_clauses.len() == fees.len())
+			.then(|| {
+				self.fee_clauses.iter().zip(fees.iter()).all(|(fee_clause, fee)| {
+					fee_clause.evaluate_for::<AccountId, NftInspector, ItemId>(fee)
 				})
 			})
 			.unwrap_or(false)

@@ -65,7 +65,8 @@ pub mod pallet {
 	>;
 	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
-	pub(crate) type StakedItemsOf<T> = BoundedVec<NftAddressOf<T>, <T as Config>::MaxClauses>;
+	pub(crate) type StakedItemsOf<T> =
+		BoundedVec<NftAddressOf<T>, <T as Config>::MaxStakingClauses>;
 
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
@@ -103,9 +104,13 @@ pub mod pallet {
 			+ Destroy<Self::AccountId>
 			+ Transfer<Self::AccountId>;
 
-		/// The maximum number of clauses a contract can have.
+		/// The maximum number of staking clauses a contract can have.
 		#[pallet::constant]
-		type MaxClauses: Get<u32>;
+		type MaxStakingClauses: Get<u32>;
+
+		/// The maximum number of fee clauses a contract can have.
+		#[pallet::constant]
+		type MaxFeeClauses: Get<u32>;
 
 		/// Type of the contract attributes keys, used on contract condition evaluation
 		type ContractAttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
@@ -174,14 +179,18 @@ pub mod pallet {
 		ContractOwnership,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
-		/// The given contract clause is unfulfilled.
-		UnfulfilledClause,
+		/// The given contract's fee clause is unfulfilled.
+		UnfulfilledFeeClause,
+		/// The given contract's staking clause is unfulfilled.
+		UnfulfilledStakingClause,
 		/// The contract is still active, so it cannot be redeemed
 		ContractStillActive,
 		/// The given data cannot be bounded.
 		IncorrectData,
-		/// The number of the given clauses exceeds maximum allowed.
-		MaxClauses,
+		/// The number of the given contract's staking clauses exceeds maximum allowed.
+		MaxStakingClauses,
+		/// The number of the given contract's fee clauses exceeds maximum allowed.
+		MaxFeeClauses,
 		/// The number of the given stakes exceeds maximum allowed.
 		MaxStakes,
 	}
@@ -242,11 +251,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
 			stakes: Vec<NftAddressOf<T>>,
+			fees: Vec<NftAddressOf<T>>,
 		) -> DispatchResult {
 			let staker = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
-			Self::ensure_acceptable(&contract_id, &staker, &stakes)?;
-			Self::accept_contract(contract_id, staker, &stakes)
+			Self::ensure_acceptable(&contract_id, &staker, &stakes, &fees)?;
+			Self::accept_contract(contract_id, staker, &stakes, &fees)
 		}
 
 		#[pallet::weight(
@@ -317,10 +327,12 @@ pub mod pallet {
 			contract_id: T::ItemId,
 			who: T::AccountId,
 			stake_addresses: &[NftAddressOf<T>],
+			fee_addresses: &[NftAddressOf<T>],
 		) -> DispatchResult {
 			let contract_address = NftAddress(Self::contract_collection_id()?, contract_id);
 			Self::transfer_items(&[contract_address], &who)?;
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
+			Self::transfer_items(fee_addresses, &Self::creator()?)?;
 
 			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			let current_block_number = frame_system::Pallet::<T>::block_number();
@@ -415,8 +427,12 @@ pub mod pallet {
 
 		fn ensure_contract(contract: &ContractOf<T>) -> DispatchResult {
 			ensure!(
-				contract.stake_clauses.len() as u32 <= T::MaxClauses::get(),
-				Error::<T>::MaxClauses
+				contract.stake_clauses.len() as u32 <= T::MaxStakingClauses::get(),
+				Error::<T>::MaxStakingClauses
+			);
+			ensure!(
+				contract.fee_clauses.len() as u32 <= T::MaxFeeClauses::get(),
+				Error::<T>::MaxFeeClauses
 			);
 			Ok(())
 		}
@@ -425,8 +441,16 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 			stake_addresses: &[NftAddressOf<T>],
+			fee_addresses: &[NftAddressOf<T>],
 		) -> DispatchResult {
-			ensure!(stake_addresses.len() as u32 <= T::MaxClauses::get(), Error::<T>::MaxStakes);
+			ensure!(
+				stake_addresses.len() as u32 <= T::MaxStakingClauses::get(),
+				Error::<T>::MaxStakingClauses
+			);
+			ensure!(
+				fee_addresses.len() as u32 <= T::MaxFeeClauses::get(),
+				Error::<T>::MaxFeeClauses
+			);
 
 			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
@@ -434,8 +458,12 @@ pub mod pallet {
 
 			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
 			ensure!(
-				contract.evaluate_for::<T::AccountId, T::NftHelper>(stake_addresses),
-				Error::<T>::UnfulfilledClause
+				contract.evaluate_stakes::<T::AccountId, T::NftHelper>(stake_addresses),
+				Error::<T>::UnfulfilledStakingClause
+			);
+			ensure!(
+				contract.evaluate_fees::<T::AccountId, T::NftHelper>(fee_addresses),
+				Error::<T>::UnfulfilledFeeClause
 			);
 
 			Ok(())
