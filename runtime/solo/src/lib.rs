@@ -628,7 +628,8 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 
 parameter_types! {
 	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
-	pub const MaxClauses: u32 = 10;
+	pub const MaxStakingClauses: u32 = 10;
+	pub const MaxFeeClauses: u32 = 1;
 }
 
 type AttributeKey = u32;
@@ -639,11 +640,11 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = CollectionId;
-	type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
 	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
-	type MaxClauses = MaxClauses;
+	type MaxStakingClauses = MaxStakingClauses;
+	type MaxFeeClauses = MaxFeeClauses;
 	type ContractAttributeKey = AttributeKey;
 	type ContractAttributeValue = AttributeValue;
 	type WeightInfo = ();

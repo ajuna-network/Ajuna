@@ -66,14 +66,7 @@ pub mod pallet {
 		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
 
 		/// Type that holds the specific configurations for an item.
-		type ItemConfig: Copy
-			+ Clone
-			+ Default
-			+ PartialEq
-			+ Encode
-			+ Decode
-			+ MaxEncodedLen
-			+ TypeInfo;
+		type ItemConfig: Default + MaxEncodedLen + TypeInfo;
 
 		/// An NFT helper for the management of collections and items.
 		type NftHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
