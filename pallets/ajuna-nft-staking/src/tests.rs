@@ -148,7 +148,6 @@ mod create {
 				assert_eq!(NftStake::account_balance(), base_reserves + reward_amount);
 
 				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
-					creator: ALICE,
 					contract_id,
 				}));
 			});
@@ -183,7 +182,6 @@ mod create {
 				);
 
 				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Created {
-					creator: ALICE,
 					contract_id,
 				}));
 			});
@@ -318,6 +316,82 @@ mod create {
 				Error::<Test>::UnknownContractCollection
 			);
 		});
+	}
+}
+
+mod remove {
+	use super::*;
+
+	#[test]
+	fn works() {
+		let contract = Contract::new(
+			Reward::Tokens(123),
+			Default::default(),
+			Default::default(),
+			Default::default(),
+		);
+		let contract_id = H256::random();
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract.clone())
+			.build()
+			.execute_with(|| {
+				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
+				assert_ok!(NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id));
+				assert_eq!(Contracts::<Test>::get(contract_id), None);
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Removed {
+					contract_id,
+				}));
+			});
+	}
+
+	#[test]
+	fn rejects_non_creator_calls() {
+		let contract = Contract::new(
+			Reward::Tokens(123),
+			Default::default(),
+			Default::default(),
+			Default::default(),
+		);
+		let contract_id = H256::random();
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					NftStake::remove(RuntimeOrigin::signed(BOB), contract_id),
+					DispatchError::BadOrigin
+				);
+			});
+	}
+
+	#[test]
+	fn rejects_when_pallet_is_locked() {
+		let contract = Contract::new(
+			Reward::Tokens(123),
+			Default::default(),
+			Default::default(),
+			Default::default(),
+		);
+		let contract_id = H256::random();
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.build()
+			.execute_with(|| {
+				GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
+				assert_noop!(
+					NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id),
+					Error::<Test>::PalletLocked
+				);
+			});
 	}
 }
 

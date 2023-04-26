@@ -159,7 +159,9 @@ pub mod pallet {
 		/// The pallet's global config has been set.
 		SetGlobalConfig { new_config: GlobalConfig<BalanceOf<T>> },
 		/// A new staking contract has been created.
-		Created { creator: T::AccountId, contract_id: T::ItemId },
+		Created { contract_id: T::ItemId },
+		/// A new staking contract has been removed.
+		Removed { contract_id: T::ItemId },
 		/// A staking contract has been accepted.
 		Accepted { by: T::AccountId, contract_id: T::ItemId },
 		/// A staking contract has been claimed.
@@ -265,7 +267,7 @@ pub mod pallet {
 			T::WeightInfo::create_token_reward()
 				.max(T::WeightInfo::create_nft_reward())
 		)]
-		#[pallet::call_index(4)]
+		#[pallet::call_index(3)]
 		pub fn create(
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
@@ -275,6 +277,19 @@ pub mod pallet {
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_contract_clauses(&contract)?;
 			Self::create_contract(creator, contract_id, contract)
+		}
+
+		/// Remove a staking contract.
+		///
+		/// This call enables the creator to remove inactive staking contracts that haven't been
+		/// accepted by any staker. This can be done to clean up the available staking contracts or
+		/// to adjust the parameters before re-creating the contract.
+		#[pallet::weight(12_345)]
+		#[pallet::call_index(4)]
+		pub fn remove(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+			let _ = Self::ensure_creator(origin)?;
+			Self::ensure_pallet_unlocked()?;
+			Self::remove_contract(contract_id)
 		}
 
 		/// Accept an available staking contract.
@@ -377,7 +392,14 @@ pub mod pallet {
 			)?;
 			Contracts::<T>::insert(contract_id, contract);
 
-			Self::deposit_event(Event::<T>::Created { creator, contract_id });
+			Self::deposit_event(Event::<T>::Created { contract_id });
+			Ok(())
+		}
+
+		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
+			Self::ensure_contract_ownership(&contract_id, &Self::account_id())?;
+			Contracts::<T>::remove(contract_id);
+			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
 		}
 
