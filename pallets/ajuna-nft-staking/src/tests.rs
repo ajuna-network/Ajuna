@@ -124,8 +124,7 @@ mod create {
 			.build()
 			.execute_with(|| {
 				let reward_amount = 1_000;
-				let reward = Reward::Tokens(reward_amount);
-				let contract = Contract::new(reward, 10, Default::default(), Default::default());
+				let contract = Contract::default().reward(Reward::Tokens(reward_amount));
 				let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
 
 				let contract_id = H256::random();
@@ -163,8 +162,7 @@ mod create {
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
 				let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
-				let reward = Reward::Nft(nft_addr.clone());
-				let contract = Contract::new(reward, 10, Default::default(), Default::default());
+				let contract = Contract::default().reward(Reward::Nft(nft_addr.clone()));
 
 				let contract_id = H256::random();
 				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
@@ -195,12 +193,12 @@ mod create {
 			.balances(vec![(ALICE, ItemDeposit::get())])
 			.build()
 			.execute_with(|| {
-				let collection_id = create_collection(ALICE);
-				let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
-				let reward = Reward::Nft(nft_addr);
-				let contract = Contract::new(reward, 10, Default::default(), Default::default());
 				assert_noop!(
-					NftStake::create(RuntimeOrigin::signed(BOB), H256::random(), contract),
+					NftStake::create(
+						RuntimeOrigin::signed(BOB),
+						H256::random(),
+						Contract::default()
+					),
 					DispatchError::BadOrigin
 				);
 			});
@@ -211,11 +209,7 @@ mod create {
 		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 			assert_noop!(
-				NftStake::create(
-					RuntimeOrigin::signed(ALICE),
-					H256::random(),
-					Contract::new(Reward::Tokens(333), 10, Default::default(), Default::default())
-				),
+				NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), Contract::default()),
 				Error::<Test>::PalletLocked
 			);
 		});
@@ -232,12 +226,7 @@ mod create {
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
-					Contract::new(
-						Reward::Tokens(1),
-						10,
-						staking_clauses.try_into().unwrap(),
-						Default::default()
-					)
+					Contract::default().reward(Reward::Tokens(1)).stake_clauses(staking_clauses)
 				),
 				Error::<Test>::MaxStakingClauses
 			);
@@ -255,12 +244,7 @@ mod create {
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
-					Contract::new(
-						Reward::Tokens(1),
-						10,
-						Default::default(),
-						fee_clauses.try_into().unwrap()
-					)
+					Contract::default().reward(Reward::Tokens(1)).fee_clauses(fee_clauses)
 				),
 				Error::<Test>::MaxFeeClauses
 			);
@@ -278,12 +262,7 @@ mod create {
 					NftStake::create(
 						RuntimeOrigin::signed(ALICE),
 						H256::random(),
-						Contract::new(
-							Reward::Tokens(2_000_000),
-							10,
-							Default::default(),
-							Default::default()
-						)
+						Contract::default().reward(Reward::Tokens(2_000_000))
 					),
 					pallet_balances::Error::<Test>::InsufficientBalance,
 				);
@@ -295,8 +274,7 @@ mod create {
 		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 			let collection_id = create_collection(BOB);
 			let nft_addr = mint_item(&BOB, &collection_id, &H256::random());
-			let reward = Reward::Nft(nft_addr);
-			let contract = Contract::new(reward, 10, Default::default(), Default::default());
+			let contract = Contract::default().reward(Reward::Nft(nft_addr));
 			assert_noop!(
 				NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract),
 				Error::<Test>::Ownership
@@ -307,12 +285,8 @@ mod create {
 	#[test]
 	fn rejects_when_contract_collection_id_is_not_set() {
 		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
-			let collection_id = create_collection(ALICE);
-			let nft_addr = mint_item(&ALICE, &collection_id, &H256::random());
-			let reward = Reward::Nft(nft_addr);
-			let contract = Contract::new(reward, 10, Default::default(), Default::default());
 			assert_noop!(
-				NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract),
+				NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), Contract::default()),
 				Error::<Test>::UnknownContractCollection
 			);
 		});
@@ -324,12 +298,7 @@ mod remove {
 
 	#[test]
 	fn works() {
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			Default::default(),
-			Default::default(),
-			Default::default(),
-		);
+		let contract = Contract::default().reward(Reward::Tokens(123));
 		let contract_id = H256::random();
 
 		ExtBuilder::default()
@@ -349,12 +318,7 @@ mod remove {
 
 	#[test]
 	fn rejects_non_creator_calls() {
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			Default::default(),
-			Default::default(),
-			Default::default(),
-		);
+		let contract = Contract::default().reward(Reward::Tokens(123));
 		let contract_id = H256::random();
 
 		ExtBuilder::default()
@@ -372,12 +336,7 @@ mod remove {
 
 	#[test]
 	fn rejects_when_pallet_is_locked() {
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			Default::default(),
-			Default::default(),
-			Default::default(),
-		);
+		let contract = Contract::default().reward(Reward::Tokens(123));
 		let contract_id = H256::random();
 
 		ExtBuilder::default()
@@ -407,12 +366,11 @@ mod accept {
 		];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 123)];
 		let duration = 4;
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			duration,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(123))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -544,12 +502,11 @@ mod accept {
 	fn rejects_when_contract_is_already_accepted() {
 		let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 123)];
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			123,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(123))
+			.duration(123)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let alice_stakes = MockMints::from(MockClauses(stake_clauses));
@@ -641,12 +598,11 @@ mod accept {
 	fn rejects_unowned_stakes() {
 		let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			123,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(123))
+			.duration(123)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -703,12 +659,10 @@ mod accept {
 			Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 12, 34),
 			Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 56, 78),
 		];
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			123,
-			stake_clauses.clone().try_into().unwrap(),
-			Default::default(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(123))
+			.duration(123)
+			.stake_clauses(stake_clauses.clone());
 		let contract_id = H256::random();
 
 		let mut stakes = MockMints::from(MockClauses(stake_clauses));
@@ -741,12 +695,10 @@ mod accept {
 	#[test]
 	fn rejects_unfulfilling_fees() {
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 123)];
-		let contract = Contract::new(
-			Reward::Tokens(123),
-			123,
-			Default::default(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(123))
+			.duration(123)
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let mut fees = MockMints::from(MockClauses(fee_clauses));
@@ -789,12 +741,11 @@ mod claim {
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_2, 33)];
 		let duration = 4;
 		let reward_amount = 135;
-		let contract = Contract::new(
-			Reward::Tokens(reward_amount),
-			duration,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(reward_amount))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -849,12 +800,11 @@ mod claim {
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 1)];
 		let duration = 8;
 		let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
-		let contract = Contract::new(
-			Reward::Nft(reward_addr.clone()),
-			duration,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Nft(reward_addr.clone()))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -920,8 +870,7 @@ mod claim {
 
 	#[test]
 	fn rejects_when_contract_is_not_owned() {
-		let contract =
-			Contract::new(Reward::Tokens(321), 123, Default::default(), Default::default());
+		let contract = Contract::default().reward(Reward::Tokens(321)).duration(123);
 		let contract_id = H256::random();
 		ExtBuilder::default()
 			.set_creator(ALICE)
@@ -941,12 +890,11 @@ mod claim {
 		let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 4)];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_2, 2)];
 		let duration = 3;
-		let contract = Contract::new(
-			Reward::Tokens(321),
-			duration,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(321))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 		let stakes = MockMints::from(MockClauses(stake_clauses));
 		let fees = MockMints::from(MockClauses(fee_clauses));
@@ -981,12 +929,11 @@ mod cancel {
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
 		let duration = 4;
 		let reward_amount = 135;
-		let contract = Contract::new(
-			Reward::Tokens(reward_amount),
-			duration,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(reward_amount))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -1056,7 +1003,7 @@ mod cancel {
 
 	#[test]
 	fn rejects_when_contract_is_not_owned() {
-		let contract = Contract::new(Reward::Tokens(1), 2, Default::default(), Default::default());
+		let contract = Contract::default().reward(Reward::Tokens(1)).duration(2);
 		let contract_id = H256::random();
 		ExtBuilder::default()
 			.set_creator(ALICE)
@@ -1076,12 +1023,11 @@ mod cancel {
 		let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 4)];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_2, 2)];
 		let duration = 3;
-		let contract = Contract::new(
-			Reward::Tokens(321),
-			duration,
-			stake_clauses.clone().try_into().unwrap(),
-			fee_clauses.clone().try_into().unwrap(),
-		);
+		let contract = Contract::default()
+			.reward(Reward::Tokens(321))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
 		let stakes = MockMints::from(MockClauses(stake_clauses));
 		let fees = MockMints::from(MockClauses(fee_clauses));

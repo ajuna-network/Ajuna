@@ -79,6 +79,7 @@ pub mod pallet {
 	enum Operation {
 		Claim,
 		Cancel,
+		Snipe,
 	}
 
 	#[pallet::pallet]
@@ -168,12 +169,14 @@ pub mod pallet {
 		Claimed { by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
 		/// A staking contract has been cancelled.
 		Cancelled { by: T::AccountId, contract_id: T::ItemId },
+		/// A staking contract has been sniped.
+		Sniped { by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
 	}
 
 	/// Error for the treasury pallet.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// There is no account set as the creator
+		/// There is no account set as the creator.
 		CreatorNotSet,
 		/// The given collection doesn't exist.
 		UnknownCollection,
@@ -193,9 +196,9 @@ pub mod pallet {
 		UnfulfilledFeeClause,
 		/// The given contract's staking clause is unfulfilled.
 		UnfulfilledStakingClause,
-		/// The contract is still active, so it cannot be redeemed
+		/// The contract is still active, so it cannot be redeemed.
 		ContractStillActive,
-		/// The contract is claimable, so it cannot be cancelled
+		/// The contract is claimable, so it cannot be cancelled or sniped.
 		ContractClaimable,
 		/// The given data cannot be bounded.
 		IncorrectData,
@@ -343,6 +346,23 @@ pub mod pallet {
 			Self::ensure_contract(Operation::Cancel, &contract_id, &staker)?;
 			Self::process_contract(Operation::Cancel, contract_id, staker)
 		}
+
+		/// Snipe someone's claimable contract.
+		///
+		/// This call allows any user to claim expired, fulfilled contracts. If a staker hasn't
+		/// claimed their rewards within the specified expiration time, another user (sniper) can
+		/// claim them. When this occurs, the stake NFT is returned to the original contract NFT
+		/// holder, but the rewards are transferred to the sniper. This feature encourages the
+		/// timely claiming of contracts and ensures the contract's completion.
+		#[pallet::weight(12_345)]
+		#[pallet::call_index(8)]
+		pub fn snipe(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+			let sniper = ensure_signed(origin)?;
+			Self::ensure_pallet_unlocked()?;
+			Self::ensure_contract(Operation::Snipe, &contract_id, &sniper)?;
+			Self::process_contract(Operation::Snipe, contract_id, sniper)?;
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -414,7 +434,7 @@ pub mod pallet {
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
 			Self::transfer_items(fee_addresses, &Self::creator()?)?;
 
-			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let contract = Self::contract(&contract_id)?;
 			let current_block_number = frame_system::Pallet::<T>::block_number();
 			let contract_end = current_block_number.saturating_add(contract.duration);
 			ContractEnds::<T>::insert(contract_id, contract_end);
@@ -434,11 +454,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let staked_items =
 				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			Self::transfer_items(&staked_items, &who)?;
+			match op {
+				Operation::Claim | Operation::Cancel => Self::transfer_items(&staked_items, &who),
+				Operation::Snipe =>
+					Self::transfer_items(&staked_items, &Self::contract_owner(&contract_id)?),
+			}?;
 
 			let reward = Self::ensure_contract_ownership(&contract_id, &who)?.reward;
 			match op {
-				Operation::Claim => match reward {
+				Operation::Claim | Operation::Snipe => match reward {
 					Reward::Tokens(amount) =>
 						T::Currency::transfer(&Self::account_id(), &who, amount, AllowDeath),
 					Reward::Nft(NftAddress(collection_id, item_id)) =>
@@ -457,7 +481,6 @@ pub mod pallet {
 
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractEnds::<T>::remove(contract_id);
-			ContractOwners::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 
 			match op {
@@ -465,6 +488,8 @@ pub mod pallet {
 					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, reward }),
 				Operation::Cancel =>
 					Self::deposit_event(Event::<T>::Cancelled { by: who, contract_id }),
+				Operation::Snipe =>
+					Self::deposit_event(Event::<T>::Sniped { by: who, contract_id, reward }),
 			};
 
 			Ok(())
@@ -517,9 +542,20 @@ pub mod pallet {
 			who: &T::AccountId,
 		) -> Result<ContractOf<T>, DispatchError> {
 			let collection_id = Self::contract_collection_id()?;
-			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let contract = Self::contract(contract_id)?;
 			Self::ensure_item_ownership(&collection_id, contract_id, who)
 				.map_err(|_| Error::<T>::ContractOwnership)?;
+			Ok(contract)
+		}
+
+		fn ensure_contract_accepted(
+			contract_id: &T::ItemId,
+		) -> Result<ContractOf<T>, DispatchError> {
+			let collection_id = Self::contract_collection_id()?;
+			let contract = Self::contract(contract_id)?;
+			let owner =
+				T::NftHelper::owner(&collection_id, contract_id).ok_or(Error::<T>::UnknownItem)?;
+			ensure!(owner != Self::account_id(), Error::<T>::ContractOwnership);
 			Ok(contract)
 		}
 
@@ -572,12 +608,18 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let _ = Self::ensure_contract_ownership(contract_id, who)?;
+			let Contract { expire_after, .. } = match op {
+				Operation::Claim | Operation::Cancel =>
+					Self::ensure_contract_ownership(contract_id, who),
+				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
+			}?;
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let end = ContractEnds::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			match op {
 				Operation::Claim => ensure!(current_block >= end, Error::<T>::ContractStillActive),
 				Operation::Cancel => ensure!(current_block < end, Error::<T>::ContractClaimable),
+				Operation::Snipe =>
+					ensure!(current_block >= end + expire_after, Error::<T>::ContractClaimable),
 			}
 			Ok(())
 		}
@@ -593,6 +635,14 @@ pub mod pallet {
 		fn creator() -> Result<T::AccountId, DispatchError> {
 			let creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
 			Ok(creator)
+		}
+		fn contract(contract_id: &T::ItemId) -> Result<ContractOf<T>, DispatchError> {
+			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(contract)
+		}
+		fn contract_owner(contract_id: &T::ItemId) -> Result<T::AccountId, DispatchError> {
+			let owner = ContractOwners::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(owner)
 		}
 	}
 }

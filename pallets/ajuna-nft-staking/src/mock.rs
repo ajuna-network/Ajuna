@@ -199,6 +199,41 @@ impl pallet_nft_staking::Config for Test {
 	type WeightInfo = ();
 }
 
+impl Default for RewardOf<Test> {
+	fn default() -> Self {
+		Reward::Tokens(Default::default())
+	}
+}
+impl Default for ContractOf<Test> {
+	fn default() -> Self {
+		Contract {
+			reward: Default::default(),
+			duration: Default::default(),
+			expire_after: Default::default(),
+			stake_clauses: Default::default(),
+			fee_clauses: Default::default(),
+		}
+	}
+}
+impl ContractOf<Test> {
+	pub fn reward(mut self, reward: RewardOf<Test>) -> Self {
+		self.reward = reward;
+		self
+	}
+	pub fn duration(mut self, duration: MockBlockNumber) -> Self {
+		self.duration = duration;
+		self
+	}
+	pub fn stake_clauses(mut self, clauses: Vec<MockClause>) -> Self {
+		self.stake_clauses = clauses.try_into().unwrap();
+		self
+	}
+	pub fn fee_clauses(mut self, clauses: Vec<MockClause>) -> Self {
+		self.fee_clauses = clauses.try_into().unwrap();
+		self
+	}
+}
+
 pub type MockClause = Clause<MockCollectionId, AttributeKey, AttributeValue>;
 pub struct MockClauses(pub Vec<MockClause>);
 pub type MockMints = Vec<(NftAddress<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
