@@ -195,9 +195,12 @@ pub mod pallet {
 		MaxStakes,
 	}
 
-	//SBP-M3 review: Please add documentation in each extrinsic
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Set a creator account.
+		///
+		/// This call allows setting an account to act as a contract creator. It must be called with
+		/// root privilege.
 		#[pallet::weight(T::WeightInfo::set_creator())]
 		#[pallet::call_index(0)]
 		pub fn set_creator(origin: OriginFor<T>, creator: T::AccountId) -> DispatchResult {
@@ -207,6 +210,11 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set a collection ID for contract NFTs.
+		///
+		///
+		/// This call allows setting an externally created collection ID to associate contract NFTs.
+		/// It must be signed with the creator account.
 		#[pallet::weight(T::WeightInfo::set_contract_collection_id())]
 		#[pallet::call_index(1)]
 		pub fn set_contract_collection_id(
@@ -220,6 +228,10 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set new values for global configuration.
+		///
+		/// This call allows updating global configuration. It must be signed by the creator
+		/// account.
 		#[pallet::weight(T::WeightInfo::set_global_config())]
 		#[pallet::call_index(2)]
 		pub fn set_global_config(origin: OriginFor<T>, new_config: GlobalConfig) -> DispatchResult {
@@ -229,6 +241,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Create a staking contract.
+		///
+		/// This call allows the creator to define and initiate a new staking contract. The creator
+		/// sets the parameters of the contract, such as the assets involved, the staking period,
+		/// and any other requirements. The creator will also transfer the necessary reward NFTs or
+		/// tokens to the provider, which will be locked until a staker claims them, or the contract
+		/// is removed in an unaccepted state.
 		#[pallet::weight(
 			T::WeightInfo::create_token_reward()
 				.max(T::WeightInfo::create_nft_reward())
@@ -245,6 +264,12 @@ pub mod pallet {
 			Self::create_contract(creator, contract_id, contract)
 		}
 
+		/// Accept an available staking contract.
+		///
+		/// This call allows a player (staker) to accept an available staking contract. When
+		/// executing this call, the staker will transfer the required stake and fee NFTs to the
+		/// provider, thus engaging in the contract. The provider will issue a contract NFT to the
+		/// staker, acknowledging their participation in the staking contract.
 		#[pallet::weight(T::WeightInfo::accept())]
 		#[pallet::call_index(5)]
 		pub fn accept(
@@ -259,6 +284,11 @@ pub mod pallet {
 			Self::accept_contract(contract_id, staker, &stakes, &fees)
 		}
 
+		/// Claim a fulfilled staking contract.
+		///
+		/// The staker, who holds a contract NFT, can call this function to claim the rewards
+		/// associated with the fulfilled staking contract. Upon successful execution, the provider
+		/// will transfer the reward NFTs / tokens to the staker and return the stake NFT.
 		#[pallet::weight(
 			T::WeightInfo::claim_token_reward()
 				.max(T::WeightInfo::claim_nft_reward())
