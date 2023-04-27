@@ -39,7 +39,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
 use sp_std::prelude::*;
 
 pub use contracts::*;
@@ -141,7 +141,7 @@ pub mod pallet {
 	pub type Contracts<T: Config> = StorageMap<_, Identity, T::ItemId, ContractOf<T>>;
 
 	#[pallet::storage]
-	pub type ContractEnds<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
+	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
 
 	#[pallet::storage]
 	pub type ContractStakedItems<T: Config> = StorageMap<_, Identity, T::ItemId, StakedItemsOf<T>>;
@@ -424,20 +424,22 @@ pub mod pallet {
 			stake_addresses: &[NftAddressOf<T>],
 			fee_addresses: &[NftAddressOf<T>],
 		) -> DispatchResult {
+			// Transfer contract, stake and fee NFTs.
 			let contract_address = NftAddress(Self::contract_collection_id()?, contract_id);
 			Self::transfer_items(&[contract_address], &who)?;
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
 			Self::transfer_items(fee_addresses, &Self::creator()?)?;
 
-			let contract = Self::contract(&contract_id)?;
-			let current_block_number = frame_system::Pallet::<T>::block_number();
-			let contract_end = current_block_number.saturating_add(contract.duration);
-			ContractEnds::<T>::insert(contract_id, contract_end);
-
+			// Record staked NFTs' addresses.
 			let bounded_stakes = StakedItemsOf::<T>::try_from(stake_addresses.to_vec())
 				.map_err(|_| Error::<T>::IncorrectData)?;
 			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
 
+			// Record contract accepted block.
+			let now = frame_system::Pallet::<T>::block_number();
+			ContractAccepted::<T>::insert(contract_id, now);
+
+			// Emit events.
 			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
 			Ok(())
 		}
@@ -474,7 +476,7 @@ pub mod pallet {
 
 			// Clean up storage.
 			ContractStakedItems::<T>::remove(contract_id);
-			ContractEnds::<T>::remove(contract_id);
+			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 
 			// Emit events.
@@ -600,13 +602,13 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let Contract { claim_duration, .. } = match op {
+			let Contract { claim_duration, stake_duration, .. } = match op {
 				Operation::Claim | Operation::Cancel =>
 					Self::ensure_contract_ownership(contract_id, who),
 				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
 			}?;
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			let end = ContractEnds::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let end = Self::contract_accepted(contract_id)? + stake_duration;
 			match op {
 				Operation::Claim => ensure!(current_block >= end, Error::<T>::ContractStillActive),
 				Operation::Cancel => ensure!(current_block < end, Error::<T>::ContractClaimable),
@@ -642,6 +644,11 @@ pub mod pallet {
 			let items =
 				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			Ok(items)
+		}
+		fn contract_accepted(contract_id: &T::ItemId) -> Result<T::BlockNumber, DispatchError> {
+			let accepted_block =
+				ContractAccepted::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(accepted_block)
 		}
 	}
 }

@@ -78,12 +78,12 @@ type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
 /// with a given reward after the duration is complete.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue> {
-	/// The duration for which the given contract must remain staked. When the block number
-	/// advances beyond this, the contract becomes claimable by the staker for rewards.
-	pub duration: BlockNumber,
 	/// The duration for which the given contract must be claimed. When the block number advances
 	/// beyond it, the contract becomes available to be claimed by other stakers via snipe.
 	pub claim_duration: BlockNumber,
+	/// The duration for which the given contract must remain staked. When the block number
+	/// advances beyond this, the contract becomes claimable by the staker for rewards.
+	pub stake_duration: BlockNumber,
 
 	/// The list of conditions to satisfy as staking NFTs. A staker must provide NFTs that meet
 	/// these requirements, which will be locked for the staking duration of the contract.
