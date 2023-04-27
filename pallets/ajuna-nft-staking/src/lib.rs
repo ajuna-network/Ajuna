@@ -600,7 +600,7 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let Contract { expire_after, .. } = match op {
+			let Contract { claim_duration, .. } = match op {
 				Operation::Claim | Operation::Cancel =>
 					Self::ensure_contract_ownership(contract_id, who),
 				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
@@ -611,7 +611,7 @@ pub mod pallet {
 				Operation::Claim => ensure!(current_block >= end, Error::<T>::ContractStillActive),
 				Operation::Cancel => ensure!(current_block < end, Error::<T>::ContractClaimable),
 				Operation::Snipe =>
-					ensure!(current_block >= end + expire_after, Error::<T>::ContractClaimable),
+					ensure!(current_block >= end + claim_duration, Error::<T>::ContractClaimable),
 			}
 			Ok(())
 		}

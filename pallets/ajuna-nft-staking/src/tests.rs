@@ -1133,12 +1133,12 @@ mod snipe {
 			Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7),
 		];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_2, 33)];
-		let (duration, expire_after) = (4, 3);
+		let (duration, claim_duration) = (4, 3);
 		let reward = 135;
 		let contract = Contract::default()
 			.reward(Reward::Tokens(reward))
 			.duration(duration)
-			.expire_after(expire_after)
+			.claim_duration(claim_duration)
 			.stake_clauses(stake_clauses.clone())
 			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
@@ -1161,7 +1161,7 @@ mod snipe {
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
-				run_to_block(System::block_number() + duration + expire_after);
+				run_to_block(System::block_number() + duration + claim_duration);
 
 				assert_ok!(NftStake::snipe(RuntimeOrigin::signed(CHARLIE), contract_id));
 
@@ -1195,12 +1195,12 @@ mod snipe {
 			Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 6, 7),
 		];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 1)];
-		let (duration, expire_after) = (2, 3);
+		let (duration, claim_duration) = (2, 3);
 		let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
 		let contract = Contract::default()
 			.reward(Reward::Nft(reward_addr.clone()))
 			.duration(duration)
-			.expire_after(expire_after)
+			.claim_duration(claim_duration)
 			.stake_clauses(stake_clauses.clone())
 			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
@@ -1219,7 +1219,7 @@ mod snipe {
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
-				run_to_block(System::block_number() + duration + expire_after);
+				run_to_block(System::block_number() + duration + claim_duration);
 
 				assert_ok!(NftStake::snipe(RuntimeOrigin::signed(CHARLIE), contract_id));
 
@@ -1285,11 +1285,11 @@ mod snipe {
 	fn rejects_when_contract_is_claimable() {
 		let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 4)];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_2, 2)];
-		let (duration, expire_after) = (3, 5);
+		let (duration, claim_duration) = (3, 5);
 		let contract = Contract::default()
 			.reward(Reward::Tokens(321))
 			.duration(duration)
-			.expire_after(expire_after)
+			.claim_duration(claim_duration)
 			.stake_clauses(stake_clauses.clone())
 			.fee_clauses(fee_clauses.clone());
 		let contract_id = H256::random();
@@ -1303,7 +1303,7 @@ mod snipe {
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
-				for _ in duration..(duration + expire_after) {
+				for _ in duration..(duration + claim_duration) {
 					run_to_block(System::block_number() + 1);
 					assert_noop!(
 						NftStake::snipe(RuntimeOrigin::signed(BOB), contract_id),

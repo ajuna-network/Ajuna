@@ -209,7 +209,7 @@ impl Default for ContractOf<Test> {
 		Contract {
 			reward: Default::default(),
 			duration: Default::default(),
-			expire_after: Default::default(),
+			claim_duration: Default::default(),
 			stake_clauses: Default::default(),
 			fee_clauses: Default::default(),
 			cancel_fee: Default::default(),
@@ -225,8 +225,8 @@ impl ContractOf<Test> {
 		self.duration = duration;
 		self
 	}
-	pub fn expire_after(mut self, expire_after: MockBlockNumber) -> Self {
-		self.expire_after = expire_after;
+	pub fn claim_duration(mut self, claim_duration: MockBlockNumber) -> Self {
+		self.claim_duration = claim_duration;
 		self
 	}
 	pub fn stake_clauses(mut self, clauses: Vec<MockClause>) -> Self {
