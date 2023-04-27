@@ -80,6 +80,7 @@ type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
 pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue> {
 	pub reward: Reward<Balance, CollectionId, ItemId>,
 	pub duration: BlockNumber,
+	pub expire_after: BlockNumber,
 	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 }
@@ -92,15 +93,6 @@ where
 	AttributeKey: Encode,
 	AttributeValue: Encode + Decode + PartialEq,
 {
-	pub fn new(
-		reward: Reward<Balance, CollectionId, ItemId>,
-		duration: BlockNumber,
-		stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
-		fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
-	) -> Self {
-		Self { reward, duration, stake_clauses, fee_clauses }
-	}
-
 	pub fn evaluate_stakes<AccountId, NftInspector>(
 		&self,
 		stakes: &[NftAddress<CollectionId, ItemId>],

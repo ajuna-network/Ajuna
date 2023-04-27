@@ -199,6 +199,45 @@ impl pallet_nft_staking::Config for Test {
 	type WeightInfo = ();
 }
 
+impl Default for RewardOf<Test> {
+	fn default() -> Self {
+		Reward::Tokens(Default::default())
+	}
+}
+impl Default for ContractOf<Test> {
+	fn default() -> Self {
+		Contract {
+			reward: Default::default(),
+			duration: Default::default(),
+			expire_after: Default::default(),
+			stake_clauses: Default::default(),
+			fee_clauses: Default::default(),
+		}
+	}
+}
+impl ContractOf<Test> {
+	pub fn reward(mut self, reward: RewardOf<Test>) -> Self {
+		self.reward = reward;
+		self
+	}
+	pub fn duration(mut self, duration: MockBlockNumber) -> Self {
+		self.duration = duration;
+		self
+	}
+	pub fn expire_after(mut self, expire_after: MockBlockNumber) -> Self {
+		self.expire_after = expire_after;
+		self
+	}
+	pub fn stake_clauses(mut self, clauses: Vec<MockClause>) -> Self {
+		self.stake_clauses = clauses.try_into().unwrap();
+		self
+	}
+	pub fn fee_clauses(mut self, clauses: Vec<MockClause>) -> Self {
+		self.fee_clauses = clauses.try_into().unwrap();
+		self
+	}
+}
+
 pub type MockClause = Clause<MockCollectionId, AttributeKey, AttributeValue>;
 pub struct MockClauses(pub Vec<MockClause>);
 pub type MockMints = Vec<(NftAddress<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
@@ -224,7 +263,7 @@ pub struct ExtBuilder {
 	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	create_contract_collection: bool,
-	contract: Option<(MockItemId, ContractOf<Test>)>,
+	contract: Option<(MockItemId, ContractOf<Test>, bool)>,
 	stakes: Vec<(MockAccountId, MockMints)>,
 	fees: Vec<(MockAccountId, MockMints)>,
 	accept_contract: Option<(MockItemId, MockAccountId)>,
@@ -244,7 +283,15 @@ impl ExtBuilder {
 		self
 	}
 	pub fn create_contract(mut self, contract_id: MockItemId, contract: ContractOf<Test>) -> Self {
-		self.contract = Some((contract_id, contract));
+		self.contract = Some((contract_id, contract, false));
+		self
+	}
+	pub fn create_contract_with_funds(
+		mut self,
+		contract_id: MockItemId,
+		contract: ContractOf<Test>,
+	) -> Self {
+		self.contract = Some((contract_id, contract, true));
 		self
 	}
 	pub fn mint_stakes(mut self, stakes: Vec<(MockAccountId, MockMints)>) -> Self {
@@ -291,20 +338,23 @@ impl ExtBuilder {
 			}
 
 			// Fund / mint into creator enough to create contracts.
-			if let Some((contract_id, contract)) = self.contract {
+			if let Some((contract_id, contract, should_fund)) = self.contract {
 				let creator = Creator::<Test>::get().unwrap();
 				match &contract.reward {
-					Reward::Tokens(amount) => {
-						let _ = CurrencyOf::<Test>::deposit_creating(
-							&creator,
-							ItemDeposit::get() + amount,
-						);
-					},
+					Reward::Tokens(amount) =>
+						if should_fund {
+							let _ = CurrencyOf::<Test>::deposit_creating(
+								&creator,
+								ItemDeposit::get() + amount,
+							);
+						},
 					Reward::Nft(NftAddress(collection_id, item_id)) => {
 						let _ = mint_item(&creator, collection_id, item_id);
 					},
 				}
-				let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
+				if should_fund {
+					let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
+				}
 				NftStake::create_contract(creator, contract_id, contract).unwrap();
 			}
 

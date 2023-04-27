@@ -71,8 +71,15 @@ pub mod pallet {
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
 	)]
-	pub struct GlobalConfig {
+	pub struct GlobalConfig<Balance> {
 		pub pallet_locked: bool,
+		pub cancel_fee: Balance,
+	}
+
+	enum Operation {
+		Claim,
+		Cancel,
+		Snipe,
 	}
 
 	#[pallet::pallet]
@@ -126,16 +133,13 @@ pub mod pallet {
 	pub type Creator<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig, ValueQuery>;
+	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig<BalanceOf<T>>, ValueQuery>;
 
 	#[pallet::storage]
 	pub type ContractCollectionId<T: Config> = StorageValue<_, T::CollectionId>;
 
 	#[pallet::storage]
 	pub type Contracts<T: Config> = StorageMap<_, Identity, T::ItemId, ContractOf<T>>;
-
-	#[pallet::storage]
-	pub type ContractOwners<T: Config> = StorageMap<_, Identity, T::ItemId, T::AccountId>;
 
 	#[pallet::storage]
 	pub type ContractEnds<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
@@ -151,19 +155,25 @@ pub mod pallet {
 		/// The collection holding the staking contracts has been set.
 		ContractCollectionSet { collection_id: T::CollectionId },
 		/// The pallet's global config has been set.
-		SetGlobalConfig { new_config: GlobalConfig },
+		SetGlobalConfig { new_config: GlobalConfig<BalanceOf<T>> },
 		/// A new staking contract has been created.
-		Created { creator: T::AccountId, contract_id: T::ItemId },
+		Created { contract_id: T::ItemId },
+		/// A new staking contract has been removed.
+		Removed { contract_id: T::ItemId },
 		/// A staking contract has been accepted.
-		Accepted { accepted_by: T::AccountId, contract_id: T::ItemId },
+		Accepted { by: T::AccountId, contract_id: T::ItemId },
 		/// A staking contract has been claimed.
-		Claimed { claimed_by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
+		Claimed { by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
+		/// A staking contract has been cancelled.
+		Cancelled { by: T::AccountId, contract_id: T::ItemId },
+		/// A staking contract has been sniped.
+		Sniped { by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
 	}
 
 	/// Error for the treasury pallet.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// There is no account set as the creator
+		/// There is no account set as the creator.
 		CreatorNotSet,
 		/// The given collection doesn't exist.
 		UnknownCollection,
@@ -183,8 +193,12 @@ pub mod pallet {
 		UnfulfilledFeeClause,
 		/// The given contract's staking clause is unfulfilled.
 		UnfulfilledStakingClause,
-		/// The contract is still active, so it cannot be redeemed
+		/// The contract is still active, so it cannot be redeemed.
 		ContractStillActive,
+		/// The contract is claimable, so it cannot be cancelled or sniped.
+		ContractClaimable,
+		/// The contract is available, or not yet accepted.
+		ContractAvailable,
 		/// The given data cannot be bounded.
 		IncorrectData,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
@@ -195,9 +209,12 @@ pub mod pallet {
 		MaxStakes,
 	}
 
-	//SBP-M3 review: Please add documentation in each extrinsic
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Set a creator account.
+		///
+		/// This call allows setting an account to act as a contract creator. It must be called with
+		/// root privilege.
 		#[pallet::weight(T::WeightInfo::set_creator())]
 		#[pallet::call_index(0)]
 		pub fn set_creator(origin: OriginFor<T>, creator: T::AccountId) -> DispatchResult {
@@ -207,6 +224,11 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set a collection ID for contract NFTs.
+		///
+		///
+		/// This call allows setting an externally created collection ID to associate contract NFTs.
+		/// It must be signed with the creator account.
 		#[pallet::weight(T::WeightInfo::set_contract_collection_id())]
 		#[pallet::call_index(1)]
 		pub fn set_contract_collection_id(
@@ -220,20 +242,34 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set new values for global configuration.
+		///
+		/// This call allows updating global configuration. It must be signed by the creator
+		/// account.
 		#[pallet::weight(T::WeightInfo::set_global_config())]
 		#[pallet::call_index(2)]
-		pub fn set_global_config(origin: OriginFor<T>, new_config: GlobalConfig) -> DispatchResult {
+		pub fn set_global_config(
+			origin: OriginFor<T>,
+			new_config: GlobalConfig<BalanceOf<T>>,
+		) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
 			GlobalConfigs::<T>::put(new_config);
 			Self::deposit_event(Event::SetGlobalConfig { new_config });
 			Ok(())
 		}
 
+		/// Create a staking contract.
+		///
+		/// This call allows the creator to define and initiate a new staking contract. The creator
+		/// sets the parameters of the contract, such as the assets involved, the staking period,
+		/// and any other requirements. The creator will also transfer the necessary reward NFTs or
+		/// tokens to the provider, which will be locked until a staker claims them, or the contract
+		/// is removed in an unaccepted state.
 		#[pallet::weight(
 			T::WeightInfo::create_token_reward()
 				.max(T::WeightInfo::create_nft_reward())
 		)]
-		#[pallet::call_index(4)]
+		#[pallet::call_index(3)]
 		pub fn create(
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
@@ -241,10 +277,29 @@ pub mod pallet {
 		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
-			Self::ensure_contract(&contract)?;
+			Self::ensure_contract_clauses(&contract)?;
 			Self::create_contract(creator, contract_id, contract)
 		}
 
+		/// Remove a staking contract.
+		///
+		/// This call enables the creator to remove inactive staking contracts that haven't been
+		/// accepted by any staker. This can be done to clean up the available staking contracts or
+		/// to adjust the parameters before re-creating the contract.
+		#[pallet::weight(12_345)]
+		#[pallet::call_index(4)]
+		pub fn remove(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+			let _ = Self::ensure_creator(origin)?;
+			Self::ensure_pallet_unlocked()?;
+			Self::remove_contract(contract_id)
+		}
+
+		/// Accept an available staking contract.
+		///
+		/// This call allows a player (staker) to accept an available staking contract. When
+		/// executing this call, the staker will transfer the required stake and fee NFTs to the
+		/// provider, thus engaging in the contract. The provider will issue a contract NFT to the
+		/// staker, acknowledging their participation in the staking contract.
 		#[pallet::weight(T::WeightInfo::accept())]
 		#[pallet::call_index(5)]
 		pub fn accept(
@@ -259,16 +314,53 @@ pub mod pallet {
 			Self::accept_contract(contract_id, staker, &stakes, &fees)
 		}
 
+		/// Cancel an active staking contract.
+		///
+		/// This call allows the staker, holding a contract NFT, to terminate a staking contract
+		/// prematurely. Doing so will return the stake NFT, but an additional cancellation fee will
+		/// be charged. The staker will not receive any rewards associated with the canceled
+		/// contract.
+		#[pallet::weight(12_345)]
+		#[pallet::call_index(6)]
+		pub fn cancel(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+			let staker = ensure_signed(origin)?;
+			Self::ensure_pallet_unlocked()?;
+			Self::ensure_contract(Operation::Cancel, &contract_id, &staker)?;
+			Self::process_contract(Operation::Cancel, contract_id, staker)
+		}
+
+		/// Claim a fulfilled staking contract.
+		///
+		/// The staker, who holds a contract NFT, can call this function to claim the rewards
+		/// associated with the fulfilled staking contract. Upon successful execution, the provider
+		/// will transfer the reward NFTs / tokens to the staker and return the stake NFT.
 		#[pallet::weight(
 			T::WeightInfo::claim_token_reward()
 				.max(T::WeightInfo::claim_nft_reward())
 		)]
-		#[pallet::call_index(6)]
+		#[pallet::call_index(7)]
 		pub fn claim(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let claimer = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
-			Self::ensure_claimable(&contract_id, &claimer)?;
-			Self::claim_contract(contract_id, claimer)
+			Self::ensure_contract(Operation::Claim, &contract_id, &claimer)?;
+			Self::process_contract(Operation::Claim, contract_id, claimer)
+		}
+
+		/// Snipe someone's claimable contract.
+		///
+		/// This call allows any user to claim expired, fulfilled contracts. If a staker hasn't
+		/// claimed their rewards within the specified expiration time, another user (sniper) can
+		/// claim them. When this occurs, the stake NFT is returned to the original contract NFT
+		/// holder, but the rewards are transferred to the sniper. This feature encourages the
+		/// timely claiming of contracts and ensures the contract's completion.
+		#[pallet::weight(12_345)]
+		#[pallet::call_index(8)]
+		pub fn snipe(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+			let sniper = ensure_signed(origin)?;
+			Self::ensure_pallet_unlocked()?;
+			Self::ensure_contract(Operation::Snipe, &contract_id, &sniper)?;
+			Self::process_contract(Operation::Snipe, contract_id, sniper)?;
+			Ok(())
 		}
 	}
 
@@ -319,7 +411,14 @@ pub mod pallet {
 			)?;
 			Contracts::<T>::insert(contract_id, contract);
 
-			Self::deposit_event(Event::<T>::Created { creator, contract_id });
+			Self::deposit_event(Event::<T>::Created { contract_id });
+			Ok(())
+		}
+
+		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
+			Self::ensure_contract_ownership(&contract_id, &Self::account_id())?;
+			Contracts::<T>::remove(contract_id);
+			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
 		}
 
@@ -334,7 +433,7 @@ pub mod pallet {
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
 			Self::transfer_items(fee_addresses, &Self::creator()?)?;
 
-			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let contract = Self::contract(&contract_id)?;
 			let current_block_number = frame_system::Pallet::<T>::block_number();
 			let contract_end = current_block_number.saturating_add(contract.duration);
 			ContractEnds::<T>::insert(contract_id, contract_end);
@@ -343,32 +442,56 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::IncorrectData)?;
 			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
 
-			Self::deposit_event(Event::<T>::Accepted { accepted_by: who, contract_id });
+			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
 			Ok(())
 		}
 
-		fn claim_contract(contract_id: T::ItemId, who: T::AccountId) -> DispatchResult {
-			let staked_items =
-				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			Self::transfer_items(&staked_items, &who)?;
-
-			let reward = Self::ensure_contract_ownership(&contract_id, &who)?.reward;
+		fn process_contract(
+			op: Operation,
+			contract_id: T::ItemId,
+			who: T::AccountId,
+		) -> DispatchResult {
+			// Transfer rewards.
+			let creator = Self::creator()?;
+			let beneficiary = match op {
+				Operation::Claim | Operation::Snipe => &who,
+				Operation::Cancel => {
+					let fee = GlobalConfigs::<T>::get().cancel_fee;
+					T::Currency::transfer(&who, &creator, fee, AllowDeath)?;
+					&creator
+				},
+			};
+			let reward = Self::contract(&contract_id)?.reward;
 			match reward {
 				Reward::Tokens(amount) =>
-					T::Currency::transfer(&Self::account_id(), &who, amount, AllowDeath),
+					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),
 				Reward::Nft(NftAddress(collection_id, item_id)) =>
-					T::NftHelper::transfer(&collection_id, &item_id, &who),
+					T::NftHelper::transfer(&collection_id, &item_id, beneficiary),
 			}?;
 
-			let collection_id = Self::contract_collection_id()?;
-			T::NftHelper::burn(&collection_id, &contract_id, Some(&who))?;
+			// Return staked items.
+			let contract_owner = Self::contract_owner(&contract_id)?;
+			Self::transfer_items(&Self::staked_items(&contract_id)?, &contract_owner)?;
 
+			// Burn contract NFT.
+			let collection_id = Self::contract_collection_id()?;
+			T::NftHelper::burn(&collection_id, &contract_id, Some(&contract_owner))?;
+
+			// Clean up storage.
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractEnds::<T>::remove(contract_id);
-			ContractOwners::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 
-			Self::deposit_event(Event::<T>::Claimed { claimed_by: who, contract_id, reward });
+			// Emit events.
+			match op {
+				Operation::Claim =>
+					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, reward }),
+				Operation::Cancel =>
+					Self::deposit_event(Event::<T>::Cancelled { by: who, contract_id }),
+				Operation::Snipe =>
+					Self::deposit_event(Event::<T>::Sniped { by: who, contract_id, reward }),
+			};
+
 			Ok(())
 		}
 
@@ -418,14 +541,22 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> Result<ContractOf<T>, DispatchError> {
-			let collection_id = Self::contract_collection_id()?;
-			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			Self::ensure_item_ownership(&collection_id, contract_id, who)
-				.map_err(|_| Error::<T>::ContractOwnership)?;
+			let owner = Self::contract_owner(contract_id)?;
+			ensure!(who == &owner, Error::<T>::ContractOwnership);
+			let contract = Self::contract(contract_id)?;
 			Ok(contract)
 		}
 
-		fn ensure_contract(contract: &ContractOf<T>) -> DispatchResult {
+		fn ensure_contract_accepted(
+			contract_id: &T::ItemId,
+		) -> Result<ContractOf<T>, DispatchError> {
+			let owner = Self::contract_owner(contract_id)?;
+			ensure!(owner != Self::account_id(), Error::<T>::ContractAvailable);
+			let contract = Self::contract(contract_id)?;
+			Ok(contract)
+		}
+
+		fn ensure_contract_clauses(contract: &ContractOf<T>) -> DispatchResult {
 			ensure!(
 				contract.stake_clauses.len() as u32 <= T::MaxStakingClauses::get(),
 				Error::<T>::MaxStakingClauses
@@ -469,11 +600,24 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn ensure_claimable(contract_id: &T::ItemId, who: &T::AccountId) -> DispatchResult {
-			let _ = Self::ensure_contract_ownership(contract_id, who)?;
+		fn ensure_contract(
+			op: Operation,
+			contract_id: &T::ItemId,
+			who: &T::AccountId,
+		) -> DispatchResult {
+			let Contract { expire_after, .. } = match op {
+				Operation::Claim | Operation::Cancel =>
+					Self::ensure_contract_ownership(contract_id, who),
+				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
+			}?;
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let end = ContractEnds::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			ensure!(current_block >= end, Error::<T>::ContractStillActive);
+			match op {
+				Operation::Claim => ensure!(current_block >= end, Error::<T>::ContractStillActive),
+				Operation::Cancel => ensure!(current_block < end, Error::<T>::ContractClaimable),
+				Operation::Snipe =>
+					ensure!(current_block >= end + expire_after, Error::<T>::ContractClaimable),
+			}
 			Ok(())
 		}
 	}
@@ -488,6 +632,21 @@ pub mod pallet {
 		fn creator() -> Result<T::AccountId, DispatchError> {
 			let creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
 			Ok(creator)
+		}
+		fn contract(contract_id: &T::ItemId) -> Result<ContractOf<T>, DispatchError> {
+			let contract = Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(contract)
+		}
+		fn contract_owner(contract_id: &T::ItemId) -> Result<T::AccountId, DispatchError> {
+			let collection_id = Self::contract_collection_id()?;
+			let owner = T::NftHelper::owner(&collection_id, contract_id)
+				.ok_or(Error::<T>::UnknownContract)?;
+			Ok(owner)
+		}
+		fn staked_items(contract_id: &T::ItemId) -> Result<StakedItemsOf<T>, DispatchError> {
+			let items =
+				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(items)
 		}
 	}
 }
