@@ -263,7 +263,7 @@ pub struct ExtBuilder {
 	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	create_contract_collection: bool,
-	contract: Option<(MockItemId, ContractOf<Test>)>,
+	contract: Option<(MockItemId, ContractOf<Test>, bool)>,
 	stakes: Vec<(MockAccountId, MockMints)>,
 	fees: Vec<(MockAccountId, MockMints)>,
 	accept_contract: Option<(MockItemId, MockAccountId)>,
@@ -283,7 +283,15 @@ impl ExtBuilder {
 		self
 	}
 	pub fn create_contract(mut self, contract_id: MockItemId, contract: ContractOf<Test>) -> Self {
-		self.contract = Some((contract_id, contract));
+		self.contract = Some((contract_id, contract, false));
+		self
+	}
+	pub fn create_contract_with_funds(
+		mut self,
+		contract_id: MockItemId,
+		contract: ContractOf<Test>,
+	) -> Self {
+		self.contract = Some((contract_id, contract, true));
 		self
 	}
 	pub fn mint_stakes(mut self, stakes: Vec<(MockAccountId, MockMints)>) -> Self {
@@ -330,20 +338,23 @@ impl ExtBuilder {
 			}
 
 			// Fund / mint into creator enough to create contracts.
-			if let Some((contract_id, contract)) = self.contract {
+			if let Some((contract_id, contract, should_fund)) = self.contract {
 				let creator = Creator::<Test>::get().unwrap();
 				match &contract.reward {
-					Reward::Tokens(amount) => {
-						let _ = CurrencyOf::<Test>::deposit_creating(
-							&creator,
-							ItemDeposit::get() + amount,
-						);
-					},
+					Reward::Tokens(amount) =>
+						if should_fund {
+							let _ = CurrencyOf::<Test>::deposit_creating(
+								&creator,
+								ItemDeposit::get() + amount,
+							);
+						},
 					Reward::Nft(NftAddress(collection_id, item_id)) => {
 						let _ = mint_item(&creator, collection_id, item_id);
 					},
 				}
-				let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
+				if should_fund {
+					let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
+				}
 				NftStake::create_contract(creator, contract_id, contract).unwrap();
 			}
 

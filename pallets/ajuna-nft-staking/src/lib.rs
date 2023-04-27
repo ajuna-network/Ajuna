@@ -452,20 +452,21 @@ pub mod pallet {
 			who: T::AccountId,
 		) -> DispatchResult {
 			// Transfer rewards.
-			let reward = Self::contract(&contract_id)?.reward;
-			match op {
-				Operation::Claim | Operation::Snipe => match reward {
-					Reward::Tokens(amount) =>
-						T::Currency::transfer(&Self::account_id(), &who, amount, AllowDeath),
-					Reward::Nft(NftAddress(collection_id, item_id)) =>
-						T::NftHelper::transfer(&collection_id, &item_id, &who),
+			let creator = Self::creator()?;
+			let beneficiary = match op {
+				Operation::Claim | Operation::Snipe => &who,
+				Operation::Cancel => {
+					let fee = GlobalConfigs::<T>::get().cancel_fee;
+					T::Currency::transfer(&who, &creator, fee, AllowDeath)?;
+					&creator
 				},
-				Operation::Cancel => T::Currency::transfer(
-					&who,
-					&Self::account_id(),
-					GlobalConfigs::<T>::get().cancel_fee,
-					AllowDeath,
-				),
+			};
+			let reward = Self::contract(&contract_id)?.reward;
+			match reward {
+				Reward::Tokens(amount) =>
+					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),
+				Reward::Nft(NftAddress(collection_id, item_id)) =>
+					T::NftHelper::transfer(&collection_id, &item_id, beneficiary),
 			}?;
 
 			// Return staked items.

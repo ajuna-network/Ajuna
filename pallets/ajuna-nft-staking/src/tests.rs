@@ -304,7 +304,7 @@ mod remove {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract.clone())
+			.create_contract_with_funds(contract_id, contract.clone())
 			.build()
 			.execute_with(|| {
 				assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
@@ -324,7 +324,7 @@ mod remove {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.build()
 			.execute_with(|| {
 				assert_noop!(
@@ -342,7 +342,7 @@ mod remove {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
@@ -383,7 +383,7 @@ mod accept {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.mint_stakes(vec![(BOB, stakes)])
 			.mint_fees(vec![(BOB, fees)])
 			.build()
@@ -558,7 +558,7 @@ mod accept {
 		ExtBuilder::default()
 			.set_creator(BOB)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.mint_stakes(vec![(ALICE, alice_stakes), (BOB, bob_stakes), (CHARLIE, charlie_stakes)])
 			.mint_fees(vec![(ALICE, alice_fees), (BOB, bob_fees), (CHARLIE, charlie_fees)])
 			.build()
@@ -615,7 +615,7 @@ mod accept {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.mint_stakes(vec![(BOB, stakes)])
 			.mint_fees(vec![(BOB, fees)])
 			.build()
@@ -676,7 +676,7 @@ mod accept {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.mint_stakes(vec![(BOB, stakes)])
 			.build()
 			.execute_with(|| {
@@ -711,7 +711,7 @@ mod accept {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.mint_fees(vec![(BOB, fees)])
 			.build()
 			.execute_with(|| {
@@ -732,16 +732,16 @@ mod cancel {
 	use super::*;
 
 	#[test]
-	fn works() {
+	fn works_with_token_reward() {
 		let stake_clauses = vec![
 			Clause::HasAttribute(RESERVED_COLLECTION_0, 1),
 			Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, 4),
 		];
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
 		let duration = 4;
-		let reward_amount = 135;
+		let reward = 135;
 		let contract = Contract::default()
-			.reward(Reward::Tokens(reward_amount))
+			.reward(Reward::Tokens(reward))
 			.duration(duration)
 			.stake_clauses(stake_clauses.clone())
 			.fee_clauses(fee_clauses.clone());
@@ -754,29 +754,107 @@ mod cancel {
 		let fee_addresses =
 			fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
-		let initial_balance = 333;
+		let initial_balance_alice = 222;
+		let initial_balance_bob = 333;
 
 		ExtBuilder::default()
 			.set_creator(ALICE)
-			.balances(vec![(BOB, initial_balance)])
+			.balances(vec![(ALICE, initial_balance_alice), (BOB, initial_balance_bob)])
 			.create_contract_collection()
 			.create_contract(contract_id, contract)
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
-				let cancellation_fee = 333;
+				// Initial balances.
+				assert_eq!(
+					Balances::free_balance(ALICE),
+					initial_balance_alice - reward - ItemDeposit::get()
+				);
+				assert_eq!(NftStake::account_balance(), reward);
+
+				// Set cancellation fee.
+				let cancellation_fee = 111;
 				GlobalConfigs::<Test>::mutate(|config| config.cancel_fee = cancellation_fee);
 
 				assert_ok!(NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id));
-
 				for NftAddress(collection_id, item_id) in stake_addresses {
 					assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				}
 				for NftAddress(collection_id, item_id) in fee_addresses {
 					assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 				}
-				assert_eq!(Balances::free_balance(BOB), initial_balance - cancellation_fee);
-				assert_eq!(NftStake::account_balance(), reward_amount + cancellation_fee);
+				assert_eq!(Balances::free_balance(BOB), initial_balance_bob - cancellation_fee);
+				assert_eq!(NftStake::account_balance(), 0);
+				assert_eq!(Balances::free_balance(ALICE), initial_balance_alice + cancellation_fee);
+
+				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+				assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
+				assert_eq!(ContractEnds::<Test>::get(contract_id), None);
+				assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
+
+				System::assert_last_event(mock::RuntimeEvent::NftStake(crate::Event::Cancelled {
+					by: BOB,
+					contract_id,
+				}));
+			});
+	}
+
+	#[test]
+	fn works_with_nft_reward() {
+		let stake_clauses = vec![
+			Clause::HasAttribute(RESERVED_COLLECTION_0, 1),
+			Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, 4),
+		];
+		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
+		let duration = 4;
+		let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
+		let contract = Contract::default()
+			.reward(Reward::Nft(reward_addr.clone()))
+			.duration(duration)
+			.stake_clauses(stake_clauses.clone())
+			.fee_clauses(fee_clauses.clone());
+		let contract_id = H256::random();
+
+		let stakes = MockMints::from(MockClauses(stake_clauses));
+		let stake_addresses =
+			stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
+		let fees = MockMints::from(MockClauses(fee_clauses));
+		let fee_addresses =
+			fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
+
+		let initial_balance_alice = 222;
+		let initial_balance_bob = 333;
+
+		ExtBuilder::default()
+			.set_creator(ALICE)
+			.balances(vec![(ALICE, initial_balance_alice), (BOB, initial_balance_bob)])
+			.create_contract_collection()
+			.create_contract(contract_id, contract)
+			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
+			.build()
+			.execute_with(|| {
+				// Initial balances.
+				assert_eq!(
+					Balances::free_balance(ALICE),
+					initial_balance_alice - ItemDeposit::get()
+				);
+				assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(NftStake::account_id()));
+
+				// Set cancellation fee.
+				let cancellation_fee = 111;
+				GlobalConfigs::<Test>::mutate(|config| config.cancel_fee = cancellation_fee);
+
+				assert_ok!(NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id));
+				for NftAddress(collection_id, item_id) in stake_addresses {
+					assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
+				}
+				for NftAddress(collection_id, item_id) in fee_addresses {
+					assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
+				}
+				assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(ALICE));
+				assert_eq!(Balances::free_balance(BOB), initial_balance_bob - cancellation_fee);
+				assert_eq!(NftStake::account_balance(), 0);
+				assert_eq!(Balances::free_balance(ALICE), initial_balance_alice + cancellation_fee);
 
 				let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 				assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
@@ -818,7 +896,7 @@ mod cancel {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.build()
 			.execute_with(|| {
 				assert_noop!(
@@ -845,7 +923,7 @@ mod cancel {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
@@ -892,7 +970,7 @@ mod claim {
 			.set_creator(ALICE)
 			.balances(vec![(BOB, initial_balance)])
 			.create_contract_collection()
-			.create_contract(contract_id, contract.clone())
+			.create_contract_with_funds(contract_id, contract.clone())
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
@@ -948,7 +1026,7 @@ mod claim {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract.clone())
+			.create_contract_with_funds(contract_id, contract.clone())
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
@@ -1004,7 +1082,7 @@ mod claim {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, Contract::default())
+			.create_contract_with_funds(contract_id, Contract::default())
 			.build()
 			.execute_with(|| {
 				assert_noop!(
@@ -1031,7 +1109,7 @@ mod claim {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
@@ -1081,7 +1159,7 @@ mod snipe {
 			.set_creator(ALICE)
 			.balances(vec![(BOB, initial_balance_bob), (CHARLIE, initial_balance_charlie)])
 			.create_contract_collection()
-			.create_contract(contract_id, contract.clone())
+			.create_contract_with_funds(contract_id, contract.clone())
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
@@ -1139,7 +1217,7 @@ mod snipe {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract.clone())
+			.create_contract_with_funds(contract_id, contract.clone())
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
@@ -1195,7 +1273,7 @@ mod snipe {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, Contract::default())
+			.create_contract_with_funds(contract_id, Contract::default())
 			.build()
 			.execute_with(|| {
 				assert_noop!(
@@ -1223,7 +1301,7 @@ mod snipe {
 		ExtBuilder::default()
 			.set_creator(ALICE)
 			.create_contract_collection()
-			.create_contract(contract_id, contract)
+			.create_contract_with_funds(contract_id, contract)
 			.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 			.build()
 			.execute_with(|| {
