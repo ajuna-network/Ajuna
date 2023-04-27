@@ -142,9 +142,6 @@ pub mod pallet {
 	pub type Contracts<T: Config> = StorageMap<_, Identity, T::ItemId, ContractOf<T>>;
 
 	#[pallet::storage]
-	pub type ContractOwners<T: Config> = StorageMap<_, Identity, T::ItemId, T::AccountId>;
-
-	#[pallet::storage]
 	pub type ContractEnds<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
 
 	#[pallet::storage]
@@ -200,6 +197,8 @@ pub mod pallet {
 		ContractStillActive,
 		/// The contract is claimable, so it cannot be cancelled or sniped.
 		ContractClaimable,
+		/// The contract is available, or not yet accepted.
+		ContractAvailable,
 		/// The given data cannot be bounded.
 		IncorrectData,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
@@ -315,6 +314,21 @@ pub mod pallet {
 			Self::accept_contract(contract_id, staker, &stakes, &fees)
 		}
 
+		/// Cancel an active staking contract.
+		///
+		/// This call allows the staker, holding a contract NFT, to terminate a staking contract
+		/// prematurely. Doing so will return the stake NFT, but an additional cancellation fee will
+		/// be charged. The staker will not receive any rewards associated with the canceled
+		/// contract.
+		#[pallet::weight(12_345)]
+		#[pallet::call_index(6)]
+		pub fn cancel(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+			let staker = ensure_signed(origin)?;
+			Self::ensure_pallet_unlocked()?;
+			Self::ensure_contract(Operation::Cancel, &contract_id, &staker)?;
+			Self::process_contract(Operation::Cancel, contract_id, staker)
+		}
+
 		/// Claim a fulfilled staking contract.
 		///
 		/// The staker, who holds a contract NFT, can call this function to claim the rewards
@@ -324,27 +338,12 @@ pub mod pallet {
 			T::WeightInfo::claim_token_reward()
 				.max(T::WeightInfo::claim_nft_reward())
 		)]
-		#[pallet::call_index(6)]
+		#[pallet::call_index(7)]
 		pub fn claim(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let claimer = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_contract(Operation::Claim, &contract_id, &claimer)?;
 			Self::process_contract(Operation::Claim, contract_id, claimer)
-		}
-
-		/// Cancel an active staking contract.
-		///
-		/// This call allows the staker, holding a contract NFT, to terminate a staking contract
-		/// prematurely. Doing so will return the stake NFT, but an additional cancellation fee will
-		/// be charged. The staker will not receive any rewards associated with the canceled
-		/// contract.
-		#[pallet::weight(12_345)]
-		#[pallet::call_index(7)]
-		pub fn cancel(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
-			let staker = ensure_signed(origin)?;
-			Self::ensure_pallet_unlocked()?;
-			Self::ensure_contract(Operation::Cancel, &contract_id, &staker)?;
-			Self::process_contract(Operation::Cancel, contract_id, staker)
 		}
 
 		/// Snipe someone's claimable contract.
@@ -452,15 +451,8 @@ pub mod pallet {
 			contract_id: T::ItemId,
 			who: T::AccountId,
 		) -> DispatchResult {
-			let staked_items =
-				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
-			match op {
-				Operation::Claim | Operation::Cancel => Self::transfer_items(&staked_items, &who),
-				Operation::Snipe =>
-					Self::transfer_items(&staked_items, &Self::contract_owner(&contract_id)?),
-			}?;
-
-			let reward = Self::ensure_contract_ownership(&contract_id, &who)?.reward;
+			// Transfer rewards.
+			let reward = Self::contract(&contract_id)?.reward;
 			match op {
 				Operation::Claim | Operation::Snipe => match reward {
 					Reward::Tokens(amount) =>
@@ -476,13 +468,20 @@ pub mod pallet {
 				),
 			}?;
 
-			let collection_id = Self::contract_collection_id()?;
-			T::NftHelper::burn(&collection_id, &contract_id, Some(&who))?;
+			// Return staked items.
+			let contract_owner = Self::contract_owner(&contract_id)?;
+			Self::transfer_items(&Self::staked_items(&contract_id)?, &contract_owner)?;
 
+			// Burn contract NFT.
+			let collection_id = Self::contract_collection_id()?;
+			T::NftHelper::burn(&collection_id, &contract_id, Some(&contract_owner))?;
+
+			// Clean up storage.
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractEnds::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 
+			// Emit events.
 			match op {
 				Operation::Claim =>
 					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, reward }),
@@ -541,21 +540,18 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> Result<ContractOf<T>, DispatchError> {
-			let collection_id = Self::contract_collection_id()?;
+			let owner = Self::contract_owner(contract_id)?;
+			ensure!(who == &owner, Error::<T>::ContractOwnership);
 			let contract = Self::contract(contract_id)?;
-			Self::ensure_item_ownership(&collection_id, contract_id, who)
-				.map_err(|_| Error::<T>::ContractOwnership)?;
 			Ok(contract)
 		}
 
 		fn ensure_contract_accepted(
 			contract_id: &T::ItemId,
 		) -> Result<ContractOf<T>, DispatchError> {
-			let collection_id = Self::contract_collection_id()?;
+			let owner = Self::contract_owner(contract_id)?;
+			ensure!(owner != Self::account_id(), Error::<T>::ContractAvailable);
 			let contract = Self::contract(contract_id)?;
-			let owner =
-				T::NftHelper::owner(&collection_id, contract_id).ok_or(Error::<T>::UnknownItem)?;
-			ensure!(owner != Self::account_id(), Error::<T>::ContractOwnership);
 			Ok(contract)
 		}
 
@@ -641,8 +637,15 @@ pub mod pallet {
 			Ok(contract)
 		}
 		fn contract_owner(contract_id: &T::ItemId) -> Result<T::AccountId, DispatchError> {
-			let owner = ContractOwners::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let collection_id = Self::contract_collection_id()?;
+			let owner = T::NftHelper::owner(&collection_id, contract_id)
+				.ok_or(Error::<T>::UnknownContract)?;
 			Ok(owner)
+		}
+		fn staked_items(contract_id: &T::ItemId) -> Result<StakedItemsOf<T>, DispatchError> {
+			let items =
+				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(items)
 		}
 	}
 }

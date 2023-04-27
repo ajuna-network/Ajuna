@@ -224,6 +224,10 @@ impl ContractOf<Test> {
 		self.duration = duration;
 		self
 	}
+	pub fn expire_after(mut self, expire_after: MockBlockNumber) -> Self {
+		self.expire_after = expire_after;
+		self
+	}
 	pub fn stake_clauses(mut self, clauses: Vec<MockClause>) -> Self {
 		self.stake_clauses = clauses.try_into().unwrap();
 		self
