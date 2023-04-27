@@ -71,9 +71,8 @@ pub mod pallet {
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
 	)]
-	pub struct GlobalConfig<Balance> {
+	pub struct GlobalConfig {
 		pub pallet_locked: bool,
-		pub cancel_fee: Balance,
 	}
 
 	enum Operation {
@@ -133,7 +132,7 @@ pub mod pallet {
 	pub type Creator<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig<BalanceOf<T>>, ValueQuery>;
+	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig, ValueQuery>;
 
 	#[pallet::storage]
 	pub type ContractCollectionId<T: Config> = StorageValue<_, T::CollectionId>;
@@ -155,7 +154,7 @@ pub mod pallet {
 		/// The collection holding the staking contracts has been set.
 		ContractCollectionSet { collection_id: T::CollectionId },
 		/// The pallet's global config has been set.
-		SetGlobalConfig { new_config: GlobalConfig<BalanceOf<T>> },
+		SetGlobalConfig { new_config: GlobalConfig },
 		/// A new staking contract has been created.
 		Created { contract_id: T::ItemId },
 		/// A new staking contract has been removed.
@@ -248,10 +247,7 @@ pub mod pallet {
 		/// account.
 		#[pallet::weight(T::WeightInfo::set_global_config())]
 		#[pallet::call_index(2)]
-		pub fn set_global_config(
-			origin: OriginFor<T>,
-			new_config: GlobalConfig<BalanceOf<T>>,
-		) -> DispatchResult {
+		pub fn set_global_config(origin: OriginFor<T>, new_config: GlobalConfig) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
 			GlobalConfigs::<T>::put(new_config);
 			Self::deposit_event(Event::SetGlobalConfig { new_config });
@@ -453,15 +449,14 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Transfer rewards.
 			let creator = Self::creator()?;
+			let Contract { cancel_fee, reward, .. } = Self::contract(&contract_id)?;
 			let beneficiary = match op {
 				Operation::Claim | Operation::Snipe => &who,
 				Operation::Cancel => {
-					let fee = GlobalConfigs::<T>::get().cancel_fee;
-					T::Currency::transfer(&who, &creator, fee, AllowDeath)?;
+					T::Currency::transfer(&who, &creator, cancel_fee, AllowDeath)?;
 					&creator
 				},
 			};
-			let reward = Self::contract(&contract_id)?.reward;
 			match reward {
 				Reward::Tokens(amount) =>
 					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),

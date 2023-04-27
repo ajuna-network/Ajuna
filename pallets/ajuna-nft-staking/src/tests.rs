@@ -91,7 +91,7 @@ mod set_global_config {
 	#[test]
 	fn works() {
 		ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
-			let new_config = GlobalConfig { pallet_locked: true, cancel_fee: 123 };
+			let new_config = GlobalConfig { pallet_locked: true };
 			assert_ok!(NftStake::set_global_config(RuntimeOrigin::signed(ALICE), new_config));
 			assert_eq!(GlobalConfigs::<Test>::get(), new_config);
 			System::assert_last_event(mock::RuntimeEvent::NftStake(
@@ -740,11 +740,13 @@ mod cancel {
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
 		let duration = 4;
 		let reward = 135;
+		let cancellation_fee = 111;
 		let contract = Contract::default()
 			.reward(Reward::Tokens(reward))
 			.duration(duration)
 			.stake_clauses(stake_clauses.clone())
-			.fee_clauses(fee_clauses.clone());
+			.fee_clauses(fee_clauses.clone())
+			.cancel_fee(cancellation_fee);
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -772,10 +774,7 @@ mod cancel {
 				);
 				assert_eq!(NftStake::account_balance(), reward);
 
-				// Set cancellation fee.
-				let cancellation_fee = 111;
-				GlobalConfigs::<Test>::mutate(|config| config.cancel_fee = cancellation_fee);
-
+				// Cancel and check.
 				assert_ok!(NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id));
 				for NftAddress(collection_id, item_id) in stake_addresses {
 					assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
@@ -808,11 +807,13 @@ mod cancel {
 		let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
 		let duration = 4;
 		let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
+		let cancellation_fee = 111;
 		let contract = Contract::default()
 			.reward(Reward::Nft(reward_addr.clone()))
 			.duration(duration)
 			.stake_clauses(stake_clauses.clone())
-			.fee_clauses(fee_clauses.clone());
+			.fee_clauses(fee_clauses.clone())
+			.cancel_fee(cancellation_fee);
 		let contract_id = H256::random();
 
 		let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -840,10 +841,7 @@ mod cancel {
 				);
 				assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(NftStake::account_id()));
 
-				// Set cancellation fee.
-				let cancellation_fee = 111;
-				GlobalConfigs::<Test>::mutate(|config| config.cancel_fee = cancellation_fee);
-
+				// Cancel and check.
 				assert_ok!(NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id));
 				for NftAddress(collection_id, item_id) in stake_addresses {
 					assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));

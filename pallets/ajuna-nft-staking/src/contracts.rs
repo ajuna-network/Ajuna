@@ -83,6 +83,7 @@ pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, At
 	pub expire_after: BlockNumber,
 	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
 	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
+	pub cancel_fee: Balance,
 }
 
 impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>

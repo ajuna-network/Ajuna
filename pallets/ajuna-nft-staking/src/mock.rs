@@ -212,6 +212,7 @@ impl Default for ContractOf<Test> {
 			expire_after: Default::default(),
 			stake_clauses: Default::default(),
 			fee_clauses: Default::default(),
+			cancel_fee: Default::default(),
 		}
 	}
 }
@@ -234,6 +235,10 @@ impl ContractOf<Test> {
 	}
 	pub fn fee_clauses(mut self, clauses: Vec<MockClause>) -> Self {
 		self.fee_clauses = clauses.try_into().unwrap();
+		self
+	}
+	pub fn cancel_fee(mut self, cancel_fee: MockBalance) -> Self {
+		self.cancel_fee = cancel_fee;
 		self
 	}
 }
