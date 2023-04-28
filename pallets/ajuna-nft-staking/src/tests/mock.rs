@@ -207,6 +207,7 @@ impl Default for RewardOf<Test> {
 impl Default for ContractOf<Test> {
 	fn default() -> Self {
 		Contract {
+			activation: Default::default(),
 			claim_duration: Default::default(),
 			stake_duration: Default::default(),
 			stake_clauses: Default::default(),
@@ -217,6 +218,10 @@ impl Default for ContractOf<Test> {
 	}
 }
 impl ContractOf<Test> {
+	pub fn activation(mut self, activation: MockBlockNumber) -> Self {
+		self.activation = Some(activation);
+		self
+	}
 	pub fn claim_duration(mut self, claim_duration: MockBlockNumber) -> Self {
 		self.claim_duration = claim_duration;
 		self

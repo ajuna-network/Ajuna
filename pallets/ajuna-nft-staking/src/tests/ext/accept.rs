@@ -228,16 +228,10 @@ fn rejects_when_contract_is_already_accepted() {
 				alice_fee_addresses.clone()
 			));
 
-			for (staker, stake_addr, fee_addr, err) in [
-				// alice has already staked
-				(ALICE, alice_stake_addresses, alice_fee_addresses, Error::<Test>::Ownership),
-				(BOB, bob_stake_addresses, bob_fee_addresses, Error::<Test>::ContractOwnership),
-				(
-					CHARLIE,
-					charlie_stake_addresses,
-					charlie_fee_addresses,
-					Error::<Test>::ContractOwnership,
-				),
+			for (staker, stake_addr, fee_addr) in [
+				(ALICE, alice_stake_addresses, alice_fee_addresses),
+				(BOB, bob_stake_addresses, bob_fee_addresses),
+				(CHARLIE, charlie_stake_addresses, charlie_fee_addresses),
 			] {
 				assert_noop!(
 					NftStake::accept(
@@ -246,7 +240,7 @@ fn rejects_when_contract_is_already_accepted() {
 						stake_addr,
 						fee_addr
 					),
-					err
+					Error::<Test>::ContractOwnership
 				);
 			}
 		});
@@ -380,5 +374,66 @@ fn rejects_unfulfilling_fees() {
 				),
 				Error::<Test>::UnfulfilledFeeClause
 			);
+		});
+}
+
+#[test]
+fn rejects_unknown_activation() {
+	let contract_id = H256::random();
+
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.create_contract_with_funds(contract_id, Contract::default())
+		.build()
+		.execute_with(|| {
+			// NOTE: technically all contracts should have activation set via `create`
+			Contracts::<Test>::mutate(contract_id, |contract| {
+				contract.as_mut().unwrap().activation = None
+			});
+
+			assert_noop!(
+				NftStake::accept(
+					RuntimeOrigin::signed(BOB),
+					contract_id,
+					Default::default(),
+					Default::default()
+				),
+				Error::<Test>::UnknownActivation
+			);
+		});
+}
+
+#[test]
+fn rejects_inactive_contracts() {
+	let activation_block = 3;
+	let contract = Contract::default().activation(activation_block);
+	let contract_id = H256::random();
+
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.create_contract_with_funds(contract_id, contract)
+		.build()
+		.execute_with(|| {
+			for i in 0..activation_block {
+				run_to_block(i);
+				assert_noop!(
+					NftStake::accept(
+						RuntimeOrigin::signed(BOB),
+						contract_id,
+						Default::default(),
+						Default::default()
+					),
+					Error::<Test>::InactiveContract
+				);
+			}
+			run_to_block(activation_block + 1);
+			assert_ok!(NftStake::accept(
+				RuntimeOrigin::signed(BOB),
+				contract_id,
+				Default::default(),
+				Default::default()
+			));
 		});
 }

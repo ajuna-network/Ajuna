@@ -24,12 +24,12 @@ fn works() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract.clone())
+		.create_contract_with_funds(contract_id, contract)
 		.build()
 		.execute_with(|| {
-			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
+			assert!(Contracts::<Test>::get(contract_id).is_some());
 			assert_ok!(NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id));
-			assert_eq!(Contracts::<Test>::get(contract_id), None);
+			assert!(Contracts::<Test>::get(contract_id).is_none());
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Removed {
 				contract_id,
 			}));

@@ -26,7 +26,7 @@ fn works_with_token_reward() {
 		.build()
 		.execute_with(|| {
 			let reward_amount = 1_000;
-			let contract = Contract::default().reward(Reward::Tokens(reward_amount));
+			let mut contract = Contract::default().reward(Reward::Tokens(reward_amount));
 			let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
 
 			let contract_id = H256::random();
@@ -37,6 +37,7 @@ fn works_with_token_reward() {
 				contract_id,
 				contract.clone()
 			));
+			contract.activation = Some(System::block_number());
 			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
 			assert_eq!(
 				Nft::owner(contract_collection_id, contract_id),
@@ -64,7 +65,7 @@ fn works_with_nft_reward() {
 		.execute_with(|| {
 			let collection_id = create_collection(ALICE);
 			let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
-			let contract = Contract::default().reward(Reward::Nft(nft_addr.clone()));
+			let mut contract = Contract::default().reward(Reward::Nft(nft_addr.clone()));
 
 			let contract_id = H256::random();
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
@@ -74,6 +75,7 @@ fn works_with_nft_reward() {
 				contract_id,
 				contract.clone()
 			));
+			contract.activation = Some(System::block_number());
 			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract));
 			assert_eq!(Nft::owner(collection_id, nft_addr.1), Some(NftStake::account_id()));
 			assert_eq!(
@@ -188,4 +190,26 @@ fn rejects_when_contract_collection_id_is_not_set() {
 			Error::<Test>::UnknownContractCollection
 		);
 	});
+}
+
+#[test]
+fn rejects_incorrect_activation() {
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.balances(vec![(ALICE, ItemDeposit::get())])
+		.build()
+		.execute_with(|| {
+			let (now, activation) = (5, 2);
+			assert!(activation < now);
+			run_to_block(now);
+			assert_noop!(
+				NftStake::create(
+					RuntimeOrigin::signed(ALICE),
+					H256::random(),
+					Contract::default().activation(activation)
+				),
+				Error::<Test>::IncorrectActivation
+			);
+		});
 }

@@ -179,18 +179,22 @@ pub mod pallet {
 		UnknownItem,
 		/// The given contract doesn't exist.
 		UnknownContract,
+		/// The given contract's activation is unknown.
+		UnknownActivation,
 		/// The given collection or item belongs to someone else.
 		Ownership,
 		/// The given contract belongs to someone else.
 		ContractOwnership,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
+		/// The given contract's activation block number is set in the past.
+		IncorrectActivation,
 		/// The given contract's fee clause is unfulfilled.
 		UnfulfilledFeeClause,
 		/// The given contract's staking clause is unfulfilled.
 		UnfulfilledStakingClause,
-		/// The contract is still active, so it cannot be redeemed.
-		ContractStillActive,
+		/// The contract is inactive hence cannot be accepted.
+		InactiveContract,
 		/// The contract is claimable, so it cannot be cancelled or sniped.
 		ContractClaimable,
 		/// The contract is available, or not yet accepted.
@@ -371,7 +375,7 @@ pub mod pallet {
 		pub(crate) fn create_contract(
 			creator: T::AccountId,
 			contract_id: T::ItemId,
-			contract: ContractOf<T>,
+			mut contract: ContractOf<T>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
@@ -402,6 +406,16 @@ pub mod pallet {
 				&T::ItemConfig::default(),
 				true,
 			)?;
+
+			// Check and set activation block number.
+			let now = frame_system::Pallet::<T>::block_number();
+			contract.activation = match contract.activation {
+				Some(block_number) => {
+					ensure!(block_number > now, Error::<T>::IncorrectActivation);
+					Some(block_number)
+				},
+				None => Some(now),
+			};
 			Contracts::<T>::insert(contract_id, contract);
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
@@ -577,11 +591,15 @@ pub mod pallet {
 				Error::<T>::MaxFeeClauses
 			);
 
+			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
+			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now >= activation, Error::<T>::InactiveContract);
+
 			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
 			})?;
 
-			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
 			ensure!(
 				contract.evaluate_stakes::<T::AccountId, T::NftHelper>(stake_addresses),
 				Error::<T>::UnfulfilledStakingClause
