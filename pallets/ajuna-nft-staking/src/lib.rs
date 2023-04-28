@@ -36,7 +36,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Zero};
 use sp_std::prelude::*;
 
 pub use contracts::*;
@@ -189,12 +189,14 @@ pub mod pallet {
 		PalletLocked,
 		/// The given contract's activation block number is set in the past.
 		IncorrectActivation,
+		/// The given contract's active duration is zero.
+		IncorrectActiveDuration,
 		/// The given contract's fee clause is unfulfilled.
 		UnfulfilledFeeClause,
 		/// The given contract's staking clause is unfulfilled.
 		UnfulfilledStakingClause,
 		/// The contract is inactive hence cannot be accepted.
-		InactiveContract,
+		Inactive,
 		/// The contract is claimable, so it cannot be cancelled or sniped.
 		ContractClaimable,
 		/// The contract is available, or not yet accepted.
@@ -416,6 +418,7 @@ pub mod pallet {
 				},
 				None => Some(now),
 			};
+			ensure!(contract.active_duration > Zero::zero(), Error::<T>::IncorrectActiveDuration);
 			Contracts::<T>::insert(contract_id, contract);
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
@@ -593,8 +596,9 @@ pub mod pallet {
 
 			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
 			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
+			let active_duration = contract.active_duration;
 			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(now >= activation, Error::<T>::InactiveContract);
+			ensure!(now >= activation && now <= activation + active_duration, Error::<T>::Inactive);
 
 			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)

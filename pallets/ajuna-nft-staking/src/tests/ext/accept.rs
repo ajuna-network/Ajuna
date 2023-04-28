@@ -406,8 +406,9 @@ fn rejects_unknown_activation() {
 
 #[test]
 fn rejects_inactive_contracts() {
-	let activation_block = 3;
-	let contract = Contract::default().activation(activation_block);
+	let activation = 3;
+	let active_duration = 2;
+	let contract = Contract::default().activation(activation).active_duration(active_duration);
 	let contract_id = H256::random();
 
 	ExtBuilder::default()
@@ -416,7 +417,8 @@ fn rejects_inactive_contracts() {
 		.create_contract_with_funds(contract_id, contract)
 		.build()
 		.execute_with(|| {
-			for i in 0..activation_block {
+			// Before activation.
+			for i in 0..activation {
 				run_to_block(i);
 				assert_noop!(
 					NftStake::accept(
@@ -425,10 +427,27 @@ fn rejects_inactive_contracts() {
 						Default::default(),
 						Default::default()
 					),
-					Error::<Test>::InactiveContract
+					Error::<Test>::Inactive
 				);
 			}
-			run_to_block(activation_block + 1);
+
+			// After active duration.
+			let end_of_active = activation + active_duration;
+			for i in (end_of_active + 1)..(end_of_active + 3) {
+				run_to_block(i);
+				assert_noop!(
+					NftStake::accept(
+						RuntimeOrigin::signed(BOB),
+						contract_id,
+						Default::default(),
+						Default::default()
+					),
+					Error::<Test>::Inactive
+				);
+			}
+
+			// Regression for happy case.
+			System::set_block_number(activation + 1);
 			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(BOB),
 				contract_id,

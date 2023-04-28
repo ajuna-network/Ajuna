@@ -81,6 +81,9 @@ pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, At
 	/// The block number at which the given contract becomes active for a staker to accept. If it
 	/// is not set, the contract activates immediately upon creation.
 	pub activation: Option<BlockNumber>,
+	/// The duration for which the given contract is active. When the block number advances beyond
+	/// this, the contract becomes unavailable to be accepted and can be removed by its creator.
+	pub active_duration: BlockNumber,
 	/// The duration for which the given contract must be claimed. When the block number advances
 	/// beyond it, the contract becomes available to be claimed by other stakers via snipe.
 	pub claim_duration: BlockNumber,
