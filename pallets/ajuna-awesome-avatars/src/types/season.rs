@@ -82,6 +82,10 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 		current_period.unique_saturated_into()
 	}
 
+	pub(crate) fn max_tier(&self) -> RarityTier {
+		*self.tiers.iter().max().unwrap_or(&RarityTier::Common)
+	}
+
 	fn full_cycle(&self) -> BlockNumber {
 		self.per_period.saturating_mul(self.periods.unique_saturated_into())
 	}

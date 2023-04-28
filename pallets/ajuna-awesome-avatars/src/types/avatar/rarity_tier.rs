@@ -19,7 +19,17 @@ use codec::alloc::string::ToString;
 use sp_std::{fmt, prelude::*};
 
 #[derive(
-	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
+	Encode,
+	Decode,
+	MaxEncodedLen,
+	RuntimeDebug,
+	TypeInfo,
+	Copy,
+	Clone,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
 )]
 pub enum RarityTier {
 	Common = 0,
