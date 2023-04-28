@@ -207,25 +207,32 @@ impl Default for RewardOf<Test> {
 impl Default for ContractOf<Test> {
 	fn default() -> Self {
 		Contract {
-			reward: Default::default(),
-			duration: Default::default(),
-			expire_after: Default::default(),
+			activation: Default::default(),
+			active_duration: 1,
+			claim_duration: 1,
+			stake_duration: Default::default(),
 			stake_clauses: Default::default(),
 			fee_clauses: Default::default(),
+			reward: Default::default(),
+			cancel_fee: Default::default(),
 		}
 	}
 }
 impl ContractOf<Test> {
-	pub fn reward(mut self, reward: RewardOf<Test>) -> Self {
-		self.reward = reward;
+	pub fn activation(mut self, activation: MockBlockNumber) -> Self {
+		self.activation = Some(activation);
 		self
 	}
-	pub fn duration(mut self, duration: MockBlockNumber) -> Self {
-		self.duration = duration;
+	pub fn active_duration(mut self, active_duration: MockBlockNumber) -> Self {
+		self.active_duration = active_duration;
 		self
 	}
-	pub fn expire_after(mut self, expire_after: MockBlockNumber) -> Self {
-		self.expire_after = expire_after;
+	pub fn claim_duration(mut self, claim_duration: MockBlockNumber) -> Self {
+		self.claim_duration = claim_duration;
+		self
+	}
+	pub fn stake_duration(mut self, stake_duration: MockBlockNumber) -> Self {
+		self.stake_duration = stake_duration;
 		self
 	}
 	pub fn stake_clauses(mut self, clauses: Vec<MockClause>) -> Self {
@@ -234,6 +241,14 @@ impl ContractOf<Test> {
 	}
 	pub fn fee_clauses(mut self, clauses: Vec<MockClause>) -> Self {
 		self.fee_clauses = clauses.try_into().unwrap();
+		self
+	}
+	pub fn reward(mut self, reward: RewardOf<Test>) -> Self {
+		self.reward = reward;
+		self
+	}
+	pub fn cancel_fee(mut self, cancel_fee: MockBalance) -> Self {
+		self.cancel_fee = cancel_fee;
 		self
 	}
 }

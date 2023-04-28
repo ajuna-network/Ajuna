@@ -17,9 +17,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
-mod mock;
-
-#[cfg(test)]
 mod tests;
 
 // #[cfg(feature = "runtime-benchmarks")]
@@ -39,7 +36,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Zero};
 use sp_std::prelude::*;
 
 pub use contracts::*;
@@ -71,9 +68,8 @@ pub mod pallet {
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
 	)]
-	pub struct GlobalConfig<Balance> {
+	pub struct GlobalConfig {
 		pub pallet_locked: bool,
-		pub cancel_fee: Balance,
 	}
 
 	enum Operation {
@@ -133,7 +129,7 @@ pub mod pallet {
 	pub type Creator<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::storage]
-	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig<BalanceOf<T>>, ValueQuery>;
+	pub type GlobalConfigs<T: Config> = StorageValue<_, GlobalConfig, ValueQuery>;
 
 	#[pallet::storage]
 	pub type ContractCollectionId<T: Config> = StorageValue<_, T::CollectionId>;
@@ -142,7 +138,7 @@ pub mod pallet {
 	pub type Contracts<T: Config> = StorageMap<_, Identity, T::ItemId, ContractOf<T>>;
 
 	#[pallet::storage]
-	pub type ContractEnds<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
+	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
 
 	#[pallet::storage]
 	pub type ContractStakedItems<T: Config> = StorageMap<_, Identity, T::ItemId, StakedItemsOf<T>>;
@@ -155,7 +151,7 @@ pub mod pallet {
 		/// The collection holding the staking contracts has been set.
 		ContractCollectionSet { collection_id: T::CollectionId },
 		/// The pallet's global config has been set.
-		SetGlobalConfig { new_config: GlobalConfig<BalanceOf<T>> },
+		SetGlobalConfig { new_config: GlobalConfig },
 		/// A new staking contract has been created.
 		Created { contract_id: T::ItemId },
 		/// A new staking contract has been removed.
@@ -173,8 +169,8 @@ pub mod pallet {
 	/// Error for the treasury pallet.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// There is no account set as the creator.
-		CreatorNotSet,
+		/// The given creator doesn't exist.
+		UnknownCreator,
 		/// The given collection doesn't exist.
 		UnknownCollection,
 		/// The given contract collection doesn't exist.
@@ -183,30 +179,42 @@ pub mod pallet {
 		UnknownItem,
 		/// The given contract doesn't exist.
 		UnknownContract,
+		/// The given contract's activation is unknown.
+		UnknownActivation,
 		/// The given collection or item belongs to someone else.
 		Ownership,
 		/// The given contract belongs to someone else.
 		ContractOwnership,
 		/// The pallet is currently locked and cannot be interacted with.
 		PalletLocked,
+		/// The given contract's activation block number is set in the past.
+		IncorrectActivation,
+		/// The given contract's active duration is zero. This results in immediate deactivation of
+		/// newly created contracts.
+		ZeroActiveDuration,
+		/// The given contract's claim duration is zero. This results in immediate expiry of
+		/// fulfilled contracts,
+		ZeroClaimDuration,
 		/// The given contract's fee clause is unfulfilled.
 		UnfulfilledFeeClause,
 		/// The given contract's staking clause is unfulfilled.
 		UnfulfilledStakingClause,
-		/// The contract is still active, so it cannot be redeemed.
-		ContractStillActive,
+		/// The contract is inactive hence cannot be accepted.
+		Inactive,
+		/// The contract is staking hence cannot be removed.
+		Staking,
+		/// The contract is expired hence cannot be claimed.
+		Expired,
 		/// The contract is claimable, so it cannot be cancelled or sniped.
-		ContractClaimable,
+		Claimable,
 		/// The contract is available, or not yet accepted.
-		ContractAvailable,
+		Available,
 		/// The given data cannot be bounded.
 		IncorrectData,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
 		MaxFeeClauses,
-		/// The number of the given stakes exceeds maximum allowed.
-		MaxStakes,
 	}
 
 	#[pallet::call]
@@ -248,10 +256,7 @@ pub mod pallet {
 		/// account.
 		#[pallet::weight(T::WeightInfo::set_global_config())]
 		#[pallet::call_index(2)]
-		pub fn set_global_config(
-			origin: OriginFor<T>,
-			new_config: GlobalConfig<BalanceOf<T>>,
-		) -> DispatchResult {
+		pub fn set_global_config(origin: OriginFor<T>, new_config: GlobalConfig) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
 			GlobalConfigs::<T>::put(new_config);
 			Self::deposit_event(Event::SetGlobalConfig { new_config });
@@ -378,7 +383,7 @@ pub mod pallet {
 		pub(crate) fn create_contract(
 			creator: T::AccountId,
 			contract_id: T::ItemId,
-			contract: ContractOf<T>,
+			mut contract: ContractOf<T>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
@@ -409,6 +414,18 @@ pub mod pallet {
 				&T::ItemConfig::default(),
 				true,
 			)?;
+
+			// Check and set activation block number.
+			let now = frame_system::Pallet::<T>::block_number();
+			contract.activation = match contract.activation {
+				Some(block_number) => {
+					ensure!(block_number > now, Error::<T>::IncorrectActivation);
+					Some(block_number)
+				},
+				None => Some(now),
+			};
+			ensure!(contract.active_duration > Zero::zero(), Error::<T>::ZeroActiveDuration);
+			ensure!(contract.claim_duration > Zero::zero(), Error::<T>::ZeroClaimDuration);
 			Contracts::<T>::insert(contract_id, contract);
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
@@ -416,7 +433,8 @@ pub mod pallet {
 		}
 
 		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
-			Self::ensure_contract_ownership(&contract_id, &Self::account_id())?;
+			Self::ensure_contract_ownership(&contract_id, &Self::account_id())
+				.map_err(|_| Error::<T>::Staking)?;
 			Contracts::<T>::remove(contract_id);
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
@@ -428,20 +446,22 @@ pub mod pallet {
 			stake_addresses: &[NftAddressOf<T>],
 			fee_addresses: &[NftAddressOf<T>],
 		) -> DispatchResult {
+			// Transfer contract, stake and fee NFTs.
 			let contract_address = NftAddress(Self::contract_collection_id()?, contract_id);
 			Self::transfer_items(&[contract_address], &who)?;
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
 			Self::transfer_items(fee_addresses, &Self::creator()?)?;
 
-			let contract = Self::contract(&contract_id)?;
-			let current_block_number = frame_system::Pallet::<T>::block_number();
-			let contract_end = current_block_number.saturating_add(contract.duration);
-			ContractEnds::<T>::insert(contract_id, contract_end);
-
+			// Record staked NFTs' addresses.
 			let bounded_stakes = StakedItemsOf::<T>::try_from(stake_addresses.to_vec())
 				.map_err(|_| Error::<T>::IncorrectData)?;
 			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
 
+			// Record contract accepted block.
+			let now = frame_system::Pallet::<T>::block_number();
+			ContractAccepted::<T>::insert(contract_id, now);
+
+			// Emit events.
 			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
 			Ok(())
 		}
@@ -453,15 +473,14 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Transfer rewards.
 			let creator = Self::creator()?;
+			let Contract { cancel_fee, reward, .. } = Self::contract(&contract_id)?;
 			let beneficiary = match op {
 				Operation::Claim | Operation::Snipe => &who,
 				Operation::Cancel => {
-					let fee = GlobalConfigs::<T>::get().cancel_fee;
-					T::Currency::transfer(&who, &creator, fee, AllowDeath)?;
+					T::Currency::transfer(&who, &creator, cancel_fee, AllowDeath)?;
 					&creator
 				},
 			};
-			let reward = Self::contract(&contract_id)?.reward;
 			match reward {
 				Reward::Tokens(amount) =>
 					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),
@@ -479,7 +498,7 @@ pub mod pallet {
 
 			// Clean up storage.
 			ContractStakedItems::<T>::remove(contract_id);
-			ContractEnds::<T>::remove(contract_id);
+			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 
 			// Emit events.
@@ -551,7 +570,7 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 		) -> Result<ContractOf<T>, DispatchError> {
 			let owner = Self::contract_owner(contract_id)?;
-			ensure!(owner != Self::account_id(), Error::<T>::ContractAvailable);
+			ensure!(owner != Self::account_id(), Error::<T>::Available);
 			let contract = Self::contract(contract_id)?;
 			Ok(contract)
 		}
@@ -583,11 +602,16 @@ pub mod pallet {
 				Error::<T>::MaxFeeClauses
 			);
 
+			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
+			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
+			let active_duration = contract.active_duration;
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now >= activation && now <= activation + active_duration, Error::<T>::Inactive);
+
 			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
 			})?;
 
-			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
 			ensure!(
 				contract.evaluate_stakes::<T::AccountId, T::NftHelper>(stake_addresses),
 				Error::<T>::UnfulfilledStakingClause
@@ -605,18 +629,28 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let Contract { expire_after, .. } = match op {
+			let Contract { claim_duration, stake_duration, .. } = match op {
 				Operation::Claim | Operation::Cancel =>
 					Self::ensure_contract_ownership(contract_id, who),
 				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
 			}?;
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			let end = ContractEnds::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let now = <frame_system::Pallet<T>>::block_number();
+			let accepted_block = Self::contract_accepted(contract_id)?;
+			let end = accepted_block + stake_duration;
+
 			match op {
-				Operation::Claim => ensure!(current_block >= end, Error::<T>::ContractStillActive),
-				Operation::Cancel => ensure!(current_block < end, Error::<T>::ContractClaimable),
-				Operation::Snipe =>
-					ensure!(current_block >= end + expire_after, Error::<T>::ContractClaimable),
+				Operation::Claim => {
+					ensure!(now <= end + claim_duration, Error::<T>::Expired);
+					ensure!(now >= end, Error::<T>::Staking);
+				},
+				Operation::Cancel => {
+					ensure!(now <= end + claim_duration, Error::<T>::Expired);
+					ensure!(now < end, Error::<T>::Claimable);
+				},
+				Operation::Snipe => {
+					ensure!(now >= end, Error::<T>::Staking);
+					ensure!(now > end + claim_duration, Error::<T>::Claimable);
+				},
 			}
 			Ok(())
 		}
@@ -630,7 +664,7 @@ pub mod pallet {
 			Ok(id)
 		}
 		fn creator() -> Result<T::AccountId, DispatchError> {
-			let creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
+			let creator = Creator::<T>::get().ok_or(Error::<T>::UnknownCreator)?;
 			Ok(creator)
 		}
 		fn contract(contract_id: &T::ItemId) -> Result<ContractOf<T>, DispatchError> {
@@ -647,6 +681,11 @@ pub mod pallet {
 			let items =
 				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			Ok(items)
+		}
+		fn contract_accepted(contract_id: &T::ItemId) -> Result<T::BlockNumber, DispatchError> {
+			let accepted_block =
+				ContractAccepted::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			Ok(accepted_block)
 		}
 	}
 }
