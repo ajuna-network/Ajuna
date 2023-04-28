@@ -14,5 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod ext;
-mod mock;
+use super::*;
+
+#[test]
+fn works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Creator::<Test>::get(), None);
+		assert_ok!(NftStake::set_creator(RuntimeOrigin::root(), ALICE));
+		assert_eq!(Creator::<Test>::get(), Some(ALICE));
+		System::assert_last_event(RuntimeEvent::NftStake(crate::Event::CreatorSet {
+			creator: ALICE,
+		}));
+	});
+}
+
+#[test]
+fn rejects_non_root_calls() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			NftStake::set_creator(RuntimeOrigin::signed(BOB), ALICE),
+			DispatchError::BadOrigin
+		);
+	});
+}

@@ -14,5 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod ext;
-mod mock;
+mod accept;
+mod cancel;
+mod claim;
+mod create;
+mod remove;
+mod set_contract_collection_id;
+mod set_creator;
+mod set_global_config;
+mod snipe;
+
+use crate::{tests::mock::*, *};
+use frame_support::{assert_noop, assert_ok};
+use sp_runtime::testing::H256;
