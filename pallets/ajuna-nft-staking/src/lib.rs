@@ -169,8 +169,8 @@ pub mod pallet {
 	/// Error for the treasury pallet.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// There is no account set as the creator.
-		CreatorNotSet,
+		/// The given creator doesn't exist.
+		UnknownCreator,
 		/// The given collection doesn't exist.
 		UnknownCollection,
 		/// The given contract collection doesn't exist.
@@ -189,26 +189,32 @@ pub mod pallet {
 		PalletLocked,
 		/// The given contract's activation block number is set in the past.
 		IncorrectActivation,
-		/// The given contract's active duration is zero.
-		IncorrectActiveDuration,
+		/// The given contract's active duration is zero. This results in immediate deactivation of
+		/// newly created contracts.
+		ZeroActiveDuration,
+		/// The given contract's claim duration is zero. This results in immediate expiry of
+		/// fulfilled contracts,
+		ZeroClaimDuration,
 		/// The given contract's fee clause is unfulfilled.
 		UnfulfilledFeeClause,
 		/// The given contract's staking clause is unfulfilled.
 		UnfulfilledStakingClause,
 		/// The contract is inactive hence cannot be accepted.
 		Inactive,
+		/// The contract is staking hence cannot be removed.
+		Staking,
+		/// The contract is expired hence cannot be claimed.
+		Expired,
 		/// The contract is claimable, so it cannot be cancelled or sniped.
-		ContractClaimable,
+		Claimable,
 		/// The contract is available, or not yet accepted.
-		ContractAvailable,
+		Available,
 		/// The given data cannot be bounded.
 		IncorrectData,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
 		MaxFeeClauses,
-		/// The number of the given stakes exceeds maximum allowed.
-		MaxStakes,
 	}
 
 	#[pallet::call]
@@ -418,7 +424,8 @@ pub mod pallet {
 				},
 				None => Some(now),
 			};
-			ensure!(contract.active_duration > Zero::zero(), Error::<T>::IncorrectActiveDuration);
+			ensure!(contract.active_duration > Zero::zero(), Error::<T>::ZeroActiveDuration);
+			ensure!(contract.claim_duration > Zero::zero(), Error::<T>::ZeroClaimDuration);
 			Contracts::<T>::insert(contract_id, contract);
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
@@ -426,7 +433,8 @@ pub mod pallet {
 		}
 
 		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
-			Self::ensure_contract_ownership(&contract_id, &Self::account_id())?;
+			Self::ensure_contract_ownership(&contract_id, &Self::account_id())
+				.map_err(|_| Error::<T>::Staking)?;
 			Contracts::<T>::remove(contract_id);
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
@@ -562,7 +570,7 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 		) -> Result<ContractOf<T>, DispatchError> {
 			let owner = Self::contract_owner(contract_id)?;
-			ensure!(owner != Self::account_id(), Error::<T>::ContractAvailable);
+			ensure!(owner != Self::account_id(), Error::<T>::Available);
 			let contract = Self::contract(contract_id)?;
 			Ok(contract)
 		}
@@ -626,13 +634,23 @@ pub mod pallet {
 					Self::ensure_contract_ownership(contract_id, who),
 				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
 			}?;
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			let end = Self::contract_accepted(contract_id)? + stake_duration;
+			let now = <frame_system::Pallet<T>>::block_number();
+			let accepted_block = Self::contract_accepted(contract_id)?;
+			let end = accepted_block + stake_duration;
+
 			match op {
-				Operation::Claim => ensure!(current_block >= end, Error::<T>::ContractStillActive),
-				Operation::Cancel => ensure!(current_block < end, Error::<T>::ContractClaimable),
-				Operation::Snipe =>
-					ensure!(current_block >= end + claim_duration, Error::<T>::ContractClaimable),
+				Operation::Claim => {
+					ensure!(now <= end + claim_duration, Error::<T>::Expired);
+					ensure!(now >= end, Error::<T>::Staking);
+				},
+				Operation::Cancel => {
+					ensure!(now <= end + claim_duration, Error::<T>::Expired);
+					ensure!(now < end, Error::<T>::Claimable);
+				},
+				Operation::Snipe => {
+					ensure!(now >= end, Error::<T>::Staking);
+					ensure!(now > end + claim_duration, Error::<T>::Claimable);
+				},
 			}
 			Ok(())
 		}
@@ -646,7 +664,7 @@ pub mod pallet {
 			Ok(id)
 		}
 		fn creator() -> Result<T::AccountId, DispatchError> {
-			let creator = Creator::<T>::get().ok_or(Error::<T>::CreatorNotSet)?;
+			let creator = Creator::<T>::get().ok_or(Error::<T>::UnknownCreator)?;
 			Ok(creator)
 		}
 		fn contract(contract_id: &T::ItemId) -> Result<ContractOf<T>, DispatchError> {

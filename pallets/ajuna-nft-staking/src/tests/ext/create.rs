@@ -228,7 +228,26 @@ fn rejects_incorrect_active_duration() {
 					H256::random(),
 					Contract::default().active_duration(0)
 				),
-				Error::<Test>::IncorrectActiveDuration
+				Error::<Test>::ZeroActiveDuration
+			);
+		});
+}
+
+#[test]
+fn rejects_incorrect_claim_duration() {
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.balances(vec![(ALICE, ItemDeposit::get())])
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				NftStake::create(
+					RuntimeOrigin::signed(ALICE),
+					H256::random(),
+					Contract::default().claim_duration(0)
+				),
+				Error::<Test>::ZeroClaimDuration
 			);
 		});
 }

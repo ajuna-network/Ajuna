@@ -209,7 +209,7 @@ impl Default for ContractOf<Test> {
 		Contract {
 			activation: Default::default(),
 			active_duration: 1,
-			claim_duration: Default::default(),
+			claim_duration: 1,
 			stake_duration: Default::default(),
 			stake_clauses: Default::default(),
 			fee_clauses: Default::default(),

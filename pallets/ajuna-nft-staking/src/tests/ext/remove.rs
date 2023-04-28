@@ -18,13 +18,12 @@ use super::*;
 
 #[test]
 fn works() {
-	let contract = Contract::default().reward(Reward::Tokens(123));
 	let contract_id = H256::random();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(contract_id, Contract::default())
 		.build()
 		.execute_with(|| {
 			assert!(Contracts::<Test>::get(contract_id).is_some());
@@ -38,13 +37,12 @@ fn works() {
 
 #[test]
 fn rejects_non_creator_calls() {
-	let contract = Contract::default().reward(Reward::Tokens(123));
 	let contract_id = H256::random();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(contract_id, Contract::default())
 		.build()
 		.execute_with(|| {
 			assert_noop!(
@@ -56,19 +54,41 @@ fn rejects_non_creator_calls() {
 
 #[test]
 fn rejects_when_pallet_is_locked() {
-	let contract = Contract::default().reward(Reward::Tokens(123));
 	let contract_id = H256::random();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(contract_id, Contract::default())
 		.build()
 		.execute_with(|| {
 			GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 			assert_noop!(
 				NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id),
 				Error::<Test>::PalletLocked
+			);
+		});
+}
+
+#[test]
+fn rejects_accepted_contracts() {
+	let contract_id = H256::random();
+
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.create_contract_with_funds(contract_id, Contract::default())
+		.accept_contract(
+			vec![(BOB, Default::default())],
+			vec![(BOB, Default::default())],
+			contract_id,
+			BOB,
+		)
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id),
+				Error::<Test>::Staking
 			);
 		});
 }

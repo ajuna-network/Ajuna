@@ -418,8 +418,8 @@ fn rejects_inactive_contracts() {
 		.build()
 		.execute_with(|| {
 			// Before activation.
-			for i in 0..activation {
-				run_to_block(i);
+			for n in 0..activation {
+				run_to_block(n);
 				assert_noop!(
 					NftStake::accept(
 						RuntimeOrigin::signed(BOB),
@@ -433,8 +433,8 @@ fn rejects_inactive_contracts() {
 
 			// After active duration.
 			let end_of_active = activation + active_duration;
-			for i in (end_of_active + 1)..(end_of_active + 3) {
-				run_to_block(i);
+			for n in (end_of_active + 1)..(end_of_active + 3) {
+				run_to_block(n);
 				assert_noop!(
 					NftStake::accept(
 						RuntimeOrigin::signed(BOB),
@@ -446,7 +446,7 @@ fn rejects_inactive_contracts() {
 				);
 			}
 
-			// Regression for happy case.
+			// Regression for happy case, after activation.
 			System::set_block_number(activation + 1);
 			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(BOB),
