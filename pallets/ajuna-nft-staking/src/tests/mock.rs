@@ -174,6 +174,7 @@ impl pallet_nfts::Config for Test {
 
 parameter_types! {
 	pub const NftStakingPalletId: PalletId = PalletId(*b"aj/nftst");
+	pub const MaxContracts: u32 = 5;
 	pub const MaxStakingClauses: u32 = 10;
 	pub const MaxFeeClauses: u32 = 1;
 }
@@ -192,6 +193,7 @@ impl pallet_nft_staking::Config for Test {
 	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
+	type MaxContracts = MaxContracts;
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
 	type ContractAttributeKey = AttributeKey;

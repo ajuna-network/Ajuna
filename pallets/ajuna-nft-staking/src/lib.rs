@@ -62,6 +62,8 @@ pub mod pallet {
 	>;
 	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
+
+	pub(crate) type ContractIdsOf<T> = BoundedVec<ItemIdOf<T>, <T as Config>::MaxContracts>;
 	pub(crate) type StakedItemsOf<T> =
 		BoundedVec<NftAddressOf<T>, <T as Config>::MaxStakingClauses>;
 
@@ -107,6 +109,10 @@ pub mod pallet {
 			+ Destroy<Self::AccountId>
 			+ Transfer<Self::AccountId>;
 
+		/// The maximum number of contracts an account can have.
+		#[pallet::constant]
+		type MaxContracts: Get<u32>;
+
 		/// The maximum number of staking clauses a contract can have.
 		#[pallet::constant]
 		type MaxStakingClauses: Get<u32>;
@@ -142,6 +148,9 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type ContractStakedItems<T: Config> = StorageMap<_, Identity, T::ItemId, StakedItemsOf<T>>;
+
+	#[pallet::storage]
+	pub type ContractHolders<T: Config> = StorageMap<_, Identity, T::AccountId, ContractIdsOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -209,6 +218,8 @@ pub mod pallet {
 		Claimable,
 		/// The contract is available, or not yet accepted.
 		Available,
+		/// The number of the given account's contracts exceeds maximum allowed.
+		MaxContracts,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
@@ -459,6 +470,10 @@ pub mod pallet {
 			let now = frame_system::Pallet::<T>::block_number();
 			ContractAccepted::<T>::insert(contract_id, now);
 
+			// Record contract holder.
+			ContractHolders::<T>::try_append(&who, contract_id)
+				.map_err(|_| Error::<T>::MaxContracts)?;
+
 			// Emit events.
 			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
 			Ok(())
@@ -498,6 +513,12 @@ pub mod pallet {
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
+			ContractHolders::<T>::try_mutate(&contract_owner, |maybe_contract_ids| {
+				maybe_contract_ids
+					.as_mut()
+					.map(|contract_ids| contract_ids.retain(|id| id != &contract_id))
+					.ok_or(Error::<T>::UnfulfilledFeeClause)
+			})?;
 
 			// Emit events.
 			match op {

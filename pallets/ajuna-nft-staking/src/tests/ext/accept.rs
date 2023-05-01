@@ -41,7 +41,7 @@ fn works() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(contract_id, contract.clone())
 		.mint_stakes(vec![(BOB, stakes)])
 		.mint_fees(vec![(BOB, fees)])
 		.build()
@@ -71,9 +71,11 @@ fn works() {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 
-			// Check contract accepted block
+			// Check contract accepted block and holder
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), Some(current_block));
+			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract.activation(1)));
+			assert_eq!(ContractHolders::<Test>::get(BOB).unwrap().to_vec(), vec![contract_id]);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Accepted {
 				by: BOB,
