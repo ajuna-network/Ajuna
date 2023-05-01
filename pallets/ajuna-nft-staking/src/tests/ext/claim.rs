@@ -53,10 +53,10 @@ fn works_with_token_reward() {
 
 			assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), contract_id));
 
-			for NftAddress(collection_id, item_id) in stake_addresses {
+			for NftId(collection_id, item_id) in stake_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			}
-			for NftAddress(collection_id, item_id) in fee_addresses {
+			for NftId(collection_id, item_id) in fee_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 			assert_eq!(Balances::free_balance(BOB), initial_balance + reward_amount);
@@ -65,6 +65,7 @@ fn works_with_token_reward() {
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
+			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {
 				by: BOB,
@@ -83,7 +84,7 @@ fn works_with_nft_reward() {
 	];
 	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 1)];
 	let stake_duration = 8;
-	let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
+	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let contract = Contract::default()
 		.reward(Reward::Nft(reward_addr.clone()))
 		.stake_duration(stake_duration)
@@ -109,10 +110,10 @@ fn works_with_nft_reward() {
 
 			assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), contract_id));
 
-			for NftAddress(collection_id, item_id) in stake_addresses {
+			for NftId(collection_id, item_id) in stake_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			}
-			for NftAddress(collection_id, item_id) in fee_addresses {
+			for NftId(collection_id, item_id) in fee_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 			assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(BOB));
@@ -121,6 +122,7 @@ fn works_with_nft_reward() {
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
+			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {
 				by: BOB,

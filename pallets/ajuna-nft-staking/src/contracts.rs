@@ -22,12 +22,12 @@ use sp_std::fmt::Debug;
 
 /// Type to represent the collection and item IDs of an NFT.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct NftAddress<CollectionId, ItemId>(pub CollectionId, pub ItemId);
+pub struct NftId<CollectionId, ItemId>(pub CollectionId, pub ItemId);
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub enum Reward<Balance, CollectionId, ItemId> {
 	Tokens(Balance),
-	Nft(NftAddress<CollectionId, ItemId>),
+	Nft(NftId<CollectionId, ItemId>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
@@ -41,7 +41,7 @@ impl<CollectionId, AttributeKey, AttributeValue>
 {
 	pub fn evaluate_for<AccountId, NftInspector, ItemId>(
 		&self,
-		address: &NftAddress<CollectionId, ItemId>,
+		address: &NftId<CollectionId, ItemId>,
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
@@ -54,7 +54,7 @@ impl<CollectionId, AttributeKey, AttributeValue>
 			Clause::HasAttribute(collection_id, _) => collection_id,
 			Clause::HasAttributeWithValue(collection_id, _, _) => collection_id,
 		};
-		let NftAddress(collection_id, item_id) = address;
+		let NftId(collection_id, item_id) = address;
 		clause_collection_id == collection_id &&
 			(match self {
 				Clause::HasAttribute(_, key) =>
@@ -115,7 +115,7 @@ where
 {
 	pub fn evaluate_stakes<AccountId, NftInspector>(
 		&self,
-		stakes: &[NftAddress<CollectionId, ItemId>],
+		stakes: &[NftId<CollectionId, ItemId>],
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
@@ -131,7 +131,7 @@ where
 
 	pub fn evaluate_fees<AccountId, NftInspector>(
 		&self,
-		fees: &[NftAddress<CollectionId, ItemId>],
+		fees: &[NftId<CollectionId, ItemId>],
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,

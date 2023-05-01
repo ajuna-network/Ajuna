@@ -60,10 +60,11 @@ pub mod pallet {
 		<T as Config>::ContractAttributeKey,
 		<T as Config>::ContractAttributeValue,
 	>;
-	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
+	pub(crate) type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
-	pub(crate) type StakedItemsOf<T> =
-		BoundedVec<NftAddressOf<T>, <T as Config>::MaxStakingClauses>;
+
+	pub(crate) type ContractIdsOf<T> = BoundedVec<ItemIdOf<T>, <T as Config>::MaxContracts>;
+	pub(crate) type StakedItemsOf<T> = BoundedVec<NftIdOf<T>, <T as Config>::MaxStakingClauses>;
 
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
@@ -72,6 +73,7 @@ pub mod pallet {
 		pub pallet_locked: bool,
 	}
 
+	#[derive(PartialEq)]
 	enum Operation {
 		Claim,
 		Cancel,
@@ -106,6 +108,10 @@ pub mod pallet {
 			+ Mutate<Self::AccountId, Self::ItemConfig>
 			+ Destroy<Self::AccountId>
 			+ Transfer<Self::AccountId>;
+
+		/// The maximum number of contracts an account can have.
+		#[pallet::constant]
+		type MaxContracts: Get<u32>;
 
 		/// The maximum number of staking clauses a contract can have.
 		#[pallet::constant]
@@ -142,6 +148,9 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type ContractStakedItems<T: Config> = StorageMap<_, Identity, T::ItemId, StakedItemsOf<T>>;
+
+	#[pallet::storage]
+	pub type ContractIds<T: Config> = StorageMap<_, Identity, T::AccountId, ContractIdsOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -209,12 +218,18 @@ pub mod pallet {
 		Claimable,
 		/// The contract is available, or not yet accepted.
 		Available,
-		/// The given data cannot be bounded.
-		IncorrectData,
+		/// The number of the given account's contracts exceeds maximum allowed.
+		MaxContracts,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
 		MaxFeeClauses,
+		/// The given account does not hold any contracts.
+		NotContractHolder,
+		/// The given account does not meet the criteria to be a sniper.
+		NotSniper,
+		/// The given account attempts to snipe its own contract.
+		CannotSnipeOwnContract,
 	}
 
 	#[pallet::call]
@@ -296,6 +311,7 @@ pub mod pallet {
 		pub fn remove(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
+			Self::ensure_removable(&contract_id)?;
 			Self::remove_contract(contract_id)
 		}
 
@@ -310,8 +326,8 @@ pub mod pallet {
 		pub fn accept(
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
-			stakes: Vec<NftAddressOf<T>>,
-			fees: Vec<NftAddressOf<T>>,
+			stakes: Vec<NftIdOf<T>>,
+			fees: Vec<NftIdOf<T>>,
 		) -> DispatchResult {
 			let staker = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
@@ -363,6 +379,7 @@ pub mod pallet {
 		pub fn snipe(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let sniper = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
+			Self::ensure_sniper(&sniper)?;
 			Self::ensure_contract(Operation::Snipe, &contract_id, &sniper)?;
 			Self::process_contract(Operation::Snipe, contract_id, sniper)?;
 			Ok(())
@@ -399,7 +416,7 @@ pub mod pallet {
 					Ok(())
 				},
 				Reward::Nft(address) => {
-					let NftAddress(collection_id, item_id) = address;
+					let NftId(collection_id, item_id) = address;
 					Self::ensure_item_ownership(collection_id, item_id, &creator)?;
 					T::NftHelper::transfer(collection_id, item_id, &pallet_account_id)
 				},
@@ -433,8 +450,6 @@ pub mod pallet {
 		}
 
 		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
-			Self::ensure_contract_ownership(&contract_id, &Self::account_id())
-				.map_err(|_| Error::<T>::Staking)?;
 			Contracts::<T>::remove(contract_id);
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
@@ -443,23 +458,27 @@ pub mod pallet {
 		pub(crate) fn accept_contract(
 			contract_id: T::ItemId,
 			who: T::AccountId,
-			stake_addresses: &[NftAddressOf<T>],
-			fee_addresses: &[NftAddressOf<T>],
+			stake_addresses: &[NftIdOf<T>],
+			fee_addresses: &[NftIdOf<T>],
 		) -> DispatchResult {
 			// Transfer contract, stake and fee NFTs.
-			let contract_address = NftAddress(Self::contract_collection_id()?, contract_id);
+			let contract_address = NftId(Self::contract_collection_id()?, contract_id);
 			Self::transfer_items(&[contract_address], &who)?;
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
 			Self::transfer_items(fee_addresses, &Self::creator()?)?;
 
 			// Record staked NFTs' addresses.
 			let bounded_stakes = StakedItemsOf::<T>::try_from(stake_addresses.to_vec())
-				.map_err(|_| Error::<T>::IncorrectData)?;
+				.map_err(|_| Error::<T>::MaxStakingClauses)?;
 			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
 
 			// Record contract accepted block.
 			let now = frame_system::Pallet::<T>::block_number();
 			ContractAccepted::<T>::insert(contract_id, now);
+
+			// Record contract holder.
+			ContractIds::<T>::try_append(&who, contract_id)
+				.map_err(|_| Error::<T>::MaxContracts)?;
 
 			// Emit events.
 			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
@@ -484,7 +503,7 @@ pub mod pallet {
 			match reward {
 				Reward::Tokens(amount) =>
 					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),
-				Reward::Nft(NftAddress(collection_id, item_id)) =>
+				Reward::Nft(NftId(collection_id, item_id)) =>
 					T::NftHelper::transfer(&collection_id, &item_id, beneficiary),
 			}?;
 
@@ -501,6 +520,15 @@ pub mod pallet {
 			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 
+			// Retain contract IDs held.
+			let mut contract_ids = Self::contract_ids(&contract_owner)?;
+			contract_ids.retain(|id| id != &contract_id);
+			if contract_ids.is_empty() {
+				ContractIds::<T>::remove(contract_owner);
+			} else {
+				ContractIds::<T>::insert(contract_owner, contract_ids);
+			}
+
 			// Emit events.
 			match op {
 				Operation::Claim =>
@@ -514,8 +542,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn transfer_items(addresses: &[NftAddressOf<T>], to: &T::AccountId) -> DispatchResult {
-			addresses.iter().try_for_each(|NftAddress(collection_id, item_id)| {
+		fn transfer_items(addresses: &[NftIdOf<T>], to: &T::AccountId) -> DispatchResult {
+			addresses.iter().try_for_each(|NftId(collection_id, item_id)| {
 				T::NftHelper::transfer(collection_id, item_id, to)
 			})
 		}
@@ -559,18 +587,15 @@ pub mod pallet {
 		fn ensure_contract_ownership(
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
+			is_snipe: bool,
 		) -> Result<ContractOf<T>, DispatchError> {
 			let owner = Self::contract_owner(contract_id)?;
-			ensure!(who == &owner, Error::<T>::ContractOwnership);
-			let contract = Self::contract(contract_id)?;
-			Ok(contract)
-		}
-
-		fn ensure_contract_accepted(
-			contract_id: &T::ItemId,
-		) -> Result<ContractOf<T>, DispatchError> {
-			let owner = Self::contract_owner(contract_id)?;
-			ensure!(owner != Self::account_id(), Error::<T>::Available);
+			if is_snipe {
+				ensure!(owner != Self::account_id(), Error::<T>::Available);
+				ensure!(who != &owner, Error::<T>::CannotSnipeOwnContract);
+			} else {
+				ensure!(who == &owner, Error::<T>::ContractOwnership);
+			}
 			let contract = Self::contract(contract_id)?;
 			Ok(contract)
 		}
@@ -587,11 +612,17 @@ pub mod pallet {
 			Ok(())
 		}
 
+		fn ensure_removable(contract_id: &T::ItemId) -> DispatchResult {
+			Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)
+				.map_err(|_| Error::<T>::Staking)?;
+			Ok(())
+		}
+
 		fn ensure_acceptable(
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
-			stake_addresses: &[NftAddressOf<T>],
-			fee_addresses: &[NftAddressOf<T>],
+			stake_addresses: &[NftIdOf<T>],
+			fee_addresses: &[NftIdOf<T>],
 		) -> DispatchResult {
 			ensure!(
 				stake_addresses.len() as u32 <= T::MaxStakingClauses::get(),
@@ -602,13 +633,14 @@ pub mod pallet {
 				Error::<T>::MaxFeeClauses
 			);
 
-			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
+			let contract =
+				Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)?;
 			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
 			let active_duration = contract.active_duration;
 			let now = <frame_system::Pallet<T>>::block_number();
 			ensure!(now >= activation && now <= activation + active_duration, Error::<T>::Inactive);
 
-			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
+			stake_addresses.iter().try_for_each(|NftId(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
 			})?;
 
@@ -629,11 +661,8 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let Contract { claim_duration, stake_duration, .. } = match op {
-				Operation::Claim | Operation::Cancel =>
-					Self::ensure_contract_ownership(contract_id, who),
-				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
-			}?;
+			let Contract { claim_duration, stake_duration, .. } =
+				Self::ensure_contract_ownership(contract_id, who, op == Operation::Snipe)?;
 			let now = <frame_system::Pallet<T>>::block_number();
 			let accepted_block = Self::contract_accepted(contract_id)?;
 			let end = accepted_block + stake_duration;
@@ -651,6 +680,22 @@ pub mod pallet {
 					ensure!(now >= end, Error::<T>::Staking);
 					ensure!(now > end + claim_duration, Error::<T>::Claimable);
 				},
+			}
+			Ok(())
+		}
+
+		fn ensure_sniper(sniper: &T::AccountId) -> DispatchResult {
+			let contract_ids = Self::contract_ids(sniper).map_err(|_| Error::<T>::NotSniper)?;
+			let now = <frame_system::Pallet<T>>::block_number();
+
+			for contract_id in contract_ids {
+				let Contract { stake_duration, .. } = Self::contract(&contract_id)?;
+				let accepted_block = Self::contract_accepted(&contract_id)?;
+				let end = accepted_block + stake_duration;
+				// Not a sniper if any contracts are in claimable phase.
+				if now > end {
+					return Err(Error::<T>::NotSniper.into())
+				}
 			}
 			Ok(())
 		}
@@ -686,6 +731,10 @@ pub mod pallet {
 			let accepted_block =
 				ContractAccepted::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			Ok(accepted_block)
+		}
+		fn contract_ids(who: &T::AccountId) -> Result<ContractIdsOf<T>, DispatchError> {
+			let contract_ids = ContractIds::<T>::get(who).ok_or(Error::<T>::NotContractHolder)?;
+			Ok(contract_ids)
 		}
 	}
 }
