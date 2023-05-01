@@ -226,6 +226,10 @@ pub mod pallet {
 		MaxFeeClauses,
 		/// The given account does not hold any contracts.
 		NotContractHolder,
+		/// The given account does not meet the criteria to be a sniper.
+		NotSniper,
+		/// The given account attempts to snipe its own contract.
+		CannotSnipeOwnContract,
 	}
 
 	#[pallet::call]
@@ -375,6 +379,7 @@ pub mod pallet {
 		pub fn snipe(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let sniper = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
+			Self::ensure_sniper(&sniper)?;
 			Self::ensure_contract(Operation::Snipe, &contract_id, &sniper)?;
 			Self::process_contract(Operation::Snipe, contract_id, sniper)?;
 			Ok(())
@@ -587,6 +592,7 @@ pub mod pallet {
 			let owner = Self::contract_owner(contract_id)?;
 			if is_snipe {
 				ensure!(owner != Self::account_id(), Error::<T>::Available);
+				ensure!(who != &owner, Error::<T>::CannotSnipeOwnContract);
 			} else {
 				ensure!(who == &owner, Error::<T>::ContractOwnership);
 			}
@@ -674,6 +680,22 @@ pub mod pallet {
 					ensure!(now >= end, Error::<T>::Staking);
 					ensure!(now > end + claim_duration, Error::<T>::Claimable);
 				},
+			}
+			Ok(())
+		}
+
+		fn ensure_sniper(sniper: &T::AccountId) -> DispatchResult {
+			let contract_ids = Self::contract_ids(sniper).map_err(|_| Error::<T>::NotSniper)?;
+			let now = <frame_system::Pallet<T>>::block_number();
+
+			for contract_id in contract_ids {
+				let Contract { stake_duration, .. } = Self::contract(&contract_id)?;
+				let accepted_block = Self::contract_accepted(&contract_id)?;
+				let end = accepted_block + stake_duration;
+				// Not a sniper if any contracts are in claimable phase.
+				if now > end {
+					return Err(Error::<T>::NotSniper.into())
+				}
 			}
 			Ok(())
 		}

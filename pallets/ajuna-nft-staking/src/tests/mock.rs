@@ -284,6 +284,7 @@ pub struct ExtBuilder {
 	stakes: Vec<(MockAccountId, MockMints)>,
 	fees: Vec<(MockAccountId, MockMints)>,
 	accept_contract: Option<(MockItemId, MockAccountId)>,
+	create_sniper: Option<(MockAccountId, ContractOf<Test>)>,
 }
 
 impl ExtBuilder {
@@ -329,6 +330,10 @@ impl ExtBuilder {
 		self = self.mint_stakes(stakes);
 		self = self.mint_fees(fees);
 		self.accept_contract = Some((contract_id, by));
+		self
+	}
+	pub fn create_sniper(mut self, sniper: MockAccountId, contract: ContractOf<Test>) -> Self {
+		self.create_sniper = Some((sniper, contract));
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
@@ -390,6 +395,18 @@ impl ExtBuilder {
 					.collect::<Vec<_>>();
 				NftStake::accept_contract(contract_id, who, &stake_addresses, &fee_addresses)
 					.unwrap();
+			}
+
+			if let Some((sniper, contract)) = self.create_sniper {
+				let contract_id = H256::random();
+				create_contract(contract_id, contract, true);
+				NftStake::accept_contract(
+					contract_id,
+					sniper,
+					Default::default(),
+					Default::default(),
+				)
+				.unwrap()
 			}
 		});
 		ext
