@@ -58,7 +58,7 @@ fn works() {
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), Some(BOB));
 
 			// Stake ownership transferred to pallet account
-			for NftAddress(collection_id, item_id) in stake_addresses.clone() {
+			for NftId(collection_id, item_id) in stake_addresses.clone() {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(NftStake::account_id()));
 			}
 			assert_eq!(
@@ -67,7 +67,7 @@ fn works() {
 			);
 
 			// Fee ownership transferred to creator
-			for NftAddress(collection_id, item_id) in fee_addresses.clone() {
+			for NftId(collection_id, item_id) in fee_addresses.clone() {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 
@@ -123,7 +123,7 @@ fn rejects_out_of_bound_stakes() {
 		.build()
 		.execute_with(|| {
 			let stake_addresses = (0..MaxStakingClauses::get() + 1)
-				.map(|_| NftAddress(RESERVED_COLLECTION_0, H256::random()))
+				.map(|_| NftId(RESERVED_COLLECTION_0, H256::random()))
 				.collect::<Vec<_>>();
 			assert!(stake_addresses.len() as u32 > MaxStakingClauses::get());
 			assert_noop!(
@@ -173,15 +173,15 @@ fn rejects_when_contract_is_already_accepted() {
 	let bob_stakes = alice_stakes
 		.clone()
 		.into_iter()
-		.map(|(NftAddress(collection_id, _item_id), key, value)| {
-			(NftAddress(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, _item_id), key, value)| {
+			(NftId(collection_id, H256::random()), key, value)
 		})
 		.collect::<Vec<_>>();
 	let charlie_stakes = bob_stakes
 		.clone()
 		.into_iter()
-		.map(|(NftAddress(collection_id, _item_id), key, value)| {
-			(NftAddress(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, _item_id), key, value)| {
+			(NftId(collection_id, H256::random()), key, value)
 		})
 		.collect::<Vec<_>>();
 
@@ -196,15 +196,15 @@ fn rejects_when_contract_is_already_accepted() {
 	let bob_fees = alice_fees
 		.clone()
 		.into_iter()
-		.map(|(NftAddress(collection_id, _item_id), key, value)| {
-			(NftAddress(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, _item_id), key, value)| {
+			(NftId(collection_id, H256::random()), key, value)
 		})
 		.collect::<Vec<_>>();
 	let charlie_fees = bob_fees
 		.clone()
 		.into_iter()
-		.map(|(NftAddress(collection_id, _item_id), key, value)| {
-			(NftAddress(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, _item_id), key, value)| {
+			(NftId(collection_id, H256::random()), key, value)
 		})
 		.collect::<Vec<_>>();
 

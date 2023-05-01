@@ -257,7 +257,7 @@ impl ContractOf<Test> {
 
 pub type MockClause = Clause<MockCollectionId, AttributeKey, AttributeValue>;
 pub struct MockClauses(pub Vec<MockClause>);
-pub type MockMints = Vec<(NftAddress<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
+pub type MockMints = Vec<(NftId<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
 
 impl From<MockClauses> for MockMints {
 	fn from(clauses: MockClauses) -> Self {
@@ -267,9 +267,9 @@ impl From<MockClauses> for MockMints {
 			.enumerate()
 			.map(|(i, clause)| match clause {
 				Clause::HasAttribute(collection_id, key) =>
-					(NftAddress(collection_id, H256::random()), key, i as AttributeValue),
+					(NftId(collection_id, H256::random()), key, i as AttributeValue),
 				Clause::HasAttributeWithValue(collection_id, key, value) =>
-					(NftAddress(collection_id, H256::random()), key, value),
+					(NftId(collection_id, H256::random()), key, value),
 			})
 			.collect()
 	}
@@ -365,7 +365,7 @@ impl ExtBuilder {
 								ItemDeposit::get() + amount,
 							);
 						},
-					Reward::Nft(NftAddress(collection_id, item_id)) => {
+					Reward::Nft(NftId(collection_id, item_id)) => {
 						let _ = mint_item(&creator, collection_id, item_id);
 					},
 				}
@@ -376,13 +376,13 @@ impl ExtBuilder {
 			}
 
 			self.stakes.iter().for_each(|(staker, stakes)| {
-				stakes.iter().for_each(|(NftAddress(collection_id, item_id), key, value)| {
+				stakes.iter().for_each(|(NftId(collection_id, item_id), key, value)| {
 					let _ = mint_item(staker, collection_id, item_id);
 					set_attribute(collection_id, item_id, key, value);
 				})
 			});
 			self.fees.iter().for_each(|(staker, fees)| {
-				fees.iter().for_each(|(NftAddress(collection_id, item_id), key, value)| {
+				fees.iter().for_each(|(NftId(collection_id, item_id), key, value)| {
 					let _ = mint_item(staker, collection_id, item_id);
 					set_attribute(collection_id, item_id, key, value);
 				})
@@ -422,11 +422,11 @@ pub fn mint_item(
 	owner: &MockAccountId,
 	collection_id: &MockCollectionId,
 	item_id: &MockItemId,
-) -> NftAddressOf<Test> {
+) -> NftIdOf<Test> {
 	let _ = CurrencyOf::<Test>::deposit_creating(owner, ItemDeposit::get());
 	let config = pallet_nfts::ItemConfig::default();
 	NftHelperOf::<Test>::mint_into(collection_id, item_id, owner, &config, false).unwrap();
-	NftAddress(*collection_id, *item_id)
+	NftId(*collection_id, *item_id)
 }
 
 fn set_attribute(

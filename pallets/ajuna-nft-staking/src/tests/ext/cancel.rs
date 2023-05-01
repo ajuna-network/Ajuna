@@ -60,10 +60,10 @@ fn works_with_token_reward() {
 
 			// Cancel and check.
 			assert_ok!(NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id));
-			for NftAddress(collection_id, item_id) in stake_addresses {
+			for NftId(collection_id, item_id) in stake_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			}
-			for NftAddress(collection_id, item_id) in fee_addresses {
+			for NftId(collection_id, item_id) in fee_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 			assert_eq!(Balances::free_balance(BOB), initial_balance_bob - cancellation_fee);
@@ -91,7 +91,7 @@ fn works_with_nft_reward() {
 	];
 	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
 	let stake_duration = 4;
-	let reward_addr = NftAddress(RESERVED_COLLECTION_2, H256::random());
+	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let cancellation_fee = 111;
 	let contract = Contract::default()
 		.reward(Reward::Nft(reward_addr.clone()))
@@ -124,10 +124,10 @@ fn works_with_nft_reward() {
 
 			// Cancel and check.
 			assert_ok!(NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id));
-			for NftAddress(collection_id, item_id) in stake_addresses {
+			for NftId(collection_id, item_id) in stake_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 			}
-			for NftAddress(collection_id, item_id) in fee_addresses {
+			for NftId(collection_id, item_id) in fee_addresses {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 			assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(ALICE));

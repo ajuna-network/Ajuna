@@ -60,12 +60,11 @@ pub mod pallet {
 		<T as Config>::ContractAttributeKey,
 		<T as Config>::ContractAttributeValue,
 	>;
-	pub(crate) type NftAddressOf<T> = NftAddress<CollectionIdOf<T>, ItemIdOf<T>>;
+	pub(crate) type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
 	pub(crate) type ContractIdsOf<T> = BoundedVec<ItemIdOf<T>, <T as Config>::MaxContracts>;
-	pub(crate) type StakedItemsOf<T> =
-		BoundedVec<NftAddressOf<T>, <T as Config>::MaxStakingClauses>;
+	pub(crate) type StakedItemsOf<T> = BoundedVec<NftIdOf<T>, <T as Config>::MaxStakingClauses>;
 
 	#[derive(
 		Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, Eq, PartialEq,
@@ -319,8 +318,8 @@ pub mod pallet {
 		pub fn accept(
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
-			stakes: Vec<NftAddressOf<T>>,
-			fees: Vec<NftAddressOf<T>>,
+			stakes: Vec<NftIdOf<T>>,
+			fees: Vec<NftIdOf<T>>,
 		) -> DispatchResult {
 			let staker = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
@@ -408,7 +407,7 @@ pub mod pallet {
 					Ok(())
 				},
 				Reward::Nft(address) => {
-					let NftAddress(collection_id, item_id) = address;
+					let NftId(collection_id, item_id) = address;
 					Self::ensure_item_ownership(collection_id, item_id, &creator)?;
 					T::NftHelper::transfer(collection_id, item_id, &pallet_account_id)
 				},
@@ -452,11 +451,11 @@ pub mod pallet {
 		pub(crate) fn accept_contract(
 			contract_id: T::ItemId,
 			who: T::AccountId,
-			stake_addresses: &[NftAddressOf<T>],
-			fee_addresses: &[NftAddressOf<T>],
+			stake_addresses: &[NftIdOf<T>],
+			fee_addresses: &[NftIdOf<T>],
 		) -> DispatchResult {
 			// Transfer contract, stake and fee NFTs.
-			let contract_address = NftAddress(Self::contract_collection_id()?, contract_id);
+			let contract_address = NftId(Self::contract_collection_id()?, contract_id);
 			Self::transfer_items(&[contract_address], &who)?;
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
 			Self::transfer_items(fee_addresses, &Self::creator()?)?;
@@ -497,7 +496,7 @@ pub mod pallet {
 			match reward {
 				Reward::Tokens(amount) =>
 					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),
-				Reward::Nft(NftAddress(collection_id, item_id)) =>
+				Reward::Nft(NftId(collection_id, item_id)) =>
 					T::NftHelper::transfer(&collection_id, &item_id, beneficiary),
 			}?;
 
@@ -533,8 +532,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn transfer_items(addresses: &[NftAddressOf<T>], to: &T::AccountId) -> DispatchResult {
-			addresses.iter().try_for_each(|NftAddress(collection_id, item_id)| {
+		fn transfer_items(addresses: &[NftIdOf<T>], to: &T::AccountId) -> DispatchResult {
+			addresses.iter().try_for_each(|NftId(collection_id, item_id)| {
 				T::NftHelper::transfer(collection_id, item_id, to)
 			})
 		}
@@ -609,8 +608,8 @@ pub mod pallet {
 		fn ensure_acceptable(
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
-			stake_addresses: &[NftAddressOf<T>],
-			fee_addresses: &[NftAddressOf<T>],
+			stake_addresses: &[NftIdOf<T>],
+			fee_addresses: &[NftIdOf<T>],
 		) -> DispatchResult {
 			ensure!(
 				stake_addresses.len() as u32 <= T::MaxStakingClauses::get(),
@@ -627,7 +626,7 @@ pub mod pallet {
 			let now = <frame_system::Pallet<T>>::block_number();
 			ensure!(now >= activation && now <= activation + active_duration, Error::<T>::Inactive);
 
-			stake_addresses.iter().try_for_each(|NftAddress(collection_id, contract_id)| {
+			stake_addresses.iter().try_for_each(|NftId(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
 			})?;
 
