@@ -209,8 +209,6 @@ pub mod pallet {
 		Claimable,
 		/// The contract is available, or not yet accepted.
 		Available,
-		/// The given data cannot be bounded.
-		IncorrectData,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
@@ -454,7 +452,7 @@ pub mod pallet {
 
 			// Record staked NFTs' addresses.
 			let bounded_stakes = StakedItemsOf::<T>::try_from(stake_addresses.to_vec())
-				.map_err(|_| Error::<T>::IncorrectData)?;
+				.map_err(|_| Error::<T>::MaxStakingClauses)?;
 			ContractStakedItems::<T>::insert(contract_id, bounded_stakes);
 
 			// Record contract accepted block.
