@@ -73,6 +73,7 @@ pub mod pallet {
 		pub pallet_locked: bool,
 	}
 
+	#[derive(PartialEq)]
 	enum Operation {
 		Claim,
 		Cancel,
@@ -306,6 +307,7 @@ pub mod pallet {
 		pub fn remove(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
+			Self::ensure_removable(&contract_id)?;
 			Self::remove_contract(contract_id)
 		}
 
@@ -443,8 +445,6 @@ pub mod pallet {
 		}
 
 		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
-			Self::ensure_contract_ownership(&contract_id, &Self::account_id())
-				.map_err(|_| Error::<T>::Staking)?;
 			Contracts::<T>::remove(contract_id);
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
@@ -582,18 +582,14 @@ pub mod pallet {
 		fn ensure_contract_ownership(
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
+			is_snipe: bool,
 		) -> Result<ContractOf<T>, DispatchError> {
 			let owner = Self::contract_owner(contract_id)?;
-			ensure!(who == &owner, Error::<T>::ContractOwnership);
-			let contract = Self::contract(contract_id)?;
-			Ok(contract)
-		}
-
-		fn ensure_contract_accepted(
-			contract_id: &T::ItemId,
-		) -> Result<ContractOf<T>, DispatchError> {
-			let owner = Self::contract_owner(contract_id)?;
-			ensure!(owner != Self::account_id(), Error::<T>::Available);
+			if is_snipe {
+				ensure!(owner != Self::account_id(), Error::<T>::Available);
+			} else {
+				ensure!(who == &owner, Error::<T>::ContractOwnership);
+			}
 			let contract = Self::contract(contract_id)?;
 			Ok(contract)
 		}
@@ -607,6 +603,12 @@ pub mod pallet {
 				contract.fee_clauses.len() as u32 <= T::MaxFeeClauses::get(),
 				Error::<T>::MaxFeeClauses
 			);
+			Ok(())
+		}
+
+		fn ensure_removable(contract_id: &T::ItemId) -> DispatchResult {
+			Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)
+				.map_err(|_| Error::<T>::Staking)?;
 			Ok(())
 		}
 
@@ -625,7 +627,8 @@ pub mod pallet {
 				Error::<T>::MaxFeeClauses
 			);
 
-			let contract = Self::ensure_contract_ownership(contract_id, &Self::account_id())?;
+			let contract =
+				Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)?;
 			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
 			let active_duration = contract.active_duration;
 			let now = <frame_system::Pallet<T>>::block_number();
@@ -652,11 +655,8 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let Contract { claim_duration, stake_duration, .. } = match op {
-				Operation::Claim | Operation::Cancel =>
-					Self::ensure_contract_ownership(contract_id, who),
-				Operation::Snipe => Self::ensure_contract_accepted(contract_id),
-			}?;
+			let Contract { claim_duration, stake_duration, .. } =
+				Self::ensure_contract_ownership(contract_id, who, op == Operation::Snipe)?;
 			let now = <frame_system::Pallet<T>>::block_number();
 			let accepted_block = Self::contract_accepted(contract_id)?;
 			let end = accepted_block + stake_duration;
