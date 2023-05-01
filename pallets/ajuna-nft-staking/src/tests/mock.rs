@@ -356,23 +356,7 @@ impl ExtBuilder {
 
 			// Fund / mint into creator enough to create contracts.
 			if let Some((contract_id, contract, should_fund)) = self.contract {
-				let creator = Creator::<Test>::get().unwrap();
-				match &contract.reward {
-					Reward::Tokens(amount) =>
-						if should_fund {
-							let _ = CurrencyOf::<Test>::deposit_creating(
-								&creator,
-								ItemDeposit::get() + amount,
-							);
-						},
-					Reward::Nft(NftId(collection_id, item_id)) => {
-						let _ = mint_item(&creator, collection_id, item_id);
-					},
-				}
-				if should_fund {
-					let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
-				}
-				NftStake::create_contract(creator, contract_id, contract).unwrap();
+				create_contract(contract_id, contract, should_fund);
 			}
 
 			self.stakes.iter().for_each(|(staker, stakes)| {
@@ -416,6 +400,23 @@ pub fn create_collection(account: MockAccountId) -> MockCollectionId {
 	let _ = CurrencyOf::<Test>::deposit_creating(&account, CollectionDeposit::get());
 	let config = CollectionConfig::default();
 	NftHelperOf::<Test>::create_collection(&account, &account, &config).unwrap()
+}
+
+pub fn create_contract(contract_id: MockItemId, contract: ContractOf<Test>, should_fund: bool) {
+	let creator = Creator::<Test>::get().unwrap();
+	match &contract.reward {
+		Reward::Tokens(amount) =>
+			if should_fund {
+				let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get() + amount);
+			},
+		Reward::Nft(NftId(collection_id, item_id)) => {
+			let _ = mint_item(&creator, collection_id, item_id);
+		},
+	}
+	if should_fund {
+		let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
+	}
+	NftStake::create_contract(creator, contract_id, contract).unwrap();
 }
 
 pub fn mint_item(
