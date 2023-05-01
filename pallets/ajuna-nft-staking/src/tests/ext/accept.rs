@@ -75,7 +75,7 @@ fn works() {
 			let current_block = <frame_system::Pallet<Test>>::block_number();
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), Some(current_block));
 			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract.activation(1)));
-			assert_eq!(ContractHolders::<Test>::get(BOB).unwrap().to_vec(), vec![contract_id]);
+			assert_eq!(ContractIds::<Test>::get(BOB).unwrap().to_vec(), vec![contract_id]);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Accepted {
 				by: BOB,

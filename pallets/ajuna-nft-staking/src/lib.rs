@@ -149,7 +149,7 @@ pub mod pallet {
 	pub type ContractStakedItems<T: Config> = StorageMap<_, Identity, T::ItemId, StakedItemsOf<T>>;
 
 	#[pallet::storage]
-	pub type ContractHolders<T: Config> = StorageMap<_, Identity, T::AccountId, ContractIdsOf<T>>;
+	pub type ContractIds<T: Config> = StorageMap<_, Identity, T::AccountId, ContractIdsOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -223,6 +223,8 @@ pub mod pallet {
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
 		MaxFeeClauses,
+		/// The given account does not hold any contracts.
+		NotContractHolder,
 	}
 
 	#[pallet::call]
@@ -470,7 +472,7 @@ pub mod pallet {
 			ContractAccepted::<T>::insert(contract_id, now);
 
 			// Record contract holder.
-			ContractHolders::<T>::try_append(&who, contract_id)
+			ContractIds::<T>::try_append(&who, contract_id)
 				.map_err(|_| Error::<T>::MaxContracts)?;
 
 			// Emit events.
@@ -512,12 +514,15 @@ pub mod pallet {
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
-			ContractHolders::<T>::try_mutate(&contract_owner, |maybe_contract_ids| {
-				maybe_contract_ids
-					.as_mut()
-					.map(|contract_ids| contract_ids.retain(|id| id != &contract_id))
-					.ok_or(Error::<T>::UnfulfilledFeeClause)
-			})?;
+
+			// Retain contract IDs held.
+			let mut contract_ids = Self::contract_ids(&contract_owner)?;
+			contract_ids.retain(|id| id != &contract_id);
+			if contract_ids.is_empty() {
+				ContractIds::<T>::remove(contract_owner);
+			} else {
+				ContractIds::<T>::insert(contract_owner, contract_ids);
+			}
 
 			// Emit events.
 			match op {
@@ -704,6 +709,10 @@ pub mod pallet {
 			let accepted_block =
 				ContractAccepted::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			Ok(accepted_block)
+		}
+		fn contract_ids(who: &T::AccountId) -> Result<ContractIdsOf<T>, DispatchError> {
+			let contract_ids = ContractIds::<T>::get(who).ok_or(Error::<T>::NotContractHolder)?;
+			Ok(contract_ids)
 		}
 	}
 }

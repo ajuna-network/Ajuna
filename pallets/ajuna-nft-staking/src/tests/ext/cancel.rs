@@ -74,7 +74,7 @@ fn works_with_token_reward() {
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
-			assert_eq!(ContractHolders::<Test>::get(BOB).unwrap().to_vec(), vec![]);
+			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Cancelled {
 				by: BOB,
@@ -139,7 +139,7 @@ fn works_with_nft_reward() {
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
-			assert_eq!(ContractHolders::<Test>::get(BOB).unwrap().to_vec(), vec![]);
+			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Cancelled {
 				by: BOB,
