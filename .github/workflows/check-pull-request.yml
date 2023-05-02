@@ -67,6 +67,7 @@ jobs:
           - pallet-ajuna-awesome-avatars
           - pallet-ajuna-awesome-avatars-benchmarking
           - pallet-ajuna-nft-staking
+          - pallet-ajuna-nft-staking-benchmarking
           - pallet-ajuna-nft-transfer
     steps:
       - uses: actions/checkout@v3
@@ -148,9 +149,11 @@ jobs:
                 ajuna-cli ajuna-node ajuna-primitives ajuna-rpc ajuna-service \
                 ajuna-runtime ajuna-solo-runtime bajun-runtime \
                 pallet-ajuna-awesome-avatars-benchmarking \
+                pallet-ajuna-nft-staking-benchmarking \
             --exclude-files \
                 node/* rpc/* runtime/* \
                 pallets/ajuna-awesome-avatars/benchmarking/* \
+                pallets/ajuna-nft-staking-benchmarking/* \
                 benchmarking.rs weights.rs
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
