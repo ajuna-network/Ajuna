@@ -29,7 +29,7 @@ fn works_with_token_reward() {
 			let mut contract = Contract::default().reward(Reward::Tokens(reward_amount));
 			let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
 
-			let contract_id = H256::random();
+			let contract_id = CONTRACT_ID;
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 
 			assert_ok!(NftStake::create(
@@ -64,10 +64,10 @@ fn works_with_nft_reward() {
 		.build()
 		.execute_with(|| {
 			let collection_id = create_collection(ALICE);
-			let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
+			let nft_addr = mint_item(&ALICE, &collection_id, &123);
 			let mut contract = Contract::default().reward(Reward::Nft(nft_addr.clone()));
 
-			let contract_id = H256::random();
+			let contract_id = CONTRACT_ID;
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 
 			assert_ok!(NftStake::create(
@@ -98,7 +98,7 @@ fn rejects_non_creator_calls() {
 		.build()
 		.execute_with(|| {
 			assert_noop!(
-				NftStake::create(RuntimeOrigin::signed(BOB), H256::random(), Contract::default()),
+				NftStake::create(RuntimeOrigin::signed(BOB), CONTRACT_ID, Contract::default()),
 				DispatchError::BadOrigin
 			);
 		});
@@ -109,7 +109,7 @@ fn rejects_when_pallet_is_locked() {
 	ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 		GlobalConfigs::<Test>::mutate(|config| config.pallet_locked = true);
 		assert_noop!(
-			NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), Contract::default()),
+			NftStake::create(RuntimeOrigin::signed(ALICE), CONTRACT_ID, Contract::default()),
 			Error::<Test>::PalletLocked
 		);
 	});
@@ -125,7 +125,7 @@ fn rejects_out_of_bound_staking_clauses() {
 		assert_noop!(
 			NftStake::create(
 				RuntimeOrigin::signed(ALICE),
-				H256::random(),
+				CONTRACT_ID,
 				Contract::default().reward(Reward::Tokens(1)).stake_clauses(staking_clauses)
 			),
 			Error::<Test>::MaxStakingClauses
@@ -143,7 +143,7 @@ fn rejects_out_of_bound_fee_clauses() {
 		assert_noop!(
 			NftStake::create(
 				RuntimeOrigin::signed(ALICE),
-				H256::random(),
+				CONTRACT_ID,
 				Contract::default().reward(Reward::Tokens(1)).fee_clauses(fee_clauses)
 			),
 			Error::<Test>::MaxFeeClauses
@@ -161,7 +161,7 @@ fn rejects_insufficient_balance() {
 			assert_noop!(
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
-					H256::random(),
+					CONTRACT_ID,
 					Contract::default().reward(Reward::Tokens(2_000_000))
 				),
 				pallet_balances::Error::<Test>::InsufficientBalance,
@@ -173,10 +173,10 @@ fn rejects_insufficient_balance() {
 fn rejects_unowned_nfts() {
 	ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 		let collection_id = create_collection(BOB);
-		let nft_addr = mint_item(&BOB, &collection_id, &H256::random());
+		let nft_addr = mint_item(&BOB, &collection_id, &333);
 		let contract = Contract::default().reward(Reward::Nft(nft_addr));
 		assert_noop!(
-			NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract),
+			NftStake::create(RuntimeOrigin::signed(ALICE), CONTRACT_ID, contract),
 			Error::<Test>::Ownership
 		);
 	});
@@ -186,7 +186,7 @@ fn rejects_unowned_nfts() {
 fn rejects_when_contract_collection_id_is_not_set() {
 	ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 		assert_noop!(
-			NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), Contract::default()),
+			NftStake::create(RuntimeOrigin::signed(ALICE), CONTRACT_ID, Contract::default()),
 			Error::<Test>::UnknownContractCollection
 		);
 	});
@@ -206,7 +206,7 @@ fn rejects_incorrect_activation() {
 			assert_noop!(
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
-					H256::random(),
+					CONTRACT_ID,
 					Contract::default().activation(activation)
 				),
 				Error::<Test>::IncorrectActivation
@@ -225,7 +225,7 @@ fn rejects_incorrect_active_duration() {
 			assert_noop!(
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
-					H256::random(),
+					CONTRACT_ID,
 					Contract::default().active_duration(0)
 				),
 				Error::<Test>::ZeroActiveDuration
@@ -244,7 +244,7 @@ fn rejects_incorrect_claim_duration() {
 			assert_noop!(
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
-					H256::random(),
+					CONTRACT_ID,
 					Contract::default().claim_duration(0)
 				),
 				Error::<Test>::ZeroClaimDuration

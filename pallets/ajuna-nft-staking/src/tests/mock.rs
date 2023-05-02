@@ -44,6 +44,8 @@ pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
 pub const CHARLIE: MockAccountId = 3;
 
+pub const CONTRACT_ID: MockItemId = 123;
+pub const SNIPER_CONTRACT_ID: MockItemId = 369;
 pub const RESERVED_COLLECTION_0: MockCollectionId = 0;
 pub const RESERVED_COLLECTION_1: MockCollectionId = 1;
 pub const RESERVED_COLLECTION_2: MockCollectionId = 2;
@@ -106,7 +108,7 @@ impl pallet_balances::Config for Test {
 }
 
 pub type MockCollectionId = u32;
-pub type MockItemId = H256;
+pub type MockItemId = u32;
 
 parameter_types! {
 	pub const CollectionDeposit: MockBalance = 333;
@@ -122,24 +124,6 @@ parameter_types! {
 	pub const MaxTips: u32 = 1;
 	pub const MaxDeadlineDuration: u32 = 1;
 	pub ConfigFeatures: PalletFeatures = PalletFeatures::all_enabled();
-}
-
-#[cfg(feature = "runtime-benchmarks")]
-pub struct Helper;
-#[cfg(feature = "runtime-benchmarks")]
-impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
-	pallet_nfts::BenchmarkHelper<CollectionId, ItemId> for Helper
-{
-	fn collection(i: u16) -> CollectionId {
-		i.into()
-	}
-	fn item(i: u16) -> ItemId {
-		let mut id = [0_u8; 32];
-		let bytes = i.to_be_bytes();
-		id[0] = bytes[0];
-		id[1] = bytes[1];
-		id.into()
-	}
 }
 
 impl pallet_nfts::Config for Test {
@@ -167,7 +151,7 @@ impl pallet_nfts::Config for Test {
 	type OffchainSignature = MockSignature;
 	type OffchainPublic = MockAccountPublic;
 	pallet_nfts::runtime_benchmarks_enabled! {
-		type Helper = Helper;
+		type Helper = ();
 	}
 	type WeightInfo = ();
 }
@@ -190,7 +174,7 @@ impl pallet_nft_staking::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = MockCollectionId;
-	type ItemId = H256;
+	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type MaxContracts = MaxContracts;
@@ -198,6 +182,8 @@ impl pallet_nft_staking::Config for Test {
 	type MaxFeeClauses = MaxFeeClauses;
 	type ContractAttributeKey = AttributeKey;
 	type ContractAttributeValue = AttributeValue;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 	type WeightInfo = ();
 }
 
@@ -267,9 +253,9 @@ impl From<MockClauses> for MockMints {
 			.enumerate()
 			.map(|(i, clause)| match clause {
 				Clause::HasAttribute(collection_id, key) =>
-					(NftId(collection_id, H256::random()), key, i as AttributeValue),
+					(NftId(collection_id, i as MockItemId), key, i as AttributeValue),
 				Clause::HasAttributeWithValue(collection_id, key, value) =>
-					(NftId(collection_id, H256::random()), key, value),
+					(NftId(collection_id, i as MockItemId), key, value),
 			})
 			.collect()
 	}
@@ -398,10 +384,9 @@ impl ExtBuilder {
 			}
 
 			if let Some((sniper, contract)) = self.create_sniper {
-				let contract_id = H256::random();
-				create_contract(contract_id, contract, true);
+				create_contract(SNIPER_CONTRACT_ID, contract, true);
 				NftStake::accept_contract(
-					contract_id,
+					SNIPER_CONTRACT_ID,
 					sniper,
 					Default::default(),
 					Default::default(),

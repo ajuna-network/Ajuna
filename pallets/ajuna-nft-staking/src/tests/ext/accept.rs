@@ -30,12 +30,13 @@ fn works() {
 		.stake_duration(stake_duration)
 		.stake_clauses(stake_clauses.clone())
 		.fee_clauses(fee_clauses.clone());
-	let contract_id = H256::random();
+	let contract_id = CONTRACT_ID;
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
 	let stake_addresses = stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let mut fees = MockMints::from(MockClauses(fee_clauses));
+	fees.iter_mut().for_each(|(NftId(_, item_id), _, _)| *item_id += 1);
 	let fee_addresses = fees.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 	ExtBuilder::default()
@@ -123,7 +124,7 @@ fn rejects_out_of_bound_stakes() {
 		.build()
 		.execute_with(|| {
 			let stake_addresses = (0..MaxStakingClauses::get() + 1)
-				.map(|_| NftId(RESERVED_COLLECTION_0, H256::random()))
+				.map(|_| NftId(RESERVED_COLLECTION_0, 333))
 				.collect::<Vec<_>>();
 			assert!(stake_addresses.len() as u32 > MaxStakingClauses::get());
 			assert_noop!(
@@ -167,21 +168,20 @@ fn rejects_when_contract_is_already_accepted() {
 		.stake_duration(123)
 		.stake_clauses(stake_clauses.clone())
 		.fee_clauses(fee_clauses.clone());
-	let contract_id = H256::random();
 
 	let alice_stakes = MockMints::from(MockClauses(stake_clauses));
 	let bob_stakes = alice_stakes
 		.clone()
 		.into_iter()
-		.map(|(NftId(collection_id, _item_id), key, value)| {
-			(NftId(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, item_id), key, value)| {
+			(NftId(collection_id, item_id + 1), key, value)
 		})
 		.collect::<Vec<_>>();
 	let charlie_stakes = bob_stakes
 		.clone()
 		.into_iter()
-		.map(|(NftId(collection_id, _item_id), key, value)| {
-			(NftId(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, item_id), key, value)| {
+			(NftId(collection_id, item_id + 1), key, value)
 		})
 		.collect::<Vec<_>>();
 
@@ -192,19 +192,20 @@ fn rejects_when_contract_is_already_accepted() {
 	let charlie_stake_addresses =
 		charlie_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
-	let alice_fees = MockMints::from(MockClauses(fee_clauses));
+	let mut alice_fees = MockMints::from(MockClauses(fee_clauses));
+	alice_fees.iter_mut().for_each(|(NftId(_, item_id), _, _)| *item_id += 5);
 	let bob_fees = alice_fees
 		.clone()
 		.into_iter()
-		.map(|(NftId(collection_id, _item_id), key, value)| {
-			(NftId(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, item_id), key, value)| {
+			(NftId(collection_id, item_id + 1), key, value)
 		})
 		.collect::<Vec<_>>();
 	let charlie_fees = bob_fees
 		.clone()
 		.into_iter()
-		.map(|(NftId(collection_id, _item_id), key, value)| {
-			(NftId(collection_id, H256::random()), key, value)
+		.map(|(NftId(collection_id, item_id), key, value)| {
+			(NftId(collection_id, item_id + 1), key, value)
 		})
 		.collect::<Vec<_>>();
 
@@ -218,14 +219,14 @@ fn rejects_when_contract_is_already_accepted() {
 	ExtBuilder::default()
 		.set_creator(BOB)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(CONTRACT_ID, contract)
 		.mint_stakes(vec![(ALICE, alice_stakes), (BOB, bob_stakes), (CHARLIE, charlie_stakes)])
 		.mint_fees(vec![(ALICE, alice_fees), (BOB, bob_fees), (CHARLIE, charlie_fees)])
 		.build()
 		.execute_with(|| {
 			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(ALICE),
-				contract_id,
+				CONTRACT_ID,
 				alice_stake_addresses.clone(),
 				alice_fee_addresses.clone()
 			));
@@ -238,7 +239,7 @@ fn rejects_when_contract_is_already_accepted() {
 				assert_noop!(
 					NftStake::accept(
 						RuntimeOrigin::signed(staker),
-						contract_id,
+						CONTRACT_ID,
 						stake_addr,
 						fee_addr
 					),
@@ -257,18 +258,18 @@ fn rejects_unowned_stakes() {
 		.stake_duration(123)
 		.stake_clauses(stake_clauses.clone())
 		.fee_clauses(fee_clauses.clone());
-	let contract_id = H256::random();
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
 	let stake_addresses = stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let mut fees = MockMints::from(MockClauses(fee_clauses));
+	fees.iter_mut().for_each(|(NftId(_, item_id), _, _)| *item_id += 1);
 	let fee_addresses = fees.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(CONTRACT_ID, contract)
 		.mint_stakes(vec![(BOB, stakes)])
 		.mint_fees(vec![(BOB, fees)])
 		.build()
@@ -276,7 +277,7 @@ fn rejects_unowned_stakes() {
 			assert_noop!(
 				NftStake::accept(
 					RuntimeOrigin::signed(CHARLIE),
-					contract_id,
+					CONTRACT_ID,
 					stake_addresses,
 					fee_addresses
 				),
@@ -295,7 +296,7 @@ fn rejects_when_contract_is_not_created() {
 			assert_noop!(
 				NftStake::accept(
 					RuntimeOrigin::signed(BOB),
-					H256::random(),
+					CONTRACT_ID,
 					Default::default(),
 					Default::default()
 				),
@@ -316,7 +317,6 @@ fn rejects_unfulfilling_stakes() {
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
 		.stake_clauses(stake_clauses.clone());
-	let contract_id = H256::random();
 
 	let mut stakes = MockMints::from(MockClauses(stake_clauses));
 	stakes.iter_mut().for_each(|(_, key, value)| {
@@ -328,14 +328,14 @@ fn rejects_unfulfilling_stakes() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(CONTRACT_ID, contract)
 		.mint_stakes(vec![(BOB, stakes)])
 		.build()
 		.execute_with(|| {
 			assert_noop!(
 				NftStake::accept(
 					RuntimeOrigin::signed(BOB),
-					contract_id,
+					CONTRACT_ID,
 					stake_addresses,
 					Default::default()
 				),
@@ -351,7 +351,6 @@ fn rejects_unfulfilling_fees() {
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
 		.fee_clauses(fee_clauses.clone());
-	let contract_id = H256::random();
 
 	let mut fees = MockMints::from(MockClauses(fee_clauses));
 	fees.iter_mut().for_each(|(_, key, value)| {
@@ -363,14 +362,14 @@ fn rejects_unfulfilling_fees() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(CONTRACT_ID, contract)
 		.mint_fees(vec![(BOB, fees)])
 		.build()
 		.execute_with(|| {
 			assert_noop!(
 				NftStake::accept(
 					RuntimeOrigin::signed(BOB),
-					contract_id,
+					CONTRACT_ID,
 					Default::default(),
 					fee_addresses
 				),
@@ -381,23 +380,21 @@ fn rejects_unfulfilling_fees() {
 
 #[test]
 fn rejects_unknown_activation() {
-	let contract_id = H256::random();
-
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, Contract::default())
+		.create_contract_with_funds(CONTRACT_ID, Contract::default())
 		.build()
 		.execute_with(|| {
 			// NOTE: technically all contracts should have activation set via `create`
-			Contracts::<Test>::mutate(contract_id, |contract| {
+			Contracts::<Test>::mutate(CONTRACT_ID, |contract| {
 				contract.as_mut().unwrap().activation = None
 			});
 
 			assert_noop!(
 				NftStake::accept(
 					RuntimeOrigin::signed(BOB),
-					contract_id,
+					CONTRACT_ID,
 					Default::default(),
 					Default::default()
 				),
@@ -411,12 +408,11 @@ fn rejects_inactive_contracts() {
 	let activation = 3;
 	let active_duration = 2;
 	let contract = Contract::default().activation(activation).active_duration(active_duration);
-	let contract_id = H256::random();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, contract)
+		.create_contract_with_funds(CONTRACT_ID, contract)
 		.build()
 		.execute_with(|| {
 			// Before activation.
@@ -425,7 +421,7 @@ fn rejects_inactive_contracts() {
 				assert_noop!(
 					NftStake::accept(
 						RuntimeOrigin::signed(BOB),
-						contract_id,
+						CONTRACT_ID,
 						Default::default(),
 						Default::default()
 					),
@@ -440,7 +436,7 @@ fn rejects_inactive_contracts() {
 				assert_noop!(
 					NftStake::accept(
 						RuntimeOrigin::signed(BOB),
-						contract_id,
+						CONTRACT_ID,
 						Default::default(),
 						Default::default()
 					),
@@ -452,7 +448,7 @@ fn rejects_inactive_contracts() {
 			System::set_block_number(activation + 1);
 			assert_ok!(NftStake::accept(
 				RuntimeOrigin::signed(BOB),
-				contract_id,
+				CONTRACT_ID,
 				Default::default(),
 				Default::default()
 			));

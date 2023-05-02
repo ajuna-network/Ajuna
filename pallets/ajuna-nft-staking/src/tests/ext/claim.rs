@@ -31,12 +31,13 @@ fn works_with_token_reward() {
 		.stake_duration(stake_duration)
 		.stake_clauses(stake_clauses.clone())
 		.fee_clauses(fee_clauses.clone());
-	let contract_id = H256::random();
+	let contract_id = CONTRACT_ID;
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
 	let stake_addresses =
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let mut fees = MockMints::from(MockClauses(fee_clauses));
+	fees.iter_mut().for_each(|(NftId(_, item_id), _, _)| *item_id += 1);
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 	let initial_balance = 333;
 
@@ -84,18 +85,19 @@ fn works_with_nft_reward() {
 	];
 	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 1)];
 	let stake_duration = 8;
-	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
+	let reward_addr = NftId(RESERVED_COLLECTION_2, 333);
 	let contract = Contract::default()
 		.reward(Reward::Nft(reward_addr.clone()))
 		.stake_duration(stake_duration)
 		.stake_clauses(stake_clauses.clone())
 		.fee_clauses(fee_clauses.clone());
-	let contract_id = H256::random();
+	let contract_id = CONTRACT_ID;
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
 	let stake_addresses =
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let mut fees = MockMints::from(MockClauses(fee_clauses));
+	fees.iter_mut().for_each(|(NftId(_, item_id), _, _)| *item_id += 1);
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
 	ExtBuilder::default()
@@ -155,15 +157,14 @@ fn rejects_when_pallet_is_locked() {
 
 #[test]
 fn rejects_when_contract_is_not_owned() {
-	let contract_id = H256::random();
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, Contract::default())
+		.create_contract_with_funds(CONTRACT_ID, Contract::default())
 		.build()
 		.execute_with(|| {
 			assert_noop!(
-				NftStake::claim(RuntimeOrigin::signed(BOB), contract_id),
+				NftStake::claim(RuntimeOrigin::signed(BOB), CONTRACT_ID),
 				Error::<Test>::ContractOwnership
 			);
 		});
@@ -172,47 +173,45 @@ fn rejects_when_contract_is_not_owned() {
 #[test]
 fn rejects_when_contract_is_staking() {
 	let stake_duration = 3;
-	let contract_id = H256::random();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, Contract::default().stake_duration(stake_duration))
+		.create_contract_with_funds(CONTRACT_ID, Contract::default().stake_duration(stake_duration))
 		.accept_contract(
 			vec![(BOB, Default::default())],
 			vec![(BOB, Default::default())],
-			contract_id,
+			CONTRACT_ID,
 			BOB,
 		)
 		.build()
 		.execute_with(|| {
-			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
+			let accepted_at = ContractAccepted::<Test>::get(CONTRACT_ID).unwrap();
 
 			// Before staking duration is over.
 			for n in 0..stake_duration {
 				run_to_block(accepted_at + n);
 				assert_noop!(
-					NftStake::claim(RuntimeOrigin::signed(BOB), contract_id),
+					NftStake::claim(RuntimeOrigin::signed(BOB), CONTRACT_ID),
 					Error::<Test>::Staking
 				);
 			}
 
 			// Regression for happy case, after staking finishes.
 			System::set_block_number(accepted_at + stake_duration);
-			assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), contract_id));
+			assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), CONTRACT_ID));
 		});
 }
 
 #[test]
 fn rejects_when_contract_is_expired() {
 	let (stake_duration, claim_duration) = (3, 5);
-	let contract_id = H256::random();
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
 		.create_contract_with_funds(
-			contract_id,
+			CONTRACT_ID,
 			Contract::default()
 				.stake_duration(stake_duration)
 				.claim_duration(claim_duration),
@@ -220,22 +219,22 @@ fn rejects_when_contract_is_expired() {
 		.accept_contract(
 			vec![(BOB, Default::default())],
 			vec![(BOB, Default::default())],
-			contract_id,
+			CONTRACT_ID,
 			BOB,
 		)
 		.build()
 		.execute_with(|| {
-			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
+			let accepted_at = ContractAccepted::<Test>::get(CONTRACT_ID).unwrap();
 
 			// After expiry.
 			run_to_block(accepted_at + stake_duration + claim_duration + 1);
 			assert_noop!(
-				NftStake::claim(RuntimeOrigin::signed(BOB), contract_id),
+				NftStake::claim(RuntimeOrigin::signed(BOB), CONTRACT_ID),
 				Error::<Test>::Expired
 			);
 
 			// Regression for happy case, after staking finishes.
 			System::set_block_number(accepted_at + stake_duration);
-			assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), contract_id));
+			assert_ok!(NftStake::claim(RuntimeOrigin::signed(BOB), CONTRACT_ID));
 		});
 }
