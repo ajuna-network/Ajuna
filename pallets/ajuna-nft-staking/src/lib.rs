@@ -19,9 +19,6 @@
 #[cfg(test)]
 mod tests;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
-
 pub mod contracts;
 pub mod weights;
 
@@ -36,7 +33,10 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Zero};
+use sp_runtime::{
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, Zero},
+	ArithmeticError,
+};
 use sp_std::prelude::*;
 
 pub use contracts::*;
@@ -60,8 +60,8 @@ pub mod pallet {
 		<T as Config>::ContractAttributeKey,
 		<T as Config>::ContractAttributeValue,
 	>;
-	pub(crate) type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
-	pub(crate) type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
+	pub type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
+	pub type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
 	pub(crate) type ContractIdsOf<T> = BoundedVec<ItemIdOf<T>, <T as Config>::MaxContracts>;
 	pub(crate) type StakedItemsOf<T> = BoundedVec<NftIdOf<T>, <T as Config>::MaxStakingClauses>;
@@ -82,6 +82,32 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
+
+	#[cfg(feature = "runtime-benchmarks")]
+	pub trait BenchmarkHelper<ContractKey, ContractValue, ItemId> {
+		fn contract_key(i: u32) -> ContractKey;
+		fn contract_value(i: u64) -> ContractValue;
+		fn item_id(i: u16) -> ItemId;
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<ContractKey: From<u32>, ContractValue: From<u64>, ItemId: From<[u8; 32]>>
+		BenchmarkHelper<ContractKey, ContractValue, ItemId> for ()
+	{
+		fn contract_key(i: u32) -> ContractKey {
+			i.into()
+		}
+		fn contract_value(i: u64) -> ContractValue {
+			i.into()
+		}
+		fn item_id(i: u16) -> ItemId {
+			let mut id = [0_u8; 32];
+			let bytes = i.to_be_bytes();
+			id[0] = bytes[0];
+			id[1] = bytes[1];
+			id.into()
+		}
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -121,11 +147,19 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxFeeClauses: Get<u32>;
 
-		/// Type of the contract attributes keys, used on contract condition evaluation
+		/// Type of the contract's attribute keys, used on contract condition evaluation
 		type ContractAttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
-		/// Type of the contract attributes values, used on contract condition evaluation
+		/// Type of the contract's attribute values, used on contract condition evaluation
 		type ContractAttributeValue: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
+
+		/// A set of helper functions for benchmarking.
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<
+			Self::ContractAttributeKey,
+			Self::ContractAttributeValue,
+			Self::ItemId,
+		>;
 
 		/// The weight calculations
 		type WeightInfo: WeightInfo;
@@ -210,7 +244,7 @@ pub mod pallet {
 		UnfulfilledStakingClause,
 		/// The contract is inactive hence cannot be accepted.
 		Inactive,
-		/// The contract is staking hence cannot be removed.
+		/// The contract is staking hence cannot be claimed or sniped.
 		Staking,
 		/// The contract is expired hence cannot be claimed.
 		Expired,
@@ -613,8 +647,15 @@ pub mod pallet {
 		}
 
 		fn ensure_removable(contract_id: &T::ItemId) -> DispatchResult {
-			Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)
-				.map_err(|_| Error::<T>::Staking)?;
+			Self::ensure_contract_ownership(contract_id, &Self::account_id(), false).map_err(
+				|err| {
+					if err == Error::<T>::ContractOwnership.into() {
+						Error::<T>::Staking.into()
+					} else {
+						err
+					}
+				},
+			)?;
 			Ok(())
 		}
 
@@ -636,9 +677,11 @@ pub mod pallet {
 			let contract =
 				Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)?;
 			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
-			let active_duration = contract.active_duration;
 			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(now >= activation && now <= activation + active_duration, Error::<T>::Inactive);
+			let inactive = activation
+				.checked_add(&contract.active_duration)
+				.ok_or(ArithmeticError::Overflow)?;
+			ensure!(now >= activation && now <= inactive, Error::<T>::Inactive);
 
 			stake_addresses.iter().try_for_each(|NftId(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
@@ -664,21 +707,22 @@ pub mod pallet {
 			let Contract { claim_duration, stake_duration, .. } =
 				Self::ensure_contract_ownership(contract_id, who, op == Operation::Snipe)?;
 			let now = <frame_system::Pallet<T>>::block_number();
-			let accepted_block = Self::contract_accepted(contract_id)?;
-			let end = accepted_block + stake_duration;
+			let accepted = Self::contract_accepted(contract_id)?;
+			let end = accepted.checked_add(&stake_duration).ok_or(ArithmeticError::Overflow)?;
+			let expiry = end.checked_add(&claim_duration).ok_or(ArithmeticError::Overflow)?;
 
 			match op {
 				Operation::Claim => {
-					ensure!(now <= end + claim_duration, Error::<T>::Expired);
+					ensure!(now <= expiry, Error::<T>::Expired);
 					ensure!(now >= end, Error::<T>::Staking);
 				},
 				Operation::Cancel => {
-					ensure!(now <= end + claim_duration, Error::<T>::Expired);
+					ensure!(now <= expiry, Error::<T>::Expired);
 					ensure!(now < end, Error::<T>::Claimable);
 				},
 				Operation::Snipe => {
 					ensure!(now >= end, Error::<T>::Staking);
-					ensure!(now > end + claim_duration, Error::<T>::Claimable);
+					ensure!(now > expiry, Error::<T>::Claimable);
 				},
 			}
 			Ok(())
@@ -690,8 +734,8 @@ pub mod pallet {
 
 			for contract_id in contract_ids {
 				let Contract { stake_duration, .. } = Self::contract(&contract_id)?;
-				let accepted_block = Self::contract_accepted(&contract_id)?;
-				let end = accepted_block + stake_duration;
+				let accepted = Self::contract_accepted(&contract_id)?;
+				let end = accepted.checked_add(&stake_duration).ok_or(ArithmeticError::Overflow)?;
 				// Not a sniper if any contracts are in claimable phase.
 				if now > end {
 					return Err(Error::<T>::NotSniper.into())
@@ -738,3 +782,5 @@ pub mod pallet {
 		}
 	}
 }
+
+sp_core::generate_feature_enabled_macro!(runtime_benchmarks_enabled, feature = "runtime-benchmarks", $);

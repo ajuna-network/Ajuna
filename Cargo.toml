@@ -15,5 +15,6 @@ members = [
     "runtime/*",
     "pallets/*",
     "pallets/ajuna-awesome-avatars/benchmarking",
+    "pallets/ajuna-nft-staking/benchmarking",
     "primitives",
 ]

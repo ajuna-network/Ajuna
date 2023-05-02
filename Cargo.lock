@@ -5683,11 +5683,30 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex",
  "pallet-balances",
  "pallet-nfts",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ajuna-nft-staking-benchmarking"
+version = "0.1.17"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-ajuna-nft-staking",
+ "pallet-balances",
+ "pallet-nfts",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",

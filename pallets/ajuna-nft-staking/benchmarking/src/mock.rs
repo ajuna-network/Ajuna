@@ -111,10 +111,28 @@ parameter_types! {
 	pub ConfigFeatures: PalletFeatures = PalletFeatures::all_enabled();
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct Helper;
+#[cfg(feature = "runtime-benchmarks")]
+impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
+	pallet_nfts::BenchmarkHelper<CollectionId, ItemId> for Helper
+{
+	fn collection(i: u16) -> CollectionId {
+		i.into()
+	}
+	fn item(i: u16) -> ItemId {
+		let mut id = [0_u8; 32];
+		let bytes = i.to_be_bytes();
+		id[0] = bytes[0];
+		id[1] = bytes[1];
+		id.into()
+	}
+}
+
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = MockCollectionId;
-	type ItemId = u32;
+	type ItemId = H256;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<MockAccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<MockAccountId>>;
@@ -136,7 +154,7 @@ impl pallet_nfts::Config for Runtime {
 	type OffchainSignature = MockSignature;
 	type OffchainPublic = MockAccountPublic;
 	pallet_nfts::runtime_benchmarks_enabled! {
-		type Helper = ();
+		type Helper = Helper;
 	}
 	type WeightInfo = ();
 }
@@ -156,7 +174,7 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = MockCollectionId;
-	type ItemId = u32;
+	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type MaxContracts = MaxContracts;

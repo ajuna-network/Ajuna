@@ -84,6 +84,7 @@ runtime-benchmarks = [
     "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-nfts/runtime-benchmarks",
+    "pallet-ajuna-nft-staking/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]

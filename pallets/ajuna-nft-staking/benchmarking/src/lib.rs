@@ -29,10 +29,9 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use pallet_ajuna_nft_staking::{
-	BenchmarkHelper as NftStakingBenchHelper, Clause, Config as NftStakingConfig,
-	ContractCollectionId, Reward, *,
+	BenchmarkHelper as NftStakingBenchmarkHelper, Config as NftStakingConfig, *,
 };
-use pallet_nfts::{BenchmarkHelper as NftBenchHelper, ItemConfig};
+use pallet_nfts::{BenchmarkHelper, ItemConfig};
 use sp_runtime::{
 	traits::{One, UniqueSaturatedFrom, UniqueSaturatedInto},
 	DispatchError,
@@ -81,7 +80,6 @@ type ContractOf<T> = Contract<
 	<T as NftStakingConfig>::ContractAttributeKey,
 	<T as NftStakingConfig>::ContractAttributeValue,
 >;
-type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
 type NftCurrencyOf<T> = <T as pallet_nfts::Config>::Currency;
 type NftBalanceOf<T> = <NftCurrencyOf<T> as Currency<AccountIdOf<T>>>::Balance;
@@ -145,7 +143,7 @@ fn create_contract<T: Config>(
 	contract: ContractOf<T>,
 ) -> DispatchResult {
 	pallet_ajuna_nft_staking::Pallet::<T>::create(
-		RawOrigin::Signed(creator.clone()).into(),
+		RawOrigin::Signed(creator).into(),
 		contract_id,
 		contract,
 	)
@@ -160,7 +158,7 @@ fn accept_contract<T: Config>(
 ) -> DispatchResult {
 	let (stakes, fees) = stakes_and_fees::<T>(num_stake_clauses, num_fee_clauses, &staker, mode)?;
 	pallet_ajuna_nft_staking::Pallet::<T>::accept(
-		RawOrigin::Signed(staker.clone()).into(),
+		RawOrigin::Signed(staker).into(),
 		contract_id,
 		stakes,
 		fees,
@@ -174,7 +172,7 @@ fn mint_item<T: Config>(owner: &T::AccountId, collection_id: u16, item_id: u16) 
 	<pallet_nfts::Pallet<T> as Mutate<T::AccountId, ItemConfig>>::mint_into(
 		collection_id,
 		item_id,
-		&owner,
+		owner,
 		&ItemConfig::default(),
 		false,
 	)?;
@@ -274,16 +272,16 @@ benchmarks! {
 		let creator = account::<T>("creator");
 	}: _(RawOrigin::Root, creator.clone())
 	verify {
-		assert_last_event::<T>(Event::CreatorSet { creator }.into())
+		assert_last_event::<T>(Event::CreatorSet { creator })
 	}
 
 	set_contract_collection_id {
 		let creator = create_creator::<T>(None)?;
 		let collection_id = CollectionIdOf::<T>::unique_saturated_from(0_u32);
 		ContractCollectionId::<T>::kill();
-	}: _(RawOrigin::Signed(creator), collection_id.clone())
+	}: _(RawOrigin::Signed(creator), collection_id)
 	verify {
-		assert_last_event::<T>(Event::ContractCollectionSet { collection_id }.into())
+		assert_last_event::<T>(Event::ContractCollectionSet { collection_id })
 	}
 
 	set_global_config {
@@ -291,7 +289,7 @@ benchmarks! {
 		let new_config = GlobalConfig::default();
 	}: _(RawOrigin::Signed(creator), new_config)
 	verify {
-		assert_last_event::<T>(Event::SetGlobalConfig { new_config }.into())
+		assert_last_event::<T>(Event::SetGlobalConfig { new_config })
 	}
 
 	create_token_reward {
@@ -303,7 +301,7 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 	}: create(RawOrigin::Signed(creator), contract_id, contract)
 	verify {
-		assert_last_event::<T>(Event::Created { contract_id }.into())
+		assert_last_event::<T>(Event::Created { contract_id })
 	}
 
 	create_nft_reward {
@@ -319,7 +317,7 @@ benchmarks! {
 		let creator = create_creator::<T>(Some(vec![reward_nft_item]))?;
 	}: create(RawOrigin::Signed(creator), contract_id, contract)
 	verify {
-		assert_last_event::<T>(Event::Created { contract_id }.into())
+		assert_last_event::<T>(Event::Created { contract_id })
 	}
 
 	remove_token_reward {
@@ -332,7 +330,7 @@ benchmarks! {
 		create_contract::<T>(creator.clone(), contract_id, contract)?;
 	}: remove(RawOrigin::Signed(creator), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Removed { contract_id }.into())
+		assert_last_event::<T>(Event::Removed { contract_id })
 	}
 
 	remove_nft_reward {
@@ -349,7 +347,7 @@ benchmarks! {
 		create_contract::<T>(creator.clone(), contract_id, contract)?;
 	}: remove(RawOrigin::Signed(creator), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Removed { contract_id }.into())
+		assert_last_event::<T>(Event::Removed { contract_id })
 	}
 
 	accept_token_reward {
@@ -360,14 +358,14 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 
 		let creator = create_creator::<T>(None)?;
-		create_contract::<T>(creator.clone(), contract_id, contract)?;
+		create_contract::<T>(creator, contract_id, contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
 		let (stakes, fees) = stakes_and_fees::<T>(m, n, &by, Mode::Staker)?;
 	}: accept(RawOrigin::Signed(by.clone()), contract_id, stakes, fees)
 	verify {
-		assert_last_event::<T>(Event::Accepted { by, contract_id }.into())
+		assert_last_event::<T>(Event::Accepted { by, contract_id })
 	}
 
 	accept_nft_reward {
@@ -382,14 +380,14 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 
 		let creator = create_creator::<T>(Some(vec![reward_nft_item]))?;
-		create_contract::<T>(creator.clone(), contract_id, contract)?;
+		create_contract::<T>(creator, contract_id, contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
 		let (stakes, fees) = stakes_and_fees::<T>(m, n, &by, Mode::Staker)?;
 	}: accept(RawOrigin::Signed(by.clone()), contract_id, stakes, fees)
 	verify {
-		assert_last_event::<T>(Event::Accepted { by, contract_id }.into())
+		assert_last_event::<T>(Event::Accepted { by, contract_id })
 	}
 
 	cancel_token_reward {
@@ -401,14 +399,14 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 
 		let creator = create_creator::<T>(None)?;
-		create_contract::<T>(creator.clone(), contract_id, contract)?;
+		create_contract::<T>(creator, contract_id, contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
-		accept_contract::<T>(m, n, by.clone(), contract_id.clone(), Mode::Staker)?;
+		accept_contract::<T>(m, n, by.clone(), contract_id, Mode::Staker)?;
 	}: cancel(RawOrigin::Signed(by.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Cancelled { by, contract_id }.into())
+		assert_last_event::<T>(Event::Cancelled { by, contract_id })
 	}
 
 	cancel_nft_reward {
@@ -424,14 +422,14 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 
 		let creator = create_creator::<T>(Some(vec![reward_nft_item]))?;
-		create_contract::<T>(creator.clone(), contract_id, contract)?;
+		create_contract::<T>(creator, contract_id, contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
-		accept_contract::<T>(m, n, by.clone(), contract_id.clone(), Mode::Staker)?;
+		accept_contract::<T>(m, n, by.clone(), contract_id, Mode::Staker)?;
 	}: cancel(RawOrigin::Signed(by.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Cancelled { by, contract_id }.into())
+		assert_last_event::<T>(Event::Cancelled { by, contract_id })
 	}
 
 	claim_token_reward {
@@ -442,14 +440,14 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 
 		let creator = create_creator::<T>(None)?;
-		create_contract::<T>(creator.clone(), contract_id, contract)?;
+		create_contract::<T>(creator, contract_id, contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
-		accept_contract::<T>(m, n, by.clone(), contract_id.clone(), Mode::Staker)?;
+		accept_contract::<T>(m, n, by.clone(), contract_id, Mode::Staker)?;
 	}: claim(RawOrigin::Signed(by.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Claimed { by, contract_id, reward }.into())
+		assert_last_event::<T>(Event::Claimed { by, contract_id, reward })
 	}
 
 	claim_nft_reward {
@@ -464,14 +462,14 @@ benchmarks! {
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 
 		let creator = create_creator::<T>(Some(vec![reward_nft_item]))?;
-		create_contract::<T>(creator.clone(), contract_id, contract)?;
+		create_contract::<T>(creator, contract_id, contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
-		accept_contract::<T>(m, n, by.clone(), contract_id.clone(), Mode::Staker)?;
+		accept_contract::<T>(m, n, by.clone(), contract_id, Mode::Staker)?;
 	}: claim(RawOrigin::Signed(by.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Claimed { by, contract_id, reward }.into())
+		assert_last_event::<T>(Event::Claimed { by, contract_id, reward })
 	}
 
 	snipe_token_reward {
@@ -487,11 +485,11 @@ benchmarks! {
 
 		let creator = create_creator::<T>(None)?;
 		create_contract::<T>(creator.clone(), contract_id, contract.clone())?;
-		create_contract::<T>(creator.clone(), sniper_contract_id, sniper_contract)?;
+		create_contract::<T>(creator, sniper_contract_id, sniper_contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
-		accept_contract::<T>(m, n, by.clone(), contract_id.clone(), Mode::Staker)?;
+		accept_contract::<T>(m, n, by, contract_id, Mode::Staker)?;
 
 		let sniper = account::<T>("sniper");
 		create_collections::<T>(&sniper, 2)?;
@@ -503,7 +501,7 @@ benchmarks! {
 		);
 	}: snipe(RawOrigin::Signed(sniper.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Sniped { by: sniper, contract_id, reward }.into())
+		assert_last_event::<T>(Event::Sniped { by: sniper, contract_id, reward })
 	}
 
 	snipe_nft_reward {
@@ -528,11 +526,11 @@ benchmarks! {
 
 		let creator = create_creator::<T>(Some(vec![reward_nft_item, sniper_reward_nft_item]))?;
 		create_contract::<T>(creator.clone(), contract_id, contract.clone())?;
-		create_contract::<T>(creator.clone(), sniper_contract_id, sniper_contract)?;
+		create_contract::<T>(creator, sniper_contract_id, sniper_contract)?;
 
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
-		accept_contract::<T>(m, n, by.clone(), contract_id.clone(), Mode::Staker)?;
+		accept_contract::<T>(m, n, by, contract_id, Mode::Staker)?;
 
 		let sniper = account::<T>("sniper");
 		create_collections::<T>(&sniper, 2)?;
@@ -544,7 +542,7 @@ benchmarks! {
 		);
 	}: snipe(RawOrigin::Signed(sniper.clone()), contract_id)
 	verify {
-		assert_last_event::<T>(Event::Sniped { by: sniper, contract_id, reward }.into())
+		assert_last_event::<T>(Event::Sniped { by: sniper, contract_id, reward })
 	}
 
 	impl_benchmark_test_suite!(
