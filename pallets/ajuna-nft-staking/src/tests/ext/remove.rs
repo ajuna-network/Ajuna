@@ -92,3 +92,17 @@ fn rejects_accepted_contracts() {
 			);
 		});
 }
+
+#[test]
+fn rejects_unknown_contracts() {
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				NftStake::remove(RuntimeOrigin::signed(ALICE), H256::random()),
+				Error::<Test>::UnknownContract
+			);
+		});
+}

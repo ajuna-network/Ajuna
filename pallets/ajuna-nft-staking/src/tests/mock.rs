@@ -190,7 +190,7 @@ impl pallet_nft_staking::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CollectionId = MockCollectionId;
-	type ItemId = H256;
+	type ItemId = MockItemId;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type NftHelper = Nft;
 	type MaxContracts = MaxContracts;
@@ -198,6 +198,8 @@ impl pallet_nft_staking::Config for Test {
 	type MaxFeeClauses = MaxFeeClauses;
 	type ContractAttributeKey = AttributeKey;
 	type ContractAttributeValue = AttributeValue;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 	type WeightInfo = ();
 }
 
