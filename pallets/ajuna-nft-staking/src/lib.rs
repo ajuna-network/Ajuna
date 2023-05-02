@@ -57,8 +57,8 @@ pub mod pallet {
 		CollectionIdOf<T>,
 		ItemIdOf<T>,
 		<T as frame_system::Config>::BlockNumber,
-		<T as Config>::ContractAttributeKey,
-		<T as Config>::ContractAttributeValue,
+		<T as Config>::AttributeKey,
+		<T as Config>::AttributeValue,
 	>;
 	pub type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
@@ -148,16 +148,16 @@ pub mod pallet {
 		type MaxFeeClauses: Get<u32>;
 
 		/// Type of the contract's attribute keys, used on contract condition evaluation
-		type ContractAttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
+		type AttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
 		/// Type of the contract's attribute values, used on contract condition evaluation
-		type ContractAttributeValue: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
+		type AttributeValue: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
 		/// A set of helper functions for benchmarking.
 		#[cfg(feature = "runtime-benchmarks")]
 		type BenchmarkHelper: BenchmarkHelper<
-			Self::ContractAttributeKey,
-			Self::ContractAttributeValue,
+			Self::AttributeKey,
+			Self::AttributeValue,
 			Self::ItemId,
 		>;
 

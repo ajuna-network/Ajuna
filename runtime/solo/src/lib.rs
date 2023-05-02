@@ -647,8 +647,8 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type MaxContracts = MaxContracts;
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
-	type ContractAttributeKey = AttributeKey;
-	type ContractAttributeValue = AttributeValue;
+	type AttributeKey = AttributeKey;
+	type AttributeValue = AttributeValue;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type WeightInfo = ();
