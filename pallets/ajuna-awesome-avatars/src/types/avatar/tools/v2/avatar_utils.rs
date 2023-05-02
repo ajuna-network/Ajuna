@@ -305,6 +305,84 @@ impl AvatarBuilder {
 			.with_soul_count(soul_points)
 	}
 
+	pub fn into_paint_flask(
+		self,
+		color_pair: (ColorType, ColorType),
+		soul_points: SoulCount,
+		progress_array: Option<[u8; 11]>,
+	) -> Self {
+		let rarity_type = RarityType::Rare;
+
+		let color_bytes = ((color_pair.0.as_byte() - 1) << 6) | ((color_pair.1.as_byte() - 1) << 4);
+
+		let progress_array = progress_array.unwrap_or_else(|| {
+			AvatarUtils::generate_progress_bytes(
+				rarity_type,
+				SCALING_FACTOR_PERC,
+				SPARK_PROGRESS_PROB_PERC,
+				AvatarUtils::read_progress_array(&self.inner),
+			)
+		});
+
+		self.with_attribute(AvatarAttributes::ItemType, ItemType::Essence)
+			.with_attribute(AvatarAttributes::ItemSubType, EssenceItemType::PaintFlask)
+			.with_attribute(AvatarAttributes::ClassType1, HexType::X0)
+			.with_attribute(AvatarAttributes::ClassType2, HexType::X0)
+			.with_attribute(AvatarAttributes::CustomType1, HexType::X0)
+			// Unused
+			.with_attribute(AvatarAttributes::CustomType2, HexType::X0)
+			.with_attribute(AvatarAttributes::RarityType, rarity_type)
+			.with_attribute_raw(AvatarAttributes::Quantity, 1)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte1, color_bytes)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte2, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte3, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte4, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte5, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte6, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte7, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte8, 0)
+			.with_progress_array(progress_array)
+			.with_soul_count(soul_points)
+	}
+
+	pub fn into_force_glow(
+		self,
+		force_type: ForceType,
+		soul_points: SoulCount,
+		progress_array: Option<[u8; 11]>,
+	) -> Self {
+		let rarity_type = RarityType::Epic;
+
+		let progress_array = progress_array.unwrap_or_else(|| {
+			AvatarUtils::generate_progress_bytes(
+				rarity_type,
+				SCALING_FACTOR_PERC,
+				SPARK_PROGRESS_PROB_PERC,
+				AvatarUtils::read_progress_array(&self.inner),
+			)
+		});
+
+		self.with_attribute(AvatarAttributes::ItemType, ItemType::Essence)
+			.with_attribute(AvatarAttributes::ItemSubType, EssenceItemType::ForceGlow)
+			.with_attribute(AvatarAttributes::ClassType1, HexType::X0)
+			.with_attribute(AvatarAttributes::ClassType2, HexType::X0)
+			.with_attribute(AvatarAttributes::CustomType1, HexType::X0)
+			// Unused
+			.with_attribute(AvatarAttributes::CustomType2, HexType::X0)
+			.with_attribute(AvatarAttributes::RarityType, rarity_type)
+			.with_attribute_raw(AvatarAttributes::Quantity, 1)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte1, force_type.as_byte())
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte2, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte3, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte4, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte5, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte6, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte7, 0)
+			.with_spec_byte_raw(AvatarSpecBytes::SpecByte8, 0)
+			.with_progress_array(progress_array)
+			.with_soul_count(soul_points)
+	}
+
 	pub fn try_into_armor_and_component(
 		self,
 		pet_type: PetType,

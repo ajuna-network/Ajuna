@@ -88,9 +88,55 @@ where
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
-		_hash_provider: &mut HashProvider<T, 32>,
+		hash_provider: &mut HashProvider<T, 32>,
 	) -> Avatar {
-		AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(1).build()
+		let souls = (hash_provider.get_hash_byte() % 99) + 1;
+
+		match *self {
+			EssenceItemType::Glimmer =>
+				AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(souls),
+			EssenceItemType::ColorSpark | EssenceItemType::PaintFlask => {
+				let hash_byte = hash_provider.get_hash_byte();
+				let color_pair = (
+					ColorType::from_byte(AvatarUtils::high_nibble_of(hash_byte)),
+					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
+				);
+
+				if *self == EssenceItemType::ColorSpark {
+					AvatarBuilder::with_base_avatar(base_avatar).into_color_spark(
+						color_pair,
+						souls as SoulCount,
+						None,
+					)
+				} else {
+					AvatarBuilder::with_base_avatar(base_avatar).into_paint_flask(
+						color_pair,
+						souls as SoulCount,
+						None,
+					)
+				}
+			},
+			EssenceItemType::GlowSpark | EssenceItemType::ForceGlow => {
+				let force_type = ForceType::from_byte(
+					hash_provider.get_hash_byte() % ForceType::range().end as u8,
+				);
+
+				if *self == EssenceItemType::GlowSpark {
+					AvatarBuilder::with_base_avatar(base_avatar).into_glow_spark(
+						force_type,
+						souls as SoulCount,
+						None,
+					)
+				} else {
+					AvatarBuilder::with_base_avatar(base_avatar).into_force_glow(
+						force_type,
+						souls as SoulCount,
+						None,
+					)
+				}
+			},
+		}
+		.build()
 	}
 }
 
