@@ -77,8 +77,8 @@ type ContractOf<T> = Contract<
 	CollectionIdOf<T>,
 	<T as NftStakingConfig>::ItemId,
 	<T as frame_system::Config>::BlockNumber,
-	<T as NftStakingConfig>::ContractAttributeKey,
-	<T as NftStakingConfig>::ContractAttributeValue,
+	<T as NftStakingConfig>::AttributeKey,
+	<T as NftStakingConfig>::AttributeValue,
 >;
 
 type NftCurrencyOf<T> = <T as pallet_nfts::Config>::Currency;
