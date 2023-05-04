@@ -21,7 +21,7 @@ where
 		match self {
 			PetItemType::Pet => {
 				let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
-				let pet_variation = hash_provider.get_hash_byte() % 0x0F;
+				let pet_variation = 2_u8.pow(pet_type.as_byte() as u32);
 
 				let spec_bytes = [0; 16];
 
@@ -38,7 +38,7 @@ where
 					pet_type,
 					pet_variation,
 					spec_bytes,
-					progress_array,
+					Some(progress_array),
 					soul_count,
 				)
 			},
@@ -51,7 +51,7 @@ where
 					.into_pet_part(pet_type, slot_type, quantity)
 			},
 			PetItemType::Egg => {
-				let pet_variation = hash_provider.get_hash_byte() % 0x0F;
+				let pet_variation = (hash_provider.get_hash_byte() % 15) + 1;
 				let soul_points = (hash_provider.get_hash_byte() % 99) + 1;
 
 				AvatarBuilder::with_base_avatar(base_avatar).into_egg(
@@ -159,12 +159,20 @@ where
 			EquipableItemType::ArmorComponent3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
 
+				let rarity_type = {
+					if (hash_provider.get_hash_byte() % 3) > 1 {
+						RarityType::Rare
+					} else {
+						RarityType::Epic
+					}
+				};
+
 				AvatarBuilder::with_base_avatar(base_avatar)
 					.try_into_armor_and_component(
 						pet_type,
 						slot_type,
 						vec![*self],
-						RarityType::Common,
+						rarity_type,
 						(ColorType::None, ColorType::None),
 						ForceType::None,
 						soul_count,
@@ -231,12 +239,10 @@ where
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Avatar {
-		let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
-
 		match self {
-			SpecialItemType::Dust =>
-				AvatarBuilder::with_base_avatar(base_avatar).into_dust(soul_count),
+			SpecialItemType::Dust => AvatarBuilder::with_base_avatar(base_avatar).into_dust(1),
 			SpecialItemType::Unidentified => {
+				let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
 				let hash_byte = hash_provider.get_hash_byte();
 				let color_pair = (
 					ColorType::from_byte(AvatarUtils::high_nibble_of(hash_byte)),

@@ -88,15 +88,26 @@ impl AvatarBuilder {
 		pet_type: PetType,
 		pet_variation: u8,
 		spec_bytes: [u8; 16],
-		progress_array: [u8; 11],
+		progress_array: Option<[u8; 11]>,
 		soul_points: SoulCount,
 	) -> Self {
+		let rarity_type = RarityType::Legendary;
+
+		let progress_array = progress_array.unwrap_or_else(|| {
+			AvatarUtils::generate_progress_bytes(
+				rarity_type,
+				SCALING_FACTOR_PERC,
+				PROGRESS_PROBABILITY_PERC,
+				AvatarUtils::read_progress_array(&self.inner),
+			)
+		});
+
 		self.with_attribute(AvatarAttributes::ItemType, ItemType::Pet)
 			.with_attribute(AvatarAttributes::ItemSubType, PetItemType::Pet)
 			.with_attribute(AvatarAttributes::ClassType1, HexType::X0)
 			.with_attribute(AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(AvatarAttributes::CustomType1, HexType::X0)
-			.with_attribute(AvatarAttributes::RarityType, RarityType::Legendary)
+			.with_attribute(AvatarAttributes::RarityType, rarity_type)
 			.with_attribute_raw(AvatarAttributes::Quantity, 1)
 			.with_attribute_raw(AvatarAttributes::CustomType2, pet_variation)
 			.with_spec_bytes(spec_bytes)

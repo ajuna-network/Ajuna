@@ -91,7 +91,7 @@ pub(crate) fn create_random_pet(
 		None,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_pet(pet_type, pet_variation, spec_bytes, progress_array, soul_points)
+				.into_pet(pet_type, pet_variation, spec_bytes, Some(progress_array), soul_points)
 				.build()
 		}),
 	)
