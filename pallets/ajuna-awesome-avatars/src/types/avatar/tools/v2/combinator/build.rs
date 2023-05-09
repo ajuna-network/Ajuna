@@ -114,7 +114,7 @@ where
 							ForceType::None,
 							1,
 						)
-						.map_err(|_| Error::<T>::InvalidForgeComponents)?
+						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?
 						.build();
 
 					generated_equipables.push(generated_equipable);
