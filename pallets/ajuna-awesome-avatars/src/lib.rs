@@ -1074,7 +1074,7 @@ pub mod pallet {
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
 						account.free_mints = account
@@ -1215,13 +1215,13 @@ pub mod pallet {
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
 				},
 			};
 
-			let new_count = Owners::<T>::get(player).len() + mint_option.count as usize;
+			let new_count = Owners::<T>::get(player).len() + mint_option.count.clone() as usize;
 			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())

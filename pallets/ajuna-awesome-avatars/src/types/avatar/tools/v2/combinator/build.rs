@@ -180,10 +180,10 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);
@@ -267,10 +267,10 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 2);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 2);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 2);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 2);
 
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);
@@ -371,10 +371,10 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 10);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 10);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 10);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 10);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 10);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 10);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 10);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 10);
 
 			let blueprint_input_1 = create_random_blueprint(
 				&ALICE,
@@ -481,10 +481,10 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let blueprint_input_1 = create_random_blueprint(
 				&ALICE,
@@ -580,10 +580,10 @@ mod test {
 				mutated
 			};
 
-			let material_input_1 = create_random_material(&ALICE, mutated_pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, mutated_pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, mutated_pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, mutated_pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, mutated_pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, mutated_pattern[1].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, mutated_pattern[2].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, mutated_pattern[3].clone(), 1);
 
 			// Here we use the original pattern
 			let blueprint_input_1 =
@@ -666,10 +666,10 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);

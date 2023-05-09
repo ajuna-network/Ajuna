@@ -4,7 +4,7 @@ use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone)]
 pub enum AvatarAttributes {
 	ItemType,
 	ItemSubType,
@@ -17,7 +17,7 @@ pub enum AvatarAttributes {
 }
 
 #[allow(dead_code)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone)]
 pub enum AvatarSpecBytes {
 	SpecByte1,
 	SpecByte2,
@@ -95,7 +95,7 @@ impl AvatarBuilder {
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity_type.clone(),
 				SCALING_FACTOR_PERC,
 				PROGRESS_PROBABILITY_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -189,7 +189,7 @@ impl AvatarBuilder {
 	) -> Self {
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity_type.clone(),
 				SCALING_FACTOR_PERC,
 				PROGRESS_PROBABILITY_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -217,7 +217,7 @@ impl AvatarBuilder {
 			.with_attribute(AvatarAttributes::ItemSubType, material_type)
 			.with_attribute(AvatarAttributes::ClassType1, HexType::X0)
 			.with_attribute(AvatarAttributes::ClassType2, HexType::X0)
-			.with_attribute(AvatarAttributes::CustomType1, custom_type_1)
+			.with_attribute(AvatarAttributes::CustomType1, custom_type_1.clone())
 			.with_attribute(AvatarAttributes::RarityType, RarityType::Common)
 			.with_attribute_raw(AvatarAttributes::Quantity, quantity)
 			// Unused
@@ -232,7 +232,7 @@ impl AvatarBuilder {
 			.with_attribute(AvatarAttributes::ItemSubType, EssenceItemType::Glimmer)
 			.with_attribute(AvatarAttributes::ClassType1, HexType::X0)
 			.with_attribute(AvatarAttributes::ClassType2, HexType::X0)
-			.with_attribute(AvatarAttributes::CustomType1, custom_type_1)
+			.with_attribute(AvatarAttributes::CustomType1, custom_type_1.clone())
 			// Unused
 			.with_attribute(AvatarAttributes::CustomType2, HexType::X0)
 			.with_attribute(AvatarAttributes::RarityType, RarityType::Uncommon)
@@ -250,7 +250,7 @@ impl AvatarBuilder {
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity_type.clone(),
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -288,7 +288,7 @@ impl AvatarBuilder {
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity_type.clone(),
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -328,7 +328,7 @@ impl AvatarBuilder {
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity_type.clone(),
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -366,7 +366,7 @@ impl AvatarBuilder {
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity_type.clone(),
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -405,7 +405,7 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 	) -> Result<Self, ()> {
 		if equipable_type.is_empty() ||
-			equipable_type.iter().any(|equip| !EquipableItemType::is_armor(*equip))
+			equipable_type.iter().any(|equip| !EquipableItemType::is_armor(equip.clone()))
 		{
 			return Err(())
 		}
@@ -422,10 +422,10 @@ impl AvatarBuilder {
 		};
 
 		// Guaranteed to work because of check above
-		let first_equipable = equipable_type.first().copied().unwrap();
+		let first_equipable = equipable_type.first().unwrap();
 
 		let progress_array = AvatarUtils::generate_progress_bytes(
-			rarity_type,
+			rarity_type.clone(),
 			SCALING_FACTOR_PERC,
 			PROGRESS_PROBABILITY_PERC,
 			AvatarUtils::read_progress_array(&self.inner),
@@ -433,7 +433,7 @@ impl AvatarBuilder {
 
 		Ok(self
 			.with_attribute(AvatarAttributes::ItemType, ItemType::Equipable)
-			.with_attribute(AvatarAttributes::ItemSubType, first_equipable)
+			.with_attribute(AvatarAttributes::ItemSubType, first_equipable.clone())
 			.with_attribute(AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(AvatarAttributes::CustomType1, HexType::X0)
@@ -462,12 +462,12 @@ impl AvatarBuilder {
 		force_type: ForceType,
 		soul_points: SoulCount,
 	) -> Result<Self, ()> {
-		if !EquipableItemType::is_weapon(equipable_type) {
+		if !EquipableItemType::is_weapon(equipable_type.clone()) {
 			return Err(())
 		}
 
 		let weapon_info = {
-			let mut info = AvatarUtils::enums_to_bits(&[equipable_type]) as u8 >> 4;
+			let mut info = AvatarUtils::enums_to_bits(&[equipable_type.clone()]) as u8 >> 4;
 
 			if color_pair.0 != ColorType::None && color_pair.1 != ColorType::None {
 				info |= ((color_pair.0.as_byte() - 1) << 6) | ((color_pair.1.as_byte() - 1) << 4)
@@ -479,7 +479,7 @@ impl AvatarBuilder {
 		let rarity_type = RarityType::Legendary;
 
 		let progress_array = AvatarUtils::generate_progress_bytes(
-			rarity_type,
+			rarity_type.clone(),
 			SCALING_FACTOR_PERC,
 			PROGRESS_PROBABILITY_PERC,
 			AvatarUtils::read_progress_array(&self.inner),
@@ -686,7 +686,7 @@ impl AvatarUtils {
 		value: T,
 	) -> bool
 	where
-		T: ByteConvertible + PartialEq + Eq,
+		T: ByteConvertible + PartialEq,
 	{
 		Self::read_attribute_as::<T>(avatar, attribute) != value
 	}
@@ -787,7 +787,7 @@ impl AvatarUtils {
 		from: &Avatar,
 		from_spec_bye: AvatarSpecBytes,
 	) {
-		let current_value = Self::read_spec_byte(avatar, spec_byte);
+		let current_value = Self::read_spec_byte(avatar, spec_byte.clone());
 		let from_value = Self::read_spec_byte(from, from_spec_bye);
 		Self::write_spec_byte(avatar, spec_byte, current_value.saturating_add(from_value));
 	}
@@ -918,7 +918,7 @@ impl AvatarUtils {
 
 	pub fn create_pattern<T>(mut base_speed: usize, increase_seed: usize) -> Vec<T>
 	where
-		T: Ranged + Ord,
+		T: Ranged,
 	{
 		// Equivalent to "0X35AAB76B4482CADFF35BB3BD1C86648697B6F6833B47B939AECE95EDCD0347"
 		let fixed_seed: [u8; 32] = [
@@ -1004,7 +1004,7 @@ impl AvatarUtils {
 			let bit_position = (bit_segment >> (mask_width - (i + 2))) as usize;
 
 			if sorted_enum_list.len() > bit_position {
-				output_enums.push(sorted_enum_list[bit_position]);
+				output_enums.push(sorted_enum_list[bit_position].clone());
 			}
 		}
 
@@ -1044,7 +1044,7 @@ impl AvatarUtils {
 		let mut result = u8::MAX;
 
 		for i in 0..progress_bytes.len() {
-			let value = Self::read_dna_at(progress_bytes, i, byte_type);
+			let value = Self::read_dna_at(progress_bytes, i, byte_type.clone());
 			if result > value {
 				result = value;
 			}

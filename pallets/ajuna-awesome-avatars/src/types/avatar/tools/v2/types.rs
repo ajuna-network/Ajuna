@@ -1,8 +1,7 @@
 use sp_std::ops::Range;
 
-pub(crate) trait ByteConvertible: Copy + Clone {
+pub(crate) trait ByteConvertible: Clone {
 	fn from_byte(byte: u8) -> Self;
-
 	fn as_byte(&self) -> u8;
 }
 
@@ -10,7 +9,7 @@ pub(crate) trait Ranged: ByteConvertible {
 	fn range() -> Range<usize>;
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Default)]
 pub(crate) enum ByteType {
 	#[default]
 	Full = 0b1111_1111,
@@ -29,11 +28,11 @@ impl ByteConvertible for ByteType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Default)]
 pub(crate) enum HexType {
 	#[default]
 	X0 = 0b0000,
@@ -78,11 +77,11 @@ impl ByteConvertible for HexType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum NibbleType {
 	#[default]
 	X0 = 0b0000,
@@ -111,7 +110,7 @@ impl ByteConvertible for NibbleType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -121,7 +120,7 @@ impl Ranged for NibbleType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum ItemType {
 	#[default]
 	Pet = 1,
@@ -146,11 +145,11 @@ impl ByteConvertible for ItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
 pub(crate) enum RarityType {
 	#[default]
 	Common = 1,
@@ -175,11 +174,11 @@ impl ByteConvertible for RarityType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum PetItemType {
 	#[default]
 	Pet = 1,
@@ -198,11 +197,11 @@ impl ByteConvertible for PetItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum EquipableItemType {
 	#[default]
 	ArmorBase = 1,
@@ -229,7 +228,7 @@ impl ByteConvertible for EquipableItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -254,7 +253,7 @@ impl EquipableItemType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum PetType {
 	#[default]
 	TankyBullwog = 1,
@@ -281,7 +280,7 @@ impl ByteConvertible for PetType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -291,7 +290,7 @@ impl Ranged for PetType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) enum PetPartType {
 	#[default]
 	Horns = 1,
@@ -318,11 +317,11 @@ impl ByteConvertible for PetPartType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum SlotType {
 	#[default]
 	Head = 1,
@@ -351,7 +350,7 @@ impl ByteConvertible for SlotType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -361,7 +360,7 @@ impl Ranged for SlotType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum MaterialItemType {
 	#[default]
 	Polymers = 1,
@@ -390,7 +389,7 @@ impl ByteConvertible for MaterialItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -400,7 +399,7 @@ impl Ranged for MaterialItemType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum EssenceItemType {
 	#[default]
 	Glimmer = 1,
@@ -423,11 +422,11 @@ impl ByteConvertible for EssenceItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) enum BlueprintItemType {
 	#[default]
 	Blueprint = 1,
@@ -442,11 +441,11 @@ impl ByteConvertible for BlueprintItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum ColorType {
 	#[default]
 	None = 0,
@@ -469,7 +468,7 @@ impl ByteConvertible for ColorType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -479,7 +478,7 @@ impl Ranged for ColorType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum ForceType {
 	#[default]
 	None = 0,
@@ -506,7 +505,7 @@ impl ByteConvertible for ForceType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }
 
@@ -516,7 +515,7 @@ impl Ranged for ForceType {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum SpecialItemType {
 	#[default]
 	Dust = 1,
@@ -533,6 +532,6 @@ impl ByteConvertible for SpecialItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		*self as u8
+		self.clone() as u8
 	}
 }

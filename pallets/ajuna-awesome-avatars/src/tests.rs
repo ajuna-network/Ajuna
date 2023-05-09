@@ -963,7 +963,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.seasons(&[(1, season_1.clone()), (2, season_2)])
-			.mint_fees(fees)
+			.mint_fees(fees.clone())
 			.mint_cooldown(mint_cooldown)
 			.balances(&[(ALICE, initial_balance)])
 			.free_mints(&[(ALICE, initial_free_mints)])
@@ -1009,8 +1009,8 @@ mod minting {
 					));
 					match mint_type {
 						MintType::Normal => {
-							initial_balance -= fees.fee_for(&MintPackSize::One);
-							initial_treasury_balance += fees.fee_for(&MintPackSize::One);
+							initial_balance -= fees.clone().fee_for(&MintPackSize::One);
+							initial_treasury_balance += fees.clone().fee_for(&MintPackSize::One);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
@@ -1051,8 +1051,8 @@ mod minting {
 					));
 					match mint_type {
 						MintType::Normal => {
-							initial_balance -= fees.fee_for(&MintPackSize::Three);
-							initial_treasury_balance += fees.fee_for(&MintPackSize::Three);
+							initial_balance -= fees.clone().fee_for(&MintPackSize::Three);
+							initial_treasury_balance += fees.clone().fee_for(&MintPackSize::Three);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
@@ -1090,8 +1090,8 @@ mod minting {
 					));
 					match mint_type {
 						MintType::Normal => {
-							initial_balance -= fees.fee_for(&MintPackSize::Six);
-							initial_treasury_balance += fees.fee_for(&MintPackSize::Six);
+							initial_balance -= fees.clone().fee_for(&MintPackSize::Six);
+							initial_treasury_balance += fees.clone().fee_for(&MintPackSize::Six);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
@@ -1203,7 +1203,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
-								count,
+								count: count.clone(),
 								mint_type,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
@@ -1225,7 +1225,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::none(),
 							MintOption {
-								count,
+								count: count.clone(),
 								mint_type,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
@@ -1251,7 +1251,7 @@ mod minting {
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
-									count,
+									count: count.clone(),
 									mint_type,
 									mint_pack: PackType::Material,
 									mint_version: AvatarVersion::V1
@@ -1291,7 +1291,7 @@ mod minting {
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
-									count,
+									count: count.clone(),
 									mint_type,
 									mint_pack: PackType::Material,
 									mint_version: AvatarVersion::V1
@@ -1917,7 +1917,10 @@ mod forging {
 					Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(),
 					&[0x04, 0x05, 0x05, 0x03]
 				);
-				assert_eq!(Avatars::<Test>::get(leader_id).unwrap().1.min_tier(), tiers[0] as u8,);
+				assert_eq!(
+					Avatars::<Test>::get(leader_id).unwrap().1.min_tier(),
+					tiers[0].clone() as u8,
+				);
 
 				// mutate the DNA of leader to make it a tier higher
 				let mut leader_avatar = Avatars::<Test>::get(leader_id).unwrap();
@@ -1925,12 +1928,15 @@ mod forging {
 					.1
 					.dna
 					.iter()
-					.map(|x| ((tiers[1] as u8) << 4) | (x & 0b0000_1111))
+					.map(|x| ((tiers[1].clone() as u8) << 4) | (x & 0b0000_1111))
 					.collect::<Vec<_>>()
 					.try_into()
 					.unwrap();
 				Avatars::<Test>::insert(leader_id, &leader_avatar);
-				assert_eq!(Avatars::<Test>::get(leader_id).unwrap().1.min_tier(), tiers[1] as u8);
+				assert_eq!(
+					Avatars::<Test>::get(leader_id).unwrap().1.min_tier(),
+					tiers[1].clone() as u8
+				);
 
 				// forging doesn't take effect
 				let sacrifice_ids = &Owners::<Test>::get(ALICE)[1..5];

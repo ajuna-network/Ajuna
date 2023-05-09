@@ -169,25 +169,19 @@ mod test {
 				],
 			];
 
-			let pet_type = PetType::FoxishDude;
-			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
-			let rarity_type = RarityType::Common;
-			let color_pair = (ColorType::None, ColorType::None);
-			let force_type = ForceType::None;
-
-			let mut armor_component_set = (0..5)
+			let mut armor_component_set = hash_base
 				.into_iter()
-				.map(|i| {
+				.enumerate()
+				.map(|(i, hash)| {
 					create_random_armor_component(
-						hash_base[i],
+						hash,
 						&ALICE,
-						pet_type,
-						slot_type,
-						rarity_type,
-						vec![equip_type],
-						color_pair,
-						force_type,
+						PetType::FoxishDude,
+						SlotType::Head,
+						RarityType::Common,
+						vec![EquipableItemType::ArmorBase],
+						(ColorType::None, ColorType::None),
+						ForceType::None,
 						i as SoulCount,
 					)
 				})
@@ -273,38 +267,33 @@ mod test {
 				[0x11, 0x11, 0x25, 0x24, 0x14, 0x23, 0x13, 0x12, 0x52, 0x12, 0x12],
 			];
 
-			let pet_type = PetType::FoxishDude;
-			let slot_type = SlotType::Head;
-			let equip_type: [EquipableItemType; 5] = [
+			let mut armor_component_set = [
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorComponent1,
-			];
-			let rarity_type = RarityType::Common;
-			let color_pair = (ColorType::None, ColorType::None);
-			let force_type = ForceType::None;
-
-			let mut armor_component_set = (0..5)
-				.into_iter()
-				.map(|i| {
-					let (id, mut avatar) = create_random_armor_component(
-						hash_base[i],
-						&ALICE,
-						pet_type,
-						slot_type,
-						rarity_type,
-						vec![equip_type[i]],
-						color_pair,
-						force_type,
-						i as SoulCount,
-					);
-					AvatarUtils::write_progress_array(&mut avatar, progress_arrays[i]);
-
-					(id, avatar)
-				})
-				.collect::<Vec<_>>();
+			]
+			.into_iter()
+			.zip(hash_base)
+			.zip(progress_arrays)
+			.enumerate()
+			.map(|(i, ((equip_type, hash), progress_array))| {
+				let (id, mut avatar) = create_random_armor_component(
+					hash,
+					&ALICE,
+					PetType::FoxishDude,
+					SlotType::Head,
+					RarityType::Common,
+					vec![equip_type],
+					(ColorType::None, ColorType::None),
+					ForceType::None,
+					i as SoulCount,
+				);
+				AvatarUtils::write_progress_array(&mut avatar, progress_array);
+				(id, avatar)
+			})
+			.collect::<Vec<_>>();
 
 			let total_soul_points =
 				armor_component_set.iter().map(|(_, avatar)| avatar.souls).sum::<SoulCount>();
@@ -391,26 +380,23 @@ mod test {
 				],
 			];
 
-			let pet_type = PetType::FoxishDude;
-			let slot_types: [SlotType; 5] =
+			let slot_types =
 				[SlotType::Head, SlotType::Head, SlotType::LegBack, SlotType::Head, SlotType::Head];
-			let equip_type = EquipableItemType::ArmorBase;
-			let rarity_type = RarityType::Common;
-			let color_pair = (ColorType::None, ColorType::None);
-			let force_type = ForceType::None;
 
-			let mut armor_component_set = (0..5)
+			let mut armor_component_set = hash_base
 				.into_iter()
-				.map(|i| {
+				.zip(slot_types)
+				.enumerate()
+				.map(|(i, (hash, slot_type))| {
 					create_random_armor_component(
-						hash_base[i],
+						hash,
 						&ALICE,
-						pet_type,
-						slot_types[i],
-						rarity_type,
-						vec![equip_type],
-						color_pair,
-						force_type,
+						PetType::FoxishDude,
+						slot_type,
+						RarityType::Common,
+						vec![EquipableItemType::ArmorBase],
+						(ColorType::None, ColorType::None),
+						ForceType::None,
 						i as SoulCount,
 					)
 				})

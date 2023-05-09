@@ -41,7 +41,7 @@ where
 					};
 					AvatarUtils::write_spec_byte(
 						&mut leader,
-						spec_byte_index,
+						spec_byte_index.clone(),
 						AvatarUtils::read_spec_byte(sacrifice, spec_byte_index),
 					);
 				}
@@ -181,7 +181,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let progress_arrays: [[u8; 11]; 5] = [
+			let progress_arrays = [
 				[0x44, 0x45, 0x33, 0x40, 0x40, 0x31, 0x31, 0x44, 0x44, 0x33, 0x42],
 				[0x32, 0x45, 0x32, 0x40, 0x33, 0x33, 0x35, 0x35, 0x34, 0x40, 0x32],
 				[0x34, 0x30, 0x34, 0x34, 0x43, 0x31, 0x30, 0x30, 0x44, 0x33, 0x35],
@@ -197,17 +197,13 @@ mod test {
 				ForceType::Kinetic,
 			];
 
-			let mut avatars = Vec::with_capacity(5);
-
-			for i in 0..5 {
-				avatars.push(create_random_glow_spark(
-					None,
-					&ALICE,
-					force_types[i],
-					5,
-					Some(progress_arrays[i]),
-				));
-			}
+			let mut avatars = force_types
+				.into_iter()
+				.zip(progress_arrays)
+				.map(|(force_type, progress_array)| {
+					create_random_glow_spark(None, &ALICE, force_type, 5, Some(progress_array))
+				})
+				.collect::<Vec<_>>();
 
 			let total_soul_points = 25;
 

@@ -36,7 +36,7 @@ impl SeasonStatus {
 pub type RarityPercent = u8;
 pub type SacrificeCount = u8;
 
-#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1_000>>,
@@ -56,7 +56,7 @@ pub struct Season<BlockNumber> {
 	pub periods: u16,
 }
 
-impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
+impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
 	pub(crate) fn is_active(&self, now: BlockNumber) -> bool {
 		now >= self.start && now <= self.end
 	}
@@ -78,16 +78,17 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 
 	pub(crate) fn current_period(&self, now: &BlockNumber) -> u16 {
 		let cycles = now.checked_rem(&self.full_cycle()).unwrap_or_else(Zero::zero);
-		let current_period = if cycles.is_zero() { Zero::zero() } else { cycles / self.per_period };
+		let current_period =
+			if cycles.is_zero() { Zero::zero() } else { cycles / self.per_period.clone() };
 		current_period.unique_saturated_into()
 	}
 
 	pub(crate) fn max_tier(&self) -> RarityTier {
-		*self.tiers.iter().max().unwrap_or(&RarityTier::Common)
+		self.tiers.clone().into_iter().max().unwrap_or_default()
 	}
 
 	fn full_cycle(&self) -> BlockNumber {
-		self.per_period.saturating_mul(self.periods.unique_saturated_into())
+		self.per_period.clone().saturating_mul(self.periods.unique_saturated_into())
 	}
 
 	fn sort(&mut self) {

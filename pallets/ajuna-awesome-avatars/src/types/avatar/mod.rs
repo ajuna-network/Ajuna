@@ -40,7 +40,7 @@ pub type Dna = BoundedVec<u8, ConstU32<100>>;
 pub type SoulCount = u32;
 
 /// Used to indicate which version of the forging and/or mint logic should be used.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum AvatarVersion {
 	#[default]
 	V1,

@@ -131,12 +131,12 @@ where
 		let mut hash_provider =
 			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
 
-		let roll_amount = mint_option.count as usize;
+		let roll_amount = mint_option.count.clone() as usize;
 		let mut minted_avatars = Vec::with_capacity(roll_amount);
 
 		for i in 0..roll_amount {
 			let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
-				mint_option.mint_pack,
+				mint_option.mint_pack.clone(),
 				&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_ITEM_PROBABILITIES,
@@ -156,7 +156,7 @@ where
 
 			let avatar = self
 				.get_mutator_from_item_type(
-					mint_option.mint_pack,
+					mint_option.mint_pack.clone(),
 					rolled_item_type,
 					&mut hash_provider,
 				)
@@ -661,9 +661,9 @@ mod test {
 			// Build
 			let (_, leader) = create_random_blueprint(
 				&ALICE,
-				pet_type,
-				slot_type,
-				equip_type,
+				pet_type.clone(),
+				slot_type.clone(),
+				equip_type.clone(),
 				pattern.clone(),
 				2,
 			);

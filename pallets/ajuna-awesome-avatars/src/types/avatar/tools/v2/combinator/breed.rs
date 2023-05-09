@@ -30,12 +30,12 @@ where
 
 		if is_leader_legendary && is_leader_egg && pet_variation > 0 {
 			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
-			let pet_type = pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
+			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,
 				AvatarAttributes::ClassType2,
-				pet_type,
+				pet_type.clone(),
 			);
 
 			AvatarUtils::write_typed_attribute(
@@ -164,8 +164,6 @@ mod test {
 				[0x43, 0x40, 0x44, 0x43, 0x41, 0x45, 0x44, 0x44, 0x44, 0x45, 0x42],
 			];
 
-			let rarity_type = RarityType::Epic;
-
 			let mut egg_set = (0..5)
 				.into_iter()
 				.map(|i| {
@@ -174,7 +172,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						rarity_type,
+						RarityType::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -216,8 +214,6 @@ mod test {
 				[0x54, 0x43, 0x44, 0x42, 0x45, 0x42, 0x41, 0x44, 0x40, 0x51, 0x41],
 			];
 
-			let rarity_type = RarityType::Epic;
-
 			let mut egg_set = (0..5)
 				.into_iter()
 				.map(|i| {
@@ -226,7 +222,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						rarity_type,
+						RarityType::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],

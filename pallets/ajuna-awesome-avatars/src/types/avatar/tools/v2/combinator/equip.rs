@@ -106,23 +106,23 @@ mod test {
 			];
 
 			let armor_slots = [SlotType::Head, SlotType::Breast, SlotType::ArmFront];
-
 			let pet_type = PetType::FoxishDude;
-			let rarity_type = RarityType::Legendary;
 			let force_type = ForceType::Astral;
 			let color_pair = (ColorType::ColorC, ColorType::ColorB);
 
-			let mut armor_sacrifices = (0..3)
-				.map(|i| {
+			let mut armor_sacrifices = sacrifice_hash_base
+				.into_iter()
+				.zip(armor_slots)
+				.map(|(hash, armor_slot)| {
 					create_random_armor_component(
-						sacrifice_hash_base[i],
+						hash,
 						&ALICE,
-						pet_type,
-						armor_slots[i],
-						rarity_type,
+						pet_type.clone(),
+						armor_slot,
+						RarityType::Legendary,
 						armor_progress.clone(),
-						color_pair,
-						force_type,
+						color_pair.clone(),
+						force_type.clone(),
 						100,
 					)
 				})
@@ -131,11 +131,11 @@ mod test {
 			let weapon_sacrifice = create_random_weapon(
 				sacrifice_hash_base[3],
 				&ALICE,
-				pet_type,
+				pet_type.clone(),
 				SlotType::WeaponBack,
 				EquipableItemType::WeaponVersion2,
-				color_pair,
-				force_type,
+				color_pair.clone(),
+				force_type.clone(),
 				100,
 			);
 
@@ -232,25 +232,23 @@ mod test {
 				100,
 			);
 
-			let armor_progress = vec![
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorComponent1,
-				EquipableItemType::ArmorComponent2,
-			];
 			let sacrifice_base_hash = [
 				0xFB, 0x0E, 0x54, 0x01, 0x1C, 0x36, 0xA8, 0xBA, 0xED, 0x77, 0x45, 0x2A, 0x45, 0xD7,
 				0xC8, 0xA1, 0x08, 0xE4, 0x97, 0x29, 0x44, 0x1F, 0xBA, 0xE7, 0x22, 0x2E, 0x90, 0x20,
 				0x71, 0xFD, 0xA3, 0x68,
 			];
-			let color_pair = (ColorType::ColorC, ColorType::ColorB);
 			let sacrifice = create_random_armor_component(
 				sacrifice_base_hash,
 				&ALICE,
 				PetType::FoxishDude,
 				SlotType::ArmFront,
 				RarityType::Legendary,
-				armor_progress,
-				color_pair,
+				vec![
+					EquipableItemType::ArmorBase,
+					EquipableItemType::ArmorComponent1,
+					EquipableItemType::ArmorComponent2,
+				],
+				(ColorType::ColorC, ColorType::ColorB),
 				ForceType::Astral,
 				100,
 			);

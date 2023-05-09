@@ -27,7 +27,7 @@ where
 		hash_provider: &mut HashProvider<T, HS>,
 	) -> S
 	where
-		S: Copy + Clone + Default,
+		S: Clone + Default,
 	{
 		let mut item_rolled = S::default();
 		let mut roll = Self::roll_number(hash_provider);
@@ -36,7 +36,7 @@ where
 			roll = roll.saturating_sub(*slot_probability);
 
 			if roll == 0 {
-				item_rolled = *slot_item;
+				item_rolled = slot_item.clone();
 				break
 			}
 		}
@@ -54,7 +54,7 @@ where
 		hash_provider: &mut HashProvider<T, HS>,
 	) -> S
 	where
-		S: Copy + Clone + Default,
+		S: Clone + Default,
 	{
 		let slots = match pack_type {
 			PackType::Material => on_material,

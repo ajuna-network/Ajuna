@@ -76,7 +76,7 @@ where
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Avatar {
 		AvatarBuilder::with_base_avatar(base_avatar)
-			.into_material(*self, (hash_provider.get_hash_byte() % MAX_QUANTITY) + 1)
+			.into_material(self.clone(), (hash_provider.get_hash_byte() % MAX_QUANTITY) + 1)
 			.build()
 	}
 }
@@ -171,7 +171,7 @@ where
 					.try_into_armor_and_component(
 						pet_type,
 						slot_type,
-						vec![*self],
+						vec![self.clone()],
 						rarity_type,
 						(ColorType::None, ColorType::None),
 						ForceType::None,
@@ -194,7 +194,14 @@ where
 				);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
-					.try_into_weapon(pet_type, slot_type, *self, color_pair, force_type, soul_count)
+					.try_into_weapon(
+						pet_type,
+						slot_type,
+						self.clone(),
+						color_pair,
+						force_type,
+						soul_count,
+					)
 					.unwrap()
 			},
 		}
@@ -225,7 +232,14 @@ where
 		);
 
 		AvatarBuilder::with_base_avatar(base_avatar)
-			.into_blueprint(*self, pet_type, slot_type, equipable_item_type, pattern, soul_count)
+			.into_blueprint(
+				self.clone(),
+				pet_type,
+				slot_type,
+				equipable_item_type,
+				pattern,
+				soul_count,
+			)
 			.build()
 	}
 }

@@ -158,11 +158,10 @@ mod test {
 			);
 
 			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -241,11 +240,10 @@ mod test {
 			);
 
 			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 2);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 2);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 2);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 2);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -330,11 +328,10 @@ mod test {
 			);
 
 			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 2);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 2);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 2);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 2);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 2);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 2);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 2);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 2);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 2);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -409,11 +406,10 @@ mod test {
 			);
 
 			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -564,11 +560,10 @@ mod test {
 			);
 
 			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
+			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
+			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
+			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
