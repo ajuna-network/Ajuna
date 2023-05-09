@@ -379,7 +379,7 @@ benchmarks! {
 			tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
 			single_mint_probs: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 			batch_mint_probs: vec![40, 30, 15, 10, 5].try_into().unwrap(),
-			base_prob: u8::MAX,
+			base_prob: 99,
 			per_period: T::BlockNumber::from(1_u32),
 			periods: u16::MAX,
 		};

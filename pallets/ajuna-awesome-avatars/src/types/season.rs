@@ -148,6 +148,7 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 			self.batch_mint_probs.len() < self.tiers.len(),
 			Error::<T>::TooManyRarityPercentages
 		);
+		ensure!(self.base_prob < MAX_PERCENTAGE, Error::<T>::BaseProbTooHigh);
 		Ok(())
 	}
 
@@ -339,6 +340,7 @@ mod test {
 				Error::<Test>::SingleMintProbsOverflow,
 			),
 			(season.clone().batch_mint_probs(&[u8::MAX, 1]), Error::<Test>::BatchMintProbsOverflow),
+			(season.clone().base_prob(101), Error::<Test>::BaseProbTooHigh),
 			// periods
 			(season.clone().per_period(2).periods(u16::MAX), Error::<Test>::PeriodConfigOverflow),
 			(season.clone().periods(123).max_variations(7), Error::<Test>::PeriodsIndivisible),
