@@ -166,13 +166,13 @@ where
 		input_leader: &ForgeItem<T>,
 		input_sacrifices: &[ForgeItem<T>],
 	) -> DispatchResult {
-			.iter()
-			.all(|(_, avatar)| avatar.version == input_leader.1.version)
-		{
-			Ok(())
-		} else {
-			Err(Error::<T>::IncompatibleAvatarVersions.into())
-		}
+		ensure!(
+			input_sacrifices
+				.iter()
+				.all(|(_, avatar)| avatar.version == input_leader.1.version),
+			Error::<T>::IncompatibleAvatarVersions
+		);
+		Ok(())
 	}
 }
 
