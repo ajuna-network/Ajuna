@@ -609,7 +609,7 @@ mod test {
 					assert_eq!(avatar.souls, total_soul_points);
 
 					let avatar_dna = avatar.dna.as_slice();
-					let expected_dna: [u8; 12] =
+					let expected_dna =
 						[0x51, 0x21, 0x13, 0x05, 0x00, 0x66, 0x6C, 0x04, 0x01, 0x01, 0x01, 0x01];
 
 					assert_eq!(&avatar_dna[0..12], &expected_dna);

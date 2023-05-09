@@ -1087,7 +1087,7 @@ where
 
 	pub fn new_starting_at(hash: &T::Hash, index: usize) -> Self {
 		// TODO: Improve
-		let mut bytes: [u8; N] = [0; N];
+		let mut bytes = [0; N];
 
 		let hash_ref = hash.as_ref();
 		let hash_len = hash_ref.len();

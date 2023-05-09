@@ -123,7 +123,7 @@ mod test {
 			let leader = create_random_glimmer(&ALICE, 10);
 			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 8);
 
-			let expected_dna: [u8; 32] = [
+			let expected_dna = [
 				0x31, 0x00, 0x12, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
@@ -211,7 +211,7 @@ mod test {
 						SpecialItemType::Dust
 					);
 
-					let expected_dna_head: [u8; 5] = [0x61, 0x00, 0x11, 0x05, 0x00];
+					let expected_dna_head = [0x61, 0x00, 0x11, 0x05, 0x00];
 					let avatar_dna_slice = &avatar.dna[0..5];
 
 					// We only need to check the 5 first bytes since the rest are not relevant for
@@ -662,7 +662,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let mut probability_array: [u32; 6] = [0; 6];
+			let mut probability_array = [0; 6];
 
 			for i in 0..10_000 {
 				let leader = create_random_glimmer(&ALICE, 20);
