@@ -310,6 +310,10 @@ pub mod pallet {
 		UnknownPreparation,
 		/// The season ID of a season to create is not sequential.
 		NonSequentialSeasonId,
+		/// The sum of the given single mint probabilities overflows.
+		SingleMintProbsOverflow,
+		/// The sum of the given batch mint probabilities overflows.
+		BatchMintProbsOverflow,
 		/// Rarity percentages don't add up to 100
 		IncorrectRarityPercentages,
 		/// Max tier is achievable through forging only. Therefore the number of rarity percentages

@@ -125,8 +125,19 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 	}
 
 	fn validate_percentages<T: Config>(&self) -> DispatchResult {
-		let p_1 = self.single_mint_probs.iter().sum::<RarityPercent>();
-		let p_2 = self.batch_mint_probs.iter().sum::<RarityPercent>();
+		let p_1 = self
+			.single_mint_probs
+			.iter()
+			.copied()
+			.try_fold(RarityPercent::default(), |acc, x| acc.checked_add(x))
+			.ok_or(Error::<T>::SingleMintProbsOverflow)?;
+		let p_2 = self
+			.batch_mint_probs
+			.iter()
+			.copied()
+			.try_fold(RarityPercent::default(), |acc, x| acc.checked_add(x))
+			.ok_or(Error::<T>::BatchMintProbsOverflow)?;
+
 		ensure!(p_1 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
 		ensure!(p_2 == MAX_PERCENTAGE, Error::<T>::IncorrectRarityPercentages);
 		ensure!(
@@ -323,6 +334,11 @@ mod test {
 				Error::<Test>::TooManyRarityPercentages,
 			),
 			(season.clone().batch_mint_probs(&[1, 2, 97]), Error::<Test>::TooManyRarityPercentages),
+			(
+				season.clone().single_mint_probs(&[u8::MAX, 1]),
+				Error::<Test>::SingleMintProbsOverflow,
+			),
+			(season.clone().batch_mint_probs(&[u8::MAX, 1]), Error::<Test>::BatchMintProbsOverflow),
 			// periods
 			(season.clone().per_period(2).periods(u16::MAX), Error::<Test>::PeriodConfigOverflow),
 			(season.clone().periods(123).max_variations(7), Error::<Test>::PeriodsIndivisible),
