@@ -145,5 +145,5 @@ pub(crate) trait Forger<T: Config> {
 		season: &SeasonOf<T>,
 		input_leader: &ForgeItem<T>,
 		input_sacrifices: &[ForgeItem<T>],
-	) -> Result<(), DispatchError>;
+	) -> DispatchResult;
 }

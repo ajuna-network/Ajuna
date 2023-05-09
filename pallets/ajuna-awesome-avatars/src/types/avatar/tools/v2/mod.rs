@@ -226,7 +226,7 @@ where
 		_season: &SeasonOf<T>,
 		input_leader: &ForgeItem<T>,
 		input_sacrifices: &[ForgeItem<T>],
-	) -> Result<(), DispatchError> {
+	) -> DispatchResult {
 		if (input_leader.1.version != AvatarVersion::V2) ||
 			(input_sacrifices.len() < MIN_SACRIFICE || input_sacrifices.len() > MAX_SACRIFICE) ||
 			(input_sacrifices.iter().any(|(_, avatar)| avatar.version != AvatarVersion::V2))

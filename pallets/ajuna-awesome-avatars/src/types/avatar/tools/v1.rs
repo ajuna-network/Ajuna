@@ -165,8 +165,7 @@ where
 		_season: &SeasonOf<T>,
 		input_leader: &ForgeItem<T>,
 		input_sacrifices: &[ForgeItem<T>],
-	) -> Result<(), DispatchError> {
-		if input_sacrifices
+	) -> DispatchResult {
 			.iter()
 			.all(|(_, avatar)| avatar.version == input_leader.1.version)
 		{

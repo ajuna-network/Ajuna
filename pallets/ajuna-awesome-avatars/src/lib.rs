@@ -1274,7 +1274,7 @@ pub mod pallet {
 			season: &SeasonOf<T>,
 			input_leader: ForgeItem<T>,
 			output_leader: LeaderForgeOutput<T>,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			match output_leader {
 				LeaderForgeOutput::Forged((leader_id, leader), upgraded_components) => {
 					let prev_leader_tier = input_leader.1.min_tier();
@@ -1309,7 +1309,7 @@ pub mod pallet {
 			player: &AccountIdOf<T>,
 			_season: &SeasonOf<T>,
 			other_outputs: Vec<ForgeOutput<T>>,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			let mut minted_avatars: Vec<AvatarIdOf<T>> = Vec::with_capacity(0);
 			let mut forged_avatars: Vec<(AvatarIdOf<T>, UpgradedComponents)> =
 				Vec::with_capacity(0);
@@ -1347,7 +1347,7 @@ pub mod pallet {
 		fn update_forging_statistics_for_player(
 			player: &AccountIdOf<T>,
 			season_id: SeasonId,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 
 			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
@@ -1375,7 +1375,7 @@ pub mod pallet {
 			player: &AccountIdOf<T>,
 			avatar_id: AvatarIdOf<T>,
 			avatar: Avatar,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			Avatars::<T>::insert(avatar_id, (player, avatar));
 			Owners::<T>::try_append(&player, avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
@@ -1398,12 +1398,12 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> DispatchResult {
 			ensure!(!LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarLocked);
 			Ok(())
 		}
 
-		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> DispatchResult {
 			ensure!(!Preparation::<T>::contains_key(avatar_id), Error::<T>::AlreadyPrepared);
 			Ok(())
 		}
