@@ -18,22 +18,15 @@ use crate::*;
 use codec::alloc::string::ToString;
 use sp_std::{fmt, prelude::*};
 
-#[derive(
-	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub enum Force {
-	Kinetic = 0,
-	Dream = 1,
-	Solar = 2,
-	Thermal = 3,
-	Astral = 4,
-	Empathy = 5,
-}
-
-impl Default for Force {
-	fn default() -> Self {
-		Force::Kinetic
-	}
+	#[default]
+	Kinetic,
+	Dream,
+	Solar,
+	Thermal,
+	Astral,
+	Empathy,
 }
 
 impl fmt::Display for Force {

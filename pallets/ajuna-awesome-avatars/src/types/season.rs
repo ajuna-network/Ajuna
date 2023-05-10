@@ -17,9 +17,8 @@
 use crate::*;
 use frame_support::pallet_prelude::*;
 use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto, Zero};
-use sp_std::vec::Vec;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Default, PartialEq)]
 pub struct SeasonStatus {
 	pub season_id: SeasonId,
 	pub early: bool,
@@ -118,7 +117,7 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 
 	fn validate_tiers<T: Config>(&self) -> DispatchResult {
 		let l = self.tiers.len();
-		let mut tiers = Vec::from(self.tiers.clone());
+		let mut tiers = self.tiers.to_owned().into_inner();
 		tiers.dedup();
 		ensure!(l == tiers.len(), Error::<T>::DuplicatedRarityTier);
 		Ok(())

@@ -196,12 +196,15 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type NftHelper = Nft;
 }
 
+type MockMintFees = MintFees<MockBalance>;
+impl Copy for MockMintFees {}
+
 pub struct ExtBuilder {
 	existential_deposit: MockBalance,
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
 	mint_cooldown: MockBlockNumber,
-	mint_fees: MintFees<MockBalance>,
+	mint_fees: MockMintFees,
 	trade_min_fee: MockBalance,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
@@ -251,7 +254,7 @@ impl ExtBuilder {
 		self.balances = balances.to_vec();
 		self
 	}
-	pub fn mint_fees(mut self, mint_fees: MintFees<MockBalance>) -> Self {
+	pub fn mint_fees(mut self, mint_fees: MockMintFees) -> Self {
 		self.mint_fees = mint_fees;
 		self
 	}

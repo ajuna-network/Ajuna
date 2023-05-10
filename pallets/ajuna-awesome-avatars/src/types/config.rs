@@ -17,27 +17,29 @@
 use frame_support::pallet_prelude::*;
 
 /// Number of avatars to be minted.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq, Eq)]
 pub enum MintPackSize {
-	One = 1,
-	Three = 3,
-	Six = 6,
-}
-
-impl Default for MintPackSize {
-	fn default() -> Self {
-		MintPackSize::One
-	}
+	#[default]
+	One,
+	Three,
+	Six,
 }
 
 impl MintPackSize {
 	pub(crate) fn is_batched(&self) -> bool {
-		self != &Self::One
+		!matches!(self, Self::One)
+	}
+	pub(crate) fn as_mint_count(&self) -> MintCount {
+		match self {
+			MintPackSize::One => 1,
+			MintPackSize::Three => 3,
+			MintPackSize::Six => 6,
+		}
 	}
 }
 
 /// Minting fee per pack of avatars.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintFees<Balance> {
 	pub one: Balance,
 	pub three: Balance,
@@ -54,22 +56,17 @@ impl<Balance> MintFees<Balance> {
 	}
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub enum MintType {
 	/// Mint using free mint credits.
+	#[default]
 	Free,
 	/// Normal minting consuming currency.
 	Normal,
 }
 
-impl Default for MintType {
-	fn default() -> Self {
-		MintType::Free
-	}
-}
-
 /// Minting options
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct MintOption {
 	/// Type of minting.
 	pub mint_type: MintType,
@@ -79,7 +76,7 @@ pub struct MintOption {
 
 pub type MintCount = u16;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct MintConfig<Balance, BlockNumber> {
 	pub open: bool,
 	pub fees: MintFees<Balance>,
@@ -87,12 +84,12 @@ pub struct MintConfig<Balance, BlockNumber> {
 	pub free_mint_fee_multiplier: MintCount,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct ForgeConfig {
 	pub open: bool,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct TransferConfig<Balance> {
 	pub open: bool,
 	pub free_mint_transfer_fee: MintCount,
@@ -100,25 +97,25 @@ pub struct TransferConfig<Balance> {
 	pub avatar_transfer_fee: Balance,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct TradeConfig<Balance> {
 	pub open: bool,
 	pub min_fee: Balance,
 	pub percent_fee: u8,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct AccountConfig<Balance> {
 	pub storage_upgrade_fee: Balance,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct NftTransferConfig<Balance> {
 	pub open: bool,
 	pub prepare_fee: Balance,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint: MintConfig<Balance, BlockNumber>,
 	pub forge: ForgeConfig,

@@ -82,7 +82,7 @@ use sp_runtime::{
 	},
 	ArithmeticError,
 };
-use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+use sp_std::{borrow::ToOwned, collections::btree_set::BTreeSet, vec::Vec};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -437,7 +437,7 @@ pub mod pallet {
 		})]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::do_mint(&player, &mint_option)
+			Self::do_mint(&player, mint_option)
 		}
 
 		/// Forge an avatar.
@@ -1051,11 +1051,11 @@ pub mod pallet {
 				let probs =
 					if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
 				let mut cumulative_sum = 0;
-				let mut random_tier = season.tiers[0].clone() as u8;
+				let mut random_tier = &season.tiers[0];
 				for i in 0..probs.len() {
 					let new_cumulative_sum = cumulative_sum + probs[i];
 					if random_prob >= cumulative_sum && random_prob < new_cumulative_sum {
-						random_tier = season.tiers[i].clone() as u8;
+						random_tier = &season.tiers[i];
 						break
 					}
 					cumulative_sum = new_cumulative_sum;
@@ -1063,7 +1063,7 @@ pub mod pallet {
 				random_tier
 			};
 			let random_variation = hash[index + 1] % season.max_variations;
-			(random_tier, random_variation)
+			(random_tier.to_owned().into(), random_variation)
 		}
 
 		fn random_dna(
@@ -1082,13 +1082,14 @@ pub mod pallet {
 		}
 
 		/// Mint a new avatar.
-		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			Self::ensure_for_mint(player, mint_option)?;
+		pub(crate) fn do_mint(player: &T::AccountId, mint_option: MintOption) -> DispatchResult {
+			Self::ensure_for_mint(player, &mint_option)?;
 
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
 			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
 			let is_batched = mint_option.count.is_batched();
-			let generated_avatar_ids = (0..mint_option.count as usize)
+			let mint_count = mint_option.count.as_mint_count();
+			let generated_avatar_ids = (0..mint_count)
 				.map(|_| {
 					let avatar_id = Self::random_hash(b"create_avatar", player);
 					let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
@@ -1109,8 +1110,7 @@ pub mod pallet {
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
-						.saturating_mul(mint.free_mint_fee_multiplier);
+					let fee = mint_count.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
 						account.free_mints = Accounts::<T>::get(player)
 							.free_mints
@@ -1305,13 +1305,16 @@ pub mod pallet {
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = mint_option
+						.count
+						.as_mint_count()
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
 				},
 			};
 
-			let new_count = Owners::<T>::get(player).len() + mint_option.count as usize;
+			let new_count =
+				Owners::<T>::get(player).len() + mint_option.count.as_mint_count() as usize;
 			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())

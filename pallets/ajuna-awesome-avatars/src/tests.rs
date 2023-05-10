@@ -1001,7 +1001,7 @@ mod minting {
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
 						MintType::Free => {
-							initial_free_mints -= MintPackSize::One as MintCount;
+							initial_free_mints -= MintPackSize::One.as_mint_count();
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
 					}
@@ -1038,7 +1038,7 @@ mod minting {
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
 						MintType::Free => {
-							initial_free_mints -= MintPackSize::Three as MintCount;
+							initial_free_mints -= MintPackSize::Three.as_mint_count();
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
 					}
@@ -1072,7 +1072,7 @@ mod minting {
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
 						MintType::Free => {
-							initial_free_mints -= MintPackSize::Six as MintCount;
+							initial_free_mints -= MintPackSize::Six.as_mint_count();
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
 					}
@@ -1170,7 +1170,7 @@ mod minting {
 					assert_noop!(
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
-							MintOption { count, mint_type }
+							MintOption { count: count.clone(), mint_type }
 						),
 						Error::<Test>::MintClosed
 					);
@@ -1185,7 +1185,10 @@ mod minting {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 				for mint_type in [MintType::Normal, MintType::Free] {
 					assert_noop!(
-						AAvatars::mint(RuntimeOrigin::none(), MintOption { count, mint_type }),
+						AAvatars::mint(
+							RuntimeOrigin::none(),
+							MintOption { count: count.clone(), mint_type }
+						),
 						DispatchError::BadOrigin
 					);
 				}
@@ -1205,7 +1208,7 @@ mod minting {
 						assert_noop!(
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
-								MintOption { count, mint_type }
+								MintOption { count: count.clone(), mint_type }
 							),
 							Error::<Test>::SeasonClosed
 						);
@@ -1240,7 +1243,7 @@ mod minting {
 						assert_noop!(
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
-								MintOption { count, mint_type }
+								MintOption { count: count.clone(), mint_type }
 							),
 							Error::<Test>::MaxOwnershipReached
 						);

@@ -18,20 +18,15 @@ use super::{MintCount, SeasonId};
 use frame_support::pallet_prelude::*;
 use sp_runtime::{traits::Get, BoundedBTreeSet};
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Default, PartialEq)]
 pub enum StorageTier {
+	#[default]
 	One = 25,
 	Two = 50,
 	Three = 75,
 	Four = 100,
 	Five = 150,
 	Max = 200,
-}
-
-impl Default for StorageTier {
-	fn default() -> Self {
-		Self::One
-	}
 }
 
 impl StorageTier {
@@ -63,34 +58,34 @@ impl Get<u32> for MaxSeasons {
 
 pub type Stat = u32;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct PlayStats<BlockNumber> {
 	pub first: BlockNumber,
 	pub last: BlockNumber,
 	pub seasons_participated: BoundedBTreeSet<SeasonId, MaxSeasons>,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct TradeStats {
 	pub bought: Stat,
 	pub sold: Stat,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct Stats<BlockNumber> {
 	pub mint: PlayStats<BlockNumber>,
 	pub forge: PlayStats<BlockNumber>,
 	pub trade: TradeStats,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct AccountInfo<BlockNumber> {
 	pub free_mints: MintCount,
 	pub storage_tier: StorageTier,
 	pub stats: Stats<BlockNumber>,
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct SeasonInfo {
 	pub minted: Stat,
 	pub forged: Stat,

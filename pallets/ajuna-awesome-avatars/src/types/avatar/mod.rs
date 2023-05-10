@@ -39,7 +39,7 @@ pub type SeasonId = u16;
 pub type Dna = BoundedVec<u8, ConstU32<100>>;
 pub type SoulCount = u32;
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Default, PartialEq)]
 pub struct Avatar {
 	pub season_id: SeasonId,
 	pub dna: Dna,
