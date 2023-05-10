@@ -988,47 +988,6 @@ pub mod pallet {
 			T::Currency::deposit_creating(&Self::treasury_account_id(), amount);
 		}
 
-		/// Check that the origin is an organizer account.
-		pub(crate) fn ensure_organizer(
-			origin: OriginFor<T>,
-		) -> Result<T::AccountId, DispatchError> {
-			let maybe_organizer = ensure_signed(origin)?;
-			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
-			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
-			Ok(maybe_organizer)
-		}
-
-		pub(crate) fn ensure_service_account(
-			origin: OriginFor<T>,
-		) -> Result<T::AccountId, DispatchError> {
-			let maybe_sa = ensure_signed(origin)?;
-			let existing_sa = ServiceAccount::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
-			ensure!(maybe_sa == existing_sa, DispatchError::BadOrigin);
-			Ok(maybe_sa)
-		}
-
-		/// Validates a new season.
-		pub(crate) fn ensure_season(
-			season_id: &SeasonId,
-			mut season: SeasonOf<T>,
-		) -> Result<SeasonOf<T>, DispatchError> {
-			season.validate::<T>()?;
-
-			let prev_season_id = season_id.checked_sub(&1).ok_or(ArithmeticError::Underflow)?;
-			let next_season_id = season_id.checked_add(&1).ok_or(ArithmeticError::Overflow)?;
-
-			if prev_season_id > 0 {
-				let prev_season =
-					Seasons::<T>::get(prev_season_id).ok_or(Error::<T>::NonSequentialSeasonId)?;
-				ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
-			}
-			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
-				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
-			}
-			Ok(season)
-		}
-
-		#[inline]
 		fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
 			let (seed, _) = T::Randomness::random(phrase);
 			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
@@ -1038,7 +997,6 @@ pub mod pallet {
 			(seed, &who, nonce.encode()).using_encoded(T::Hashing::hash)
 		}
 
-		#[inline]
 		fn random_component(
 			season: &SeasonOf<T>,
 			hash: &T::Hash,
@@ -1161,14 +1119,11 @@ pub mod pallet {
 				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
 
 			let random_hash = Self::random_hash(b"forging avatar", player);
-			let random_hash = random_hash.as_ref();
-			let mut upgraded_components = 0;
-
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			let prob = leader.forge_probability::<T>(&season, &current_block, matches)?;
-
+			let mut upgraded_components = 0;
 			let rolls = sacrifices.len();
-			for hash in random_hash.iter().take(rolls) {
+			for hash in random_hash.as_ref().iter().take(rolls) {
 				let roll = hash % MAX_PERCENTAGE;
 				if roll <= prob {
 					if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
@@ -1253,19 +1208,46 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+	}
 
-		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
-			let mut current_status = CurrentSeasonStatus::<T>::get();
-			let season = match Seasons::<T>::get(current_status.season_id) {
-				Some(season) if current_status.is_in_season() => season,
-				_ => {
-					if current_status.season_id > 1 {
-						current_status.season_id.saturating_dec();
-					}
-					Seasons::<T>::get(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
-				},
-			};
-			Ok((current_status.season_id, season))
+	// Implementation of ensure checks.
+	impl<T: Config> Pallet<T> {
+		pub(crate) fn ensure_organizer(
+			origin: OriginFor<T>,
+		) -> Result<T::AccountId, DispatchError> {
+			let maybe_organizer = ensure_signed(origin)?;
+			let existing_organizer = Organizer::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+			ensure!(maybe_organizer == existing_organizer, DispatchError::BadOrigin);
+			Ok(maybe_organizer)
+		}
+
+		pub(crate) fn ensure_service_account(
+			origin: OriginFor<T>,
+		) -> Result<T::AccountId, DispatchError> {
+			let maybe_sa = ensure_signed(origin)?;
+			let existing_sa = ServiceAccount::<T>::get().ok_or(Error::<T>::OrganizerNotSet)?;
+			ensure!(maybe_sa == existing_sa, DispatchError::BadOrigin);
+			Ok(maybe_sa)
+		}
+
+		pub(crate) fn ensure_season(
+			season_id: &SeasonId,
+			mut season: SeasonOf<T>,
+		) -> Result<SeasonOf<T>, DispatchError> {
+			season.validate::<T>()?;
+
+			let prev_season_id = season_id.checked_sub(&1).ok_or(ArithmeticError::Underflow)?;
+			let next_season_id = season_id.checked_add(&1).ok_or(ArithmeticError::Overflow)?;
+
+			if prev_season_id > 0 {
+				let prev_season =
+					Seasons::<T>::get(prev_season_id).ok_or(Error::<T>::NonSequentialSeasonId)?;
+				ensure!(prev_season.end < season.early_start, Error::<T>::EarlyStartTooEarly);
+			}
+			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
+				ensure!(season.end < next_season.early_start, Error::<T>::SeasonEndTooLate);
+			}
+			Ok(season)
 		}
 
 		fn ensure_ownership(
@@ -1373,6 +1355,23 @@ pub mod pallet {
 		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
 			ensure!(!Preparation::<T>::contains_key(avatar_id), Error::<T>::AlreadyPrepared);
 			Ok(())
+		}
+	}
+
+	// Implementation of season related logic.
+	impl<T: Config> Pallet<T> {
+		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
+			let mut current_status = CurrentSeasonStatus::<T>::get();
+			let season = match Seasons::<T>::get(current_status.season_id) {
+				Some(season) if current_status.is_in_season() => season,
+				_ => {
+					if current_status.season_id > 1 {
+						current_status.season_id.saturating_dec();
+					}
+					Seasons::<T>::get(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
+				},
+			};
+			Ok((current_status.season_id, season))
 		}
 
 		fn start_season(
