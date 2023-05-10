@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn assemble_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -18,12 +15,12 @@ where
 
 		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader),
-			ByteType::High,
+			&ByteType::High,
 		));
 
 		let leader_rarity = AvatarUtils::read_attribute_as::<RarityType>(
 			&input_leader,
-			AvatarAttributes::RarityType,
+			&AvatarAttributes::RarityType,
 		);
 
 		if AvatarUtils::has_attribute_set_with_values(
@@ -38,19 +35,19 @@ where
 			if let Some((_, armor_component)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
 				AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Equipable,
 				) && AvatarUtils::has_attribute_with_value_different_than(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 					EquipableItemType::ArmorBase,
 				)
 			}) {
 				AvatarUtils::add_spec_byte_from(
 					&mut input_leader,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 					armor_component,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 				);
 			}
 
@@ -58,12 +55,12 @@ where
 			if let Some((_, paint_flask)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
 				let is_essence = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Essence,
 				);
 				let is_paint_flask = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 					EssenceItemType::PaintFlask,
 				);
 
@@ -71,9 +68,9 @@ where
 			}) {
 				AvatarUtils::add_spec_byte_from(
 					&mut input_leader,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 					paint_flask,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 				);
 			}
 
@@ -81,12 +78,12 @@ where
 			if let Some((_, force_glow)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
 				let is_essence = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Essence,
 				);
 				let is_force_glow = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 					EssenceItemType::ForceGlow,
 				);
 
@@ -94,17 +91,17 @@ where
 			}) {
 				AvatarUtils::add_spec_byte_from(
 					&mut input_leader,
-					AvatarSpecBytes::SpecByte2,
+					&AvatarSpecBytes::SpecByte2,
 					force_glow,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 				);
 			}
 		}
 
 		AvatarUtils::write_typed_attribute(
 			&mut input_leader,
-			AvatarAttributes::RarityType,
-			rarity_type,
+			&AvatarAttributes::RarityType,
+			&rarity_type,
 		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
@@ -141,7 +138,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let hash_base: [[u8; 32]; 5] = [
+			let hash_base = [
 				[
 					0xE7, 0x46, 0x00, 0xE4, 0xE8, 0x78, 0x12, 0xC4, 0xCA, 0x86, 0x53, 0x7F, 0x36,
 					0x1B, 0x64, 0xA0, 0xC3, 0x6B, 0x5C, 0x5F, 0x13, 0x40, 0xBC, 0xC6, 0x97, 0x12,
@@ -169,25 +166,19 @@ mod test {
 				],
 			];
 
-			let pet_type = PetType::FoxishDude;
-			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
-			let rarity_type = RarityType::Common;
-			let color_pair = (ColorType::None, ColorType::None);
-			let force_type = ForceType::None;
-
-			let mut armor_component_set = (0..5)
+			let mut armor_component_set = hash_base
 				.into_iter()
-				.map(|i| {
+				.enumerate()
+				.map(|(i, hash)| {
 					create_random_armor_component(
-						hash_base[i],
+						hash,
 						&ALICE,
-						pet_type,
-						slot_type,
-						rarity_type,
-						vec![equip_type],
-						color_pair,
-						force_type,
+						&PetType::FoxishDude,
+						&SlotType::Head,
+						&RarityType::Common,
+						&[EquipableItemType::ArmorBase],
+						&(ColorType::None, ColorType::None),
+						&ForceType::None,
 						i as SoulCount,
 					)
 				})
@@ -237,7 +228,7 @@ mod test {
 		ExtBuilder::default().build().execute_with(|| {
 			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
-			let hash_base: [[u8; 32]; 5] = [
+			let hash_base = [
 				[
 					0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
 					0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
@@ -265,7 +256,7 @@ mod test {
 				],
 			];
 
-			let progress_arrays: [[u8; 11]; 5] = [
+			let progress_arrays = [
 				[0x21, 0x10, 0x25, 0x23, 0x20, 0x23, 0x21, 0x22, 0x22, 0x22, 0x24],
 				[0x21, 0x15, 0x22, 0x15, 0x13, 0x12, 0x12, 0x10, 0x13, 0x10, 0x15],
 				[0x12, 0x13, 0x11, 0x12, 0x12, 0x20, 0x12, 0x13, 0x13, 0x12, 0x15],
@@ -273,38 +264,33 @@ mod test {
 				[0x11, 0x11, 0x25, 0x24, 0x14, 0x23, 0x13, 0x12, 0x52, 0x12, 0x12],
 			];
 
-			let pet_type = PetType::FoxishDude;
-			let slot_type = SlotType::Head;
-			let equip_type: [EquipableItemType; 5] = [
+			let mut armor_component_set = [
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorBase,
 				EquipableItemType::ArmorComponent1,
-			];
-			let rarity_type = RarityType::Common;
-			let color_pair = (ColorType::None, ColorType::None);
-			let force_type = ForceType::None;
-
-			let mut armor_component_set = (0..5)
-				.into_iter()
-				.map(|i| {
-					let (id, mut avatar) = create_random_armor_component(
-						hash_base[i],
-						&ALICE,
-						pet_type,
-						slot_type,
-						rarity_type,
-						vec![equip_type[i]],
-						color_pair,
-						force_type,
-						i as SoulCount,
-					);
-					AvatarUtils::write_progress_array(&mut avatar, progress_arrays[i]);
-
-					(id, avatar)
-				})
-				.collect::<Vec<_>>();
+			]
+			.into_iter()
+			.zip(hash_base)
+			.zip(progress_arrays)
+			.enumerate()
+			.map(|(i, ((equip_type, hash), progress_array))| {
+				let (id, mut avatar) = create_random_armor_component(
+					hash,
+					&ALICE,
+					&PetType::FoxishDude,
+					&SlotType::Head,
+					&RarityType::Common,
+					&[equip_type],
+					&(ColorType::None, ColorType::None),
+					&ForceType::None,
+					i as SoulCount,
+				);
+				AvatarUtils::write_progress_array(&mut avatar, progress_array);
+				(id, avatar)
+			})
+			.collect::<Vec<_>>();
 
 			let total_soul_points =
 				armor_component_set.iter().map(|(_, avatar)| avatar.souls).sum::<SoulCount>();
@@ -321,7 +307,7 @@ mod test {
 			);
 
 			let pre_assemble = AvatarUtils::bits_to_enums::<EquipableItemType>(
-				AvatarUtils::read_spec_byte(&leader_armor_component.1, AvatarSpecBytes::SpecByte1)
+				AvatarUtils::read_spec_byte(&leader_armor_component.1, &AvatarSpecBytes::SpecByte1)
 					as u32,
 			);
 			assert_eq!(pre_assemble.len(), 1);
@@ -342,7 +328,7 @@ mod test {
 				assert_eq!(avatar.souls, 7);
 
 				let post_assemble = AvatarUtils::bits_to_enums::<EquipableItemType>(
-					AvatarUtils::read_spec_byte(&avatar, AvatarSpecBytes::SpecByte1) as u32,
+					AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1) as u32,
 				);
 				assert_eq!(post_assemble.len(), 2);
 				assert_eq!(post_assemble[0], EquipableItemType::ArmorBase);
@@ -363,7 +349,7 @@ mod test {
 		ExtBuilder::default().build().execute_with(|| {
 			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
-			let hash_base: [[u8; 32]; 5] = [
+			let hash_base = [
 				[
 					0xE7, 0x46, 0x00, 0xE4, 0xE8, 0x78, 0x12, 0xC4, 0xCA, 0x86, 0x53, 0x7F, 0x36,
 					0x1B, 0x64, 0xA0, 0xC3, 0x6B, 0x5C, 0x5F, 0x13, 0x40, 0xBC, 0xC6, 0x97, 0x12,
@@ -391,26 +377,23 @@ mod test {
 				],
 			];
 
-			let pet_type = PetType::FoxishDude;
-			let slot_types: [SlotType; 5] =
+			let slot_types =
 				[SlotType::Head, SlotType::Head, SlotType::LegBack, SlotType::Head, SlotType::Head];
-			let equip_type = EquipableItemType::ArmorBase;
-			let rarity_type = RarityType::Common;
-			let color_pair = (ColorType::None, ColorType::None);
-			let force_type = ForceType::None;
 
-			let mut armor_component_set = (0..5)
+			let mut armor_component_set = hash_base
 				.into_iter()
-				.map(|i| {
+				.zip(slot_types)
+				.enumerate()
+				.map(|(i, (hash, slot_type))| {
 					create_random_armor_component(
-						hash_base[i],
+						hash,
 						&ALICE,
-						pet_type,
-						slot_types[i],
-						rarity_type,
-						vec![equip_type],
-						color_pair,
-						force_type,
+						&PetType::FoxishDude,
+						&slot_type,
+						&RarityType::Common,
+						&[EquipableItemType::ArmorBase],
+						&(ColorType::None, ColorType::None),
+						&ForceType::None,
 						i as SoulCount,
 					)
 				})

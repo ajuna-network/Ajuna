@@ -14,12 +14,9 @@ impl AttributeMapper for AttributeMapperV1 {
 	}
 }
 
-pub(super) struct AvatarMinterV1<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarMinterV1<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> Minter<T> for AvatarMinterV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> Minter<T> for AvatarMinterV1<T> {
 	fn mint_avatar_set(
 		&self,
 		player: &T::AccountId,
@@ -28,7 +25,7 @@ where
 		mint_option: &MintOption,
 	) -> Result<Vec<MintOutput<T>>, DispatchError> {
 		let is_batched = mint_option.count.is_batched();
-		(0..mint_option.count as usize)
+		(0..mint_option.count.clone() as usize)
 			.map(|_| {
 				let avatar_id = Pallet::<T>::random_hash(b"create_avatar", player);
 				let dna = self.random_dna(&avatar_id, season, is_batched)?;
@@ -41,11 +38,7 @@ where
 	}
 }
 
-impl<'a, T> AvatarMinterV1<'a, T>
-where
-	T: Config,
-{
-	#[inline]
+impl<T: Config> AvatarMinterV1<T> {
 	fn random_dna(
 		&self,
 		hash: &T::Hash,
@@ -62,7 +55,6 @@ where
 		Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 	}
 
-	#[inline]
 	fn random_component(
 		season: &SeasonOf<T>,
 		hash: &T::Hash,
@@ -75,11 +67,11 @@ where
 			let probs =
 				if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
 			let mut cumulative_sum = 0;
-			let mut random_tier = season.tiers[0] as u8;
+			let mut random_tier = season.tiers[0].clone() as u8;
 			for i in 0..probs.len() {
 				let new_cumulative_sum = cumulative_sum + probs[i];
 				if random_prob >= cumulative_sum && random_prob < new_cumulative_sum {
-					random_tier = season.tiers[i] as u8;
+					random_tier = season.tiers[i].clone() as u8;
 					break
 				}
 				cumulative_sum = new_cumulative_sum;
@@ -91,12 +83,9 @@ where
 	}
 }
 
-pub(super) struct AvatarForgerV1<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarForgerV1<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> Forger<T> for AvatarForgerV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 	fn forge_with(
 		&self,
 		player: &T::AccountId,
@@ -136,13 +125,14 @@ where
 					let nucleotide = leader.dna[first_matched_index];
 					let current_tier_index = season
 						.tiers
-						.iter()
-						.position(|tier| *tier as u8 == nucleotide >> 4)
+						.clone()
+						.into_iter()
+						.position(|tier| tier as u8 == nucleotide >> 4)
 						.ok_or(Error::<T>::UnknownTier)?;
 
 					let already_maxed_out = current_tier_index == (season.tiers.len() - 1);
 					if !already_maxed_out {
-						let next_tier = season.tiers[current_tier_index + 1] as u8;
+						let next_tier = season.tiers[current_tier_index + 1].clone() as u8;
 						let upgraded_nucleotide = (next_tier << 4) | (nucleotide & 0b0000_1111);
 						leader.dna[first_matched_index] = upgraded_nucleotide;
 						upgraded_components += 1;
@@ -165,22 +155,18 @@ where
 		_season: &SeasonOf<T>,
 		input_leader: &ForgeItem<T>,
 		input_sacrifices: &[ForgeItem<T>],
-	) -> Result<(), DispatchError> {
-		if input_sacrifices
-			.iter()
-			.all(|(_, avatar)| avatar.version == input_leader.1.version)
-		{
-			Ok(())
-		} else {
-			Err(Error::<T>::IncompatibleAvatarVersions.into())
-		}
+	) -> DispatchResult {
+		ensure!(
+			input_sacrifices
+				.iter()
+				.all(|(_, avatar)| avatar.version == input_leader.1.version),
+			Error::<T>::IncompatibleAvatarVersions
+		);
+		Ok(())
 	}
 }
 
-impl<'a, T> AvatarForgerV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarForgerV1<T> {
 	fn compare_all(
 		&self,
 		target: &Avatar,
@@ -461,7 +447,7 @@ mod test {
 				&other,
 				&[1, 8, 9, 10],
 				season.max_variations,
-				*season.tiers.last().unwrap() as u8,
+				season.max_tier() as u8,
 			),
 			(true, BTreeSet::from([1, 9]))
 		);
@@ -528,7 +514,7 @@ mod test {
 							sacrifice,
 							&upgradable_indexes,
 							season.max_variations,
-							tiers[tiers.len() - 1] as u8
+							season.max_tier() as u8,
 						),
 						result
 					)
@@ -623,7 +609,7 @@ mod test {
 						&original_sacrifice,
 						&upgradable_indexes,
 						season.max_variations,
-						tiers[tiers.len() - 1] as u8
+						season.max_tier() as u8,
 					),
 					(false, BTreeSet::from([2]))
 				);

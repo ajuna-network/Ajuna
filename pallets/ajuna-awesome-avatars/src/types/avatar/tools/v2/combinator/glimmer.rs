@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn glimmer_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -26,9 +23,9 @@ where
 				continue
 			}
 
-			let leader_quantity = AvatarUtils::read_attribute(&leader, AvatarAttributes::Quantity);
+			let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity);
 			let sacrifice_quantity =
-				AvatarUtils::read_attribute(&sacrifice, AvatarAttributes::Quantity);
+				AvatarUtils::read_attribute(&sacrifice, &AvatarAttributes::Quantity);
 
 			if leader_quantity < GLIMMER_FORGE_GLIMMER_USE ||
 				sacrifice_quantity < GLIMMER_FORGE_MATERIAL_USE
@@ -67,7 +64,7 @@ where
 				if rand_1 == rand_2 &&
 					AvatarUtils::high_nibble_of(rand_1) == AvatarUtils::low_nibble_of(rand_2)
 				{
-					gen_avatar = gen_avatar.into_egg(RarityType::Rare, 0x00, soul_points, None);
+					gen_avatar = gen_avatar.into_egg(&RarityType::Rare, 0x00, soul_points, None);
 				} else if rand_1 ==
 					(AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
 				{
@@ -83,10 +80,10 @@ where
 						ColorType::from_byte(rand_2 % (color_types + 1)),
 						ColorType::from_byte(rand_3 % (color_types + 1)),
 					);
-					gen_avatar = gen_avatar.into_color_spark(color_pair, soul_points, None);
+					gen_avatar = gen_avatar.into_color_spark(&color_pair, soul_points, None);
 				} else {
 					let force_type = ForceType::from_byte((rand_2 % force_types) + 1);
-					gen_avatar = gen_avatar.into_glow_spark(force_type, soul_points, None);
+					gen_avatar = gen_avatar.into_glow_spark(&force_type, soul_points, None);
 				}
 			} else {
 				gen_avatar = gen_avatar.into_dust(soul_points);
@@ -121,9 +118,9 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 10);
-			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 8);
+			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
-			let expected_dna: [u8; 32] = [
+			let expected_dna = [
 				0x31, 0x00, 0x12, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
@@ -156,37 +153,37 @@ mod test {
 				assert_eq!(output_souls, total_soul_points);
 
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, AvatarAttributes::Quantity,),
+					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
 					9
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(
 						&leader_avatar,
-						AvatarAttributes::ItemType,
+						&AvatarAttributes::ItemType,
 					),
 					ItemType::Essence
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
 						&leader_avatar,
-						AvatarAttributes::ItemSubType,
+						&AvatarAttributes::ItemSubType,
 					),
 					EssenceItemType::Glimmer
 				);
 
 				if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[0] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 4);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 4);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
-							AvatarAttributes::ItemType,
+							&AvatarAttributes::ItemType,
 						),
 						ItemType::Material
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<MaterialItemType>(
 							avatar,
-							AvatarAttributes::ItemSubType,
+							&AvatarAttributes::ItemSubType,
 						),
 						MaterialItemType::Polymers
 					);
@@ -195,23 +192,23 @@ mod test {
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 5);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 5);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
-							AvatarAttributes::ItemType,
+							&AvatarAttributes::ItemType,
 						),
 						ItemType::Special
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<SpecialItemType>(
 							avatar,
-							AvatarAttributes::ItemSubType,
+							&AvatarAttributes::ItemSubType,
 						),
 						SpecialItemType::Dust
 					);
 
-					let expected_dna_head: [u8; 5] = [0x61, 0x00, 0x11, 0x05, 0x00];
+					let expected_dna_head = [0x61, 0x00, 0x11, 0x05, 0x00];
 					let avatar_dna_slice = &avatar.dna[0..5];
 
 					// We only need to check the 5 first bytes since the rest are not relevant for
@@ -237,10 +234,11 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 100);
-			let sacrifice_1 = create_random_material(&ALICE, MaterialItemType::Polymers, 20);
-			let sacrifice_2 = create_random_material(&ALICE, MaterialItemType::Superconductors, 20);
-			let sacrifice_3 = create_random_material(&ALICE, MaterialItemType::Ceramics, 20);
-			let sacrifice_4 = create_random_material(&ALICE, MaterialItemType::Metals, 20);
+			let sacrifice_1 = create_random_material(&ALICE, &MaterialItemType::Polymers, 20);
+			let sacrifice_2 =
+				create_random_material(&ALICE, &MaterialItemType::Superconductors, 20);
+			let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
+			let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
 
 			let total_soul_points =
 				leader.1.souls +
@@ -271,20 +269,20 @@ mod test {
 				assert_eq!(output_souls, total_soul_points);
 
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, AvatarAttributes::Quantity,),
+					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
 					96
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(
 						&leader_avatar,
-						AvatarAttributes::ItemType,
+						&AvatarAttributes::ItemType,
 					),
 					ItemType::Essence
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
 						&leader_avatar,
-						AvatarAttributes::ItemSubType,
+						&AvatarAttributes::ItemSubType,
 					),
 					EssenceItemType::Glimmer
 				);
@@ -299,20 +297,20 @@ mod test {
 				for (i, material) in material_set.into_iter().enumerate() {
 					if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[i * 2] {
 						assert_eq!(
-							AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,),
+							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 							16
 						);
 						assert_eq!(
 							AvatarUtils::read_attribute_as::<ItemType>(
 								avatar,
-								AvatarAttributes::ItemType,
+								&AvatarAttributes::ItemType,
 							),
 							ItemType::Material
 						);
 						assert_eq!(
 							AvatarUtils::read_attribute_as::<MaterialItemType>(
 								avatar,
-								AvatarAttributes::ItemSubType,
+								&AvatarAttributes::ItemSubType,
 							),
 							material
 						);
@@ -324,20 +322,20 @@ mod test {
 				for i in (1..8).step_by(2) {
 					if let ForgeOutput::Minted(avatar) = &sacrifice_output[i] {
 						assert_eq!(
-							AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,),
+							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 							5
 						);
 						assert_eq!(
 							AvatarUtils::read_attribute_as::<ItemType>(
 								avatar,
-								AvatarAttributes::ItemType,
+								&AvatarAttributes::ItemType,
 							),
 							ItemType::Special
 						);
 						assert_eq!(
 							AvatarUtils::read_attribute_as::<SpecialItemType>(
 								avatar,
-								AvatarAttributes::ItemSubType,
+								&AvatarAttributes::ItemSubType,
 							),
 							SpecialItemType::Dust
 						);
@@ -362,7 +360,7 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 1);
-			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 4);
+			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 4);
 
 			let total_soul_points = leader.1.souls + sacrifice.1.souls;
 
@@ -382,15 +380,15 @@ mod test {
 
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 				assert_eq!(avatar.souls, total_soul_points);
-				assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 5);
+				assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 5);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<ItemType>(avatar, AvatarAttributes::ItemType,),
+					AvatarUtils::read_attribute_as::<ItemType>(avatar, &AvatarAttributes::ItemType),
 					ItemType::Special
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<SpecialItemType>(
 						avatar,
-						AvatarAttributes::ItemSubType,
+						&AvatarAttributes::ItemSubType,
 					),
 					SpecialItemType::Dust
 				);
@@ -411,7 +409,7 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 10);
-			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 8);
+			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
 			let total_soul_points = leader.1.souls + sacrifice.1.souls;
 
@@ -439,18 +437,18 @@ mod test {
 				assert_eq!(output_souls, total_soul_points);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 1);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
-							AvatarAttributes::ItemType,
+							&AvatarAttributes::ItemType,
 						),
 						ItemType::Essence
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<EssenceItemType>(
 							avatar,
-							AvatarAttributes::ItemSubType,
+							&AvatarAttributes::ItemSubType,
 						),
 						EssenceItemType::ColorSpark
 					);
@@ -474,7 +472,7 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 10);
-			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 8);
+			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
 			let total_soul_points = leader.1.souls + sacrifice.1.souls;
 
@@ -502,18 +500,18 @@ mod test {
 				assert_eq!(output_souls, total_soul_points);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 1);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
-							AvatarAttributes::ItemType,
+							&AvatarAttributes::ItemType,
 						),
 						ItemType::Essence
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<EssenceItemType>(
 							avatar,
-							AvatarAttributes::ItemSubType,
+							&AvatarAttributes::ItemSubType,
 						),
 						EssenceItemType::GlowSpark
 					);
@@ -537,7 +535,7 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 10);
-			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 8);
+			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
 			let total_soul_points = leader.1.souls + sacrifice.1.souls;
 
@@ -565,18 +563,18 @@ mod test {
 				assert_eq!(output_souls, total_soul_points);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 1);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
-							AvatarAttributes::ItemType,
+							&AvatarAttributes::ItemType,
 						),
 						ItemType::Pet
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<PetItemType>(
 							avatar,
-							AvatarAttributes::ItemSubType,
+							&AvatarAttributes::ItemSubType,
 						),
 						PetItemType::Egg
 					);
@@ -600,7 +598,7 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader = create_random_glimmer(&ALICE, 10);
-			let sacrifice = create_random_material(&ALICE, MaterialItemType::Polymers, 8);
+			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
 			let total_soul_points = leader.1.souls + sacrifice.1.souls;
 
@@ -628,18 +626,18 @@ mod test {
 				assert_eq!(output_souls, total_soul_points);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity,), 1);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
-							AvatarAttributes::ItemType,
+							&AvatarAttributes::ItemType,
 						),
 						ItemType::Special
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<SpecialItemType>(
 							avatar,
-							AvatarAttributes::ItemSubType,
+							&AvatarAttributes::ItemSubType,
 						),
 						SpecialItemType::Unidentified
 					);
@@ -662,15 +660,15 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let mut probability_array: [u32; 6] = [0; 6];
+			let mut probability_array = [0; 6];
 
 			for i in 0..10_000 {
 				let leader = create_random_glimmer(&ALICE, 20);
-				let sacrifice_1 = create_random_material(&ALICE, MaterialItemType::Polymers, 20);
+				let sacrifice_1 = create_random_material(&ALICE, &MaterialItemType::Polymers, 20);
 				let sacrifice_2 =
-					create_random_material(&ALICE, MaterialItemType::Superconductors, 20);
-				let sacrifice_3 = create_random_material(&ALICE, MaterialItemType::Ceramics, 20);
-				let sacrifice_4 = create_random_material(&ALICE, MaterialItemType::Metals, 20);
+					create_random_material(&ALICE, &MaterialItemType::Superconductors, 20);
+				let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
+				let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
 
 				let (_leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 					leader,
@@ -684,13 +682,13 @@ mod test {
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					match AvatarUtils::read_attribute_as::<ItemType>(
 						avatar,
-						AvatarAttributes::ItemType,
+						&AvatarAttributes::ItemType,
 					) {
 						ItemType::Pet => probability_array[1] += 1,
 						ItemType::Essence =>
 							match AvatarUtils::read_attribute_as::<EssenceItemType>(
 								avatar,
-								AvatarAttributes::ItemSubType,
+								&AvatarAttributes::ItemSubType,
 							) {
 								EssenceItemType::ColorSpark => probability_array[2] += 1,
 								EssenceItemType::GlowSpark => probability_array[3] += 1,
@@ -699,7 +697,7 @@ mod test {
 						ItemType::Special =>
 							match AvatarUtils::read_attribute_as::<SpecialItemType>(
 								avatar,
-								AvatarAttributes::ItemSubType,
+								&AvatarAttributes::ItemSubType,
 							) {
 								SpecialItemType::Dust => probability_array[4] += 1,
 								SpecialItemType::Unidentified => probability_array[5] += 1,

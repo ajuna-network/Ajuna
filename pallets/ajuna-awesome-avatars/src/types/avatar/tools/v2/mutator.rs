@@ -9,10 +9,7 @@ pub(crate) trait AvatarMutator<T: Config> {
 	) -> Avatar;
 }
 
-impl<T> AvatarMutator<T> for PetItemType
-where
-	T: Config,
-{
+impl<T: Config> AvatarMutator<T> for PetItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
@@ -26,7 +23,7 @@ where
 				let spec_bytes = [0; 16];
 
 				let progress_array = AvatarUtils::generate_progress_bytes(
-					RarityType::Legendary,
+					&RarityType::Legendary,
 					SCALING_FACTOR_PERC,
 					SPARK_PROGRESS_PROB_PERC,
 					[0; 11],
@@ -35,7 +32,7 @@ where
 				let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
 
 				AvatarBuilder::with_base_avatar(base_avatar).into_pet(
-					pet_type,
+					&pet_type,
 					pet_variation,
 					spec_bytes,
 					Some(progress_array),
@@ -48,14 +45,14 @@ where
 				let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
-					.into_pet_part(pet_type, slot_type, quantity)
+					.into_pet_part(&pet_type, &slot_type, quantity)
 			},
 			PetItemType::Egg => {
 				let pet_variation = (hash_provider.get_hash_byte() % 15) + 1;
 				let soul_points = (hash_provider.get_hash_byte() % 99) + 1;
 
 				AvatarBuilder::with_base_avatar(base_avatar).into_egg(
-					RarityType::Epic,
+					&RarityType::Epic,
 					pet_variation,
 					soul_points as SoulCount,
 					None,
@@ -66,25 +63,19 @@ where
 	}
 }
 
-impl<T> AvatarMutator<T> for MaterialItemType
-where
-	T: Config,
-{
+impl<T: Config> AvatarMutator<T> for MaterialItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Avatar {
 		AvatarBuilder::with_base_avatar(base_avatar)
-			.into_material(*self, (hash_provider.get_hash_byte() % MAX_QUANTITY) + 1)
+			.into_material(self, (hash_provider.get_hash_byte() % MAX_QUANTITY) + 1)
 			.build()
 	}
 }
 
-impl<T> AvatarMutator<T> for EssenceItemType
-where
-	T: Config,
-{
+impl<T: Config> AvatarMutator<T> for EssenceItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
@@ -104,13 +95,13 @@ where
 
 				if *self == EssenceItemType::ColorSpark {
 					AvatarBuilder::with_base_avatar(base_avatar).into_color_spark(
-						color_pair,
+						&color_pair,
 						souls as SoulCount,
 						None,
 					)
 				} else {
 					AvatarBuilder::with_base_avatar(base_avatar).into_paint_flask(
-						color_pair,
+						&color_pair,
 						souls as SoulCount,
 						None,
 					)
@@ -123,13 +114,13 @@ where
 
 				if *self == EssenceItemType::GlowSpark {
 					AvatarBuilder::with_base_avatar(base_avatar).into_glow_spark(
-						force_type,
+						&force_type,
 						souls as SoulCount,
 						None,
 					)
 				} else {
 					AvatarBuilder::with_base_avatar(base_avatar).into_force_glow(
-						force_type,
+						&force_type,
 						souls as SoulCount,
 						None,
 					)
@@ -140,10 +131,7 @@ where
 	}
 }
 
-impl<T> AvatarMutator<T> for EquipableItemType
-where
-	T: Config,
-{
+impl<T: Config> AvatarMutator<T> for EquipableItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
@@ -169,12 +157,12 @@ where
 
 				AvatarBuilder::with_base_avatar(base_avatar)
 					.try_into_armor_and_component(
-						pet_type,
-						slot_type,
-						vec![*self],
-						rarity_type,
-						(ColorType::None, ColorType::None),
-						ForceType::None,
+						&pet_type,
+						&slot_type,
+						&[self.clone()],
+						&rarity_type,
+						&(ColorType::None, ColorType::None),
+						&ForceType::None,
 						soul_count,
 					)
 					.unwrap()
@@ -194,7 +182,14 @@ where
 				);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
-					.try_into_weapon(pet_type, slot_type, *self, color_pair, force_type, soul_count)
+					.try_into_weapon(
+						&pet_type,
+						&slot_type,
+						self,
+						&color_pair,
+						&force_type,
+						soul_count,
+					)
 					.unwrap()
 			},
 		}
@@ -202,10 +197,7 @@ where
 	}
 }
 
-impl<T> AvatarMutator<T> for BlueprintItemType
-where
-	T: Config,
-{
+impl<T: Config> AvatarMutator<T> for BlueprintItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
@@ -225,15 +217,12 @@ where
 		);
 
 		AvatarBuilder::with_base_avatar(base_avatar)
-			.into_blueprint(*self, pet_type, slot_type, equipable_item_type, pattern, soul_count)
+			.into_blueprint(self, &pet_type, &slot_type, &equipable_item_type, &pattern, soul_count)
 			.build()
 	}
 }
 
-impl<T> AvatarMutator<T> for SpecialItemType
-where
-	T: Config,
-{
+impl<T: Config> AvatarMutator<T> for SpecialItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,

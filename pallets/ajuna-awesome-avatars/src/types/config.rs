@@ -18,17 +18,12 @@ use crate::types::AvatarVersion;
 use frame_support::pallet_prelude::*;
 
 /// Number of avatars to be minted.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum MintPackSize {
+	#[default]
 	One = 1,
 	Three = 3,
 	Six = 6,
-}
-
-impl Default for MintPackSize {
-	fn default() -> Self {
-		MintPackSize::One
-	}
 }
 
 impl MintPackSize {
@@ -38,7 +33,7 @@ impl MintPackSize {
 }
 
 /// Minting fee per pack of avatars.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintFees<Balance> {
 	pub one: Balance,
 	pub three: Balance,
@@ -55,39 +50,25 @@ impl<Balance> MintFees<Balance> {
 	}
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum MintType {
 	/// Mint using free mint credits.
+	#[default]
 	Free,
 	/// Normal minting consuming currency.
 	Normal,
 }
 
-impl Default for MintType {
-	fn default() -> Self {
-		MintType::Free
-	}
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum PackType {
+	#[default]
 	Material = 1,
 	Equipment = 2,
 	Special = 3,
 }
 
-impl Default for PackType {
-	fn default() -> Self {
-		PackType::Material
-	}
-}
-
-impl PackType {
-	// TODO: Define probabilities here? Or in the minter?
-}
-
 /// Minting options
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintOption {
 	/// Type of minting.
 	pub mint_type: MintType,

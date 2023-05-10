@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn breed_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -14,7 +11,7 @@ where
 
 		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader.1),
-			ByteType::High,
+			&ByteType::High,
 		));
 
 		let is_leader_legendary = rarity_type == RarityType::Legendary;
@@ -26,29 +23,29 @@ where
 			],
 		);
 		let pet_variation =
-			AvatarUtils::read_attribute(&input_leader.1, AvatarAttributes::CustomType2);
+			AvatarUtils::read_attribute(&input_leader.1, &AvatarAttributes::CustomType2);
 
 		if is_leader_legendary && is_leader_egg && pet_variation > 0 {
 			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
-			let pet_type = pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
+			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,
-				AvatarAttributes::ClassType2,
+				&AvatarAttributes::ClassType2,
 				pet_type,
 			);
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,
-				AvatarAttributes::ItemSubType,
-				PetItemType::Pet,
+				&AvatarAttributes::ItemSubType,
+				&PetItemType::Pet,
 			);
 		}
 
 		AvatarUtils::write_typed_attribute(
 			&mut input_leader.1,
-			AvatarAttributes::RarityType,
-			rarity_type,
+			&AvatarAttributes::RarityType,
+			&rarity_type,
 		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
@@ -85,7 +82,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let hash_base: [[u8; 32]; 5] = [
+			let hash_base = [
 				[
 					0x13, 0x00, 0x04, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x40, 0x40, 0x44, 0x43,
@@ -134,7 +131,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				let expected_dna: [u8; 32] = [
+				let expected_dna = [
 					0x13, 0x00, 0x04, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x40, 0x40, 0x44, 0x53,
 					0x42, 0x51, 0x54, 0x44, 0x42, 0x45,
@@ -156,15 +153,13 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let progress_arrays: [[u8; 11]; 5] = [
+			let progress_arrays = [
 				[0x43, 0x44, 0x41, 0x43, 0x45, 0x44, 0x44, 0x41, 0x43, 0x41, 0x43],
 				[0x53, 0x40, 0x41, 0x41, 0x43, 0x44, 0x50, 0x42, 0x45, 0x40, 0x41],
 				[0x45, 0x44, 0x50, 0x45, 0x43, 0x43, 0x45, 0x43, 0x43, 0x41, 0x40],
 				[0x43, 0x43, 0x40, 0x41, 0x52, 0x45, 0x41, 0x40, 0x53, 0x42, 0x44],
 				[0x43, 0x40, 0x44, 0x43, 0x41, 0x45, 0x44, 0x44, 0x44, 0x45, 0x42],
 			];
-
-			let rarity_type = RarityType::Epic;
 
 			let mut egg_set = (0..5)
 				.into_iter()
@@ -174,7 +169,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						rarity_type,
+						&RarityType::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -194,7 +189,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				let expected_progress_array: [u8; 11] =
+				let expected_progress_array =
 					[0x43, 0x44, 0x51, 0x43, 0x45, 0x44, 0x44, 0x51, 0x43, 0x41, 0x43];
 				assert_eq!(AvatarUtils::read_progress_array(&avatar), expected_progress_array);
 			} else {
@@ -208,15 +203,13 @@ mod test {
 		ExtBuilder::default().build().execute_with(|| {
 			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
-			let progress_arrays: [[u8; 11]; 5] = [
+			let progress_arrays = [
 				[0x54, 0x55, 0x43, 0x50, 0x50, 0x41, 0x41, 0x54, 0x54, 0x43, 0x52],
 				[0x42, 0x55, 0x42, 0x50, 0x43, 0x43, 0x45, 0x45, 0x44, 0x50, 0x42],
 				[0x44, 0x40, 0x44, 0x44, 0x53, 0x41, 0x40, 0x40, 0x54, 0x43, 0x45],
 				[0x42, 0x41, 0x44, 0x40, 0x53, 0x41, 0x43, 0x44, 0x42, 0x42, 0x42],
 				[0x54, 0x43, 0x44, 0x42, 0x45, 0x42, 0x41, 0x44, 0x40, 0x51, 0x41],
 			];
-
-			let rarity_type = RarityType::Epic;
 
 			let mut egg_set = (0..5)
 				.into_iter()
@@ -226,7 +219,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						rarity_type,
+						&RarityType::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -246,7 +239,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				let expected_progress_array: [u8; 11] =
+				let expected_progress_array =
 					[0x54, 0x55, 0x53, 0x50, 0x50, 0x51, 0x51, 0x54, 0x54, 0x53, 0x52];
 				assert_eq!(AvatarUtils::read_progress_array(&avatar), expected_progress_array);
 			} else {
@@ -270,7 +263,7 @@ mod test {
 					let pet_type =
 						SlotRoller::<Test>::roll_on(&PET_TYPE_PROBABILITIES, &mut hash_provider);
 					let progress_array = AvatarUtils::generate_progress_bytes(
-						rarity_type,
+						&rarity_type,
 						SCALING_FACTOR_PERC,
 						PROGRESS_PROBABILITY_PERC,
 						[i; 11],
@@ -294,8 +287,8 @@ mod test {
 			let sacrifices = egg_set.split_off(1);
 			let leader = egg_set.pop().unwrap();
 
-			assert_eq!(AvatarUtils::read_attribute(&leader.1, AvatarAttributes::CustomType2), 2);
-			let expected_progress_array: [u8; 11] =
+			assert_eq!(AvatarUtils::read_attribute(&leader.1, &AvatarAttributes::CustomType2), 2);
+			let expected_progress_array =
 				[0x41, 0x40, 0x45, 0x43, 0x40, 0x53, 0x41, 0x42, 0x42, 0x52, 0x44];
 			assert_eq!(AvatarUtils::read_progress_array(&leader.1), expected_progress_array);
 
@@ -313,7 +306,7 @@ mod test {
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
 				assert_eq!(total_soul_points, avatar.souls);
 
-				let expected_progress_array: [u8; 11] =
+				let expected_progress_array =
 					[0x41, 0x40, 0x45, 0x43, 0x40, 0x53, 0x41, 0x42, 0x42, 0x52, 0x44];
 				assert_eq!(AvatarUtils::read_progress_array(&avatar), expected_progress_array);
 			} else {

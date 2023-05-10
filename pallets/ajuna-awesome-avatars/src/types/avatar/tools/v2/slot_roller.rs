@@ -9,12 +9,9 @@ pub type SlotPerMille = u16;
 pub type Slot<T> = (T, SlotPerMille);
 pub type ProbabilitySlots<T, const N: usize> = [Slot<T>; N];
 
-pub(crate) struct SlotRoller<'a, T: Config>(pub PhantomData<&'a T>);
+pub(crate) struct SlotRoller<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> SlotRoller<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> SlotRoller<T> {
 	/// Rolls number between 1 and 1000, representing a range of 0.1% increments in probability.
 	pub(crate) fn roll_number<const HS: usize>(hash_provider: &mut HashProvider<T, HS>) -> u16 {
 		let first_number = (hash_provider.get_hash_byte() as u16) << 8;
@@ -27,7 +24,7 @@ where
 		hash_provider: &mut HashProvider<T, HS>,
 	) -> S
 	where
-		S: Copy + Clone + Default,
+		S: Clone + Default,
 	{
 		let mut item_rolled = S::default();
 		let mut roll = Self::roll_number(hash_provider);
@@ -36,7 +33,7 @@ where
 			roll = roll.saturating_sub(*slot_probability);
 
 			if roll == 0 {
-				item_rolled = *slot_item;
+				item_rolled = slot_item.clone();
 				break
 			}
 		}
@@ -54,7 +51,7 @@ where
 		hash_provider: &mut HashProvider<T, HS>,
 	) -> S
 	where
-		S: Copy + Clone + Default,
+		S: Clone + Default,
 	{
 		let slots = match pack_type {
 			PackType::Material => on_material,

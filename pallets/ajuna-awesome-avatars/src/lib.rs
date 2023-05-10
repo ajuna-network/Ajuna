@@ -394,7 +394,7 @@ pub mod pallet {
 		/// Tried claiming treasury which is zero.
 		CannotClaimZero,
 		/// The components tried to forge were not compatible.
-		InvalidForgeComponents,
+		IncompatibleForgeComponents,
 		/// The amount of sacrifices is not sufficient for forging.
 		InsufficientSacrifices,
 		/// The amount of sacrifices is too much for forging.
@@ -1036,7 +1036,6 @@ pub mod pallet {
 			Ok(season)
 		}
 
-		#[inline]
 		pub(crate) fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
 			let (seed, _) = T::Randomness::random(phrase);
 			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
@@ -1074,7 +1073,7 @@ pub mod pallet {
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
 						account.free_mints = account
@@ -1215,13 +1214,13 @@ pub mod pallet {
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
 				},
 			};
 
-			let new_count = Owners::<T>::get(player).len() + mint_option.count as usize;
+			let new_count = Owners::<T>::get(player).len() + mint_option.count.clone() as usize;
 			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())
@@ -1268,13 +1267,12 @@ pub mod pallet {
 			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
 		}
 
-		#[inline]
 		fn process_leader_forge_output(
 			player: &AccountIdOf<T>,
 			season: &SeasonOf<T>,
 			input_leader: ForgeItem<T>,
 			output_leader: LeaderForgeOutput<T>,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			match output_leader {
 				LeaderForgeOutput::Forged((leader_id, leader), upgraded_components) => {
 					let prev_leader_tier = input_leader.1.min_tier();
@@ -1304,12 +1302,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn process_other_forge_outputs(
 			player: &AccountIdOf<T>,
 			_season: &SeasonOf<T>,
 			other_outputs: Vec<ForgeOutput<T>>,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			let mut minted_avatars: Vec<AvatarIdOf<T>> = Vec::with_capacity(0);
 			let mut forged_avatars: Vec<(AvatarIdOf<T>, UpgradedComponents)> =
 				Vec::with_capacity(0);
@@ -1343,11 +1340,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn update_forging_statistics_for_player(
 			player: &AccountIdOf<T>,
 			season_id: SeasonId,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 
 			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
@@ -1370,19 +1366,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_add_avatar_to(
 			player: &AccountIdOf<T>,
 			avatar_id: AvatarIdOf<T>,
 			avatar: Avatar,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			Avatars::<T>::insert(avatar_id, (player, avatar));
 			Owners::<T>::try_append(&player, avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 			Ok(())
 		}
 
-		#[inline]
 		fn remove_avatar_from(player: &AccountIdOf<T>, avatar_id: &AvatarIdOf<T>) {
 			Avatars::<T>::remove(avatar_id);
 			Owners::<T>::mutate(player, |avatars| {
@@ -1398,12 +1392,12 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> DispatchResult {
 			ensure!(!LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarLocked);
 			Ok(())
 		}
 
-		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> DispatchResult {
 			ensure!(!Preparation::<T>::contains_key(avatar_id), Error::<T>::AlreadyPrepared);
 			Ok(())
 		}

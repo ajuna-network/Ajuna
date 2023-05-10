@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn spark_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -20,11 +17,11 @@ where
 
 		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&leader),
-			ByteType::High,
+			&ByteType::High,
 		));
 		let essence_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
 			&leader,
-			AvatarAttributes::ItemSubType,
+			&AvatarAttributes::ItemSubType,
 		);
 
 		if essence_type == EssenceItemType::ColorSpark && rarity_type == RarityType::Rare {
@@ -41,35 +38,39 @@ where
 					};
 					AvatarUtils::write_spec_byte(
 						&mut leader,
-						spec_byte_index,
-						AvatarUtils::read_spec_byte(sacrifice, spec_byte_index),
+						&spec_byte_index,
+						AvatarUtils::read_spec_byte(sacrifice, &spec_byte_index),
 					);
 				}
 
 				let leader_spec_byte_1 =
-					AvatarUtils::read_spec_byte(&leader, AvatarSpecBytes::SpecByte1);
+					AvatarUtils::read_spec_byte(&leader, &AvatarSpecBytes::SpecByte1);
 				let leader_spec_byte_2 =
-					AvatarUtils::read_spec_byte(&leader, AvatarSpecBytes::SpecByte2);
+					AvatarUtils::read_spec_byte(&leader, &AvatarSpecBytes::SpecByte2);
 				let color_bits = ((leader_spec_byte_1 - 1) << 6) | (leader_spec_byte_2 - 1) << 4;
 
-				AvatarUtils::write_spec_byte(&mut leader, AvatarSpecBytes::SpecByte1, color_bits);
-				AvatarUtils::write_spec_byte(&mut leader, AvatarSpecBytes::SpecByte2, 0x00);
+				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte1, color_bits);
+				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte2, 0x00);
 
 				AvatarUtils::write_typed_attribute(
 					&mut leader,
-					AvatarAttributes::ItemSubType,
-					EssenceItemType::PaintFlask,
+					&AvatarAttributes::ItemSubType,
+					&EssenceItemType::PaintFlask,
 				);
 			}
 		} else if essence_type == EssenceItemType::GlowSpark && rarity_type == RarityType::Epic {
 			AvatarUtils::write_typed_attribute(
 				&mut leader,
-				AvatarAttributes::ItemSubType,
-				EssenceItemType::ForceGlow,
+				&AvatarAttributes::ItemSubType,
+				&EssenceItemType::ForceGlow,
 			);
 		}
 
-		AvatarUtils::write_typed_attribute(&mut leader, AvatarAttributes::RarityType, rarity_type);
+		AvatarUtils::write_typed_attribute(
+			&mut leader,
+			&AvatarAttributes::RarityType,
+			&rarity_type,
+		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
 			.into_iter()
@@ -105,7 +106,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let progress_arrays: [[u8; 11]; 5] = [
+			let progress_arrays = [
 				[0x34, 0x35, 0x23, 0x30, 0x30, 0x21, 0x21, 0x34, 0x34, 0x23, 0x32],
 				[0x22, 0x35, 0x22, 0x30, 0x23, 0x23, 0x25, 0x25, 0x24, 0x30, 0x22],
 				[0x24, 0x20, 0x24, 0x24, 0x33, 0x21, 0x20, 0x20, 0x34, 0x23, 0x25],
@@ -113,17 +114,18 @@ mod test {
 				[0x34, 0x23, 0x24, 0x22, 0x25, 0x22, 0x21, 0x24, 0x20, 0x31, 0x21],
 			];
 
-			let mut avatars = Vec::with_capacity(5);
-
-			for progress_array in progress_arrays {
-				avatars.push(create_random_color_spark(
-					None,
-					&ALICE,
-					(ColorType::ColorA, ColorType::ColorC),
-					5,
-					Some(progress_array),
-				));
-			}
+			let mut avatars = progress_arrays
+				.into_iter()
+				.map(|progress_array| {
+					create_random_color_spark(
+						None,
+						&ALICE,
+						&(ColorType::ColorA, ColorType::ColorC),
+						5,
+						Some(progress_array),
+					)
+				})
+				.collect::<Vec<_>>();
 
 			let total_soul_points = 25;
 
@@ -150,19 +152,19 @@ mod test {
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<RarityType>(
 						&leader_avatar,
-						AvatarAttributes::RarityType
+						&AvatarAttributes::RarityType
 					),
 					RarityType::Rare
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
 						&leader_avatar,
-						AvatarAttributes::ItemSubType
+						&AvatarAttributes::ItemSubType
 					),
 					EssenceItemType::PaintFlask
 				);
 				assert_eq!(
-					AvatarUtils::read_spec_byte(&leader_avatar, AvatarSpecBytes::SpecByte1),
+					AvatarUtils::read_spec_byte(&leader_avatar, &AvatarSpecBytes::SpecByte1),
 					0b0010_0000
 				);
 			} else {
@@ -181,7 +183,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let progress_arrays: [[u8; 11]; 5] = [
+			let progress_arrays = [
 				[0x44, 0x45, 0x33, 0x40, 0x40, 0x31, 0x31, 0x44, 0x44, 0x33, 0x42],
 				[0x32, 0x45, 0x32, 0x40, 0x33, 0x33, 0x35, 0x35, 0x34, 0x40, 0x32],
 				[0x34, 0x30, 0x34, 0x34, 0x43, 0x31, 0x30, 0x30, 0x44, 0x33, 0x35],
@@ -197,17 +199,13 @@ mod test {
 				ForceType::Kinetic,
 			];
 
-			let mut avatars = Vec::with_capacity(5);
-
-			for i in 0..5 {
-				avatars.push(create_random_glow_spark(
-					None,
-					&ALICE,
-					force_types[i],
-					5,
-					Some(progress_arrays[i]),
-				));
-			}
+			let mut avatars = force_types
+				.into_iter()
+				.zip(progress_arrays)
+				.map(|(force_type, progress_array)| {
+					create_random_glow_spark(None, &ALICE, &force_type, 5, Some(progress_array))
+				})
+				.collect::<Vec<_>>();
 
 			let total_soul_points = 25;
 
@@ -234,21 +232,21 @@ mod test {
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<RarityType>(
 						&leader_avatar,
-						AvatarAttributes::RarityType
+						&AvatarAttributes::RarityType
 					),
 					RarityType::Epic
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
 						&leader_avatar,
-						AvatarAttributes::ItemSubType
+						&AvatarAttributes::ItemSubType
 					),
 					EssenceItemType::ForceGlow
 				);
 				assert_eq!(
 					ForceType::from_byte(AvatarUtils::read_spec_byte(
 						&leader_avatar,
-						AvatarSpecBytes::SpecByte1
+						&AvatarSpecBytes::SpecByte1
 					)),
 					ForceType::Kinetic
 				);

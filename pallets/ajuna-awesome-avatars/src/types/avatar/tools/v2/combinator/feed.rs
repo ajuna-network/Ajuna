@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn feed_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -45,16 +42,16 @@ mod test {
 
 			let leader = create_random_pet(
 				&ALICE,
-				PetType::BigHybrid,
+				&PetType::BigHybrid,
 				0b0001_1001,
 				leader_spec_bytes,
 				leader_progress_array,
 				1000,
 			);
 			let sacrifice_1 =
-				create_random_egg(None, &ALICE, RarityType::Epic, 0b0000_1111, 100, [0x00; 11]);
+				create_random_egg(None, &ALICE, &RarityType::Epic, 0b0000_1111, 100, [0x00; 11]);
 			let sacrifice_2 =
-				create_random_egg(None, &ALICE, RarityType::Epic, 0b0000_1111, 100, [0x00; 11]);
+				create_random_egg(None, &ALICE, &RarityType::Epic, 0b0000_1111, 100, [0x00; 11]);
 
 			let total_soul_points = leader.1.souls + sacrifice_1.1.souls + sacrifice_2.1.souls;
 

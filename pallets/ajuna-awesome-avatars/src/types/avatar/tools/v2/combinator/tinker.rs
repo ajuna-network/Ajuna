@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn tinker_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -20,7 +17,7 @@ where
 			.map(|(_, sacrifice)| {
 				AvatarUtils::read_attribute_as::<MaterialItemType>(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 				)
 			})
 			.collect::<Vec<MaterialItemType>>();
@@ -61,7 +58,7 @@ where
 				soul_points += out_soul_points;
 
 				let sacrifice_output =
-					if AvatarUtils::read_attribute(&sacrifice, AvatarAttributes::Quantity) == 0 {
+					if AvatarUtils::read_attribute(&sacrifice, &AvatarAttributes::Quantity) == 0 {
 						ForgeOutput::Consumed(sacrifice_id)
 					} else {
 						ForgeOutput::Forged((sacrifice_id, sacrifice), 0)
@@ -91,20 +88,20 @@ where
 			};
 
 			let pet_type =
-				AvatarUtils::read_attribute_as::<PetType>(&leader, AvatarAttributes::ClassType2);
+				AvatarUtils::read_attribute_as::<PetType>(&leader, &AvatarAttributes::ClassType2);
 
 			let slot_type =
-				AvatarUtils::read_attribute_as::<SlotType>(&leader, AvatarAttributes::ClassType1);
+				AvatarUtils::read_attribute_as::<SlotType>(&leader, &AvatarAttributes::ClassType1);
 
 			let dna =
 				AvatarMinterV2::<T>(PhantomData).generate_base_avatar_dna(hash_provider, 6)?;
 			let generated_blueprint = AvatarBuilder::with_dna(season_id, dna)
 				.into_blueprint(
-					BlueprintItemType::Blueprint,
-					pet_type,
-					slot_type,
-					equipable_item_type,
-					sacrifice_pattern,
+					&BlueprintItemType::Blueprint,
+					&pet_type,
+					&slot_type,
+					&equipable_item_type,
+					&sacrifice_pattern,
 					soul_points as SoulCount,
 				)
 				.build();
@@ -157,12 +154,11 @@ mod test {
 				]
 			);
 
-			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let pet_part_input_1 = create_random_pet_part(&ALICE, &pet_type, &slot_type, 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -194,15 +190,15 @@ mod test {
 				if let ForgeOutput::Minted(avatar) = minted_blueprint {
 					assert!(AvatarUtils::has_attribute_with_value(
 						&avatar,
-						AvatarAttributes::ItemType,
+						&AvatarAttributes::ItemType,
 						ItemType::Blueprint
 					));
 					assert_eq!(
-						AvatarUtils::read_spec_byte(&avatar, AvatarSpecBytes::SpecByte3),
+						AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte3),
 						EquipableItemType::ArmorBase.as_byte()
 					);
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
 						total_soul_points as u8
 					);
 					assert_eq!(avatar.souls, total_soul_points);
@@ -240,12 +236,11 @@ mod test {
 				]
 			);
 
-			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 2);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 2);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let pet_part_input_1 = create_random_pet_part(&ALICE, &pet_type, &slot_type, 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 2);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 2);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -292,7 +287,7 @@ mod test {
 				if let ForgeOutput::Minted(avatar) = minted_blueprint {
 					assert!(AvatarUtils::has_attribute_with_value(
 						&avatar,
-						AvatarAttributes::ItemType,
+						&AvatarAttributes::ItemType,
 						ItemType::Blueprint
 					));
 				} else {
@@ -329,12 +324,11 @@ mod test {
 				]
 			);
 
-			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 2);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 2);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 2);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 2);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 2);
+			let pet_part_input_1 = create_random_pet_part(&ALICE, &pet_type, &slot_type, 2);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 2);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 2);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 2);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 2);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -357,7 +351,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
-				assert_eq!(AvatarUtils::read_attribute(&leader, AvatarAttributes::Quantity), 1);
+				assert_eq!(AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity), 1);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!");
 			}
@@ -372,11 +366,11 @@ mod test {
 			if let ForgeOutput::Minted(avatar) = minted_blueprint {
 				assert!(AvatarUtils::has_attribute_with_value(
 					&avatar,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Blueprint
 				));
 
-				assert_eq!(AvatarUtils::read_attribute(&avatar, AvatarAttributes::Quantity), 5);
+				assert_eq!(AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity), 5);
 			} else {
 				panic!("ForgeOutput of blueprint should have been Minted!");
 			}
@@ -408,12 +402,11 @@ mod test {
 				]
 			);
 
-			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let pet_part_input_1 = create_random_pet_part(&ALICE, &pet_type, &slot_type, 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -437,7 +430,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
 				let leader_quantity =
-					AvatarUtils::read_attribute(&leader, AvatarAttributes::Quantity) as u32;
+					AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity) as u32;
 				assert_eq!(leader_quantity, 1);
 
 				assert_eq!(
@@ -446,7 +439,7 @@ mod test {
 						.map(|output| {
 							match output {
 								ForgeOutput::Forged((_, avatar), _) =>
-									AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity)
+									AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity)
 										as u32,
 								_ => 0,
 							}
@@ -485,13 +478,13 @@ mod test {
 				]
 			);
 
-			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, MaterialItemType::Metals, 1);
-			let material_input_2 = create_random_material(&ALICE, MaterialItemType::Ceramics, 1);
+			let pet_part_input_1 = create_random_pet_part(&ALICE, &pet_type, &slot_type, 1);
+			let material_input_1 = create_random_material(&ALICE, &MaterialItemType::Metals, 1);
+			let material_input_2 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 1);
 			let material_input_3 =
-				create_random_material(&ALICE, MaterialItemType::Superconductors, 1);
-			let material_input_4 = create_random_material(&ALICE, MaterialItemType::Electronics, 1);
+				create_random_material(&ALICE, &MaterialItemType::Superconductors, 1);
+			let material_input_4 =
+				create_random_material(&ALICE, &MaterialItemType::Electronics, 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -515,7 +508,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
 				let leader_quantity =
-					AvatarUtils::read_attribute(&leader, AvatarAttributes::Quantity) as u32;
+					AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity) as u32;
 				assert_eq!(leader_quantity, 1);
 
 				assert_eq!(
@@ -524,7 +517,7 @@ mod test {
 						.map(|output| {
 							match output {
 								ForgeOutput::Forged((_, avatar), _) =>
-									AvatarUtils::read_attribute(avatar, AvatarAttributes::Quantity)
+									AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity)
 										as u32,
 								_ => 0,
 							}
@@ -563,12 +556,11 @@ mod test {
 				]
 			);
 
-			let pet_part_input_1 = create_random_pet_part(&ALICE, pet_type, slot_type, 1);
-
-			let material_input_1 = create_random_material(&ALICE, pattern[0], 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1], 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2], 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3], 1);
+			let pet_part_input_1 = create_random_pet_part(&ALICE, &pet_type, &slot_type, 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
 			let total_soul_points = pet_part_input_1.1.souls +
 				material_input_1.1.souls +
@@ -600,21 +592,21 @@ mod test {
 				if let ForgeOutput::Minted(avatar) = minted_blueprint {
 					assert!(AvatarUtils::has_attribute_with_value(
 						&avatar,
-						AvatarAttributes::ItemType,
+						&AvatarAttributes::ItemType,
 						ItemType::Blueprint
 					));
 					assert_eq!(
-						AvatarUtils::read_spec_byte(&avatar, AvatarSpecBytes::SpecByte3),
+						AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte3),
 						EquipableItemType::ArmorComponent3.as_byte()
 					);
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
 						total_soul_points as u8
 					);
 					assert_eq!(avatar.souls, total_soul_points);
 
 					let avatar_dna = avatar.dna.as_slice();
-					let expected_dna: [u8; 12] =
+					let expected_dna =
 						[0x51, 0x21, 0x13, 0x05, 0x00, 0x66, 0x6C, 0x04, 0x01, 0x01, 0x01, 0x01];
 
 					assert_eq!(&avatar_dna[0..12], &expected_dna);

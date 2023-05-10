@@ -1,9 +1,6 @@
 use super::*;
 
-impl<'a, T> AvatarCombinator<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn equip_avatars(
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
@@ -26,16 +23,16 @@ where
 			new_souls += sacrifice.souls;
 
 			let slot_type =
-				AvatarUtils::read_attribute(sacrifice, AvatarAttributes::ClassType1) as usize - 1;
+				AvatarUtils::read_attribute(sacrifice, &AvatarAttributes::ClassType1) as usize - 1;
 
 			if are_slots_maxed && equipment_slots_state[slot_type] {
 				continue
 			}
 
 			let sacrifice_spec_byte_1 =
-				AvatarUtils::read_spec_byte(sacrifice, AvatarSpecBytes::SpecByte1);
+				AvatarUtils::read_spec_byte(sacrifice, &AvatarSpecBytes::SpecByte1);
 			let sacrifice_spec_byte_2 =
-				AvatarUtils::read_spec_byte(sacrifice, AvatarSpecBytes::SpecByte2);
+				AvatarUtils::read_spec_byte(sacrifice, &AvatarSpecBytes::SpecByte2);
 			let slot_type_mod = slot_type % 2;
 			let slot_index = ((slot_type - slot_type_mod) * 3) / 2;
 
@@ -74,7 +71,7 @@ mod test {
 	fn test_equip_success() {
 		ExtBuilder::default().build().execute_with(|| {
 			let leader =
-				create_random_pet(&ALICE, PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
+				create_random_pet(&ALICE, &PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
 
 			let armor_progress = vec![
 				EquipableItemType::ArmorBase,
@@ -82,7 +79,7 @@ mod test {
 				EquipableItemType::ArmorComponent2,
 			];
 
-			let sacrifice_hash_base: [[u8; 32]; 4] = [
+			let sacrifice_hash_base = [
 				[
 					0x80, 0x31, 0x6D, 0x62, 0xA2, 0x5B, 0xB9, 0x7F, 0x15, 0xEA, 0xAF, 0xE2, 0xB1,
 					0xAC, 0x32, 0x61, 0x39, 0x92, 0x97, 0xE3, 0x30, 0x9C, 0xB3, 0x42, 0xB4, 0xC6,
@@ -106,23 +103,23 @@ mod test {
 			];
 
 			let armor_slots = [SlotType::Head, SlotType::Breast, SlotType::ArmFront];
-
 			let pet_type = PetType::FoxishDude;
-			let rarity_type = RarityType::Legendary;
 			let force_type = ForceType::Astral;
 			let color_pair = (ColorType::ColorC, ColorType::ColorB);
 
-			let mut armor_sacrifices = (0..3)
-				.map(|i| {
+			let mut armor_sacrifices = sacrifice_hash_base
+				.into_iter()
+				.zip(armor_slots)
+				.map(|(hash, armor_slot)| {
 					create_random_armor_component(
-						sacrifice_hash_base[i],
+						hash,
 						&ALICE,
-						pet_type,
-						armor_slots[i],
-						rarity_type,
-						armor_progress.clone(),
-						color_pair,
-						force_type,
+						&pet_type,
+						&armor_slot,
+						&RarityType::Legendary,
+						&armor_progress,
+						&color_pair,
+						&force_type,
 						100,
 					)
 				})
@@ -131,11 +128,11 @@ mod test {
 			let weapon_sacrifice = create_random_weapon(
 				sacrifice_hash_base[3],
 				&ALICE,
-				pet_type,
-				SlotType::WeaponBack,
-				EquipableItemType::WeaponVersion2,
-				color_pair,
-				force_type,
+				&pet_type,
+				&SlotType::WeaponBack,
+				&EquipableItemType::WeaponVersion2,
+				&color_pair,
+				&force_type,
 				100,
 			);
 
@@ -178,11 +175,11 @@ mod test {
 				let weapon_sacrifice_2 = create_random_weapon(
 					weapon_2_dna,
 					&ALICE,
-					pet_type,
-					SlotType::WeaponFront,
-					EquipableItemType::WeaponVersion3,
-					color_pair,
-					force_type,
+					&pet_type,
+					&SlotType::WeaponFront,
+					&EquipableItemType::WeaponVersion3,
+					&color_pair,
+					&force_type,
 					100,
 				);
 
@@ -225,33 +222,31 @@ mod test {
 			];
 			let leader = create_random_pet(
 				&ALICE,
-				PetType::FoxishDude,
+				&PetType::FoxishDude,
 				0x0F,
 				leader_spec_bytes,
 				[0; 11],
 				100,
 			);
 
-			let armor_progress = vec![
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorComponent1,
-				EquipableItemType::ArmorComponent2,
-			];
 			let sacrifice_base_hash = [
 				0xFB, 0x0E, 0x54, 0x01, 0x1C, 0x36, 0xA8, 0xBA, 0xED, 0x77, 0x45, 0x2A, 0x45, 0xD7,
 				0xC8, 0xA1, 0x08, 0xE4, 0x97, 0x29, 0x44, 0x1F, 0xBA, 0xE7, 0x22, 0x2E, 0x90, 0x20,
 				0x71, 0xFD, 0xA3, 0x68,
 			];
-			let color_pair = (ColorType::ColorC, ColorType::ColorB);
 			let sacrifice = create_random_armor_component(
 				sacrifice_base_hash,
 				&ALICE,
-				PetType::FoxishDude,
-				SlotType::ArmFront,
-				RarityType::Legendary,
-				armor_progress,
-				color_pair,
-				ForceType::Astral,
+				&PetType::FoxishDude,
+				&SlotType::ArmFront,
+				&RarityType::Legendary,
+				&[
+					EquipableItemType::ArmorBase,
+					EquipableItemType::ArmorComponent1,
+					EquipableItemType::ArmorComponent2,
+				],
+				&(ColorType::ColorC, ColorType::ColorB),
+				&ForceType::Astral,
 				100,
 			);
 

@@ -12,9 +12,9 @@ mod tinker;
 use super::*;
 use sp_std::collections::vec_deque::VecDeque;
 
-pub(super) struct AvatarCombinator<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> AvatarCombinator<'a, T>
+impl<T> AvatarCombinator<T>
 where
 	T: Config,
 {
@@ -147,7 +147,7 @@ mod match_test {
 	#[test]
 	fn test_match_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let hash_bytes: [u8; 32] = [
+			let hash_bytes = [
 				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
 				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
 				0xCC, 0xFD, 0x01, 0xB4,
