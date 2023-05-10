@@ -1036,7 +1036,6 @@ pub mod pallet {
 			Ok(season)
 		}
 
-		#[inline]
 		pub(crate) fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
 			let (seed, _) = T::Randomness::random(phrase);
 			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
@@ -1268,7 +1267,6 @@ pub mod pallet {
 			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
 		}
 
-		#[inline]
 		fn process_leader_forge_output(
 			player: &AccountIdOf<T>,
 			season: &SeasonOf<T>,
@@ -1304,7 +1302,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn process_other_forge_outputs(
 			player: &AccountIdOf<T>,
 			_season: &SeasonOf<T>,
@@ -1343,7 +1340,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn update_forging_statistics_for_player(
 			player: &AccountIdOf<T>,
 			season_id: SeasonId,
@@ -1370,7 +1366,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn try_add_avatar_to(
 			player: &AccountIdOf<T>,
 			avatar_id: AvatarIdOf<T>,
@@ -1382,7 +1377,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[inline]
 		fn remove_avatar_from(player: &AccountIdOf<T>, avatar_id: &AvatarIdOf<T>) {
 			Avatars::<T>::remove(avatar_id);
 			Owners::<T>::mutate(player, |avatars| {

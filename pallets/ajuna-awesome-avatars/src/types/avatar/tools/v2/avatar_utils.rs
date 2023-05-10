@@ -620,7 +620,6 @@ impl AvatarUtils {
 		Self::read_dna_at(avatar.dna.as_slice(), position, byte_type)
 	}
 
-	#[inline]
 	fn read_dna_at(dna: &[u8], position: usize, byte_type: ByteType) -> u8 {
 		match byte_type {
 			ByteType::Full => dna[position],
@@ -629,12 +628,10 @@ impl AvatarUtils {
 		}
 	}
 
-	#[inline]
 	pub fn high_nibble_of(byte: u8) -> u8 {
 		byte >> 4
 	}
 
-	#[inline]
 	pub fn low_nibble_of(byte: u8) -> u8 {
 		byte & 0x0F
 	}
@@ -651,7 +648,6 @@ impl AvatarUtils {
 		}
 	}
 
-	#[inline]
 	fn write_dna_at(dna: &mut [u8], position: usize, byte_type: ByteType, value: u8) {
 		match byte_type {
 			ByteType::Full => dna[position] = value,
@@ -1101,7 +1097,6 @@ impl<T: Config, const N: usize> HashProvider<T, N> {
 		T::Hashing::hash(&full_hash)
 	}
 
-	#[inline]
 	pub fn get_hash_byte(&mut self) -> u8 {
 		self.next().unwrap_or_default()
 	}

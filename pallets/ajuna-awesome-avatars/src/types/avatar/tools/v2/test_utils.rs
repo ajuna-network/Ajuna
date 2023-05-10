@@ -20,7 +20,6 @@ pub const HASH_BYTES: [u8; 32] = [
 	97, 101, 103, 107, 109, 113, 127,
 ];
 
-#[inline]
 pub(crate) fn create_random_avatar<T, F>(
 	creator: &T::AccountId,
 	initial_dna: Option<[u8; 32]>,
@@ -260,7 +259,6 @@ pub(crate) fn create_random_color_spark(
 	)
 }
 
-#[inline]
 pub(crate) fn is_leader_forged<T>(output: &LeaderForgeOutput<T>) -> bool
 where
 	T: Config,
@@ -268,7 +266,6 @@ where
 	matches!(output, LeaderForgeOutput::Forged(_, _))
 }
 
-#[inline]
 pub(crate) fn is_leader_forged_with_attributes<T>(
 	output: &LeaderForgeOutput<T>,
 	attributes: &[(AvatarAttributes, u8)],
@@ -279,7 +276,6 @@ where
 	matches!(output, LeaderForgeOutput::Forged((_, avatar), _) if AvatarUtils::has_attribute_set_with_values(avatar, attributes))
 }
 
-#[inline]
 pub(crate) fn is_leader_consumed<T>(output: &LeaderForgeOutput<T>) -> bool
 where
 	T: Config,
@@ -287,7 +283,6 @@ where
 	matches!(output, LeaderForgeOutput::Consumed(_))
 }
 
-#[inline]
 pub(crate) fn is_forged<T>(output: &ForgeOutput<T>) -> bool
 where
 	T: Config,
@@ -295,7 +290,6 @@ where
 	matches!(output, ForgeOutput::Forged(_, _))
 }
 
-#[inline]
 pub(crate) fn is_forged_with_attributes<T>(
 	output: &ForgeOutput<T>,
 	attributes: &[(AvatarAttributes, u8)],
@@ -306,7 +300,6 @@ where
 	matches!(output, ForgeOutput::Forged((_, avatar), _) if AvatarUtils::has_attribute_set_with_values(avatar, attributes))
 }
 
-#[inline]
 pub(crate) fn is_minted<T>(output: &ForgeOutput<T>) -> bool
 where
 	T: Config,
@@ -314,7 +307,6 @@ where
 	matches!(output, ForgeOutput::Minted(_))
 }
 
-#[inline]
 pub(crate) fn is_minted_with_attributes<T>(
 	output: &ForgeOutput<T>,
 	attributes: &[(AvatarAttributes, u8)],
@@ -325,7 +317,6 @@ where
 	matches!(output, ForgeOutput::Minted(avatar) if AvatarUtils::has_attribute_set_with_values(avatar, attributes))
 }
 
-#[inline]
 pub(crate) fn is_consumed<T>(output: &ForgeOutput<T>) -> bool
 where
 	T: Config,

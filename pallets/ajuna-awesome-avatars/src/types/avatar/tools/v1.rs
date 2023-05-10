@@ -39,7 +39,6 @@ impl<T: Config> Minter<T> for AvatarMinterV1<T> {
 }
 
 impl<T: Config> AvatarMinterV1<T> {
-	#[inline]
 	fn random_dna(
 		&self,
 		hash: &T::Hash,
@@ -56,7 +55,6 @@ impl<T: Config> AvatarMinterV1<T> {
 		Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
 	}
 
-	#[inline]
 	fn random_component(
 		season: &SeasonOf<T>,
 		hash: &T::Hash,

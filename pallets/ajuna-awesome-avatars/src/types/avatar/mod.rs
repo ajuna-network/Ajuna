@@ -56,13 +56,11 @@ pub struct Avatar {
 }
 
 impl Avatar {
-	#[inline]
 	pub(crate) fn min_tier(&self) -> u8 {
 		self.version
 			.with_mapper(|mapper: Box<dyn AttributeMapper>| mapper.min_tier(self))
 	}
 
-	#[inline]
 	pub(crate) fn last_variation(&self) -> u8 {
 		self.version
 			.with_mapper(|mapper: Box<dyn AttributeMapper>| mapper.last_variation(self))
