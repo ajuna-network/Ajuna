@@ -14,12 +14,9 @@ impl AttributeMapper for AttributeMapperV1 {
 	}
 }
 
-pub(super) struct AvatarMinterV1<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarMinterV1<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> Minter<T> for AvatarMinterV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> Minter<T> for AvatarMinterV1<T> {
 	fn mint_avatar_set(
 		&self,
 		player: &T::AccountId,
@@ -41,10 +38,7 @@ where
 	}
 }
 
-impl<'a, T> AvatarMinterV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarMinterV1<T> {
 	#[inline]
 	fn random_dna(
 		&self,
@@ -91,12 +85,9 @@ where
 	}
 }
 
-pub(super) struct AvatarForgerV1<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarForgerV1<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> Forger<T> for AvatarForgerV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 	fn forge_with(
 		&self,
 		player: &T::AccountId,
@@ -177,10 +168,7 @@ where
 	}
 }
 
-impl<'a, T> AvatarForgerV1<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarForgerV1<T> {
 	fn compare_all(
 		&self,
 		target: &Avatar,

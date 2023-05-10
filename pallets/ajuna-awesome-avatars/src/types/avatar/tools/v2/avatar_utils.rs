@@ -1,5 +1,8 @@
 use super::{constants::*, types::*, ByteType};
-use crate::types::{Avatar, AvatarVersion, Dna, SeasonId, SoulCount};
+use crate::{
+	types::{Avatar, AvatarVersion, Dna, SeasonId, SoulCount},
+	Config,
+};
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -1054,28 +1057,19 @@ impl AvatarUtils {
 	}
 }
 
-pub(crate) struct HashProvider<'a, T, const N: usize>
-where
-	T: crate::Config,
-{
+pub(crate) struct HashProvider<T: Config, const N: usize> {
 	pub(crate) hash: [u8; N],
 	current_index: usize,
-	_marker: PhantomData<&'a T>,
+	_marker: PhantomData<T>,
 }
 
-impl<'a, T, const N: usize> Default for HashProvider<'a, T, N>
-where
-	T: crate::Config,
-{
+impl<T: Config, const N: usize> Default for HashProvider<T, N> {
 	fn default() -> Self {
 		Self { hash: [0; N], current_index: 0, _marker: PhantomData }
 	}
 }
 
-impl<'a, T, const N: usize> HashProvider<'a, T, N>
-where
-	T: crate::Config,
-{
+impl<T: Config, const N: usize> HashProvider<T, N> {
 	pub fn new(hash: &T::Hash) -> Self {
 		Self::new_starting_at(hash, 0)
 	}
@@ -1113,10 +1107,7 @@ where
 	}
 }
 
-impl<'a, T, const N: usize> Iterator for HashProvider<'a, T, N>
-where
-	T: crate::Config,
-{
+impl<T: Config, const N: usize> Iterator for HashProvider<T, N> {
 	type Item = u8;
 
 	fn next(&mut self) -> Option<Self::Item> {

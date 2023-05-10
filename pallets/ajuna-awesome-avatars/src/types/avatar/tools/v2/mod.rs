@@ -38,12 +38,9 @@ impl AttributeMapper for AttributeMapperV2 {
 	}
 }
 
-pub(super) struct AvatarMinterV2<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarMinterV2<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> Minter<T> for AvatarMinterV2<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> Minter<T> for AvatarMinterV2<T> {
 	fn mint_avatar_set(
 		&self,
 		player: &T::AccountId,
@@ -55,10 +52,7 @@ where
 	}
 }
 
-impl<'a, T> AvatarMinterV2<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarMinterV2<T> {
 	pub(super) fn generate_base_avatar_dna(
 		&self,
 		hash_provider: &mut HashProvider<T, 32>,
@@ -186,9 +180,9 @@ pub(crate) enum ForgeType {
 	Special = 11,
 }
 
-pub(super) struct AvatarForgerV2<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarForgerV2<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> Forger<T> for AvatarForgerV2<'a, T>
+impl<T> Forger<T> for AvatarForgerV2<T>
 where
 	T: Config,
 {
@@ -238,10 +232,7 @@ where
 	}
 }
 
-impl<'a, T> AvatarForgerV2<'a, T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarForgerV2<T> {
 	fn determine_forge_type(
 		&self,
 		input_leader: &Avatar,

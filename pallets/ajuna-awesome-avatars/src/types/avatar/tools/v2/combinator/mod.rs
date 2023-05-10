@@ -12,9 +12,9 @@ mod tinker;
 use super::*;
 use sp_std::collections::vec_deque::VecDeque;
 
-pub(super) struct AvatarCombinator<'a, T: Config>(pub PhantomData<&'a T>);
+pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 
-impl<'a, T> AvatarCombinator<'a, T>
+impl<T> AvatarCombinator<T>
 where
 	T: Config,
 {
