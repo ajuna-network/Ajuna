@@ -18,20 +18,15 @@ use super::{MintCount, SeasonId};
 use frame_support::pallet_prelude::*;
 use sp_runtime::{traits::Get, BoundedBTreeSet};
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum StorageTier {
+	#[default]
 	One = 25,
 	Two = 50,
 	Three = 75,
 	Four = 100,
 	Five = 150,
 	Max = 200,
-}
-
-impl Default for StorageTier {
-	fn default() -> Self {
-		Self::One
-	}
 }
 
 impl StorageTier {

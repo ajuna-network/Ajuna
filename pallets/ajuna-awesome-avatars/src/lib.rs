@@ -82,7 +82,7 @@ use sp_runtime::{
 	},
 	ArithmeticError,
 };
-use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -247,7 +247,7 @@ pub mod pallet {
 		/// Avatars minted.
 		AvatarsMinted { avatar_ids: Vec<AvatarIdOf<T>> },
 		/// Avatar forged.
-		AvatarForged { avatar_id: AvatarIdOf<T>, upgraded_components: u8 },
+		AvatarsForged { avatar_ids: Vec<(AvatarIdOf<T>, UpgradedComponents)> },
 		/// Avatar transferred.
 		AvatarTransferred { from: T::AccountId, to: T::AccountId, avatar_id: AvatarIdOf<T> },
 		/// A season has started.
@@ -385,12 +385,20 @@ pub mod pallet {
 		AvatarUnlocked,
 		/// Tried to forge avatars from different seasons.
 		IncorrectAvatarSeason,
+		/// Tried to forge avatars with different DNA versions.
+		IncompatibleAvatarVersions,
 		/// Tried transferring to his or her own account.
 		CannotTransferToSelf,
 		/// Tried claiming treasury during a season.
 		CannotClaimDuringSeason,
 		/// Tried claiming treasury which is zero.
 		CannotClaimZero,
+		/// The components tried to forge were not compatible.
+		IncompatibleForgeComponents,
+		/// The amount of sacrifices is not sufficient for forging.
+		InsufficientSacrifices,
+		/// The amount of sacrifices is too much for forging.
+		ExcessiveSacrifices,
 		/// Tried to prepare an already prepared avatar.
 		AlreadyPrepared,
 		/// Tried to prepare an IPFS URL for an avatar, that is not yet prepared.
@@ -1028,8 +1036,7 @@ pub mod pallet {
 			Ok(season)
 		}
 
-		#[inline]
-		fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
+		pub(crate) fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
 			let (seed, _) = T::Randomness::random(phrase);
 			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
 				.expect("input is padded with zeroes; qed");
@@ -1038,66 +1045,23 @@ pub mod pallet {
 			(seed, &who, nonce.encode()).using_encoded(T::Hashing::hash)
 		}
 
-		#[inline]
-		fn random_component(
-			season: &SeasonOf<T>,
-			hash: &T::Hash,
-			index: usize,
-			batched_mint: bool,
-		) -> (u8, u8) {
-			let hash = hash.as_ref();
-			let random_tier = {
-				let random_prob = hash[index] % MAX_PERCENTAGE;
-				let probs =
-					if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
-				let mut cumulative_sum = 0;
-				let mut random_tier = season.tiers[0].clone() as u8;
-				for i in 0..probs.len() {
-					let new_cumulative_sum = cumulative_sum + probs[i];
-					if random_prob >= cumulative_sum && random_prob < new_cumulative_sum {
-						random_tier = season.tiers[i].clone() as u8;
-						break
-					}
-					cumulative_sum = new_cumulative_sum;
-				}
-				random_tier
-			};
-			let random_variation = hash[index + 1] % season.max_variations;
-			(random_tier, random_variation)
-		}
-
-		fn random_dna(
-			hash: &T::Hash,
-			season: &SeasonOf<T>,
-			batched_mint: bool,
-		) -> Result<Dna, DispatchError> {
-			let dna = (0..season.max_components)
-				.map(|i| {
-					let (random_tier, random_variation) =
-						Self::random_component(season, hash, i as usize * 2, batched_mint);
-					((random_tier << 4) | random_variation) as u8
-				})
-				.collect::<Vec<_>>();
-			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
-		}
-
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
 			Self::ensure_for_mint(player, mint_option)?;
 
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
 			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
-			let is_batched = mint_option.count.is_batched();
-			let generated_avatar_ids = (0..mint_option.count as usize)
-				.map(|_| {
-					let avatar_id = Self::random_hash(b"create_avatar", player);
-					let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
-					let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
-					let avatar = Avatar { season_id, dna, souls };
-					Avatars::<T>::insert(avatar_id, (&player, avatar));
-					Owners::<T>::try_append(&player, avatar_id)
-						.map_err(|_| Error::<T>::MaxOwnershipReached)?;
-					Ok(avatar_id)
+			let mint_output =
+				mint_option.mint_version.with_minter(|minter: Box<dyn Minter<T>>| {
+					minter.mint_avatar_set(player, &season_id, &season, mint_option)
+				})?;
+
+			// Add generated avatars from minter to storage
+			let generated_avatar_ids = mint_output
+				.into_iter()
+				.map(|(minted_avatar_id, minted_avatar)| {
+					Self::try_add_avatar_to(player, minted_avatar_id, minted_avatar)?;
+					Ok(minted_avatar_id)
 				})
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
@@ -1109,10 +1073,10 @@ pub mod pallet {
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
-						account.free_mints = Accounts::<T>::get(player)
+						account.free_mints = account
 							.free_mints
 							.checked_sub(fee)
 							.ok_or(Error::<T>::InsufficientFreeMints)?;
@@ -1152,79 +1116,24 @@ pub mod pallet {
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
 			let (season_id, season) = Self::current_season_with_id()?;
-			let (mut leader, sacrifice_ids, sacrifices) =
+			let (leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
-			let prev_leader_tier = leader.min_tier();
 
-			let max_tier = season.tiers.iter().max().ok_or(Error::<T>::UnknownTier)?.clone() as u8;
-			let (mut unique_matched_indexes, matches) =
-				leader.compare_all::<T>(&sacrifices, season.max_variations, max_tier)?;
+			let forger: Box<dyn Forger<T>> = leader.version.get_forger();
+			let input_leader = (*leader_id, leader);
+			let input_sacrifices =
+				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
+			let (output_leader, output_other) = forger.forge_with(
+				player,
+				season_id,
+				&season,
+				input_leader.clone(),
+				input_sacrifices,
+			)?;
 
-			let random_hash = Self::random_hash(b"forging avatar", player);
-			let random_hash = random_hash.as_ref();
-			let mut upgraded_components = 0;
-
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			let prob = leader.forge_probability::<T>(&season, &current_block, matches)?;
-
-			let rolls = sacrifices.len();
-			for hash in random_hash.iter().take(rolls) {
-				let roll = hash % MAX_PERCENTAGE;
-				if roll <= prob {
-					if let Some(first_matched_index) = unique_matched_indexes.pop_first() {
-						let nucleotide = leader.dna[first_matched_index];
-						let current_tier_index = season
-							.tiers
-							.iter()
-							.position(|tier| tier.clone() as u8 == nucleotide >> 4)
-							.ok_or(Error::<T>::UnknownTier)?;
-
-						let already_maxed_out = current_tier_index == (season.tiers.len() - 1);
-						if !already_maxed_out {
-							let next_tier = season.tiers[current_tier_index + 1].clone() as u8;
-							let upgraded_nucleotide = (next_tier << 4) | (nucleotide & 0b0000_1111);
-							leader.dna[first_matched_index] = upgraded_nucleotide;
-							upgraded_components += 1;
-						}
-					}
-				}
-			}
-
-			let after_leader_tier = leader.min_tier();
-			if prev_leader_tier != max_tier && after_leader_tier == max_tier {
-				CurrentSeasonStatus::<T>::mutate(|status| {
-					status.max_tier_avatars.saturating_inc();
-					if status.max_tier_avatars == season.max_tier_forges {
-						status.early_ended = true;
-					}
-				});
-			}
-
-			Avatars::<T>::insert(leader_id, (player, leader));
-			sacrifice_ids.iter().for_each(Avatars::<T>::remove);
-			let remaining_avatar_ids: BoundedAvatarIdsOf<T> = Owners::<T>::take(player)
-				.into_iter()
-				.filter(|avatar_id| !sacrifice_ids.contains(avatar_id))
-				.collect::<Vec<_>>()
-				.try_into()
-				.map_err(|_| Error::<T>::IncorrectAvatarId)?;
-			Owners::<T>::insert(player, remaining_avatar_ids);
-
-			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
-				if stats.forge.first.is_zero() {
-					stats.forge.first = current_block;
-				}
-				stats.forge.last = current_block;
-				stats
-					.forge
-					.seasons_participated
-					.try_insert(season_id)
-					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
-				Ok(())
-			})?;
-			SeasonStats::<T>::mutate(season_id, player, |info| info.forged.saturating_inc());
-
-			Self::deposit_event(Event::AvatarForged { avatar_id: *leader_id, upgraded_components });
+			Self::process_leader_forge_output(player, &season, input_leader, output_leader)?;
+			Self::process_other_forge_outputs(player, &season, output_other)?;
+			Self::update_forging_statistics_for_player(player, season_id)?;
 			Ok(())
 		}
 
@@ -1305,13 +1214,13 @@ pub mod pallet {
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
 				MintType::Free => {
-					let fee = (mint_option.count as MintCount)
+					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
 				},
 			};
 
-			let new_count = Owners::<T>::get(player).len() + mint_option.count as usize;
+			let new_count = Owners::<T>::get(player).len() + mint_option.count.clone() as usize;
 			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())
@@ -1336,22 +1245,143 @@ pub mod pallet {
 			Self::ensure_unlocked(leader_id)?;
 			Self::ensure_unprepared(leader_id)?;
 
+			let leader = Self::ensure_ownership(player, leader_id)?;
+			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+
 			let deduplicated_sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
 			let sacrifices = deduplicated_sacrifice_ids
 				.iter()
 				.map(|id| {
 					let avatar = Self::ensure_ownership(player, id)?;
 					ensure!(avatar.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+					ensure!(
+						avatar.version == leader.version,
+						Error::<T>::IncompatibleAvatarVersions
+					);
 					Self::ensure_unlocked(id)?;
 					Self::ensure_unprepared(id)?;
 					Ok(avatar)
 				})
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-			let leader = Self::ensure_ownership(player, leader_id)?;
-			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
-
 			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
+		}
+
+		fn process_leader_forge_output(
+			player: &AccountIdOf<T>,
+			season: &SeasonOf<T>,
+			input_leader: ForgeItem<T>,
+			output_leader: LeaderForgeOutput<T>,
+		) -> DispatchResult {
+			match output_leader {
+				LeaderForgeOutput::Forged((leader_id, leader), upgraded_components) => {
+					let prev_leader_tier = input_leader.1.min_tier();
+					let after_leader_tier = leader.min_tier();
+					let max_tier = season.max_tier() as u8;
+
+					if prev_leader_tier != max_tier && after_leader_tier == max_tier {
+						CurrentSeasonStatus::<T>::mutate(|status| {
+							status.max_tier_avatars.saturating_inc();
+							if status.max_tier_avatars == season.max_tier_forges {
+								status.early_ended = true;
+							}
+						});
+					}
+
+					Avatars::<T>::insert(leader_id, (player, leader));
+
+					// TODO: May change in the future
+					Self::deposit_event(Event::AvatarsForged {
+						avatar_ids: vec![(leader_id, upgraded_components)],
+					});
+				},
+				LeaderForgeOutput::Consumed(leader_id) =>
+					Self::remove_avatar_from(player, &leader_id),
+			}
+
+			Ok(())
+		}
+
+		fn process_other_forge_outputs(
+			player: &AccountIdOf<T>,
+			_season: &SeasonOf<T>,
+			other_outputs: Vec<ForgeOutput<T>>,
+		) -> DispatchResult {
+			let mut minted_avatars: Vec<AvatarIdOf<T>> = Vec::with_capacity(0);
+			let mut forged_avatars: Vec<(AvatarIdOf<T>, UpgradedComponents)> =
+				Vec::with_capacity(0);
+
+			for output in other_outputs {
+				match output {
+					ForgeOutput::Forged((avatar_id, avatar), upgraded_components) => {
+						Avatars::<T>::insert(avatar_id, (player, avatar));
+						forged_avatars.push((avatar_id, upgraded_components));
+					},
+					ForgeOutput::Minted(avatar) => {
+						let avatar_id = Self::random_hash(b"create_avatar", player);
+						Self::try_add_avatar_to(player, avatar_id, avatar)?;
+						minted_avatars.push(avatar_id);
+					},
+					ForgeOutput::Consumed(avatar_id) =>
+						Self::remove_avatar_from(player, &avatar_id),
+				}
+			}
+
+			// TODO: May be removed in the future
+			if !minted_avatars.is_empty() {
+				Self::deposit_event(Event::AvatarsMinted { avatar_ids: minted_avatars });
+			}
+
+			// TODO: May change in the future
+			if !forged_avatars.is_empty() {
+				Self::deposit_event(Event::AvatarsForged { avatar_ids: forged_avatars });
+			}
+
+			Ok(())
+		}
+
+		fn update_forging_statistics_for_player(
+			player: &AccountIdOf<T>,
+			season_id: SeasonId,
+		) -> DispatchResult {
+			let current_block = <frame_system::Pallet<T>>::block_number();
+
+			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
+				if stats.forge.first.is_zero() {
+					stats.forge.first = current_block;
+				}
+				stats.forge.last = current_block;
+				stats
+					.forge
+					.seasons_participated
+					.try_insert(season_id)
+					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+				Ok(())
+			})?;
+
+			SeasonStats::<T>::mutate(season_id, player, |info| {
+				info.forged.saturating_inc();
+			});
+
+			Ok(())
+		}
+
+		fn try_add_avatar_to(
+			player: &AccountIdOf<T>,
+			avatar_id: AvatarIdOf<T>,
+			avatar: Avatar,
+		) -> DispatchResult {
+			Avatars::<T>::insert(avatar_id, (player, avatar));
+			Owners::<T>::try_append(&player, avatar_id)
+				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+			Ok(())
+		}
+
+		fn remove_avatar_from(player: &AccountIdOf<T>, avatar_id: &AvatarIdOf<T>) {
+			Avatars::<T>::remove(avatar_id);
+			Owners::<T>::mutate(player, |avatars| {
+				avatars.retain(|id| id != avatar_id);
+			});
 		}
 
 		fn ensure_for_trade(
@@ -1362,12 +1392,12 @@ pub mod pallet {
 			Ok((seller, price))
 		}
 
-		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+		fn ensure_unlocked(avatar_id: &AvatarIdOf<T>) -> DispatchResult {
 			ensure!(!LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarLocked);
 			Ok(())
 		}
 
-		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> Result<(), DispatchError> {
+		fn ensure_unprepared(avatar_id: &AvatarIdOf<T>) -> DispatchResult {
 			ensure!(!Preparation::<T>::contains_key(avatar_id), Error::<T>::AlreadyPrepared);
 			Ok(())
 		}

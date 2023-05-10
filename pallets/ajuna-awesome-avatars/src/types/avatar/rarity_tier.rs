@@ -19,21 +19,16 @@ use codec::alloc::string::ToString;
 use sp_std::{fmt, prelude::*};
 
 #[derive(
-	Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, PartialEq, Eq, PartialOrd, Ord,
+	Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum RarityTier {
+	#[default]
 	Common = 0,
 	Uncommon = 1,
 	Rare = 2,
 	Epic = 3,
 	Legendary = 4,
 	Mythical = 5,
-}
-
-impl Default for RarityTier {
-	fn default() -> Self {
-		RarityTier::Common
-	}
 }
 
 impl fmt::Display for RarityTier {
