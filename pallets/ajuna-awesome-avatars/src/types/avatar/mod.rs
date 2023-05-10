@@ -141,12 +141,16 @@ impl Avatar {
 		season: &SeasonOf<T>,
 		now: &T::BlockNumber,
 		matches: u8,
-	) -> u8 {
+	) -> Result<u8, DispatchError> {
 		let period_multiplier = self.forge_multiplier::<T>(season, now);
 		// p = base_prob + (1 - base_prob) * (matches / max_sacrifices) * (1 / period_multiplier)
-		season.base_prob +
-			(((MAX_PERCENTAGE - season.base_prob) / season.max_sacrifices) * matches) /
-				period_multiplier
+		let prob = season.base_prob +
+			((MAX_PERCENTAGE
+				.checked_sub(season.base_prob)
+				.ok_or(Error::<T>::BaseProbTooHigh)? /
+				season.max_sacrifices) *
+				matches) / period_multiplier;
+		Ok(prob)
 	}
 
 	fn forge_multiplier<T: Config>(&self, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
@@ -179,6 +183,7 @@ impl Avatar {
 mod test {
 	use super::*;
 	use crate::{mock::*, types::*};
+	use frame_support::{assert_err, assert_ok};
 
 	impl Avatar {
 		pub(crate) fn season_id(mut self, season_id: SeasonId) -> Self {
@@ -217,33 +222,42 @@ mod test {
 
 		// in period
 		let now = 1;
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 25);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 50);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 75);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 100);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 1), 25);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 2), 50);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 3), 75);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 4), 100);
 
 		// not in period
 		let now = 2;
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 12);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 25);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 37);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 50);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 1), 12);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 2), 25);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 3), 37);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 4), 50);
 
 		// increase base_prob to 10
 		let season = season.base_prob(10);
 		// in period
 		let now = 1;
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 32);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 54);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 76);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 98);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 1), 32);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 2), 54);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 3), 76);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 4), 98);
 
 		// not in period
 		let now = 2;
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 1), 21);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 2), 32);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 3), 43);
-		assert_eq!(avatar.forge_probability::<Test>(&season, &now, 4), 54);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 1), 21);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 2), 32);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 3), 43);
+		assert_ok!(avatar.forge_probability::<Test>(&season, &now, 4), 54);
+
+		// increase base_prob to 101
+		let season = season.base_prob(MAX_PERCENTAGE + 1);
+		for forge_match in [1, 2, 3, 4] {
+			assert_err!(
+				avatar.forge_probability::<Test>(&season, &now, forge_match),
+				Error::<Test>::BaseProbTooHigh
+			);
+		}
 	}
 
 	#[test]

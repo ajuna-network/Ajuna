@@ -310,11 +310,17 @@ pub mod pallet {
 		UnknownPreparation,
 		/// The season ID of a season to create is not sequential.
 		NonSequentialSeasonId,
+		/// The sum of the given single mint probabilities overflows.
+		SingleMintProbsOverflow,
+		/// The sum of the given batch mint probabilities overflows.
+		BatchMintProbsOverflow,
 		/// Rarity percentages don't add up to 100
 		IncorrectRarityPercentages,
 		/// Max tier is achievable through forging only. Therefore the number of rarity percentages
 		/// must be less than that of tiers for a season.
 		TooManyRarityPercentages,
+		/// The given base probability is too high. It must be less than 100.
+		BaseProbTooHigh,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
 		/// Attempt to set fees lower than the existential deposit amount.
@@ -1159,7 +1165,7 @@ pub mod pallet {
 			let mut upgraded_components = 0;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			let prob = leader.forge_probability::<T>(&season, &current_block, matches);
+			let prob = leader.forge_probability::<T>(&season, &current_block, matches)?;
 
 			let rolls = sacrifices.len();
 			for hash in random_hash.iter().take(rolls) {
