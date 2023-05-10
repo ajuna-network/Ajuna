@@ -26,7 +26,7 @@ impl<T: Config> AvatarCombinator<T> {
 			.map(|(_, sacrifice)| {
 				AvatarUtils::read_attribute_as::<MaterialItemType>(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 				)
 			})
 			.collect::<Vec<MaterialItemType>>();
@@ -73,17 +73,17 @@ impl<T: Config> AvatarCombinator<T> {
 				{
 					let pet_type = AvatarUtils::read_attribute_as::<PetType>(
 						&input_leader.1,
-						AvatarAttributes::ClassType2,
+						&AvatarAttributes::ClassType2,
 					);
 
 					let slot_type = AvatarUtils::read_attribute_as::<SlotType>(
 						&input_leader.1,
-						AvatarAttributes::ClassType1,
+						&AvatarAttributes::ClassType1,
 					);
 
 					let equipable_item_type = AvatarUtils::read_spec_byte_as::<EquipableItemType>(
 						&input_leader.1,
-						AvatarSpecBytes::SpecByte3,
+						&AvatarSpecBytes::SpecByte3,
 					);
 
 					let rarity_value = {
@@ -103,12 +103,12 @@ impl<T: Config> AvatarCombinator<T> {
 						.generate_base_avatar_dna(hash_provider, 9)?;
 					let generated_equipable = AvatarBuilder::with_dna(season_id, dna)
 						.try_into_armor_and_component(
-							pet_type,
-							slot_type,
-							vec![equipable_item_type],
-							rarity_value,
-							(ColorType::None, ColorType::None),
-							ForceType::None,
+							&pet_type,
+							&slot_type,
+							&[equipable_item_type],
+							&rarity_value,
+							&(ColorType::None, ColorType::None),
+							&ForceType::None,
 							1,
 						)
 						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?
@@ -177,13 +177,13 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
 			let blueprint_input_1 =
-				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
 			let total_soul_points = blueprint_input_1.1.souls +
 				material_input_1.1.souls +
@@ -264,13 +264,13 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 2);
-			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 2);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 2);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 2);
 
 			let blueprint_input_1 =
-				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
 			let total_soul_points = blueprint_input_1.1.souls +
 				material_input_1.1.souls +
@@ -368,19 +368,13 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 10);
-			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 10);
-			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 10);
-			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 10);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 10);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 10);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 10);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 10);
 
-			let blueprint_input_1 = create_random_blueprint(
-				&ALICE,
-				pet_type,
-				slot_type,
-				equip_type,
-				pattern.clone(),
-				5,
-			);
+			let blueprint_input_1 =
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
 			let total_soul_points = blueprint_input_1.1.souls +
 				material_input_1.1.souls +
@@ -478,19 +472,13 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[2].clone(), 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[1].clone(), 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
-			let blueprint_input_1 = create_random_blueprint(
-				&ALICE,
-				pet_type,
-				slot_type,
-				equip_type,
-				pattern.clone(),
-				5,
-			);
+			let blueprint_input_1 =
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
 			let total_soul_points = blueprint_input_1.1.souls +
 				material_input_1.1.souls +
@@ -577,14 +565,14 @@ mod test {
 				mutated
 			};
 
-			let material_input_1 = create_random_material(&ALICE, mutated_pattern[0].clone(), 1);
-			let material_input_2 = create_random_material(&ALICE, mutated_pattern[1].clone(), 1);
-			let material_input_3 = create_random_material(&ALICE, mutated_pattern[2].clone(), 1);
-			let material_input_4 = create_random_material(&ALICE, mutated_pattern[3].clone(), 1);
+			let material_input_1 = create_random_material(&ALICE, &mutated_pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &mutated_pattern[1], 1);
+			let material_input_3 = create_random_material(&ALICE, &mutated_pattern[2], 1);
+			let material_input_4 = create_random_material(&ALICE, &mutated_pattern[3], 1);
 
 			// Here we use the original pattern
 			let blueprint_input_1 =
-				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
 			let total_soul_points = blueprint_input_1.1.souls +
 				material_input_1.1.souls +
@@ -663,13 +651,13 @@ mod test {
 				]
 			);
 
-			let material_input_1 = create_random_material(&ALICE, pattern[0].clone(), 1);
-			let material_input_2 = create_random_material(&ALICE, pattern[1].clone(), 1);
-			let material_input_3 = create_random_material(&ALICE, pattern[2].clone(), 1);
-			let material_input_4 = create_random_material(&ALICE, pattern[3].clone(), 1);
+			let material_input_1 = create_random_material(&ALICE, &pattern[0], 1);
+			let material_input_2 = create_random_material(&ALICE, &pattern[1], 1);
+			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
+			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
 			let blueprint_input_1 =
-				create_random_blueprint(&ALICE, pet_type, slot_type, equip_type, pattern, 5);
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
 			let total_soul_points = blueprint_input_1.1.souls +
 				material_input_1.1.souls +

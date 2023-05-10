@@ -15,12 +15,12 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader),
-			ByteType::High,
+			&ByteType::High,
 		));
 
 		let leader_rarity = AvatarUtils::read_attribute_as::<RarityType>(
 			&input_leader,
-			AvatarAttributes::RarityType,
+			&AvatarAttributes::RarityType,
 		);
 
 		if AvatarUtils::has_attribute_set_with_values(
@@ -35,19 +35,19 @@ impl<T: Config> AvatarCombinator<T> {
 			if let Some((_, armor_component)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
 				AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Equipable,
 				) && AvatarUtils::has_attribute_with_value_different_than(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 					EquipableItemType::ArmorBase,
 				)
 			}) {
 				AvatarUtils::add_spec_byte_from(
 					&mut input_leader,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 					armor_component,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 				);
 			}
 
@@ -55,12 +55,12 @@ impl<T: Config> AvatarCombinator<T> {
 			if let Some((_, paint_flask)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
 				let is_essence = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Essence,
 				);
 				let is_paint_flask = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 					EssenceItemType::PaintFlask,
 				);
 
@@ -68,9 +68,9 @@ impl<T: Config> AvatarCombinator<T> {
 			}) {
 				AvatarUtils::add_spec_byte_from(
 					&mut input_leader,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 					paint_flask,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 				);
 			}
 
@@ -78,12 +78,12 @@ impl<T: Config> AvatarCombinator<T> {
 			if let Some((_, force_glow)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
 				let is_essence = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemType,
+					&AvatarAttributes::ItemType,
 					ItemType::Essence,
 				);
 				let is_force_glow = AvatarUtils::has_attribute_with_value(
 					sacrifice,
-					AvatarAttributes::ItemSubType,
+					&AvatarAttributes::ItemSubType,
 					EssenceItemType::ForceGlow,
 				);
 
@@ -91,17 +91,17 @@ impl<T: Config> AvatarCombinator<T> {
 			}) {
 				AvatarUtils::add_spec_byte_from(
 					&mut input_leader,
-					AvatarSpecBytes::SpecByte2,
+					&AvatarSpecBytes::SpecByte2,
 					force_glow,
-					AvatarSpecBytes::SpecByte1,
+					&AvatarSpecBytes::SpecByte1,
 				);
 			}
 		}
 
 		AvatarUtils::write_typed_attribute(
 			&mut input_leader,
-			AvatarAttributes::RarityType,
-			rarity_type,
+			&AvatarAttributes::RarityType,
+			&rarity_type,
 		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
@@ -173,12 +173,12 @@ mod test {
 					create_random_armor_component(
 						hash,
 						&ALICE,
-						PetType::FoxishDude,
-						SlotType::Head,
-						RarityType::Common,
-						vec![EquipableItemType::ArmorBase],
-						(ColorType::None, ColorType::None),
-						ForceType::None,
+						&PetType::FoxishDude,
+						&SlotType::Head,
+						&RarityType::Common,
+						&[EquipableItemType::ArmorBase],
+						&(ColorType::None, ColorType::None),
+						&ForceType::None,
 						i as SoulCount,
 					)
 				})
@@ -279,12 +279,12 @@ mod test {
 				let (id, mut avatar) = create_random_armor_component(
 					hash,
 					&ALICE,
-					PetType::FoxishDude,
-					SlotType::Head,
-					RarityType::Common,
-					vec![equip_type],
-					(ColorType::None, ColorType::None),
-					ForceType::None,
+					&PetType::FoxishDude,
+					&SlotType::Head,
+					&RarityType::Common,
+					&[equip_type],
+					&(ColorType::None, ColorType::None),
+					&ForceType::None,
 					i as SoulCount,
 				);
 				AvatarUtils::write_progress_array(&mut avatar, progress_array);
@@ -307,7 +307,7 @@ mod test {
 			);
 
 			let pre_assemble = AvatarUtils::bits_to_enums::<EquipableItemType>(
-				AvatarUtils::read_spec_byte(&leader_armor_component.1, AvatarSpecBytes::SpecByte1)
+				AvatarUtils::read_spec_byte(&leader_armor_component.1, &AvatarSpecBytes::SpecByte1)
 					as u32,
 			);
 			assert_eq!(pre_assemble.len(), 1);
@@ -328,7 +328,7 @@ mod test {
 				assert_eq!(avatar.souls, 7);
 
 				let post_assemble = AvatarUtils::bits_to_enums::<EquipableItemType>(
-					AvatarUtils::read_spec_byte(&avatar, AvatarSpecBytes::SpecByte1) as u32,
+					AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1) as u32,
 				);
 				assert_eq!(post_assemble.len(), 2);
 				assert_eq!(post_assemble[0], EquipableItemType::ArmorBase);
@@ -388,12 +388,12 @@ mod test {
 					create_random_armor_component(
 						hash,
 						&ALICE,
-						PetType::FoxishDude,
-						slot_type,
-						RarityType::Common,
-						vec![EquipableItemType::ArmorBase],
-						(ColorType::None, ColorType::None),
-						ForceType::None,
+						&PetType::FoxishDude,
+						&slot_type,
+						&RarityType::Common,
+						&[EquipableItemType::ArmorBase],
+						&(ColorType::None, ColorType::None),
+						&ForceType::None,
 						i as SoulCount,
 					)
 				})

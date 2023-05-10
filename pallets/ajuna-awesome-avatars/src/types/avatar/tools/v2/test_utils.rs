@@ -46,7 +46,7 @@ where
 
 pub(crate) fn create_random_material(
 	account: &MockAccountId,
-	material_type: MaterialItemType,
+	material_type: &MaterialItemType,
 	quantity: u8,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -62,8 +62,8 @@ pub(crate) fn create_random_material(
 
 pub(crate) fn create_random_pet_part(
 	account: &MockAccountId,
-	pet_type: PetType,
-	slot_type: SlotType,
+	pet_type: &PetType,
+	slot_type: &SlotType,
 	quantity: u8,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -79,7 +79,7 @@ pub(crate) fn create_random_pet_part(
 
 pub(crate) fn create_random_pet(
 	account: &MockAccountId,
-	pet_type: PetType,
+	pet_type: &PetType,
 	pet_variation: u8,
 	spec_bytes: [u8; 16],
 	progress_array: [u8; 11],
@@ -98,10 +98,10 @@ pub(crate) fn create_random_pet(
 
 pub(crate) fn create_random_blueprint(
 	account: &MockAccountId,
-	pet_type: PetType,
-	slot_type: SlotType,
-	equipable_type: EquipableItemType,
-	material_pattern: Vec<MaterialItemType>,
+	pet_type: &PetType,
+	slot_type: &SlotType,
+	equipable_type: &EquipableItemType,
+	material_pattern: &[MaterialItemType],
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -110,7 +110,7 @@ pub(crate) fn create_random_blueprint(
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
 				.into_blueprint(
-					BlueprintItemType::Blueprint,
+					&BlueprintItemType::Blueprint,
 					pet_type,
 					slot_type,
 					equipable_type,
@@ -125,12 +125,12 @@ pub(crate) fn create_random_blueprint(
 pub(crate) fn create_random_armor_component(
 	base_dna: [u8; 32],
 	account: &MockAccountId,
-	pet_type: PetType,
-	slot_type: SlotType,
-	rarity_type: RarityType,
-	equipable_type: Vec<EquipableItemType>,
-	color_pair: (ColorType, ColorType),
-	force_type: ForceType,
+	pet_type: &PetType,
+	slot_type: &SlotType,
+	rarity_type: &RarityType,
+	equipable_type: &[EquipableItemType],
+	color_pair: &(ColorType, ColorType),
+	force_type: &ForceType,
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -156,11 +156,11 @@ pub(crate) fn create_random_armor_component(
 pub(crate) fn create_random_weapon(
 	base_dna: [u8; 32],
 	account: &MockAccountId,
-	pet_type: PetType,
-	slot_type: SlotType,
-	equipable_type: EquipableItemType,
-	color_pair: (ColorType, ColorType),
-	force_type: ForceType,
+	pet_type: &PetType,
+	slot_type: &SlotType,
+	equipable_type: &EquipableItemType,
+	color_pair: &(ColorType, ColorType),
+	force_type: &ForceType,
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -185,7 +185,7 @@ pub(crate) fn create_random_weapon(
 pub(crate) fn create_random_egg(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	rarity_type: RarityType,
+	rarity_type: &RarityType,
 	pet_variation: u8,
 	soul_points: SoulCount,
 	progress_array: [u8; 11],
@@ -204,7 +204,7 @@ pub(crate) fn create_random_egg(
 pub(crate) fn create_random_glow_spark(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	force_type: ForceType,
+	force_type: &ForceType,
 	soul_points: SoulCount,
 	progress_array: Option<[u8; 11]>,
 ) -> (AvatarIdOf<Test>, Avatar) {
@@ -244,7 +244,7 @@ pub(crate) fn create_random_dust(
 pub(crate) fn create_random_color_spark(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	color_pair: (ColorType, ColorType),
+	color_pair: &(ColorType, ColorType),
 	soul_points: SoulCount,
 	progress_array: Option<[u8; 11]>,
 ) -> (AvatarIdOf<Test>, Avatar) {

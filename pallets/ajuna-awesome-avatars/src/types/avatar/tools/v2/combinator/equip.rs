@@ -23,16 +23,16 @@ impl<T: Config> AvatarCombinator<T> {
 			new_souls += sacrifice.souls;
 
 			let slot_type =
-				AvatarUtils::read_attribute(sacrifice, AvatarAttributes::ClassType1) as usize - 1;
+				AvatarUtils::read_attribute(sacrifice, &AvatarAttributes::ClassType1) as usize - 1;
 
 			if are_slots_maxed && equipment_slots_state[slot_type] {
 				continue
 			}
 
 			let sacrifice_spec_byte_1 =
-				AvatarUtils::read_spec_byte(sacrifice, AvatarSpecBytes::SpecByte1);
+				AvatarUtils::read_spec_byte(sacrifice, &AvatarSpecBytes::SpecByte1);
 			let sacrifice_spec_byte_2 =
-				AvatarUtils::read_spec_byte(sacrifice, AvatarSpecBytes::SpecByte2);
+				AvatarUtils::read_spec_byte(sacrifice, &AvatarSpecBytes::SpecByte2);
 			let slot_type_mod = slot_type % 2;
 			let slot_index = ((slot_type - slot_type_mod) * 3) / 2;
 
@@ -71,7 +71,7 @@ mod test {
 	fn test_equip_success() {
 		ExtBuilder::default().build().execute_with(|| {
 			let leader =
-				create_random_pet(&ALICE, PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
+				create_random_pet(&ALICE, &PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
 
 			let armor_progress = vec![
 				EquipableItemType::ArmorBase,
@@ -114,12 +114,12 @@ mod test {
 					create_random_armor_component(
 						hash,
 						&ALICE,
-						pet_type.clone(),
-						armor_slot,
-						RarityType::Legendary,
-						armor_progress.clone(),
-						color_pair.clone(),
-						force_type.clone(),
+						&pet_type,
+						&armor_slot,
+						&RarityType::Legendary,
+						&armor_progress,
+						&color_pair,
+						&force_type,
 						100,
 					)
 				})
@@ -128,11 +128,11 @@ mod test {
 			let weapon_sacrifice = create_random_weapon(
 				sacrifice_hash_base[3],
 				&ALICE,
-				pet_type.clone(),
-				SlotType::WeaponBack,
-				EquipableItemType::WeaponVersion2,
-				color_pair.clone(),
-				force_type.clone(),
+				&pet_type,
+				&SlotType::WeaponBack,
+				&EquipableItemType::WeaponVersion2,
+				&color_pair,
+				&force_type,
 				100,
 			);
 
@@ -175,11 +175,11 @@ mod test {
 				let weapon_sacrifice_2 = create_random_weapon(
 					weapon_2_dna,
 					&ALICE,
-					pet_type,
-					SlotType::WeaponFront,
-					EquipableItemType::WeaponVersion3,
-					color_pair,
-					force_type,
+					&pet_type,
+					&SlotType::WeaponFront,
+					&EquipableItemType::WeaponVersion3,
+					&color_pair,
+					&force_type,
 					100,
 				);
 
@@ -222,7 +222,7 @@ mod test {
 			];
 			let leader = create_random_pet(
 				&ALICE,
-				PetType::FoxishDude,
+				&PetType::FoxishDude,
 				0x0F,
 				leader_spec_bytes,
 				[0; 11],
@@ -237,16 +237,16 @@ mod test {
 			let sacrifice = create_random_armor_component(
 				sacrifice_base_hash,
 				&ALICE,
-				PetType::FoxishDude,
-				SlotType::ArmFront,
-				RarityType::Legendary,
-				vec![
+				&PetType::FoxishDude,
+				&SlotType::ArmFront,
+				&RarityType::Legendary,
+				&[
 					EquipableItemType::ArmorBase,
 					EquipableItemType::ArmorComponent1,
 					EquipableItemType::ArmorComponent2,
 				],
-				(ColorType::ColorC, ColorType::ColorB),
-				ForceType::Astral,
+				&(ColorType::ColorC, ColorType::ColorB),
+				&ForceType::Astral,
 				100,
 			);
 

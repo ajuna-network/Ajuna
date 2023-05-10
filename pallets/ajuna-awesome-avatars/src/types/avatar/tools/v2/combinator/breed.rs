@@ -11,7 +11,7 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader.1),
-			ByteType::High,
+			&ByteType::High,
 		));
 
 		let is_leader_legendary = rarity_type == RarityType::Legendary;
@@ -23,7 +23,7 @@ impl<T: Config> AvatarCombinator<T> {
 			],
 		);
 		let pet_variation =
-			AvatarUtils::read_attribute(&input_leader.1, AvatarAttributes::CustomType2);
+			AvatarUtils::read_attribute(&input_leader.1, &AvatarAttributes::CustomType2);
 
 		if is_leader_legendary && is_leader_egg && pet_variation > 0 {
 			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
@@ -31,21 +31,21 @@ impl<T: Config> AvatarCombinator<T> {
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,
-				AvatarAttributes::ClassType2,
-				pet_type.clone(),
+				&AvatarAttributes::ClassType2,
+				pet_type,
 			);
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,
-				AvatarAttributes::ItemSubType,
-				PetItemType::Pet,
+				&AvatarAttributes::ItemSubType,
+				&PetItemType::Pet,
 			);
 		}
 
 		AvatarUtils::write_typed_attribute(
 			&mut input_leader.1,
-			AvatarAttributes::RarityType,
-			rarity_type,
+			&AvatarAttributes::RarityType,
+			&rarity_type,
 		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
@@ -169,7 +169,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						RarityType::Epic,
+						&RarityType::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -219,7 +219,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						RarityType::Epic,
+						&RarityType::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -263,7 +263,7 @@ mod test {
 					let pet_type =
 						SlotRoller::<Test>::roll_on(&PET_TYPE_PROBABILITIES, &mut hash_provider);
 					let progress_array = AvatarUtils::generate_progress_bytes(
-						rarity_type,
+						&rarity_type,
 						SCALING_FACTOR_PERC,
 						PROGRESS_PROBABILITY_PERC,
 						[i; 11],
@@ -287,7 +287,7 @@ mod test {
 			let sacrifices = egg_set.split_off(1);
 			let leader = egg_set.pop().unwrap();
 
-			assert_eq!(AvatarUtils::read_attribute(&leader.1, AvatarAttributes::CustomType2), 2);
+			assert_eq!(AvatarUtils::read_attribute(&leader.1, &AvatarAttributes::CustomType2), 2);
 			let expected_progress_array =
 				[0x41, 0x40, 0x45, 0x43, 0x40, 0x53, 0x41, 0x42, 0x42, 0x52, 0x44];
 			assert_eq!(AvatarUtils::read_progress_array(&leader.1), expected_progress_array);

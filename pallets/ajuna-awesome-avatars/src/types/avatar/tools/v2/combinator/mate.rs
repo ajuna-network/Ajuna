@@ -55,13 +55,13 @@ impl<T: Config> AvatarCombinator<T> {
 		let leader_pet_type =
 			AvatarUtils::enums_to_bits(&[AvatarUtils::read_attribute_as::<PetType>(
 				&leader,
-				AvatarAttributes::ClassType2,
+				&AvatarAttributes::ClassType2,
 			)]) as u8;
 
 		let leader_pet_variation =
-			AvatarUtils::read_attribute(&leader, AvatarAttributes::CustomType2);
+			AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType2);
 		let partner_pet_variation =
-			AvatarUtils::read_attribute(&partner, AvatarAttributes::CustomType2);
+			AvatarUtils::read_attribute(&partner, &AvatarAttributes::CustomType2);
 
 		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F) &&
 			((leader_pet_variation | partner_pet_variation) == 0x7F);
@@ -111,7 +111,7 @@ impl<T: Config> AvatarCombinator<T> {
 				let dna =
 					AvatarMinterV2::<T>(PhantomData).generate_base_avatar_dna(hash_provider, 10)?;
 				let generated_egg = AvatarBuilder::with_dna(season_id, dna)
-					.into_egg(RarityType::Rare, pet_variation, soul_points, None)
+					.into_egg(&RarityType::Rare, pet_variation, soul_points, None)
 					.build();
 				Ok::<_, DispatchError>(ForgeOutput::Minted(generated_egg))
 			})
@@ -152,7 +152,7 @@ mod test {
 
 			let leader = create_random_pet(
 				&ALICE,
-				PetType::BigHybrid,
+				&PetType::BigHybrid,
 				0b0001_1001,
 				leader_spec_bytes,
 				leader_progress_array,
@@ -160,7 +160,7 @@ mod test {
 			);
 			let partner = create_random_pet(
 				&ALICE,
-				PetType::CrazyDude,
+				&PetType::CrazyDude,
 				0b0101_0011,
 				partner_spec_bytes,
 				partner_progress_array,
@@ -203,12 +203,12 @@ mod test {
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<PetItemType>(
 						avatar,
-						AvatarAttributes::ItemSubType
+						&AvatarAttributes::ItemSubType
 					),
 					PetItemType::Egg
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute(avatar, AvatarAttributes::CustomType2),
+					AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2),
 					0b0101_1010
 				);
 			} else {
