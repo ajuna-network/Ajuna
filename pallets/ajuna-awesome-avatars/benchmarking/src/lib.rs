@@ -122,7 +122,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 			RawOrigin::Signed(player.clone()).into(),
 			MintOption {
 				version: AvatarVersion::V1,
-				mint_type: MintType::Free,
+				payment: MintPayment::Free,
 				count: MintPackSize::One,
 			},
 		)?;
@@ -185,7 +185,7 @@ benchmarks! {
 
 		let mint_option = MintOption {
 			version: AvatarVersion::V1,
-			mint_type: MintType::Free,
+			payment: MintPayment::Free,
 			count: MintPackSize::Six
 		};
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
@@ -206,7 +206,7 @@ benchmarks! {
 
 		let mint_option = MintOption {
 			version: AvatarVersion::V1,
-			mint_type: MintType::Normal,
+			payment: MintPayment::Normal,
 			count: MintPackSize::Six
 		};
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)

@@ -58,7 +58,7 @@ impl<Balance> MintFees<Balance> {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
-pub enum MintType {
+pub enum MintPayment {
 	/// Mint using free mint credits.
 	#[default]
 	Free,
@@ -71,8 +71,8 @@ pub enum MintType {
 pub struct MintOption {
 	/// Avatar version to mint.
 	pub version: AvatarVersion,
-	/// Type of minting.
-	pub mint_type: MintType,
+	/// Choice of payment.
+	pub payment: MintPayment,
 	/// Number of avatars to mint.
 	pub count: MintPackSize,
 }
