@@ -437,6 +437,7 @@ pub mod pallet {
 		})]
 		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
 			let player = ensure_signed(origin)?;
+			Self::ensure_for_mint(&player, &mint_option)?;
 			Self::do_mint(&player, mint_option)
 		}
 
@@ -988,7 +989,7 @@ pub mod pallet {
 			T::Currency::deposit_creating(&Self::treasury_account_id(), amount);
 		}
 
-		fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
+		pub(crate) fn random_hash(phrase: &[u8], who: &T::AccountId) -> T::Hash {
 			let (seed, _) = T::Randomness::random(phrase);
 			let seed = T::Hash::decode(&mut TrailingZeroInput::new(seed.as_ref()))
 				.expect("input is padded with zeroes; qed");
@@ -997,68 +998,12 @@ pub mod pallet {
 			(seed, &who, nonce.encode()).using_encoded(T::Hashing::hash)
 		}
 
-		fn random_component(
-			season: &SeasonOf<T>,
-			hash: &T::Hash,
-			index: usize,
-			batched_mint: bool,
-		) -> (u8, u8) {
-			let hash = hash.as_ref();
-			let random_tier = {
-				let random_prob = hash[index] % MAX_PERCENTAGE;
-				let probs =
-					if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
-				let mut cumulative_sum = 0;
-				let mut random_tier = &season.tiers[0];
-				for i in 0..probs.len() {
-					let new_cumulative_sum = cumulative_sum + probs[i];
-					if random_prob >= cumulative_sum && random_prob < new_cumulative_sum {
-						random_tier = &season.tiers[i];
-						break
-					}
-					cumulative_sum = new_cumulative_sum;
-				}
-				random_tier
-			};
-			let random_variation = hash[index + 1] % season.max_variations;
-			(random_tier.to_owned().into(), random_variation)
-		}
-
-		fn random_dna(
-			hash: &T::Hash,
-			season: &SeasonOf<T>,
-			batched_mint: bool,
-		) -> Result<Dna, DispatchError> {
-			let dna = (0..season.max_components)
-				.map(|i| {
-					let (random_tier, random_variation) =
-						Self::random_component(season, hash, i as usize * 2, batched_mint);
-					((random_tier << 4) | random_variation) as u8
-				})
-				.collect::<Vec<_>>();
-			Dna::try_from(dna).map_err(|_| Error::<T>::IncorrectDna.into())
-		}
-
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: MintOption) -> DispatchResult {
-			Self::ensure_for_mint(player, &mint_option)?;
-
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
-			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
-			let is_batched = mint_option.count.is_batched();
-			let mint_count = mint_option.count.as_mint_count();
-			let generated_avatar_ids = (0..mint_count)
-				.map(|_| {
-					let avatar_id = Self::random_hash(b"create_avatar", player);
-					let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
-					let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
-					let avatar = Avatar { season_id, dna, souls };
-					Avatars::<T>::insert(avatar_id, (&player, avatar));
-					Owners::<T>::try_append(&player, avatar_id)
-						.map_err(|_| Error::<T>::MaxOwnershipReached)?;
-					Ok(avatar_id)
-				})
-				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
+			let generated_avatar_ids = match mint_option.version {
+				AvatarVersion::V1 => MinterV1::<T>::mint(player, &season_id, &mint_option),
+			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
 			match mint_option.mint_type {
@@ -1068,7 +1013,10 @@ pub mod pallet {
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintType::Free => {
-					let fee = mint_count.saturating_mul(mint.free_mint_fee_multiplier);
+					let fee = mint_option
+						.count
+						.as_mint_count()
+						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
 						account.free_mints = Accounts::<T>::get(player)
 							.free_mints

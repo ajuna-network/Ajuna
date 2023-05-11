@@ -17,10 +17,12 @@
 mod force;
 mod nft;
 mod rarity_tier;
+mod version;
 
 pub use force::*;
 pub use nft::*;
 pub use rarity_tier::*;
+pub use version::*;
 
 use crate::*;
 use frame_support::pallet_prelude::*;
@@ -42,6 +44,7 @@ pub type SoulCount = u32;
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Default, PartialEq)]
 pub struct Avatar {
 	pub season_id: SeasonId,
+	pub version: AvatarVersion,
 	pub dna: Dna,
 	pub souls: SoulCount,
 }

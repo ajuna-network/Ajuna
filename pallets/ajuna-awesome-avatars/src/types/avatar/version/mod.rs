@@ -1,0 +1,36 @@
+// Ajuna Node
+// Copyright (C) 2022 BlogaTech AG
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+mod v1;
+
+pub use v1::MinterV1;
+
+use crate::*;
+
+/// Used to indicate which version of the forging and/or mint logic should be used.
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub enum AvatarVersion {
+	#[default]
+	V1,
+}
+
+pub trait Minter<T: Config> {
+	fn mint(
+		player: &T::AccountId,
+		season_id: &SeasonId,
+		mint_option: &MintOption,
+	) -> Result<Vec<AvatarIdOf<T>>, DispatchError>;
+}

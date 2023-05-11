@@ -372,3 +372,14 @@ impl GlobalConfigOf<Test> {
 		self
 	}
 }
+
+impl MintOption {
+	pub(crate) fn mint_type(mut self, mint_type: MintType) -> Self {
+		self.mint_type = mint_type;
+		self
+	}
+	pub(crate) fn count(mut self, count: MintPackSize) -> Self {
+		self.count = count;
+		self
+	}
+}

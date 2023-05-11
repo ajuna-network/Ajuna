@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::types::AvatarVersion;
 use frame_support::pallet_prelude::*;
 
 /// Number of avatars to be minted.
@@ -68,6 +69,8 @@ pub enum MintType {
 /// Minting options
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo, Clone, Default, PartialEq)]
 pub struct MintOption {
+	/// Avatar version to mint.
+	pub version: AvatarVersion,
 	/// Type of minting.
 	pub mint_type: MintType,
 	/// Number of avatars to mint.
