@@ -52,7 +52,7 @@
 //! * `do_mint` - Mint avatar.
 //! * `ensure_season` - Given a season id and a season, validate them.
 
-#![feature(variant_count)]
+#![feature(arbitrary_enum_discriminant, variant_count)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
@@ -1003,6 +1003,9 @@ pub mod pallet {
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
 			let generated_avatar_ids = match mint_option.version {
 				AvatarVersion::V1 => MinterV1::<T>::mint(player, &season_id, &mint_option),
+				AvatarVersion::V2 => {
+					todo!()
+				},
 			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();

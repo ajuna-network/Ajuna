@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::AvatarVersion;
+use crate::types::{AvatarVersion, MintPack};
 use frame_support::pallet_prelude::*;
 
 /// Number of avatars to be minted.
@@ -71,6 +71,8 @@ pub enum MintPayment {
 pub struct MintOption {
 	/// Avatar version to mint.
 	pub version: AvatarVersion,
+	/// Choice of pack to mint.
+	pub pack: MintPack,
 	/// Number of avatars to mint.
 	pub pack_size: MintPackSize,
 	/// Choice of payment.

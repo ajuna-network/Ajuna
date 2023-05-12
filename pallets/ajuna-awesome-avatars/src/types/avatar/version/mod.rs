@@ -15,8 +15,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 mod v1;
+mod v2;
 
-pub use v1::MinterV1;
+pub use v1::*;
+pub use v2::*;
 
 use crate::*;
 
@@ -25,6 +27,7 @@ use crate::*;
 pub enum AvatarVersion {
 	#[default]
 	V1,
+	V2,
 }
 
 pub trait Minter<T: Config> {

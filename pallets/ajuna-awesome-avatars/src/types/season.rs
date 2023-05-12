@@ -166,7 +166,7 @@ impl<BlockNumber: AtLeast32Bit + Copy> Season<BlockNumber> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 	use super::*;
 	use crate::{mock::*, types::RarityTier::*};
 	use frame_support::{assert_err, assert_ok};

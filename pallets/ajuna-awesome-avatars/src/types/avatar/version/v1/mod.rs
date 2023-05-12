@@ -84,6 +84,6 @@ impl<T: Config> MinterV1<T> {
 			random_tier
 		};
 		let random_variation = hash[index + 1] % season.max_variations;
-		(random_tier.to_owned().into(), random_variation)
+		(random_tier.into(), random_variation)
 	}
 }

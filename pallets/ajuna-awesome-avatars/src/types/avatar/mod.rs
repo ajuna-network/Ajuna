@@ -183,7 +183,7 @@ impl Avatar {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 	use super::*;
 	use crate::{mock::*, types::*};
 	use frame_support::{assert_err, assert_ok};

@@ -21,6 +21,7 @@ use sp_std::{fmt, prelude::*};
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub enum Force {
 	#[default]
+	None,
 	Kinetic,
 	Dream,
 	Solar,
@@ -32,6 +33,7 @@ pub enum Force {
 impl fmt::Display for Force {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
+			Force::None => write!(f, ""),
 			Force::Kinetic => write!(f, "Kinetic"),
 			Force::Dream => write!(f, "Dream"),
 			Force::Solar => write!(f, "Solar"),
@@ -42,18 +44,17 @@ impl fmt::Display for Force {
 	}
 }
 
-impl TryFrom<u8> for Force {
-	type Error = ();
-
-	fn try_from(x: u8) -> Result<Self, Self::Error> {
-		match x {
-			x if x == 0 => Ok(Force::Kinetic),
-			x if x == 1 => Ok(Force::Dream),
-			x if x == 2 => Ok(Force::Solar),
-			x if x == 3 => Ok(Force::Thermal),
-			x if x == 4 => Ok(Force::Astral),
-			x if x == 5 => Ok(Force::Empathy),
-			_ => Err(()),
+impl From<u8> for Force {
+	fn from(value: u8) -> Self {
+		match value {
+			value if value == 0 => Self::None,
+			value if value == 1 => Self::Kinetic,
+			value if value == 2 => Self::Dream,
+			value if value == 3 => Self::Solar,
+			value if value == 4 => Self::Thermal,
+			value if value == 5 => Self::Astral,
+			value if value == 6 => Self::Empathy,
+			_ => Self::default(),
 		}
 	}
 }

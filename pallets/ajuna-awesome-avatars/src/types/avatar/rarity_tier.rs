@@ -54,9 +54,9 @@ impl fmt::Display for RarityTier {
 	}
 }
 
-impl From<RarityTier> for u8 {
-	fn from(x: RarityTier) -> Self {
-		match x {
+impl From<&RarityTier> for u8 {
+	fn from(value: &RarityTier) -> Self {
+		match value {
 			RarityTier::Common => 0,
 			RarityTier::Uncommon => 1,
 			RarityTier::Rare => 2,
