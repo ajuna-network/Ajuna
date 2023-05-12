@@ -1008,13 +1008,13 @@ pub mod pallet {
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = mint.fees.fee_for(&mint_option.count);
+					let fee = mint.fees.fee_for(&mint_option.pack_size);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintPayment::Free => {
 					let fee = mint_option
-						.count
+						.pack_size
 						.as_mint_count()
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
@@ -1229,14 +1229,14 @@ pub mod pallet {
 
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = mint.fees.fee_for(&mint_option.count);
+					let fee = mint.fees.fee_for(&mint_option.pack_size);
 					T::Currency::free_balance(player)
 						.checked_sub(&fee)
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
 				MintPayment::Free => {
 					let fee = mint_option
-						.count
+						.pack_size
 						.as_mint_count()
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
@@ -1244,7 +1244,7 @@ pub mod pallet {
 			};
 
 			let new_count =
-				Owners::<T>::get(player).len() + mint_option.count.as_mint_count() as usize;
+				Owners::<T>::get(player).len() + mint_option.pack_size.as_mint_count() as usize;
 			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())

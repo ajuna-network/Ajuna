@@ -378,8 +378,8 @@ impl MintOption {
 		self.payment = payment;
 		self
 	}
-	pub(crate) fn count(mut self, count: MintPackSize) -> Self {
-		self.count = count;
+	pub(crate) fn pack_size(mut self, pack_size: MintPackSize) -> Self {
+		self.pack_size = pack_size;
 		self
 	}
 }

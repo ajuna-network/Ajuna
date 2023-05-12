@@ -26,8 +26,8 @@ impl<T: Config> Minter<T> for MinterV1<T> {
 		mint_option: &MintOption,
 	) -> Result<Vec<AvatarIdOf<T>>, DispatchError> {
 		let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
-		let is_batched = mint_option.count.is_batched();
-		let mint_count = mint_option.count.as_mint_count();
+		let is_batched = mint_option.pack_size.is_batched();
+		let mint_count = mint_option.pack_size.as_mint_count();
 		(0..mint_count)
 			.map(|_| {
 				let avatar_id = Pallet::<T>::random_hash(b"create_avatar", player);

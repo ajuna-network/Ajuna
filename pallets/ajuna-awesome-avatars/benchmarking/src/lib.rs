@@ -123,7 +123,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 			MintOption {
 				version: AvatarVersion::V1,
 				payment: MintPayment::Free,
-				count: MintPackSize::One,
+				pack_size: MintPackSize::One,
 			},
 		)?;
 		Accounts::<T>::mutate(&player, |account| account.stats.mint.last = Zero::zero());
@@ -186,7 +186,7 @@ benchmarks! {
 		let mint_option = MintOption {
 			version: AvatarVersion::V1,
 			payment: MintPayment::Free,
-			count: MintPackSize::Six
+			pack_size: MintPackSize::Six,
 		};
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
@@ -207,7 +207,7 @@ benchmarks! {
 		let mint_option = MintOption {
 			version: AvatarVersion::V1,
 			payment: MintPayment::Normal,
-			count: MintPackSize::Six
+			pack_size: MintPackSize::Six,
 		};
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {

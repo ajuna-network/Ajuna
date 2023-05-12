@@ -71,10 +71,10 @@ pub enum MintPayment {
 pub struct MintOption {
 	/// Avatar version to mint.
 	pub version: AvatarVersion,
+	/// Number of avatars to mint.
+	pub pack_size: MintPackSize,
 	/// Choice of payment.
 	pub payment: MintPayment,
-	/// Number of avatars to mint.
-	pub count: MintPackSize,
 }
 
 pub type MintCount = u16;
