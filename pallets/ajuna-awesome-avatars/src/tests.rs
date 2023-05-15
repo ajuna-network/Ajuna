@@ -827,13 +827,13 @@ mod minting {
 	fn ensure_for_mint_works() {
 		let season = Season::default().early_start(10).start(20).end(30);
 		let normal_mint = MintOption {
-			mint_type: MintType::Normal,
+			payment: MintPayment::Normal,
 			count: MintPackSize::One,
 			mint_pack: PackType::Material,
 			mint_version: AvatarVersion::V1,
 		};
 		let free_mint = MintOption {
-			mint_type: MintType::Free,
+			payment: MintPayment::Free,
 			count: MintPackSize::One,
 			mint_pack: PackType::Material,
 			mint_version: AvatarVersion::V1,
@@ -969,7 +969,7 @@ mod minting {
 			.free_mints(&[(ALICE, initial_free_mints)])
 			.build()
 			.execute_with(|| {
-				for mint_type in [MintType::Normal, MintType::Free] {
+				for payment in [MintPayment::Normal, MintPayment::Free] {
 					let mut expected_nonce = 0;
 					let mut owned_avatar_count = 0;
 					let mut season_minted_count = 0;
@@ -986,10 +986,10 @@ mod minting {
 					});
 
 					// initial checks
-					match mint_type {
-						MintType::Normal =>
+					match payment {
+						MintPayment::Normal =>
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance),
-						MintType::Free =>
+						MintPayment::Free =>
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints),
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
@@ -1002,20 +1002,20 @@ mod minting {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: mint_type.clone(),
+							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
 					));
-					match mint_type {
-						MintType::Normal => {
+					match payment {
+						MintPayment::Normal => {
 							initial_balance -= fees.clone().fee_for(&MintPackSize::One);
 							initial_treasury_balance += fees.clone().fee_for(&MintPackSize::One);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
-						MintType::Free => {
+						MintPayment::Free => {
 							initial_free_mints -= MintPackSize::One as MintCount;
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
@@ -1044,20 +1044,20 @@ mod minting {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::Three,
-							mint_type: mint_type.clone(),
+							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
 					));
-					match mint_type {
-						MintType::Normal => {
+					match payment {
+						MintPayment::Normal => {
 							initial_balance -= fees.clone().fee_for(&MintPackSize::Three);
 							initial_treasury_balance += fees.clone().fee_for(&MintPackSize::Three);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
-						MintType::Free => {
+						MintPayment::Free => {
 							initial_free_mints -= MintPackSize::Three as MintCount;
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
@@ -1083,20 +1083,20 @@ mod minting {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::Six,
-							mint_type: mint_type.clone(),
+							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
 					));
-					match mint_type {
-						MintType::Normal => {
+					match payment {
+						MintPayment::Normal => {
 							initial_balance -= fees.clone().fee_for(&MintPackSize::Six);
 							initial_treasury_balance += fees.clone().fee_for(&MintPackSize::Six);
 
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance);
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
-						MintType::Free => {
+						MintPayment::Free => {
 							initial_free_mints -= MintPackSize::Six as MintCount;
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
@@ -1115,8 +1115,8 @@ mod minting {
 						},
 					));
 
-					match mint_type {
-						MintType::Normal => {
+					match payment {
+						MintPayment::Normal => {
 							// mint one more avatar to trigger reaping
 							assert_eq!(
 								Balances::total_balance(&ALICE),
@@ -1127,7 +1127,7 @@ mod minting {
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
 									count: MintPackSize::One,
-									mint_type: mint_type.clone(),
+									payment: payment.clone(),
 									mint_pack: PackType::Material,
 									mint_version: AvatarVersion::V1,
 								}
@@ -1138,7 +1138,7 @@ mod minting {
 							assert_eq!(System::account_nonce(ALICE), 0);
 							assert_eq!(Balances::total_balance(&ALICE), 0);
 						},
-						MintType::Free => {
+						MintPayment::Free => {
 							assert_eq!(System::account_nonce(ALICE), expected_nonce);
 						},
 					}
@@ -1150,7 +1150,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
 								count: MintPackSize::One,
-								mint_type: mint_type.clone(),
+								payment: payment.clone(),
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
 							}
@@ -1198,13 +1198,13 @@ mod minting {
 			GlobalConfigs::<Test>::mutate(|config| config.mint.open = false);
 			run_to_block(season.start);
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				for mint_type in [MintType::Normal, MintType::Free] {
+				for payment in [MintPayment::Normal, MintPayment::Free] {
 					assert_noop!(
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
 								count: count.clone(),
-								mint_type,
+								payment,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
 							}
@@ -1220,13 +1220,13 @@ mod minting {
 	fn mint_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-				for mint_type in [MintType::Normal, MintType::Free] {
+				for payment in [MintPayment::Normal, MintPayment::Free] {
 					assert_noop!(
 						AAvatars::mint(
 							RuntimeOrigin::none(),
 							MintOption {
 								count: count.clone(),
-								mint_type,
+								payment,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
 							}
@@ -1246,13 +1246,13 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-					for mint_type in [MintType::Normal, MintType::Free] {
+					for payment in [MintPayment::Normal, MintPayment::Free] {
 						assert_noop!(
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
 									count: count.clone(),
-									mint_type,
+									payment,
 									mint_pack: PackType::Material,
 									mint_version: AvatarVersion::V1
 								}
@@ -1286,13 +1286,13 @@ mod minting {
 				run_to_block(season.start);
 				Owners::<Test>::insert(ALICE, avatar_ids);
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
-					for mint_type in [MintType::Normal, MintType::Free] {
+					for payment in [MintPayment::Normal, MintPayment::Free] {
 						assert_noop!(
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
 									count: count.clone(),
-									mint_type,
+									payment,
 									mint_pack: PackType::Material,
 									mint_version: AvatarVersion::V1
 								}
@@ -1316,13 +1316,13 @@ mod minting {
 			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
-				for mint_type in [MintType::Normal, MintType::Free] {
+				for payment in [MintPayment::Normal, MintPayment::Free] {
 					run_to_block(season.start + 1);
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: mint_type.clone(),
+							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -1335,7 +1335,7 @@ mod minting {
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
 									count: MintPackSize::One,
-									mint_type: mint_type.clone(),
+									payment: payment.clone(),
 									mint_pack: PackType::Material,
 									mint_version: AvatarVersion::V1,
 								}
@@ -1350,7 +1350,7 @@ mod minting {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: MintType::Normal,
+							payment: MintPayment::Normal,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -1380,7 +1380,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
 								count: mint_count,
-								mint_type: MintType::Normal,
+								payment: MintPayment::Normal,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
 							}
@@ -1395,7 +1395,7 @@ mod minting {
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
 								count: mint_count,
-								mint_type: MintType::Free,
+								payment: MintPayment::Free,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
 							}
@@ -1533,7 +1533,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::Three,
-						mint_type: MintType::Normal,
+						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -1542,7 +1542,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::One,
-						mint_type: MintType::Normal,
+						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -1602,7 +1602,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::One,
-						mint_type: MintType::Normal,
+						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -1654,7 +1654,7 @@ mod forging {
 						RuntimeOrigin::signed(BOB),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: MintType::Normal,
+							payment: MintPayment::Normal,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -1769,7 +1769,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Free,
+						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -1849,7 +1849,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Free,
+						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -1907,7 +1907,7 @@ mod forging {
 					RuntimeOrigin::signed(ALICE),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Free,
+						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -2024,7 +2024,7 @@ mod forging {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::Three,
-							mint_type: MintType::Free,
+							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -2081,7 +2081,7 @@ mod forging {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: MintType::Free,
+							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -2119,7 +2119,7 @@ mod forging {
 							RuntimeOrigin::signed(player),
 							MintOption {
 								count: MintPackSize::One,
-								mint_type: MintType::Free,
+								payment: MintPayment::Free,
 								mint_pack: PackType::Material,
 								mint_version: AvatarVersion::V1
 							}
@@ -2156,7 +2156,7 @@ mod forging {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: MintType::Free,
+							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -2200,7 +2200,7 @@ mod forging {
 					RuntimeOrigin::signed(ALICE),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Normal,
+						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -2209,7 +2209,7 @@ mod forging {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Normal,
+						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}
@@ -2267,7 +2267,7 @@ mod forging {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: MintType::Free,
+							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -2281,7 +2281,7 @@ mod forging {
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
 							count: MintPackSize::One,
-							mint_type: MintType::Free,
+							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							mint_version: AvatarVersion::V1
 						}
@@ -2985,7 +2985,7 @@ mod nft_transfer {
 					RuntimeOrigin::signed(ALICE),
 					MintOption {
 						count: MintPackSize::Three,
-						mint_type: MintType::Normal,
+						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						mint_version: AvatarVersion::V1
 					}

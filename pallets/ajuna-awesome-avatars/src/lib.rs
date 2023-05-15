@@ -1066,13 +1066,13 @@ pub mod pallet {
 				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
-			match mint_option.mint_type {
-				MintType::Normal => {
+			match mint_option.payment {
+				MintPayment::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 					Self::deposit_into_treasury(&season_id, fee);
 				},
-				MintType::Free => {
+				MintPayment::Free => {
 					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
@@ -1202,18 +1202,18 @@ pub mod pallet {
 			let SeasonStatus { active, early, early_ended, .. } = CurrentSeasonStatus::<T>::get();
 			let free_mints = Accounts::<T>::get(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
-			let is_free_mint = mint_option.mint_type == MintType::Free;
+			let is_free_mint = mint_option.payment == MintPayment::Free;
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
 			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
 
-			match mint_option.mint_type {
-				MintType::Normal => {
+			match mint_option.payment {
+				MintPayment::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.count);
 					T::Currency::free_balance(player)
 						.checked_sub(&fee)
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
-				MintType::Free => {
+				MintPayment::Free => {
 					let fee = (mint_option.count.clone() as MintCount)
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;

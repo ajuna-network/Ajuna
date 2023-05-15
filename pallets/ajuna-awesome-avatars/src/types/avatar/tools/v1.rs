@@ -472,7 +472,7 @@ mod test {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Free,
+						payment: MintPayment::Free,
 						mint_version: AvatarVersion::V1,
 						mint_pack: PackType::default(),
 					}
@@ -574,7 +574,7 @@ mod test {
 					RuntimeOrigin::signed(BOB),
 					MintOption {
 						count: MintPackSize::Six,
-						mint_type: MintType::Free,
+						payment: MintPayment::Free,
 						mint_version: AvatarVersion::V1,
 						mint_pack: PackType::default(),
 					}

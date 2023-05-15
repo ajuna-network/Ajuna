@@ -127,7 +127,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 		AAvatars::<T>::mint(
 			RawOrigin::Signed(player.clone()).into(),
 			MintOption {
-				mint_type: MintType::Free,
+				payment: MintPayment::Free,
 				count: MintPackSize::One,
 				mint_pack: PackType::Material,
 				mint_version: AvatarVersion::V1,
@@ -190,7 +190,7 @@ benchmarks! {
 		let caller = account::<T>(name);
 		Accounts::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
 
-		let mint_option = MintOption { mint_type: MintType::Free, count: MintPackSize::Six,
+		let mint_option = MintOption { payment: MintPayment::Free, count: MintPackSize::Six,
 			mint_pack: PackType::Material, mint_version: AvatarVersion::V1 };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
@@ -208,7 +208,7 @@ benchmarks! {
 		let mint_fee = GlobalConfigs::<T>::get().mint.fees.fee_for(&MintPackSize::Six);
 		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
-		let mint_option = MintOption { mint_type: MintType::Normal, count: MintPackSize::Six,
+		let mint_option = MintOption { payment: MintPayment::Normal, count: MintPackSize::Six,
 			mint_pack: PackType::Material, mint_version: AvatarVersion::V1 };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
