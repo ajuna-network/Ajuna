@@ -24,8 +24,8 @@ impl<T: Config> Minter<T> for AvatarMinterV1<T> {
 		season: &SeasonOf<T>,
 		mint_option: &MintOption,
 	) -> Result<Vec<MintOutput<T>>, DispatchError> {
-		let is_batched = mint_option.count.is_batched();
-		(0..mint_option.count.clone() as usize)
+		let is_batched = mint_option.pack_size.is_batched();
+		(0..mint_option.pack_size.clone() as usize)
 			.map(|_| {
 				let avatar_id = Pallet::<T>::random_hash(b"create_avatar", player);
 				let dna = self.random_dna(&avatar_id, season, is_batched)?;
@@ -471,7 +471,7 @@ mod test {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						version: AvatarVersion::V1,
 						mint_pack: PackType::default(),
@@ -573,7 +573,7 @@ mod test {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						version: AvatarVersion::V1,
 						mint_pack: PackType::default(),

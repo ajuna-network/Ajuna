@@ -828,13 +828,13 @@ mod minting {
 		let season = Season::default().early_start(10).start(20).end(30);
 		let normal_mint = MintOption {
 			payment: MintPayment::Normal,
-			count: MintPackSize::One,
+			pack_size: MintPackSize::One,
 			mint_pack: PackType::Material,
 			version: AvatarVersion::V1,
 		};
 		let free_mint = MintOption {
 			payment: MintPayment::Free,
-			count: MintPackSize::One,
+			pack_size: MintPackSize::One,
 			mint_pack: PackType::Material,
 			version: AvatarVersion::V1,
 		};
@@ -1001,7 +1001,7 @@ mod minting {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -1043,7 +1043,7 @@ mod minting {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::Three,
+							pack_size: MintPackSize::Three,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -1082,7 +1082,7 @@ mod minting {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::Six,
+							pack_size: MintPackSize::Six,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -1126,7 +1126,7 @@ mod minting {
 							assert_ok!(AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
-									count: MintPackSize::One,
+									pack_size: MintPackSize::One,
 									payment: payment.clone(),
 									mint_pack: PackType::Material,
 									version: AvatarVersion::V1,
@@ -1149,7 +1149,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
-								count: MintPackSize::One,
+								pack_size: MintPackSize::One,
 								payment: payment.clone(),
 								mint_pack: PackType::Material,
 								version: AvatarVersion::V1
@@ -1203,7 +1203,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
-								count: count.clone(),
+								pack_size: count.clone(),
 								payment,
 								mint_pack: PackType::Material,
 								version: AvatarVersion::V1
@@ -1225,7 +1225,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::none(),
 							MintOption {
-								count: count.clone(),
+								pack_size: count.clone(),
 								payment,
 								mint_pack: PackType::Material,
 								version: AvatarVersion::V1
@@ -1251,7 +1251,7 @@ mod minting {
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
-									count: count.clone(),
+									pack_size: count.clone(),
 									payment,
 									mint_pack: PackType::Material,
 									version: AvatarVersion::V1
@@ -1291,7 +1291,7 @@ mod minting {
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
-									count: count.clone(),
+									pack_size: count.clone(),
 									payment,
 									mint_pack: PackType::Material,
 									version: AvatarVersion::V1
@@ -1321,7 +1321,7 @@ mod minting {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -1334,7 +1334,7 @@ mod minting {
 							AAvatars::mint(
 								RuntimeOrigin::signed(ALICE),
 								MintOption {
-									count: MintPackSize::One,
+									pack_size: MintPackSize::One,
 									payment: payment.clone(),
 									mint_pack: PackType::Material,
 									version: AvatarVersion::V1,
@@ -1349,7 +1349,7 @@ mod minting {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: MintPayment::Normal,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -1379,7 +1379,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
-								count: mint_count,
+								pack_size: mint_count,
 								payment: MintPayment::Normal,
 								mint_pack: PackType::Material,
 								version: AvatarVersion::V1
@@ -1394,7 +1394,7 @@ mod minting {
 						AAvatars::mint(
 							RuntimeOrigin::signed(ALICE),
 							MintOption {
-								count: mint_count,
+								pack_size: mint_count,
 								payment: MintPayment::Free,
 								mint_pack: PackType::Material,
 								version: AvatarVersion::V1
@@ -1532,7 +1532,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::Three,
+						pack_size: MintPackSize::Three,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -1541,7 +1541,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::One,
+						pack_size: MintPackSize::One,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -1601,7 +1601,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::One,
+						pack_size: MintPackSize::One,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -1653,7 +1653,7 @@ mod forging {
 					AAvatars::mint(
 						RuntimeOrigin::signed(BOB),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: MintPayment::Normal,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -1768,7 +1768,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -1848,7 +1848,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -1906,7 +1906,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -2023,7 +2023,7 @@ mod forging {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::Three,
+							pack_size: MintPackSize::Three,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -2080,7 +2080,7 @@ mod forging {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -2118,7 +2118,7 @@ mod forging {
 						assert_ok!(AAvatars::mint(
 							RuntimeOrigin::signed(player),
 							MintOption {
-								count: MintPackSize::One,
+								pack_size: MintPackSize::One,
 								payment: MintPayment::Free,
 								mint_pack: PackType::Material,
 								version: AvatarVersion::V1
@@ -2155,7 +2155,7 @@ mod forging {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -2199,7 +2199,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -2208,7 +2208,7 @@ mod forging {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
 					MintOption {
-						count: MintPackSize::Six,
+						pack_size: MintPackSize::Six,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1
@@ -2266,7 +2266,7 @@ mod forging {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -2280,7 +2280,7 @@ mod forging {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {
-							count: MintPackSize::One,
+							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
 							version: AvatarVersion::V1
@@ -2984,7 +2984,7 @@ mod nft_transfer {
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
 					MintOption {
-						count: MintPackSize::Three,
+						pack_size: MintPackSize::Three,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
 						version: AvatarVersion::V1

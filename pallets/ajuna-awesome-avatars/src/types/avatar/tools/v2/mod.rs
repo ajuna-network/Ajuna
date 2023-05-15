@@ -125,7 +125,7 @@ impl<T: Config> AvatarMinterV2<T> {
 		let mut hash_provider =
 			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
 
-		let roll_amount = mint_option.count.clone() as usize;
+		let roll_amount = mint_option.pack_size.clone() as usize;
 		let mut minted_avatars = Vec::with_capacity(roll_amount);
 
 		for i in 0..roll_amount {

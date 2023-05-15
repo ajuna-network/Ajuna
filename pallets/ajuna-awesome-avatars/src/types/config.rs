@@ -76,8 +76,8 @@ pub struct MintOption {
 	pub mint_pack: PackType,
 	/// The version of avatar to mint.
 	pub version: AvatarVersion,
-	/// Number of avatars to mint.
-	pub count: MintPackSize,
+	/// The number of avatars to mint.
+	pub pack_size: MintPackSize,
 }
 
 pub type MintCount = u16;
