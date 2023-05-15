@@ -74,8 +74,8 @@ pub struct MintOption {
 	pub payment: MintPayment,
 	/// Type of pack to mint
 	pub mint_pack: PackType,
-	/// Avatar version to mint
-	pub mint_version: AvatarVersion,
+	/// The version of avatar to mint.
+	pub version: AvatarVersion,
 	/// Number of avatars to mint.
 	pub count: MintPackSize,
 }

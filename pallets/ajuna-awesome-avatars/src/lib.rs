@@ -1051,10 +1051,9 @@ pub mod pallet {
 
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
 			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
-			let mint_output =
-				mint_option.mint_version.with_minter(|minter: Box<dyn Minter<T>>| {
-					minter.mint_avatar_set(player, &season_id, &season, mint_option)
-				})?;
+			let mint_output = mint_option.version.with_minter(|minter: Box<dyn Minter<T>>| {
+				minter.mint_avatar_set(player, &season_id, &season, mint_option)
+			})?;
 
 			// Add generated avatars from minter to storage
 			let generated_avatar_ids = mint_output

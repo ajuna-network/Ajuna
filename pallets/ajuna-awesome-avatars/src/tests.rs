@@ -830,13 +830,13 @@ mod minting {
 			payment: MintPayment::Normal,
 			count: MintPackSize::One,
 			mint_pack: PackType::Material,
-			mint_version: AvatarVersion::V1,
+			version: AvatarVersion::V1,
 		};
 		let free_mint = MintOption {
 			payment: MintPayment::Free,
 			count: MintPackSize::One,
 			mint_pack: PackType::Material,
-			mint_version: AvatarVersion::V1,
+			version: AvatarVersion::V1,
 		};
 
 		ExtBuilder::default()
@@ -1004,7 +1004,7 @@ mod minting {
 							count: MintPackSize::One,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 					match payment {
@@ -1046,7 +1046,7 @@ mod minting {
 							count: MintPackSize::Three,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 					match payment {
@@ -1085,7 +1085,7 @@ mod minting {
 							count: MintPackSize::Six,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 					match payment {
@@ -1129,7 +1129,7 @@ mod minting {
 									count: MintPackSize::One,
 									payment: payment.clone(),
 									mint_pack: PackType::Material,
-									mint_version: AvatarVersion::V1,
+									version: AvatarVersion::V1,
 								}
 							));
 							minted_count += 1;
@@ -1152,7 +1152,7 @@ mod minting {
 								count: MintPackSize::One,
 								payment: payment.clone(),
 								mint_pack: PackType::Material,
-								mint_version: AvatarVersion::V1
+								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::SeasonClosed
@@ -1206,7 +1206,7 @@ mod minting {
 								count: count.clone(),
 								payment,
 								mint_pack: PackType::Material,
-								mint_version: AvatarVersion::V1
+								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::MintClosed
@@ -1228,7 +1228,7 @@ mod minting {
 								count: count.clone(),
 								payment,
 								mint_pack: PackType::Material,
-								mint_version: AvatarVersion::V1
+								version: AvatarVersion::V1
 							}
 						),
 						DispatchError::BadOrigin
@@ -1254,7 +1254,7 @@ mod minting {
 									count: count.clone(),
 									payment,
 									mint_pack: PackType::Material,
-									mint_version: AvatarVersion::V1
+									version: AvatarVersion::V1
 								}
 							),
 							Error::<Test>::SeasonClosed
@@ -1294,7 +1294,7 @@ mod minting {
 									count: count.clone(),
 									payment,
 									mint_pack: PackType::Material,
-									mint_version: AvatarVersion::V1
+									version: AvatarVersion::V1
 								}
 							),
 							Error::<Test>::MaxOwnershipReached
@@ -1324,7 +1324,7 @@ mod minting {
 							count: MintPackSize::One,
 							payment: payment.clone(),
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 
@@ -1337,7 +1337,7 @@ mod minting {
 									count: MintPackSize::One,
 									payment: payment.clone(),
 									mint_pack: PackType::Material,
-									mint_version: AvatarVersion::V1,
+									version: AvatarVersion::V1,
 								}
 							),
 							Error::<Test>::MintCooldown
@@ -1352,7 +1352,7 @@ mod minting {
 							count: MintPackSize::One,
 							payment: MintPayment::Normal,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 
@@ -1382,7 +1382,7 @@ mod minting {
 								count: mint_count,
 								payment: MintPayment::Normal,
 								mint_pack: PackType::Material,
-								mint_version: AvatarVersion::V1
+								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::InsufficientBalance
@@ -1397,7 +1397,7 @@ mod minting {
 								count: mint_count,
 								payment: MintPayment::Free,
 								mint_pack: PackType::Material,
-								mint_version: AvatarVersion::V1
+								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::InsufficientFreeMints
@@ -1535,7 +1535,7 @@ mod forging {
 						count: MintPackSize::Three,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 				assert_ok!(AAvatars::mint(
@@ -1544,7 +1544,7 @@ mod forging {
 						count: MintPackSize::One,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 
@@ -1604,7 +1604,7 @@ mod forging {
 						count: MintPackSize::One,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 				let leader_id = Owners::<Test>::get(BOB)[0];
@@ -1656,7 +1656,7 @@ mod forging {
 							count: MintPackSize::One,
 							payment: MintPayment::Normal,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					),
 					Error::<Test>::PrematureSeasonEnd
@@ -1771,7 +1771,7 @@ mod forging {
 						count: MintPackSize::Six,
 						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 
@@ -1851,7 +1851,7 @@ mod forging {
 						count: MintPackSize::Six,
 						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 
@@ -1909,7 +1909,7 @@ mod forging {
 						count: MintPackSize::Six,
 						payment: MintPayment::Free,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 				let leader_id = Owners::<Test>::get(ALICE)[0];
@@ -2026,7 +2026,7 @@ mod forging {
 							count: MintPackSize::Three,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 				}
@@ -2083,7 +2083,7 @@ mod forging {
 							count: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 				}
@@ -2121,7 +2121,7 @@ mod forging {
 								count: MintPackSize::One,
 								payment: MintPayment::Free,
 								mint_pack: PackType::Material,
-								mint_version: AvatarVersion::V1
+								version: AvatarVersion::V1
 							}
 						));
 					}
@@ -2158,7 +2158,7 @@ mod forging {
 							count: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 				}
@@ -2202,7 +2202,7 @@ mod forging {
 						count: MintPackSize::Six,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 				assert_ok!(AAvatars::mint(
@@ -2211,7 +2211,7 @@ mod forging {
 						count: MintPackSize::Six,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 
@@ -2269,7 +2269,7 @@ mod forging {
 							count: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 					run_to_block(System::block_number() + 1);
@@ -2283,7 +2283,7 @@ mod forging {
 							count: MintPackSize::One,
 							payment: MintPayment::Free,
 							mint_pack: PackType::Material,
-							mint_version: AvatarVersion::V1
+							version: AvatarVersion::V1
 						}
 					));
 					run_to_block(System::block_number() + 1);
@@ -2987,7 +2987,7 @@ mod nft_transfer {
 						count: MintPackSize::Three,
 						payment: MintPayment::Normal,
 						mint_pack: PackType::Material,
-						mint_version: AvatarVersion::V1
+						version: AvatarVersion::V1
 					}
 				));
 				let avatar_ids = Owners::<Test>::get(ALICE);
