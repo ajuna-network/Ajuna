@@ -1063,7 +1063,7 @@ pub mod pallet {
 					Self::deposit_into_treasury(&season_id, fee);
 				},
 				MintPayment::Free => {
-					let fee = (mint_option.pack_size.clone() as MintCount)
+					let fee = (mint_option.pack_size.as_mint_count())
 						.saturating_mul(mint.free_mint_fee_multiplier);
 					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
 						account.free_mints = account
@@ -1196,6 +1196,7 @@ pub mod pallet {
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
 			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
 
+			let mint_count = mint_option.pack_size.as_mint_count();
 			match mint_option.payment {
 				MintPayment::Normal => {
 					let fee = mint.fees.fee_for(&mint_option.pack_size);
@@ -1204,13 +1205,12 @@ pub mod pallet {
 						.ok_or(Error::<T>::InsufficientBalance)?;
 				},
 				MintPayment::Free => {
-					let fee = (mint_option.pack_size.clone() as MintCount)
-						.saturating_mul(mint.free_mint_fee_multiplier);
+					let fee = mint_count.saturating_mul(mint.free_mint_fee_multiplier);
 					free_mints.checked_sub(fee).ok_or(Error::<T>::InsufficientFreeMints)?;
 				},
 			};
 
-			let new_count = Owners::<T>::get(player).len() + mint_option.pack_size.clone() as usize;
+			let new_count = Owners::<T>::get(player).len() + mint_count as usize;
 			let max_count = Accounts::<T>::get(player).storage_tier as usize;
 			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())

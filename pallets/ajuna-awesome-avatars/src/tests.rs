@@ -1016,7 +1016,7 @@ mod minting {
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
 						MintPayment::Free => {
-							initial_free_mints -= MintPackSize::One as MintCount;
+							initial_free_mints -= MintPackSize::One.as_mint_count();
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
 					}
@@ -1058,7 +1058,7 @@ mod minting {
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
 						MintPayment::Free => {
-							initial_free_mints -= MintPackSize::Three as MintCount;
+							initial_free_mints -= MintPackSize::Three.as_mint_count();
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
 					}
@@ -1097,7 +1097,7 @@ mod minting {
 							assert_eq!(Treasury::<Test>::get(1), initial_treasury_balance);
 						},
 						MintPayment::Free => {
-							initial_free_mints -= MintPackSize::Six as MintCount;
+							initial_free_mints -= MintPackSize::Six.as_mint_count();
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints);
 						},
 					}

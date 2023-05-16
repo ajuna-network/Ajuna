@@ -49,7 +49,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 		let mut hash_provider =
 			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
 
-		let roll_amount = mint_option.pack_size.clone() as usize;
+		let roll_amount = mint_option.pack_size.as_mint_count() as usize;
 		(0..roll_amount)
 			.map(|i| {
 				let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(

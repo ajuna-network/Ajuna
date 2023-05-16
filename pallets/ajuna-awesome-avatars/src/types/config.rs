@@ -21,14 +21,21 @@ use frame_support::pallet_prelude::*;
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum MintPackSize {
 	#[default]
-	One = 1,
-	Three = 3,
-	Six = 6,
+	One,
+	Three,
+	Six,
 }
 
 impl MintPackSize {
 	pub(crate) fn is_batched(&self) -> bool {
 		self != &Self::One
+	}
+	pub(crate) fn as_mint_count(&self) -> MintCount {
+		match self {
+			MintPackSize::One => 1,
+			MintPackSize::Three => 3,
+			MintPackSize::Six => 6,
+		}
 	}
 }
 

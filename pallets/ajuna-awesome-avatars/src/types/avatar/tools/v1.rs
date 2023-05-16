@@ -24,7 +24,7 @@ impl<T: Config> Minter<T> for MinterV1<T> {
 	) -> Result<Vec<AvatarIdOf<T>>, DispatchError> {
 		let is_batched = mint_option.pack_size.is_batched();
 		let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
-		(0..mint_option.pack_size.clone() as usize)
+		(0..mint_option.pack_size.as_mint_count())
 			.map(|_| {
 				let avatar_id = Pallet::<T>::random_hash(b"create_avatar", player);
 				let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
@@ -68,11 +68,11 @@ impl<T: Config> MinterV1<T> {
 			let probs =
 				if batched_mint { &season.batch_mint_probs } else { &season.single_mint_probs };
 			let mut cumulative_sum = 0;
-			let mut random_tier = season.tiers[0].clone() as u8;
+			let mut random_tier = &season.tiers[0];
 			for i in 0..probs.len() {
 				let new_cumulative_sum = cumulative_sum + probs[i];
 				if random_prob >= cumulative_sum && random_prob < new_cumulative_sum {
-					random_tier = season.tiers[i].clone() as u8;
+					random_tier = &season.tiers[i];
 					break
 				}
 				cumulative_sum = new_cumulative_sum;
@@ -80,7 +80,7 @@ impl<T: Config> MinterV1<T> {
 			random_tier
 		};
 		let random_variation = hash[index + 1] % season.max_variations;
-		(random_tier, random_variation)
+		(random_tier.as_byte(), random_variation)
 	}
 }
 
