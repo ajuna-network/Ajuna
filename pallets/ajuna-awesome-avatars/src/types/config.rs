@@ -72,8 +72,8 @@ pub enum PackType {
 pub struct MintOption {
 	/// The choice of payment for minting.
 	pub payment: MintPayment,
-	/// Type of pack to mint
-	pub mint_pack: PackType,
+	/// The choice of pack to mint.
+	pub pack_type: PackType,
 	/// The version of avatar to mint.
 	pub version: AvatarVersion,
 	/// The number of avatars to mint.

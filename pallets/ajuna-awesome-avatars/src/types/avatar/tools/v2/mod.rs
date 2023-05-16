@@ -130,7 +130,7 @@ impl<T: Config> AvatarMinterV2<T> {
 
 		for i in 0..roll_amount {
 			let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
-				mint_option.mint_pack.clone(),
+				mint_option.pack_type.clone(),
 				&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_ITEM_PROBABILITIES,
@@ -150,7 +150,7 @@ impl<T: Config> AvatarMinterV2<T> {
 
 			let avatar = self
 				.get_mutator_from_item_type(
-					mint_option.mint_pack.clone(),
+					mint_option.pack_type.clone(),
 					rolled_item_type,
 					&mut hash_provider,
 				)

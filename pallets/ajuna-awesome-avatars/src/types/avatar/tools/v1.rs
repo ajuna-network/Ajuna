@@ -474,7 +474,7 @@ mod test {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						version: AvatarVersion::V1,
-						mint_pack: PackType::default(),
+						pack_type: PackType::default(),
 					}
 				));
 
@@ -576,7 +576,7 @@ mod test {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						version: AvatarVersion::V1,
-						mint_pack: PackType::default(),
+						pack_type: PackType::default(),
 					}
 				));
 

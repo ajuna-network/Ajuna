@@ -829,13 +829,13 @@ mod minting {
 		let normal_mint = MintOption {
 			payment: MintPayment::Normal,
 			pack_size: MintPackSize::One,
-			mint_pack: PackType::Material,
+			pack_type: PackType::Material,
 			version: AvatarVersion::V1,
 		};
 		let free_mint = MintOption {
 			payment: MintPayment::Free,
 			pack_size: MintPackSize::One,
-			mint_pack: PackType::Material,
+			pack_type: PackType::Material,
 			version: AvatarVersion::V1,
 		};
 
@@ -1003,7 +1003,7 @@ mod minting {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: payment.clone(),
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -1045,7 +1045,7 @@ mod minting {
 						MintOption {
 							pack_size: MintPackSize::Three,
 							payment: payment.clone(),
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -1084,7 +1084,7 @@ mod minting {
 						MintOption {
 							pack_size: MintPackSize::Six,
 							payment: payment.clone(),
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -1128,7 +1128,7 @@ mod minting {
 								MintOption {
 									pack_size: MintPackSize::One,
 									payment: payment.clone(),
-									mint_pack: PackType::Material,
+									pack_type: PackType::Material,
 									version: AvatarVersion::V1,
 								}
 							));
@@ -1151,7 +1151,7 @@ mod minting {
 							MintOption {
 								pack_size: MintPackSize::One,
 								payment: payment.clone(),
-								mint_pack: PackType::Material,
+								pack_type: PackType::Material,
 								version: AvatarVersion::V1
 							}
 						),
@@ -1205,7 +1205,7 @@ mod minting {
 							MintOption {
 								pack_size: count.clone(),
 								payment,
-								mint_pack: PackType::Material,
+								pack_type: PackType::Material,
 								version: AvatarVersion::V1
 							}
 						),
@@ -1227,7 +1227,7 @@ mod minting {
 							MintOption {
 								pack_size: count.clone(),
 								payment,
-								mint_pack: PackType::Material,
+								pack_type: PackType::Material,
 								version: AvatarVersion::V1
 							}
 						),
@@ -1253,7 +1253,7 @@ mod minting {
 								MintOption {
 									pack_size: count.clone(),
 									payment,
-									mint_pack: PackType::Material,
+									pack_type: PackType::Material,
 									version: AvatarVersion::V1
 								}
 							),
@@ -1293,7 +1293,7 @@ mod minting {
 								MintOption {
 									pack_size: count.clone(),
 									payment,
-									mint_pack: PackType::Material,
+									pack_type: PackType::Material,
 									version: AvatarVersion::V1
 								}
 							),
@@ -1323,7 +1323,7 @@ mod minting {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: payment.clone(),
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -1336,7 +1336,7 @@ mod minting {
 								MintOption {
 									pack_size: MintPackSize::One,
 									payment: payment.clone(),
-									mint_pack: PackType::Material,
+									pack_type: PackType::Material,
 									version: AvatarVersion::V1,
 								}
 							),
@@ -1351,7 +1351,7 @@ mod minting {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Normal,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -1381,7 +1381,7 @@ mod minting {
 							MintOption {
 								pack_size: mint_count,
 								payment: MintPayment::Normal,
-								mint_pack: PackType::Material,
+								pack_type: PackType::Material,
 								version: AvatarVersion::V1
 							}
 						),
@@ -1396,7 +1396,7 @@ mod minting {
 							MintOption {
 								pack_size: mint_count,
 								payment: MintPayment::Free,
-								mint_pack: PackType::Material,
+								pack_type: PackType::Material,
 								version: AvatarVersion::V1
 							}
 						),
@@ -1534,7 +1534,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::Three,
 						payment: MintPayment::Normal,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -1543,7 +1543,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::One,
 						payment: MintPayment::Normal,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -1603,7 +1603,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::One,
 						payment: MintPayment::Normal,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -1655,7 +1655,7 @@ mod forging {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Normal,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					),
@@ -1770,7 +1770,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -1850,7 +1850,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -1908,7 +1908,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -2025,7 +2025,7 @@ mod forging {
 						MintOption {
 							pack_size: MintPackSize::Three,
 							payment: MintPayment::Free,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -2082,7 +2082,7 @@ mod forging {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -2120,7 +2120,7 @@ mod forging {
 							MintOption {
 								pack_size: MintPackSize::One,
 								payment: MintPayment::Free,
-								mint_pack: PackType::Material,
+								pack_type: PackType::Material,
 								version: AvatarVersion::V1
 							}
 						));
@@ -2157,7 +2157,7 @@ mod forging {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -2201,7 +2201,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Normal,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -2210,7 +2210,7 @@ mod forging {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Normal,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
@@ -2268,7 +2268,7 @@ mod forging {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -2282,7 +2282,7 @@ mod forging {
 						MintOption {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
-							mint_pack: PackType::Material,
+							pack_type: PackType::Material,
 							version: AvatarVersion::V1
 						}
 					));
@@ -2986,7 +2986,7 @@ mod nft_transfer {
 					MintOption {
 						pack_size: MintPackSize::Three,
 						payment: MintPayment::Normal,
-						mint_pack: PackType::Material,
+						pack_type: PackType::Material,
 						version: AvatarVersion::V1
 					}
 				));
