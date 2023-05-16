@@ -99,8 +99,7 @@ impl<T: Config> AvatarCombinator<T> {
 						}
 					};
 
-					let dna = AvatarMinterV2::<T>(PhantomData)
-						.generate_base_avatar_dna(hash_provider, 9)?;
+					let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, 9)?;
 					let generated_equipable = AvatarBuilder::with_dna(season_id, dna)
 						.try_into_armor_and_component(
 							&pet_type,

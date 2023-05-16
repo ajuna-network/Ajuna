@@ -38,23 +38,58 @@ impl AttributeMapper for AttributeMapperV2 {
 	}
 }
 
-pub(super) struct AvatarMinterV2<T: Config>(pub PhantomData<T>);
+pub(crate) struct MinterV2<T: Config>(pub PhantomData<T>);
 
-impl<T: Config> Minter<T> for AvatarMinterV2<T> {
-	fn mint_avatar_set(
-		&self,
+impl<T: Config> Minter<T> for MinterV2<T> {
+	fn mint(
 		player: &T::AccountId,
 		season_id: &SeasonId,
-		_season: &SeasonOf<T>,
 		mint_option: &MintOption,
-	) -> Result<Vec<MintOutput<T>>, DispatchError> {
-		self.mint_avatar_set_for(player, season_id, mint_option)
+	) -> Result<Vec<AvatarIdOf<T>>, DispatchError> {
+		let mut hash_provider =
+			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
+
+		let roll_amount = mint_option.pack_size.clone() as usize;
+		(0..roll_amount)
+			.map(|i| {
+				let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
+					mint_option.pack_type.clone(),
+					&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
+					&PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES,
+					&PACK_TYPE_SPECIAL_ITEM_PROBABILITIES,
+					&mut hash_provider,
+				);
+
+				let avatar_id = Pallet::<T>::random_hash(b"avatar_minter_v2", player);
+
+				let dna_mutation = (i * 13) % 31;
+				let base_dna = Self::generate_base_avatar_dna(&mut hash_provider, dna_mutation)?;
+				let base_avatar = Avatar {
+					season_id: *season_id,
+					version: AvatarVersion::V2,
+					dna: base_dna,
+					souls: SoulCount::zero(),
+				};
+
+				let avatar = Self::get_mutator_from_item_type(
+					mint_option.pack_type.clone(),
+					rolled_item_type,
+					&mut hash_provider,
+				)
+				.mutate_from_base(base_avatar, &mut hash_provider);
+
+				Avatars::<T>::insert(avatar_id, (player, avatar));
+				Owners::<T>::try_append(&player, avatar_id)
+					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+
+				Ok(avatar_id)
+			})
+			.collect()
 	}
 }
 
-impl<T: Config> AvatarMinterV2<T> {
+impl<T: Config> MinterV2<T> {
 	pub(super) fn generate_base_avatar_dna(
-		&self,
 		hash_provider: &mut HashProvider<T, 32>,
 		starting_index: usize,
 	) -> Result<Dna, DispatchError> {
@@ -65,7 +100,6 @@ impl<T: Config> AvatarMinterV2<T> {
 	}
 
 	fn get_mutator_from_item_type(
-		&self,
 		pack_type: PackType,
 		item_type: ItemType,
 		hash_provider: &mut HashProvider<T, 32>,
@@ -114,52 +148,6 @@ impl<T: Config> AvatarMinterV2<T> {
 				hash_provider,
 			)),
 		}
-	}
-
-	fn mint_avatar_set_for(
-		&self,
-		player: &T::AccountId,
-		season_id: &SeasonId,
-		mint_option: &MintOption,
-	) -> Result<Vec<MintOutput<T>>, DispatchError> {
-		let mut hash_provider =
-			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
-
-		let roll_amount = mint_option.pack_size.clone() as usize;
-		let mut minted_avatars = Vec::with_capacity(roll_amount);
-
-		for i in 0..roll_amount {
-			let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
-				mint_option.pack_type.clone(),
-				&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
-				&PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES,
-				&PACK_TYPE_SPECIAL_ITEM_PROBABILITIES,
-				&mut hash_provider,
-			);
-
-			let avatar_id = Pallet::<T>::random_hash(b"avatar_minter_v2", player);
-
-			let dna_mutation = (i * 13) % 31;
-			let base_dna = self.generate_base_avatar_dna(&mut hash_provider, dna_mutation)?;
-			let base_avatar = Avatar {
-				season_id: *season_id,
-				version: AvatarVersion::V2,
-				dna: base_dna,
-				souls: SoulCount::zero(),
-			};
-
-			let avatar = self
-				.get_mutator_from_item_type(
-					mint_option.pack_type.clone(),
-					rolled_item_type,
-					&mut hash_provider,
-				)
-				.mutate_from_base(base_avatar, &mut hash_provider);
-
-			minted_avatars.push((avatar_id, avatar));
-		}
-
-		Ok(minted_avatars)
 	}
 }
 

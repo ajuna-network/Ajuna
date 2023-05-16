@@ -93,8 +93,7 @@ impl<T: Config> AvatarCombinator<T> {
 			let slot_type =
 				AvatarUtils::read_attribute_as::<SlotType>(&leader, &AvatarAttributes::ClassType1);
 
-			let dna =
-				AvatarMinterV2::<T>(PhantomData).generate_base_avatar_dna(hash_provider, 6)?;
+			let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, 6)?;
 			let generated_blueprint = AvatarBuilder::with_dna(season_id, dna)
 				.into_blueprint(
 					&BlueprintItemType::Blueprint,

@@ -14,33 +14,34 @@ impl AttributeMapper for AttributeMapperV1 {
 	}
 }
 
-pub(super) struct AvatarMinterV1<T: Config>(pub PhantomData<T>);
+pub(crate) struct MinterV1<T: Config>(pub PhantomData<T>);
 
-impl<T: Config> Minter<T> for AvatarMinterV1<T> {
-	fn mint_avatar_set(
-		&self,
+impl<T: Config> Minter<T> for MinterV1<T> {
+	fn mint(
 		player: &T::AccountId,
 		season_id: &SeasonId,
-		season: &SeasonOf<T>,
 		mint_option: &MintOption,
-	) -> Result<Vec<MintOutput<T>>, DispatchError> {
+	) -> Result<Vec<AvatarIdOf<T>>, DispatchError> {
 		let is_batched = mint_option.pack_size.is_batched();
+		let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
 		(0..mint_option.pack_size.clone() as usize)
 			.map(|_| {
 				let avatar_id = Pallet::<T>::random_hash(b"create_avatar", player);
-				let dna = self.random_dna(&avatar_id, season, is_batched)?;
+				let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
 				let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
 				let avatar =
 					Avatar { season_id: *season_id, version: AvatarVersion::V1, dna, souls };
-				Ok((avatar_id, avatar))
+				Avatars::<T>::insert(avatar_id, (player, avatar));
+				Owners::<T>::try_append(&player, avatar_id)
+					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+				Ok(avatar_id)
 			})
-			.collect::<Result<Vec<MintOutput<T>>, _>>()
+			.collect()
 	}
 }
 
-impl<T: Config> AvatarMinterV1<T> {
+impl<T: Config> MinterV1<T> {
 	fn random_dna(
-		&self,
 		hash: &T::Hash,
 		season: &SeasonOf<T>,
 		batched_mint: bool,

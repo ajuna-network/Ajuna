@@ -1050,19 +1050,10 @@ pub mod pallet {
 			Self::ensure_for_mint(player, mint_option)?;
 
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
-			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
-			let mint_output = mint_option.version.with_minter(|minter: Box<dyn Minter<T>>| {
-				minter.mint_avatar_set(player, &season_id, &season, mint_option)
-			})?;
-
-			// Add generated avatars from minter to storage
-			let generated_avatar_ids = mint_output
-				.into_iter()
-				.map(|(minted_avatar_id, minted_avatar)| {
-					Self::try_add_avatar_to(player, minted_avatar_id, minted_avatar)?;
-					Ok(minted_avatar_id)
-				})
-				.collect::<Result<Vec<AvatarIdOf<T>>, DispatchError>>()?;
+			let generated_avatar_ids = match mint_option.version {
+				AvatarVersion::V1 => MinterV1::<T>::mint(player, &season_id, mint_option),
+				AvatarVersion::V2 => MinterV2::<T>::mint(player, &season_id, mint_option),
+			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
 			match mint_option.payment {
