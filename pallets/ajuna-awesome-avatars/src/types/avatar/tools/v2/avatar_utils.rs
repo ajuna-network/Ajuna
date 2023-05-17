@@ -917,7 +917,7 @@ impl AvatarUtils {
 
 	pub fn create_pattern<T>(mut base_speed: usize, increase_seed: usize) -> Vec<T>
 	where
-		T: Ranged,
+		T: ByteConvertible + Ranged,
 	{
 		// Equivalent to "0X35AAB76B4482CADFF35BB3BD1C86648697B6F6833B47B939AECE95EDCD0347"
 		let fixed_seed: [u8; 32] = [
@@ -942,7 +942,7 @@ impl AvatarUtils {
 
 	pub fn enums_to_bits<T>(enum_list: &[T]) -> u32
 	where
-		T: Ranged,
+		T: ByteConvertible + Ranged,
 	{
 		let range_mod = T::range().start as u8;
 		enum_list
@@ -973,7 +973,7 @@ impl AvatarUtils {
 
 	pub fn bits_to_enums<T>(bits: u32) -> Vec<T>
 	where
-		T: Ranged,
+		T: ByteConvertible + Ranged,
 	{
 		let mut enums = Vec::new();
 
