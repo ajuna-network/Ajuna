@@ -17,12 +17,12 @@
 mod force;
 mod nft;
 mod rarity_tier;
-mod tools;
+mod versions;
 
 pub use force::*;
 pub use nft::*;
 pub use rarity_tier::*;
-pub(crate) use tools::*;
+pub(crate) use versions::*;
 
 use frame_support::pallet_prelude::*;
 use sp_std::{ops::Range, prelude::*};
@@ -58,15 +58,15 @@ pub struct Avatar {
 impl Avatar {
 	pub(crate) fn rarity(&self) -> u8 {
 		match self.version {
-			AvatarVersion::V1 => tools::AttributeMapperV1::rarity(self),
-			AvatarVersion::V2 => tools::AttributeMapperV2::rarity(self),
+			AvatarVersion::V1 => AttributeMapperV1::rarity(self),
+			AvatarVersion::V2 => AttributeMapperV2::rarity(self),
 		}
 	}
 
 	pub(crate) fn force(&self) -> u8 {
 		match self.version {
-			AvatarVersion::V1 => tools::AttributeMapperV1::force(self),
-			AvatarVersion::V2 => tools::AttributeMapperV2::force(self),
+			AvatarVersion::V1 => AttributeMapperV1::force(self),
+			AvatarVersion::V2 => AttributeMapperV2::force(self),
 		}
 	}
 }

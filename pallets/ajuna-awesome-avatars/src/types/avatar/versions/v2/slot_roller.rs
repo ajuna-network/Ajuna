@@ -1,5 +1,5 @@
 use crate::{
-	types::{avatar::tools::v2::avatar_utils::HashProvider, PackType},
+	types::{avatar::versions::v2::avatar_utils::HashProvider, PackType},
 	Config,
 };
 use sp_std::marker::PhantomData;

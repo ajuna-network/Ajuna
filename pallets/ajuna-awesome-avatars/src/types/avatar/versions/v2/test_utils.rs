@@ -2,7 +2,7 @@ use crate::{
 	mock::{MockAccountId, Test},
 	pallet::AvatarIdOf,
 	types::{
-		avatar::tools::v2::{
+		avatar::versions::v2::{
 			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils},
 			types::{
 				BlueprintItemType, ColorType, EquipableItemType, MaterialItemType, PetType,
