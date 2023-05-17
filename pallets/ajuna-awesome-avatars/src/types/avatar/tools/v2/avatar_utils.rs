@@ -915,7 +915,7 @@ impl AvatarUtils {
 		(true, avatar_consumed, output_soul_points)
 	}
 
-	pub fn create_pattern<T>(mut base_speed: usize, increase_seed: usize) -> Vec<T>
+	pub fn create_pattern<T>(mut base_seed: usize, increase_seed: usize) -> Vec<T>
 	where
 		T: ByteConvertible + Ranged,
 	{
@@ -930,8 +930,8 @@ impl AvatarUtils {
 		let mut pattern = Vec::with_capacity(4);
 
 		for _ in 0..4 {
-			base_speed = base_speed.saturating_add(increase_seed);
-			let rand_1 = fixed_seed[base_speed % 32];
+			base_seed = base_seed.saturating_add(increase_seed);
+			let rand_1 = fixed_seed[base_seed % 32];
 
 			let enum_type = all_enum.remove(rand_1 as usize % all_enum.len());
 			pattern.push(enum_type);
@@ -952,7 +952,7 @@ impl AvatarUtils {
 
 	pub fn enums_order_to_bits<T>(enum_list: &[T]) -> u32
 	where
-		T: ByteConvertible + Ord,
+		T: Clone + Ord,
 	{
 		let mut sorted_list = Vec::with_capacity(enum_list.len());
 		sorted_list.extend_from_slice(enum_list);
@@ -988,7 +988,7 @@ impl AvatarUtils {
 
 	pub fn bits_order_to_enum<T>(bit_order: u32, step_count: usize, enum_list: Vec<T>) -> Vec<T>
 	where
-		T: ByteConvertible + Ord,
+		T: Clone + Ord,
 	{
 		let mut sorted_enum_list = enum_list;
 		sorted_enum_list.sort();
