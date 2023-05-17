@@ -23,7 +23,7 @@ use crate::{
 	Config,
 };
 use sp_runtime::DispatchError;
-use sp_std::prelude::*;
+use sp_std::{mem::variant_count, prelude::*};
 
 pub(super) struct AttributeMapperV2;
 

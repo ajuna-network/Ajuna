@@ -10,7 +10,7 @@ mod stack;
 mod tinker;
 
 use super::*;
-use sp_std::collections::vec_deque::VecDeque;
+use sp_std::{collections::vec_deque::VecDeque, mem::variant_count};
 
 pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 

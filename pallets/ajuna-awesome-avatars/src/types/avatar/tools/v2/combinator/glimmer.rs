@@ -7,8 +7,8 @@ impl<T: Config> AvatarCombinator<T> {
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		let color_types = ColorType::range().len() as u8;
-		let force_types = ForceType::range().len() as u8;
+		let color_types = variant_count::<ColorType>() as u8;
+		let force_types = variant_count::<ForceType>() as u8;
 
 		let (leader_id, mut leader) = input_leader;
 		let mut leader_consumed = false;

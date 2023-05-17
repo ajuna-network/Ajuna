@@ -109,7 +109,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 			},
 			EssenceItemType::GlowSpark | EssenceItemType::ForceGlow => {
 				let force_type = ForceType::from_byte(
-					hash_provider.get_hash_byte() % ForceType::range().end as u8,
+					hash_provider.get_hash_byte() % variant_count::<ForceType>() as u8,
 				);
 
 				if *self == EssenceItemType::GlowSpark {
@@ -178,7 +178,7 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
 				);
 				let force_type = ForceType::from_byte(
-					hash_provider.get_hash_byte() % ForceType::range().end as u8,
+					hash_provider.get_hash_byte() % variant_count::<ForceType>() as u8,
 				);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
@@ -238,7 +238,7 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
 				);
 				let force_type = ForceType::from_byte(
-					hash_provider.get_hash_byte() % ForceType::range().end as u8,
+					hash_provider.get_hash_byte() % variant_count::<ForceType>() as u8,
 				);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
