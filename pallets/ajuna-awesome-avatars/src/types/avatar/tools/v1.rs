@@ -9,7 +9,7 @@ impl AttributeMapper for AttributeMapperV1 {
 		target.dna.iter().map(|x| *x >> 4).min().unwrap_or_default()
 	}
 
-	fn last_variation(&self, target: &Avatar) -> u8 {
+	fn force(&self, target: &Avatar) -> u8 {
 		target.dna.last().unwrap_or(&0) & 0b0000_1111
 	}
 }

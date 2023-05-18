@@ -63,10 +63,10 @@ impl Avatar {
 		}
 	}
 
-	pub(crate) fn last_variation(&self) -> u8 {
+	pub(crate) fn force(&self) -> u8 {
 		match self.version {
-			AvatarVersion::V1 => tools::AttributeMapperV1.last_variation(self),
-			AvatarVersion::V2 => tools::AttributeMapperV2.last_variation(self),
+			AvatarVersion::V1 => tools::AttributeMapperV1.force(self),
+			AvatarVersion::V2 => tools::AttributeMapperV2.force(self),
 		}
 	}
 }

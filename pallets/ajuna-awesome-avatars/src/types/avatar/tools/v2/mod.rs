@@ -32,7 +32,7 @@ impl AttributeMapper for AttributeMapperV2 {
 		AvatarUtils::read_attribute(target, &AvatarAttributes::RarityType).saturating_sub(1)
 	}
 
-	fn last_variation(&self, target: &Avatar) -> u8 {
+	fn force(&self, target: &Avatar) -> u8 {
 		// TODO: Determine proper mapping
 		AvatarUtils::read_spec_byte(target, &AvatarSpecBytes::SpecByte1).saturating_sub(1)
 	}
