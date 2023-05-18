@@ -25,7 +25,7 @@ use crate::{
 use sp_runtime::DispatchError;
 use sp_std::{mem::variant_count, prelude::*};
 
-pub(super) struct AttributeMapperV2;
+pub(crate) struct AttributeMapperV2;
 
 impl AttributeMapper for AttributeMapperV2 {
 	fn min_tier(&self, target: &Avatar) -> u8 {

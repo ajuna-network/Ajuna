@@ -57,12 +57,16 @@ pub struct Avatar {
 
 impl Avatar {
 	pub(crate) fn min_tier(&self) -> u8 {
-		self.version
-			.with_mapper(|mapper: Box<dyn AttributeMapper>| mapper.min_tier(self))
+		match self.version {
+			AvatarVersion::V1 => tools::AttributeMapperV1.min_tier(self),
+			AvatarVersion::V2 => tools::AttributeMapperV2.min_tier(self),
+		}
 	}
 
 	pub(crate) fn last_variation(&self) -> u8 {
-		self.version
-			.with_mapper(|mapper: Box<dyn AttributeMapper>| mapper.last_variation(self))
+		match self.version {
+			AvatarVersion::V1 => tools::AttributeMapperV1.last_variation(self),
+			AvatarVersion::V2 => tools::AttributeMapperV2.last_variation(self),
+		}
 	}
 }

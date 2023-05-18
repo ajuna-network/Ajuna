@@ -2,7 +2,7 @@ use crate::*;
 use sp_runtime::{traits::Zero, DispatchError, Saturating};
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData, vec::Vec};
 
-pub(super) struct AttributeMapperV1;
+pub(crate) struct AttributeMapperV1;
 
 impl AttributeMapper for AttributeMapperV1 {
 	fn min_tier(&self, target: &Avatar) -> u8 {
