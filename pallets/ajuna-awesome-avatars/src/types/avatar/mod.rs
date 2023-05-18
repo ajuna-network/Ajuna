@@ -25,7 +25,7 @@ pub use rarity_tier::*;
 pub(crate) use tools::*;
 
 use frame_support::pallet_prelude::*;
-use sp_std::prelude::*;
+use sp_std::{ops::Range, prelude::*};
 
 pub type IpfsUrl = BoundedVec<u8, MaxIpfsUrl>;
 pub struct MaxIpfsUrl;
@@ -69,4 +69,13 @@ impl Avatar {
 			AvatarVersion::V2 => tools::AttributeMapperV2.force(self),
 		}
 	}
+}
+
+pub(crate) trait ByteConvertible: Clone {
+	fn from_byte(byte: u8) -> Self;
+	fn as_byte(&self) -> u8;
+}
+
+pub(crate) trait Ranged {
+	fn range() -> Range<usize>;
 }

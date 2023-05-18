@@ -191,19 +191,14 @@ mod test {
 				[0x44, 0x33, 0x34, 0x32, 0x35, 0x32, 0x31, 0x34, 0x30, 0x41, 0x31],
 			];
 
-			let force_types = [
-				ForceType::Kinetic,
-				ForceType::Thermal,
-				ForceType::Thermal,
-				ForceType::Thermal,
-				ForceType::Kinetic,
-			];
+			let forces =
+				[Force::Kinetic, Force::Thermal, Force::Thermal, Force::Thermal, Force::Kinetic];
 
-			let mut avatars = force_types
+			let mut avatars = forces
 				.into_iter()
 				.zip(progress_arrays)
-				.map(|(force_type, progress_array)| {
-					create_random_glow_spark(None, &ALICE, &force_type, 5, Some(progress_array))
+				.map(|(force, progress_array)| {
+					create_random_glow_spark(None, &ALICE, &force, 5, Some(progress_array))
 				})
 				.collect::<Vec<_>>();
 
@@ -244,11 +239,11 @@ mod test {
 					EssenceItemType::ForceGlow
 				);
 				assert_eq!(
-					ForceType::from_byte(AvatarUtils::read_spec_byte(
+					Force::from_byte(AvatarUtils::read_spec_byte(
 						&leader_avatar,
 						&AvatarSpecBytes::SpecByte1
 					)),
-					ForceType::Kinetic
+					Force::Kinetic
 				);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")

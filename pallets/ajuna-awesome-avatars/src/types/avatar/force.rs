@@ -16,7 +16,7 @@
 
 use crate::*;
 use codec::alloc::string::ToString;
-use sp_std::{fmt, prelude::*};
+use sp_std::{fmt, ops::Range, prelude::*};
 
 #[derive(Encode, Clone, Debug, Default, PartialEq)]
 pub enum Force {
@@ -44,18 +44,28 @@ impl fmt::Display for Force {
 	}
 }
 
-impl From<u8> for Force {
-	fn from(value: u8) -> Self {
-		match value {
-			x if x == 0 => Self::None,
-			x if x == 1 => Self::Kinetic,
-			x if x == 2 => Self::Dream,
-			x if x == 3 => Self::Solar,
-			x if x == 4 => Self::Thermal,
-			x if x == 5 => Self::Astral,
-			x if x == 6 => Self::Empathy,
+impl ByteConvertible for Force {
+	fn from_byte(byte: u8) -> Self {
+		match byte {
+			0 => Self::None,
+			1 => Self::Kinetic,
+			2 => Self::Dream,
+			3 => Self::Solar,
+			4 => Self::Thermal,
+			5 => Self::Astral,
+			6 => Self::Empathy,
 			_ => Self::default(),
 		}
+	}
+
+	fn as_byte(&self) -> u8 {
+		self.clone() as u8
+	}
+}
+
+impl Ranged for Force {
+	fn range() -> Range<usize> {
+		0..7
 	}
 }
 

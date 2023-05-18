@@ -108,19 +108,19 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 				}
 			},
 			EssenceItemType::GlowSpark | EssenceItemType::ForceGlow => {
-				let force_type = ForceType::from_byte(
-					hash_provider.get_hash_byte() % variant_count::<ForceType>() as u8,
+				let force = Force::from_byte(
+					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
 				);
 
 				if *self == EssenceItemType::GlowSpark {
 					AvatarBuilder::with_base_avatar(base_avatar).into_glow_spark(
-						&force_type,
+						&force,
 						souls as SoulCount,
 						None,
 					)
 				} else {
 					AvatarBuilder::with_base_avatar(base_avatar).into_force_glow(
-						&force_type,
+						&force,
 						souls as SoulCount,
 						None,
 					)
@@ -162,7 +162,7 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 						&[self.clone()],
 						&rarity_type,
 						&(ColorType::None, ColorType::None),
-						&ForceType::None,
+						&Force::None,
 						soul_count,
 					)
 					.unwrap()
@@ -177,19 +177,12 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 					ColorType::from_byte(AvatarUtils::high_nibble_of(hash_byte)),
 					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
 				);
-				let force_type = ForceType::from_byte(
-					hash_provider.get_hash_byte() % variant_count::<ForceType>() as u8,
+				let force = Force::from_byte(
+					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
 				);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
-					.try_into_weapon(
-						&pet_type,
-						&slot_type,
-						self,
-						&color_pair,
-						&force_type,
-						soul_count,
-					)
+					.try_into_weapon(&pet_type, &slot_type, self, &color_pair, &force, soul_count)
 					.unwrap()
 			},
 		}
@@ -237,12 +230,12 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 					ColorType::from_byte(AvatarUtils::high_nibble_of(hash_byte)),
 					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
 				);
-				let force_type = ForceType::from_byte(
-					hash_provider.get_hash_byte() % variant_count::<ForceType>() as u8,
+				let force = Force::from_byte(
+					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
 				);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
-					.into_unidentified(color_pair, force_type, soul_count)
+					.into_unidentified(color_pair, force, soul_count)
 			},
 		}
 		.build()

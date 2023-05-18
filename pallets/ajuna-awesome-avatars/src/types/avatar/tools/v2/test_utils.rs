@@ -5,13 +5,13 @@ use crate::{
 		avatar::tools::v2::{
 			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils},
 			types::{
-				BlueprintItemType, ColorType, EquipableItemType, ForceType, MaterialItemType,
-				PetType, RarityType, SlotType,
+				BlueprintItemType, ColorType, EquipableItemType, MaterialItemType, PetType,
+				RarityType, SlotType,
 			},
 		},
 		Avatar, AvatarVersion, ForgeOutput, LeaderForgeOutput, SoulCount,
 	},
-	Config, Pallet,
+	Config, Force, Pallet,
 };
 use sp_core::bounded::BoundedVec;
 
@@ -130,7 +130,7 @@ pub(crate) fn create_random_armor_component(
 	rarity_type: &RarityType,
 	equipable_type: &[EquipableItemType],
 	color_pair: &(ColorType, ColorType),
-	force_type: &ForceType,
+	force: &Force,
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -144,7 +144,7 @@ pub(crate) fn create_random_armor_component(
 					equipable_type,
 					rarity_type,
 					color_pair,
-					force_type,
+					force,
 					soul_points,
 				)
 				.unwrap()
@@ -160,7 +160,7 @@ pub(crate) fn create_random_weapon(
 	slot_type: &SlotType,
 	equipable_type: &EquipableItemType,
 	color_pair: &(ColorType, ColorType),
-	force_type: &ForceType,
+	force: &Force,
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -173,7 +173,7 @@ pub(crate) fn create_random_weapon(
 					slot_type,
 					equipable_type,
 					color_pair,
-					force_type,
+					force,
 					soul_points,
 				)
 				.unwrap()
@@ -204,7 +204,7 @@ pub(crate) fn create_random_egg(
 pub(crate) fn create_random_glow_spark(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	force_type: &ForceType,
+	force: &Force,
 	soul_points: SoulCount,
 	progress_array: Option<[u8; 11]>,
 ) -> (AvatarIdOf<Test>, Avatar) {
@@ -213,7 +213,7 @@ pub(crate) fn create_random_glow_spark(
 		base_dna,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_glow_spark(force_type, soul_points, progress_array)
+				.into_glow_spark(force, soul_points, progress_array)
 				.build()
 		}),
 	)
