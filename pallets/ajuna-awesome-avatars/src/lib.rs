@@ -393,6 +393,8 @@ pub mod pallet {
 		CannotClaimDuringSeason,
 		/// Tried claiming treasury which is zero.
 		CannotClaimZero,
+		/// The components tried to mint were not compatible.
+		IncompatibleMintComponents,
 		/// The components tried to forge were not compatible.
 		IncompatibleForgeComponents,
 		/// The amount of sacrifices is not sufficient for forging.

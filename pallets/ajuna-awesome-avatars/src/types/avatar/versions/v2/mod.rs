@@ -76,7 +76,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 					rolled_item_type,
 					&mut hash_provider,
 					base_avatar,
-				);
+				)?;
 
 				Avatars::<T>::insert(avatar_id, (player, avatar));
 				Owners::<T>::try_append(&player, avatar_id)
@@ -104,7 +104,7 @@ impl<T: Config> MinterV2<T> {
 		item_type: ItemType,
 		hash_provider: &mut HashProvider<T, 32>,
 		avatar: Avatar,
-	) -> Avatar {
+	) -> Result<Avatar, DispatchError> {
 		match item_type {
 			ItemType::Pet => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
@@ -155,6 +155,7 @@ impl<T: Config> MinterV2<T> {
 			)
 			.mutate_from_base(avatar, hash_provider),
 		}
+		.map_err(|_| Error::<T>::IncompatibleMintComponents.into())
 	}
 }
 
