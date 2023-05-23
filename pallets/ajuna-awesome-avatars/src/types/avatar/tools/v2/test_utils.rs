@@ -6,10 +6,10 @@ use crate::{
 			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils},
 			types::{
 				BlueprintItemType, ColorType, EquipableItemType, MaterialItemType, PetType,
-				RarityType, SlotType,
+				SlotType,
 			},
 		},
-		Avatar, AvatarVersion, ForgeOutput, LeaderForgeOutput, SoulCount,
+		Avatar, AvatarVersion, ForgeOutput, LeaderForgeOutput, RarityTier, SoulCount,
 	},
 	Config, Force, Pallet,
 };
@@ -127,7 +127,7 @@ pub(crate) fn create_random_armor_component(
 	account: &MockAccountId,
 	pet_type: &PetType,
 	slot_type: &SlotType,
-	rarity_type: &RarityType,
+	rarity: &RarityTier,
 	equipable_type: &[EquipableItemType],
 	color_pair: &(ColorType, ColorType),
 	force: &Force,
@@ -142,7 +142,7 @@ pub(crate) fn create_random_armor_component(
 					pet_type,
 					slot_type,
 					equipable_type,
-					rarity_type,
+					rarity,
 					color_pair,
 					force,
 					soul_points,
@@ -185,7 +185,7 @@ pub(crate) fn create_random_weapon(
 pub(crate) fn create_random_egg(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	rarity_type: &RarityType,
+	rarity: &RarityTier,
 	pet_variation: u8,
 	soul_points: SoulCount,
 	progress_array: [u8; 11],
@@ -195,7 +195,7 @@ pub(crate) fn create_random_egg(
 		base_dna,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_egg(rarity_type, pet_variation, soul_points, Some(progress_array))
+				.into_egg(rarity, pet_variation, soul_points, Some(progress_array))
 				.build()
 		}),
 	)

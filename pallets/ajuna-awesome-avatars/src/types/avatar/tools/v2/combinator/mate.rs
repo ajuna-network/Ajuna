@@ -111,7 +111,7 @@ impl<T: Config> AvatarCombinator<T> {
 				let dna =
 					AvatarMinterV2::<T>(PhantomData).generate_base_avatar_dna(hash_provider, 10)?;
 				let generated_egg = AvatarBuilder::with_dna(season_id, dna)
-					.into_egg(&RarityType::Rare, pet_variation, soul_points, None)
+					.into_egg(&RarityTier::Rare, pet_variation, soul_points, None)
 					.build();
 				Ok::<_, DispatchError>(ForgeOutput::Minted(generated_egg))
 			})

@@ -36,7 +36,7 @@ impl NftConvertible for Avatar {
 		vec![
 			(DNA, self.dna.clone().encode()),
 			(SOUL_POINTS, self.souls.encode()),
-			(RARITY, RarityTier::from(self.rarity()).encode()),
+			(RARITY, RarityTier::from_byte(self.rarity()).encode()),
 			(FORCE, Force::from_byte(self.force()).encode()),
 		]
 	}

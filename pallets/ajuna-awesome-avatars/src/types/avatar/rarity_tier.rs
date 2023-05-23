@@ -46,18 +46,22 @@ impl fmt::Display for RarityTier {
 	}
 }
 
-impl From<u8> for RarityTier {
-	fn from(value: u8) -> Self {
-		match value {
-			x if x == 0 => Self::None,
-			x if x == 1 => Self::Common,
-			x if x == 2 => Self::Uncommon,
-			x if x == 3 => Self::Rare,
-			x if x == 4 => Self::Epic,
-			x if x == 5 => Self::Legendary,
-			x if x == 6 => Self::Mythical,
+impl ByteConvertible for RarityTier {
+	fn from_byte(byte: u8) -> Self {
+		match byte {
+			0 => Self::None,
+			1 => Self::Common,
+			2 => Self::Uncommon,
+			3 => Self::Rare,
+			4 => Self::Epic,
+			5 => Self::Legendary,
+			6 => Self::Mythical,
 			_ => Self::default(),
 		}
+	}
+
+	fn as_byte(&self) -> u8 {
+		self.clone() as u8
 	}
 }
 

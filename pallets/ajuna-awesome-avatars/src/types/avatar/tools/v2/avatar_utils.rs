@@ -1,7 +1,7 @@
 use super::{constants::*, types::*, ByteType};
 use crate::{
 	types::{Avatar, AvatarVersion, Dna, SeasonId, SoulCount},
-	ByteConvertible, Config, Force, Ranged,
+	ByteConvertible, Config, Force, Ranged, RarityTier,
 };
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
@@ -15,7 +15,7 @@ pub enum AvatarAttributes {
 	ClassType2,
 	CustomType1,
 	CustomType2,
-	RarityType,
+	RarityTier,
 	Quantity,
 }
 
@@ -94,11 +94,11 @@ impl AvatarBuilder {
 		progress_array: Option<[u8; 11]>,
 		soul_points: SoulCount,
 	) -> Self {
-		let rarity_type = RarityType::Legendary;
+		let rarity = RarityTier::Legendary;
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				&rarity_type,
+				&rarity,
 				SCALING_FACTOR_PERC,
 				PROGRESS_PROBABILITY_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -110,7 +110,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
 			.with_spec_bytes(spec_bytes)
@@ -144,7 +144,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
-			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Uncommon)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
@@ -185,14 +185,14 @@ impl AvatarBuilder {
 
 	pub fn into_egg(
 		self,
-		rarity_type: &RarityType,
+		rarity: &RarityTier,
 		pet_variation: u8,
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				rarity_type,
+				rarity,
 				SCALING_FACTOR_PERC,
 				PROGRESS_PROBABILITY_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -206,7 +206,7 @@ impl AvatarBuilder {
 			// Unused
 			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
 			.with_progress_array(progress_array)
@@ -221,7 +221,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
 			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
 			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
-			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Common)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Common)
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
@@ -238,7 +238,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Uncommon)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
@@ -249,11 +249,11 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
-		let rarity_type = RarityType::Uncommon;
+		let rarity = RarityTier::Uncommon;
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				&rarity_type,
+				&rarity,
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -267,7 +267,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, color_pair.0.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, color_pair.1.as_byte())
@@ -287,11 +287,11 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
-		let rarity_type = RarityType::Rare;
+		let rarity = RarityTier::Rare;
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				&rarity_type,
+				&rarity,
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -305,7 +305,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
@@ -325,13 +325,13 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
-		let rarity_type = RarityType::Rare;
+		let rarity = RarityTier::Rare;
 
 		let color_bytes = ((color_pair.0.as_byte() - 1) << 6) | ((color_pair.1.as_byte() - 1) << 4);
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				&rarity_type,
+				&rarity,
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -345,7 +345,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, color_bytes)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
@@ -365,11 +365,11 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
-		let rarity_type = RarityType::Epic;
+		let rarity = RarityTier::Epic;
 
 		let progress_array = progress_array.unwrap_or_else(|| {
 			AvatarUtils::generate_progress_bytes(
-				&rarity_type,
+				&rarity,
 				SCALING_FACTOR_PERC,
 				SPARK_PROGRESS_PROB_PERC,
 				AvatarUtils::read_progress_array(&self.inner),
@@ -383,7 +383,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
@@ -402,7 +402,7 @@ impl AvatarBuilder {
 		pet_type: &PetType,
 		slot_type: &SlotType,
 		equipable_type: &[EquipableItemType],
-		rarity_type: &RarityType,
+		rarity: &RarityTier,
 		color_pair: &(ColorType, ColorType),
 		force: &Force,
 		soul_points: SoulCount,
@@ -428,7 +428,7 @@ impl AvatarBuilder {
 		let first_equipable = equipable_type.first().unwrap();
 
 		let progress_array = AvatarUtils::generate_progress_bytes(
-			rarity_type,
+			rarity,
 			SCALING_FACTOR_PERC,
 			PROGRESS_PROBABILITY_PERC,
 			AvatarUtils::read_progress_array(&self.inner),
@@ -440,7 +440,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
@@ -479,10 +479,10 @@ impl AvatarBuilder {
 			info
 		};
 
-		let rarity_type = RarityType::Legendary;
+		let rarity = RarityTier::Legendary;
 
 		let progress_array = AvatarUtils::generate_progress_bytes(
-			&rarity_type,
+			&rarity,
 			SCALING_FACTOR_PERC,
 			PROGRESS_PROBABILITY_PERC,
 			AvatarUtils::read_progress_array(&self.inner),
@@ -494,7 +494,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
+			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
@@ -532,7 +532,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
-			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Rare)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
 			.with_attribute_raw(&AvatarAttributes::Quantity, soul_points as u8)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
@@ -569,7 +569,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Legendary)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Legendary)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, git_info)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte())
@@ -583,7 +583,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Common)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Common)
 			.with_attribute_raw(&AvatarAttributes::Quantity, soul_points as u8)
 			.with_soul_count(soul_points)
 	}
@@ -713,7 +713,7 @@ impl AvatarUtils {
 			AvatarAttributes::ClassType2 => Self::read_dna_strand(avatar, 1, &ByteType::Low),
 			AvatarAttributes::CustomType1 => Self::read_dna_strand(avatar, 2, &ByteType::High),
 			AvatarAttributes::CustomType2 => Self::read_dna_strand(avatar, 4, &ByteType::Full),
-			AvatarAttributes::RarityType => Self::read_dna_strand(avatar, 2, &ByteType::Low),
+			AvatarAttributes::RarityTier => Self::read_dna_strand(avatar, 2, &ByteType::Low),
 			AvatarAttributes::Quantity => Self::read_dna_strand(avatar, 3, &ByteType::Full),
 		}
 	}
@@ -737,7 +737,7 @@ impl AvatarUtils {
 				Self::write_dna_strand(avatar, 2, ByteType::High, value),
 			AvatarAttributes::CustomType2 =>
 				Self::write_dna_strand(avatar, 4, ByteType::Full, value),
-			AvatarAttributes::RarityType => Self::write_dna_strand(avatar, 2, ByteType::Low, value),
+			AvatarAttributes::RarityTier => Self::write_dna_strand(avatar, 2, ByteType::Low, value),
 			AvatarAttributes::Quantity => Self::write_dna_strand(avatar, 3, ByteType::Full, value),
 		}
 	}
@@ -865,7 +865,7 @@ impl AvatarUtils {
 			let variation_2 = Self::read_dna_at(&array_2, i, &ByteType::Low);
 
 			let have_same_rarity = rarity_1 == rarity_2;
-			let is_maxed = rarity_1 > lowest_1 || lowest_1 == RarityType::Legendary.as_byte();
+			let is_maxed = rarity_1 > lowest_1 || lowest_1 == RarityTier::Legendary.as_byte();
 			let byte_match = Self::match_progress_byte(variation_1, variation_2);
 
 			if have_same_rarity && !is_maxed && byte_match {
@@ -1011,14 +1011,14 @@ impl AvatarUtils {
 	}
 
 	pub fn generate_progress_bytes(
-		rarity_type: &RarityType,
+		rarity: &RarityTier,
 		scale_factor: u32,
 		probability: u32,
 		mut progress_bytes: [u8; 11],
 	) -> [u8; 11] {
 		for i in 0..progress_bytes.len() {
 			let random_value = Self::read_dna_at(&progress_bytes, i, &ByteType::Full);
-			let mut new_rarity = rarity_type.as_byte();
+			let mut new_rarity = rarity.as_byte();
 
 			// Upcast random_value
 			if (random_value as u32).saturating_mul(scale_factor) < (probability * MAX_BYTE) {
@@ -1034,7 +1034,7 @@ impl AvatarUtils {
 			);
 		}
 
-		Self::write_dna_at(&mut progress_bytes, 10, ByteType::High, rarity_type.as_byte());
+		Self::write_dna_at(&mut progress_bytes, 10, ByteType::High, rarity.as_byte());
 
 		progress_bytes
 	}
