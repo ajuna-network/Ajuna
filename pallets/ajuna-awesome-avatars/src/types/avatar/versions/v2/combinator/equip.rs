@@ -74,9 +74,9 @@ mod test {
 				create_random_pet(&ALICE, &PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
 
 			let armor_progress = vec![
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorComponent1,
-				EquipableItemType::ArmorComponent2,
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorComponent1,
+				EquippableItemType::ArmorComponent2,
 			];
 
 			let sacrifice_hash_base = [
@@ -130,7 +130,7 @@ mod test {
 				&ALICE,
 				&pet_type,
 				&SlotType::WeaponBack,
-				&EquipableItemType::WeaponVersion2,
+				&EquippableItemType::WeaponVersion2,
 				&color_pair,
 				&force,
 				100,
@@ -177,7 +177,7 @@ mod test {
 					&ALICE,
 					&pet_type,
 					&SlotType::WeaponFront,
-					&EquipableItemType::WeaponVersion3,
+					&EquippableItemType::WeaponVersion3,
 					&color_pair,
 					&force,
 					100,
@@ -241,9 +241,9 @@ mod test {
 				&SlotType::ArmFront,
 				&RarityTier::Legendary,
 				&[
-					EquipableItemType::ArmorBase,
-					EquipableItemType::ArmorComponent1,
-					EquipableItemType::ArmorComponent2,
+					EquippableItemType::ArmorBase,
+					EquippableItemType::ArmorComponent1,
+					EquippableItemType::ArmorComponent2,
 				],
 				&(ColorType::ColorC, ColorType::ColorB),
 				&Force::Astral,

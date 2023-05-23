@@ -137,7 +137,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 	}
 }
 
-impl<T: Config> AvatarMutator<T> for EquipableItemType {
+impl<T: Config> AvatarMutator<T> for EquippableItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
@@ -147,10 +147,10 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 		let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 
 		let avatar = match *self {
-			EquipableItemType::ArmorBase |
-			EquipableItemType::ArmorComponent1 |
-			EquipableItemType::ArmorComponent2 |
-			EquipableItemType::ArmorComponent3 => {
+			EquippableItemType::ArmorBase |
+			EquippableItemType::ArmorComponent1 |
+			EquippableItemType::ArmorComponent2 |
+			EquippableItemType::ArmorComponent3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
 
 				let rarity = {
@@ -171,9 +171,9 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 					soul_count,
 				)
 			},
-			EquipableItemType::WeaponVersion1 |
-			EquipableItemType::WeaponVersion2 |
-			EquipableItemType::WeaponVersion3 => {
+			EquippableItemType::WeaponVersion1 |
+			EquippableItemType::WeaponVersion2 |
+			EquippableItemType::WeaponVersion3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&WEAPON_SLOT_PROBABILITIES, hash_provider);
 
 				let hash_byte = hash_provider.get_hash_byte();
@@ -211,17 +211,24 @@ impl<T: Config> AvatarMutator<T> for BlueprintItemType {
 
 		let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 		let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
-		let equipable_item_type =
+		let equippable_item_type =
 			SlotRoller::<T>::roll_on(&EQUIPMENT_TYPE_PROBABILITIES, hash_provider);
 
 		let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 		let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 			base_seed,
-			equipable_item_type.as_byte() as usize,
+			equippable_item_type.as_byte() as usize,
 		);
 
 		let avatar = AvatarBuilder::with_base_avatar(base_avatar)
-			.into_blueprint(self, &pet_type, &slot_type, &equipable_item_type, &pattern, soul_count)
+			.into_blueprint(
+				self,
+				&pet_type,
+				&slot_type,
+				&equippable_item_type,
+				&pattern,
+				soul_count,
+			)
 			.build();
 
 		Ok(avatar)

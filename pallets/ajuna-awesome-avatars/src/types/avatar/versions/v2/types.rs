@@ -118,7 +118,7 @@ pub(crate) enum ItemType {
 	Pet = 1,
 	Material = 2,
 	Essence = 3,
-	Equipable = 4,
+	Equippable = 4,
 	Blueprint = 5,
 	Special = 6,
 }
@@ -129,7 +129,7 @@ impl ByteConvertible for ItemType {
 			1 => Self::Pet,
 			2 => Self::Material,
 			3 => Self::Essence,
-			4 => Self::Equipable,
+			4 => Self::Equippable,
 			5 => Self::Blueprint,
 			6 => Self::Special,
 			_ => Self::default(),
@@ -165,7 +165,7 @@ impl ByteConvertible for PetItemType {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) enum EquipableItemType {
+pub(crate) enum EquippableItemType {
 	#[default]
 	ArmorBase = 1,
 	ArmorComponent1 = 2,
@@ -176,7 +176,7 @@ pub(crate) enum EquipableItemType {
 	WeaponVersion3 = 7,
 }
 
-impl ByteConvertible for EquipableItemType {
+impl ByteConvertible for EquippableItemType {
 	fn from_byte(byte: u8) -> Self {
 		match byte {
 			1 => Self::ArmorBase,
@@ -195,24 +195,24 @@ impl ByteConvertible for EquipableItemType {
 	}
 }
 
-impl Ranged for EquipableItemType {
+impl Ranged for EquippableItemType {
 	fn range() -> Range<usize> {
 		1..8
 	}
 }
 
-impl EquipableItemType {
-	pub fn is_armor(item: EquipableItemType) -> bool {
-		item == EquipableItemType::ArmorBase ||
-			item == EquipableItemType::ArmorComponent1 ||
-			item == EquipableItemType::ArmorComponent2 ||
-			item == EquipableItemType::ArmorComponent3
+impl EquippableItemType {
+	pub fn is_armor(item: EquippableItemType) -> bool {
+		item == EquippableItemType::ArmorBase ||
+			item == EquippableItemType::ArmorComponent1 ||
+			item == EquippableItemType::ArmorComponent2 ||
+			item == EquippableItemType::ArmorComponent3
 	}
 
-	pub fn is_weapon(item: EquipableItemType) -> bool {
-		item == EquipableItemType::WeaponVersion1 ||
-			item == EquipableItemType::WeaponVersion2 ||
-			item == EquipableItemType::WeaponVersion3
+	pub fn is_weapon(item: EquippableItemType) -> bool {
+		item == EquippableItemType::WeaponVersion1 ||
+			item == EquippableItemType::WeaponVersion2 ||
+			item == EquippableItemType::WeaponVersion3
 	}
 }
 

@@ -26,8 +26,8 @@ impl<T: Config> AvatarCombinator<T> {
 		if AvatarUtils::has_attribute_set_with_values(
 			&input_leader,
 			&[
-				(AvatarAttributes::ItemType, ItemType::Equipable.as_byte()),
-				(AvatarAttributes::ItemSubType, EquipableItemType::ArmorBase.as_byte()),
+				(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
+				(AvatarAttributes::ItemSubType, EquippableItemType::ArmorBase.as_byte()),
 			],
 		) && leader_rarity < rarity
 		{
@@ -36,11 +36,11 @@ impl<T: Config> AvatarCombinator<T> {
 				AvatarUtils::has_attribute_with_value(
 					sacrifice,
 					&AvatarAttributes::ItemType,
-					ItemType::Equipable,
+					ItemType::Equippable,
 				) && AvatarUtils::has_attribute_with_value_different_than(
 					sacrifice,
 					&AvatarAttributes::ItemSubType,
-					EquipableItemType::ArmorBase,
+					EquippableItemType::ArmorBase,
 				)
 			}) {
 				AvatarUtils::add_spec_byte_from(
@@ -176,7 +176,7 @@ mod test {
 						&PetType::FoxishDude,
 						&SlotType::Head,
 						&RarityTier::Common,
-						&[EquipableItemType::ArmorBase],
+						&[EquippableItemType::ArmorBase],
 						&(ColorType::None, ColorType::None),
 						&Force::None,
 						i as SoulCount,
@@ -265,11 +265,11 @@ mod test {
 			];
 
 			let mut armor_component_set = [
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorBase,
-				EquipableItemType::ArmorComponent1,
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorComponent1,
 			]
 			.into_iter()
 			.zip(hash_base)
@@ -306,12 +306,12 @@ mod test {
 				expected_progress_array
 			);
 
-			let pre_assemble = AvatarUtils::bits_to_enums::<EquipableItemType>(
+			let pre_assemble = AvatarUtils::bits_to_enums::<EquippableItemType>(
 				AvatarUtils::read_spec_byte(&leader_armor_component.1, &AvatarSpecBytes::SpecByte1)
 					as u32,
 			);
 			assert_eq!(pre_assemble.len(), 1);
-			assert_eq!(pre_assemble[0], EquipableItemType::ArmorBase);
+			assert_eq!(pre_assemble[0], EquippableItemType::ArmorBase);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::assemble_avatars(
 				leader_armor_component,
@@ -327,12 +327,12 @@ mod test {
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
 				assert_eq!(avatar.souls, 7);
 
-				let post_assemble = AvatarUtils::bits_to_enums::<EquipableItemType>(
+				let post_assemble = AvatarUtils::bits_to_enums::<EquippableItemType>(
 					AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1) as u32,
 				);
 				assert_eq!(post_assemble.len(), 2);
-				assert_eq!(post_assemble[0], EquipableItemType::ArmorBase);
-				assert_eq!(post_assemble[1], EquipableItemType::ArmorComponent1);
+				assert_eq!(post_assemble[0], EquippableItemType::ArmorBase);
+				assert_eq!(post_assemble[1], EquippableItemType::ArmorComponent1);
 
 				let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
 				let expected_leader_progress_array =
@@ -391,7 +391,7 @@ mod test {
 						&PetType::FoxishDude,
 						&slot_type,
 						&RarityTier::Common,
-						&[EquipableItemType::ArmorBase],
+						&[EquippableItemType::ArmorBase],
 						&(ColorType::None, ColorType::None),
 						&Force::None,
 						i as SoulCount,

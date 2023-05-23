@@ -130,7 +130,7 @@ impl<T: Config> MinterV2<T> {
 				hash_provider,
 			)
 			.mutate_from_base(avatar, hash_provider),
-			ItemType::Equipable => SlotRoller::<T>::roll_on_pack_type(
+			ItemType::Equippable => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
@@ -253,7 +253,7 @@ impl<T: Config> AvatarForgerV2<T> {
 					RarityTier::Legendary => match leader_sub_type {
 						PetItemType::Pet => {
 							if input_sacrifices.iter().all(|sacrifice| {
-								let equipable_item = AvatarUtils::read_attribute_as(
+								let equippable_item = AvatarUtils::read_attribute_as(
 									sacrifice,
 									&AvatarAttributes::ItemSubType,
 								);
@@ -265,9 +265,9 @@ impl<T: Config> AvatarForgerV2<T> {
 								) && AvatarUtils::has_attribute_with_value(
 									sacrifice,
 									&AvatarAttributes::ItemType,
-									ItemType::Equipable,
-								) && (equipable_item == EquipableItemType::ArmorBase ||
-									EquipableItemType::is_weapon(equipable_item))
+									ItemType::Equippable,
+								) && (equippable_item == EquippableItemType::ArmorBase ||
+									EquippableItemType::is_weapon(equippable_item))
 							}) {
 								ForgeType::Equip
 							} else if input_sacrifices.iter().all(|sacrifice| {
@@ -414,7 +414,7 @@ impl<T: Config> AvatarForgerV2<T> {
 					EssenceItemType::PaintFlask | EssenceItemType::ForceGlow => ForgeType::None,
 				}
 			},
-			ItemType::Equipable => {
+			ItemType::Equippable => {
 				let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
 					input_leader,
 					&AvatarAttributes::RarityTier,
@@ -423,7 +423,7 @@ impl<T: Config> AvatarForgerV2<T> {
 				match leader_rarity {
 					RarityTier::Legendary | RarityTier::Mythical => ForgeType::None,
 					_ => {
-						let equipable_item = AvatarUtils::read_attribute_as::<EquipableItemType>(
+						let equippable_item = AvatarUtils::read_attribute_as::<EquippableItemType>(
 							input_leader,
 							&AvatarAttributes::ItemSubType,
 						);
@@ -444,8 +444,8 @@ impl<T: Config> AvatarForgerV2<T> {
 
 						let all_sacrifice_are_armor_part_or_essence =
 							input_sacrifices.iter().all(|sacrifice| {
-								let equipable_sacrifice_item =
-									AvatarUtils::read_attribute_as::<EquipableItemType>(
+								let equippable_sacrifice_item =
+									AvatarUtils::read_attribute_as::<EquippableItemType>(
 										input_leader,
 										&AvatarAttributes::ItemSubType,
 									);
@@ -458,7 +458,7 @@ impl<T: Config> AvatarForgerV2<T> {
 										AvatarAttributes::ClassType1,
 										AvatarAttributes::ClassType2,
 									],
-								) && EquipableItemType::is_armor(equipable_sacrifice_item)) ||
+								) && EquippableItemType::is_armor(equippable_sacrifice_item)) ||
 									AvatarUtils::has_attribute_with_value(
 										sacrifice,
 										&AvatarAttributes::ItemType,
@@ -466,7 +466,7 @@ impl<T: Config> AvatarForgerV2<T> {
 									)
 							});
 
-						if EquipableItemType::is_armor(equipable_item) &&
+						if EquippableItemType::is_armor(equippable_item) &&
 							any_sacrifice_full_match_leader &&
 							all_sacrifice_are_armor_part_or_essence
 						{
@@ -565,7 +565,7 @@ mod test {
 				&PetType::TankyBullwog,
 				&SlotType::ArmBack,
 				&RarityTier::Uncommon,
-				&[EquipableItemType::ArmorComponent2],
+				&[EquippableItemType::ArmorComponent2],
 				&(ColorType::ColorA, ColorType::None),
 				&Force::Thermal,
 				2,
@@ -577,7 +577,7 @@ mod test {
 					&PetType::TankyBullwog,
 					&SlotType::ArmBack,
 					&RarityTier::Common,
-					&[EquipableItemType::ArmorComponent2],
+					&[EquippableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,
@@ -599,7 +599,7 @@ mod test {
 				&PetType::FoxishDude,
 				&SlotType::ArmBack,
 				&RarityTier::Common,
-				&[EquipableItemType::ArmorComponent2],
+				&[EquippableItemType::ArmorComponent2],
 				&(ColorType::None, ColorType::ColorD),
 				&Force::Astral,
 				2,
@@ -639,7 +639,7 @@ mod test {
 
 			let pet_type = PetType::TankyBullwog;
 			let slot_type = SlotType::ArmBack;
-			let equip_type = EquipableItemType::ArmorComponent2;
+			let equip_type = EquippableItemType::ArmorComponent2;
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
@@ -681,7 +681,7 @@ mod test {
 					&PetType::TankyBullwog,
 					&SlotType::ArmBack,
 					&RarityTier::Legendary,
-					&[EquipableItemType::ArmorBase],
+					&[EquippableItemType::ArmorBase],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,
@@ -701,7 +701,7 @@ mod test {
 					&PetType::FoxishDude,
 					&SlotType::ArmBack,
 					&RarityTier::Common,
-					&[EquipableItemType::ArmorComponent2],
+					&[EquippableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,

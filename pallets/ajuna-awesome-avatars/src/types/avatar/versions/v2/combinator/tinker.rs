@@ -72,15 +72,15 @@ impl<T: Config> AvatarCombinator<T> {
 				todo!()
 			}
 
-			let equipable_item_type = {
+			let equippable_item_type = {
 				if pattern_flags[0] {
-					EquipableItemType::ArmorBase
+					EquippableItemType::ArmorBase
 				} else if pattern_flags[1] {
-					EquipableItemType::ArmorComponent1
+					EquippableItemType::ArmorComponent1
 				} else if pattern_flags[2] {
-					EquipableItemType::ArmorComponent2
+					EquippableItemType::ArmorComponent2
 				} else if pattern_flags[3] {
-					EquipableItemType::ArmorComponent3
+					EquippableItemType::ArmorComponent3
 				} else {
 					// https://github.com/ajuna-network/Ajuna.AAA.Season2/blob/master/Ajuna.AAA.Season2/Game.cs#L899
 					todo!()
@@ -99,7 +99,7 @@ impl<T: Config> AvatarCombinator<T> {
 					&BlueprintItemType::Blueprint,
 					&pet_type,
 					&slot_type,
-					&equipable_item_type,
+					&equippable_item_type,
 					&sacrifice_pattern,
 					soul_points as SoulCount,
 				)
@@ -140,7 +140,7 @@ mod test {
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
-				EquipableItemType::ArmorBase.as_byte() as usize,
+				EquippableItemType::ArmorBase.as_byte() as usize,
 			);
 
 			assert_eq!(
@@ -194,7 +194,7 @@ mod test {
 					));
 					assert_eq!(
 						AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte3),
-						EquipableItemType::ArmorBase.as_byte()
+						EquippableItemType::ArmorBase.as_byte()
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
@@ -222,7 +222,7 @@ mod test {
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
-				EquipableItemType::ArmorBase.as_byte() as usize,
+				EquippableItemType::ArmorBase.as_byte() as usize,
 			);
 
 			assert_eq!(
@@ -310,7 +310,7 @@ mod test {
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
-				EquipableItemType::ArmorBase.as_byte() as usize,
+				EquippableItemType::ArmorBase.as_byte() as usize,
 			);
 
 			assert_eq!(
@@ -388,7 +388,7 @@ mod test {
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
-				EquipableItemType::ArmorBase.as_byte() as usize,
+				EquippableItemType::ArmorBase.as_byte() as usize,
 			);
 
 			assert_eq!(
@@ -464,7 +464,7 @@ mod test {
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
-				EquipableItemType::ArmorBase.as_byte() as usize,
+				EquippableItemType::ArmorBase.as_byte() as usize,
 			);
 
 			assert_eq!(
@@ -542,7 +542,7 @@ mod test {
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
-				EquipableItemType::ArmorComponent3.as_byte() as usize,
+				EquippableItemType::ArmorComponent3.as_byte() as usize,
 			);
 
 			assert_eq!(
@@ -596,7 +596,7 @@ mod test {
 					));
 					assert_eq!(
 						AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte3),
-						EquipableItemType::ArmorComponent3.as_byte()
+						EquippableItemType::ArmorComponent3.as_byte()
 					);
 					assert_eq!(
 						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),

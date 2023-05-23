@@ -25,7 +25,7 @@ pub(crate) const PACK_TYPE_MATERIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemTyp
 	(ItemType::Pet, 150),
 	(ItemType::Material, 700),
 	(ItemType::Essence, 50),
-	(ItemType::Equipable, 50),
+	(ItemType::Equippable, 50),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 50),
 ];
@@ -59,16 +59,16 @@ pub(crate) const PACK_TYPE_MATERIAL_ESSENCE_ITEM_TYPE_PROBABILITIES: Probability
 ];
 
 pub(crate) const PACK_TYPE_MATERIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
-	EquipableItemType,
+	EquippableItemType,
 	7,
 > = [
-	(EquipableItemType::ArmorBase, 970),
-	(EquipableItemType::ArmorComponent1, 0),
-	(EquipableItemType::ArmorComponent2, 0),
-	(EquipableItemType::ArmorComponent3, 0),
-	(EquipableItemType::WeaponVersion1, 10),
-	(EquipableItemType::WeaponVersion2, 10),
-	(EquipableItemType::WeaponVersion3, 10),
+	(EquippableItemType::ArmorBase, 970),
+	(EquippableItemType::ArmorComponent1, 0),
+	(EquippableItemType::ArmorComponent2, 0),
+	(EquippableItemType::ArmorComponent3, 0),
+	(EquippableItemType::WeaponVersion1, 10),
+	(EquippableItemType::WeaponVersion2, 10),
+	(EquippableItemType::WeaponVersion3, 10),
 ];
 
 pub(crate) const PACK_TYPE_MATERIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -87,7 +87,7 @@ pub(crate) const PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES: ProbabilitySlots<ItemTy
 	(ItemType::Pet, 100),
 	(ItemType::Material, 350),
 	(ItemType::Essence, 300),
-	(ItemType::Equipable, 50),
+	(ItemType::Equippable, 50),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
@@ -121,16 +121,16 @@ pub(crate) const PACK_TYPE_EQUIPMENT_ESSENCE_ITEM_TYPE_PROBABILITIES: Probabilit
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
-	EquipableItemType,
+	EquippableItemType,
 	7,
 > = [
-	(EquipableItemType::ArmorBase, 10),
-	(EquipableItemType::ArmorComponent1, 250),
-	(EquipableItemType::ArmorComponent2, 250),
-	(EquipableItemType::ArmorComponent3, 250),
-	(EquipableItemType::WeaponVersion1, 80),
-	(EquipableItemType::WeaponVersion2, 80),
-	(EquipableItemType::WeaponVersion3, 80),
+	(EquippableItemType::ArmorBase, 10),
+	(EquippableItemType::ArmorComponent1, 250),
+	(EquippableItemType::ArmorComponent2, 250),
+	(EquippableItemType::ArmorComponent3, 250),
+	(EquippableItemType::WeaponVersion1, 80),
+	(EquippableItemType::WeaponVersion2, 80),
+	(EquippableItemType::WeaponVersion3, 80),
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -149,7 +149,7 @@ pub(crate) const PACK_TYPE_SPECIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemType
 	(ItemType::Pet, 300),
 	(ItemType::Material, 350),
 	(ItemType::Essence, 100),
-	(ItemType::Equipable, 50),
+	(ItemType::Equippable, 50),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
@@ -183,16 +183,16 @@ pub(crate) const PACK_TYPE_SPECIAL_ESSENCE_ITEM_TYPE_PROBABILITIES: ProbabilityS
 ];
 
 pub(crate) const PACK_TYPE_SPECIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
-	EquipableItemType,
+	EquippableItemType,
 	7,
 > = [
-	(EquipableItemType::ArmorBase, 10),
-	(EquipableItemType::ArmorComponent1, 250),
-	(EquipableItemType::ArmorComponent2, 250),
-	(EquipableItemType::ArmorComponent3, 250),
-	(EquipableItemType::WeaponVersion1, 80),
-	(EquipableItemType::WeaponVersion2, 80),
-	(EquipableItemType::WeaponVersion3, 80),
+	(EquippableItemType::ArmorBase, 10),
+	(EquippableItemType::ArmorComponent1, 250),
+	(EquippableItemType::ArmorComponent2, 250),
+	(EquippableItemType::ArmorComponent3, 250),
+	(EquippableItemType::WeaponVersion1, 80),
+	(EquippableItemType::WeaponVersion2, 80),
+	(EquippableItemType::WeaponVersion3, 80),
 ];
 
 pub(crate) const PACK_TYPE_SPECIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -231,12 +231,12 @@ pub(crate) const PET_TYPE_PROBABILITIES: ProbabilitySlots<PetType, 7> = [
 ];
 
 /// Probabilities for equipment type
-pub(crate) const EQUIPMENT_TYPE_PROBABILITIES: ProbabilitySlots<EquipableItemType, 7> = [
-	(EquipableItemType::ArmorBase, 250),
-	(EquipableItemType::ArmorComponent1, 150),
-	(EquipableItemType::ArmorComponent3, 150),
-	(EquipableItemType::ArmorComponent3, 150),
-	(EquipableItemType::WeaponVersion1, 100),
-	(EquipableItemType::WeaponVersion2, 100),
-	(EquipableItemType::WeaponVersion3, 100),
+pub(crate) const EQUIPMENT_TYPE_PROBABILITIES: ProbabilitySlots<EquippableItemType, 7> = [
+	(EquippableItemType::ArmorBase, 250),
+	(EquippableItemType::ArmorComponent1, 150),
+	(EquippableItemType::ArmorComponent3, 150),
+	(EquippableItemType::ArmorComponent3, 150),
+	(EquippableItemType::WeaponVersion1, 100),
+	(EquippableItemType::WeaponVersion2, 100),
+	(EquippableItemType::WeaponVersion3, 100),
 ];
