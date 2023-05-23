@@ -180,7 +180,7 @@ impl AvatarBuilder {
 				&AvatarSpecBytes::SpecByte8,
 				AvatarUtils::enums_order_to_bits(&comp_3) as u8,
 			)
-			.with_soul_count((quantity * custom_type_1.as_byte()) as SoulCount)
+			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
 
 	pub fn into_egg(
@@ -210,7 +210,7 @@ impl AvatarBuilder {
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
 			.with_progress_array(progress_array)
-			.with_soul_count(soul_points as SoulCount)
+			.with_soul_count(soul_points)
 	}
 
 	pub fn into_material(self, material_type: &MaterialItemType, quantity: u8) -> Self {
@@ -225,7 +225,7 @@ impl AvatarBuilder {
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_soul_count((quantity * custom_type_1.as_byte()) as SoulCount)
+			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
 
 	pub fn into_glimmer(self, quantity: u8) -> Self {
