@@ -143,7 +143,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::PetPart)
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
+			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
 			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
