@@ -124,26 +124,26 @@ impl AvatarBuilder {
 		let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 		let base_0 = AvatarUtils::create_pattern::<NibbleType>(
 			base_seed,
-			EquipableItemType::ArmorBase.as_byte() as usize,
+			EquippableItemType::ArmorBase.as_byte() as usize,
 		);
 		let comp_1 = AvatarUtils::create_pattern::<NibbleType>(
 			base_seed,
-			EquipableItemType::ArmorComponent1.as_byte() as usize,
+			EquippableItemType::ArmorComponent1.as_byte() as usize,
 		);
 		let comp_2 = AvatarUtils::create_pattern::<NibbleType>(
 			base_seed,
-			EquipableItemType::ArmorComponent2.as_byte() as usize,
+			EquippableItemType::ArmorComponent2.as_byte() as usize,
 		);
 		let comp_3 = AvatarUtils::create_pattern::<NibbleType>(
 			base_seed,
-			EquipableItemType::ArmorComponent3.as_byte() as usize,
+			EquippableItemType::ArmorComponent3.as_byte() as usize,
 		);
 
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
 			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::PetPart)
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
+			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
 			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
@@ -180,7 +180,7 @@ impl AvatarBuilder {
 				&AvatarSpecBytes::SpecByte8,
 				AvatarUtils::enums_order_to_bits(&comp_3) as u8,
 			)
-			.with_soul_count((quantity * custom_type_1.as_byte()) as SoulCount)
+			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
 
 	pub fn into_egg(
@@ -210,7 +210,7 @@ impl AvatarBuilder {
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
 			.with_progress_array(progress_array)
-			.with_soul_count(soul_points as SoulCount)
+			.with_soul_count(soul_points)
 	}
 
 	pub fn into_material(self, material_type: &MaterialItemType, quantity: u8) -> Self {
@@ -225,7 +225,7 @@ impl AvatarBuilder {
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_soul_count((quantity * custom_type_1.as_byte()) as SoulCount)
+			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
 
 	pub fn into_glimmer(self, quantity: u8) -> Self {
@@ -401,20 +401,20 @@ impl AvatarBuilder {
 		self,
 		pet_type: &PetType,
 		slot_type: &SlotType,
-		equipable_type: &[EquipableItemType],
+		equippable_type: &[EquippableItemType],
 		rarity: &RarityTier,
 		color_pair: &(ColorType, ColorType),
 		force: &Force,
 		soul_points: SoulCount,
 	) -> Result<Self, ()> {
-		if equipable_type.is_empty() ||
-			equipable_type.iter().any(|equip| !EquipableItemType::is_armor(equip.clone()))
+		if equippable_type.is_empty() ||
+			equippable_type.iter().any(|equip| !EquippableItemType::is_armor(equip.clone()))
 		{
 			return Err(())
 		}
 
 		let armor_assemble_progress = {
-			let mut progress = AvatarUtils::enums_to_bits(equipable_type) as u8;
+			let mut progress = AvatarUtils::enums_to_bits(equippable_type) as u8;
 
 			if color_pair.0 != ColorType::None && color_pair.1 != ColorType::None {
 				progress |=
@@ -425,7 +425,7 @@ impl AvatarBuilder {
 		};
 
 		// Guaranteed to work because of check above
-		let first_equipable = equipable_type.first().unwrap();
+		let first_equippable = equippable_type.first().unwrap();
 
 		let progress_array = AvatarUtils::generate_progress_bytes(
 			rarity,
@@ -435,8 +435,8 @@ impl AvatarBuilder {
 		);
 
 		Ok(self
-			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equipable)
-			.with_attribute(&AvatarAttributes::ItemSubType, first_equipable)
+			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equippable)
+			.with_attribute(&AvatarAttributes::ItemSubType, first_equippable)
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
@@ -460,17 +460,17 @@ impl AvatarBuilder {
 		self,
 		pet_type: &PetType,
 		slot_type: &SlotType,
-		equipable_type: &EquipableItemType,
+		equippable_type: &EquippableItemType,
 		color_pair: &(ColorType, ColorType),
 		force: &Force,
 		soul_points: SoulCount,
 	) -> Result<Self, ()> {
-		if !EquipableItemType::is_weapon(equipable_type.clone()) {
+		if !EquippableItemType::is_weapon(equippable_type.clone()) {
 			return Err(())
 		}
 
 		let weapon_info = {
-			let mut info = AvatarUtils::enums_to_bits(&[equipable_type.clone()]) as u8 >> 4;
+			let mut info = AvatarUtils::enums_to_bits(&[equippable_type.clone()]) as u8 >> 4;
 
 			if color_pair.0 != ColorType::None && color_pair.1 != ColorType::None {
 				info |= ((color_pair.0.as_byte() - 1) << 6) | ((color_pair.1.as_byte() - 1) << 4)
@@ -489,8 +489,8 @@ impl AvatarBuilder {
 		);
 
 		Ok(self
-			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equipable)
-			.with_attribute(&AvatarAttributes::ItemSubType, equipable_type)
+			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equippable)
+			.with_attribute(&AvatarAttributes::ItemSubType, equippable_type)
 			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
@@ -515,7 +515,7 @@ impl AvatarBuilder {
 		blueprint_type: &BlueprintItemType,
 		pet_type: &PetType,
 		slot_type: &SlotType,
-		equipable_item_type: &EquipableItemType,
+		equippable_item_type: &EquippableItemType,
 		pattern: &[MaterialItemType],
 		soul_points: SoulCount,
 	) -> Self {
@@ -544,7 +544,7 @@ impl AvatarBuilder {
 				&AvatarSpecBytes::SpecByte2,
 				AvatarUtils::enums_order_to_bits(pattern) as u8,
 			)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, equipable_item_type.as_byte())
+			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, equippable_item_type.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, mat_req1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, mat_req2)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, mat_req3)
@@ -1018,12 +1018,14 @@ impl AvatarUtils {
 	) -> [u8; 11] {
 		for i in 0..progress_bytes.len() {
 			let random_value = Self::read_dna_at(&progress_bytes, i, &ByteType::Full);
-			let mut new_rarity = rarity.as_byte();
 
 			// Upcast random_value
-			if (random_value as u32).saturating_mul(scale_factor) < (probability * MAX_BYTE) {
-				new_rarity = new_rarity.saturating_add(1);
-			}
+			let new_rarity =
+				if (random_value as u32).saturating_mul(scale_factor) < (probability * MAX_BYTE) {
+					rarity.upgrade().as_byte()
+				} else {
+					rarity.as_byte()
+				};
 
 			Self::write_dna_at(&mut progress_bytes, i, ByteType::High, new_rarity);
 			Self::write_dna_at(
@@ -1247,7 +1249,7 @@ mod test {
 
 		let pattern_1 = AvatarUtils::create_pattern::<NibbleType>(
 			base_seed,
-			EquipableItemType::ArmorBase.as_byte() as usize,
+			EquippableItemType::ArmorBase.as_byte() as usize,
 		);
 		let p10 = AvatarUtils::enums_to_bits(&pattern_1);
 		let p11 = AvatarUtils::enums_order_to_bits(&pattern_1);
@@ -1267,10 +1269,10 @@ mod test {
 			MaterialItemType::Optics
 		);
 
-		let test_set: Vec<(EquipableItemType, u32, u32)> = vec![
-			(EquipableItemType::ArmorComponent1, 0b_11_01_10_00, 0b_01_11_00_10),
-			(EquipableItemType::ArmorComponent2, 0b_01_01_01_01, 0b_01_11_10_00),
-			(EquipableItemType::ArmorComponent3, 0b_01_10_01_10, 0b_01_10_11_00),
+		let test_set: Vec<(EquippableItemType, u32, u32)> = vec![
+			(EquippableItemType::ArmorComponent1, 0b_11_01_10_00, 0b_01_11_00_10),
+			(EquippableItemType::ArmorComponent2, 0b_01_01_01_01, 0b_01_11_10_00),
+			(EquippableItemType::ArmorComponent3, 0b_01_10_01_10, 0b_01_10_11_00),
 		];
 
 		for (armor_component, enum_to_bits, enum_order_to_bits) in test_set {

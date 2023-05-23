@@ -6,7 +6,7 @@ pub(crate) trait AvatarMutator<T: Config> {
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar;
+	) -> Result<Avatar, ()>;
 }
 
 impl<T: Config> AvatarMutator<T> for PetItemType {
@@ -14,8 +14,8 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar {
-		match self {
+	) -> Result<Avatar, ()> {
+		let avatar = match self {
 			PetItemType::Pet => {
 				let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 				let pet_variation = 2_u8.pow(pet_type.as_byte() as u32);
@@ -59,7 +59,9 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				)
 			},
 		}
-		.build()
+		.build();
+
+		Ok(avatar)
 	}
 }
 
@@ -68,10 +70,12 @@ impl<T: Config> AvatarMutator<T> for MaterialItemType {
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar {
-		AvatarBuilder::with_base_avatar(base_avatar)
+	) -> Result<Avatar, ()> {
+		let avatar = AvatarBuilder::with_base_avatar(base_avatar)
 			.into_material(self, (hash_provider.get_hash_byte() % MAX_QUANTITY) + 1)
-			.build()
+			.build();
+
+		Ok(avatar)
 	}
 }
 
@@ -80,10 +84,10 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar {
+	) -> Result<Avatar, ()> {
 		let souls = (hash_provider.get_hash_byte() % 99) + 1;
 
-		match *self {
+		let avatar = match *self {
 			EssenceItemType::Glimmer =>
 				AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(souls),
 			EssenceItemType::ColorSpark | EssenceItemType::PaintFlask => {
@@ -127,24 +131,26 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 				}
 			},
 		}
-		.build()
+		.build();
+
+		Ok(avatar)
 	}
 }
 
-impl<T: Config> AvatarMutator<T> for EquipableItemType {
+impl<T: Config> AvatarMutator<T> for EquippableItemType {
 	fn mutate_from_base(
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar {
+	) -> Result<Avatar, ()> {
 		let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
 		let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 
-		match *self {
-			EquipableItemType::ArmorBase |
-			EquipableItemType::ArmorComponent1 |
-			EquipableItemType::ArmorComponent2 |
-			EquipableItemType::ArmorComponent3 => {
+		let avatar = match *self {
+			EquippableItemType::ArmorBase |
+			EquippableItemType::ArmorComponent1 |
+			EquippableItemType::ArmorComponent2 |
+			EquippableItemType::ArmorComponent3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
 
 				let rarity = {
@@ -155,21 +161,19 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 					}
 				};
 
-				AvatarBuilder::with_base_avatar(base_avatar)
-					.try_into_armor_and_component(
-						&pet_type,
-						&slot_type,
-						&[self.clone()],
-						&rarity,
-						&(ColorType::None, ColorType::None),
-						&Force::None,
-						soul_count,
-					)
-					.unwrap()
+				AvatarBuilder::with_base_avatar(base_avatar).try_into_armor_and_component(
+					&pet_type,
+					&slot_type,
+					&[self.clone()],
+					&rarity,
+					&(ColorType::None, ColorType::None),
+					&Force::None,
+					soul_count,
+				)
 			},
-			EquipableItemType::WeaponVersion1 |
-			EquipableItemType::WeaponVersion2 |
-			EquipableItemType::WeaponVersion3 => {
+			EquippableItemType::WeaponVersion1 |
+			EquippableItemType::WeaponVersion2 |
+			EquippableItemType::WeaponVersion3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&WEAPON_SLOT_PROBABILITIES, hash_provider);
 
 				let hash_byte = hash_provider.get_hash_byte();
@@ -181,12 +185,19 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
 				);
 
-				AvatarBuilder::with_base_avatar(base_avatar)
-					.try_into_weapon(&pet_type, &slot_type, self, &color_pair, &force, soul_count)
-					.unwrap()
+				AvatarBuilder::with_base_avatar(base_avatar).try_into_weapon(
+					&pet_type,
+					&slot_type,
+					self,
+					&color_pair,
+					&force,
+					soul_count,
+				)
 			},
-		}
-		.build()
+		}?
+		.build();
+
+		Ok(avatar)
 	}
 }
 
@@ -195,23 +206,32 @@ impl<T: Config> AvatarMutator<T> for BlueprintItemType {
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar {
+	) -> Result<Avatar, ()> {
 		let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
 
 		let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 		let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
-		let equipable_item_type =
+		let equippable_item_type =
 			SlotRoller::<T>::roll_on(&EQUIPMENT_TYPE_PROBABILITIES, hash_provider);
 
 		let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 		let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 			base_seed,
-			equipable_item_type.as_byte() as usize,
+			equippable_item_type.as_byte() as usize,
 		);
 
-		AvatarBuilder::with_base_avatar(base_avatar)
-			.into_blueprint(self, &pet_type, &slot_type, &equipable_item_type, &pattern, soul_count)
-			.build()
+		let avatar = AvatarBuilder::with_base_avatar(base_avatar)
+			.into_blueprint(
+				self,
+				&pet_type,
+				&slot_type,
+				&equippable_item_type,
+				&pattern,
+				soul_count,
+			)
+			.build();
+
+		Ok(avatar)
 	}
 }
 
@@ -220,8 +240,8 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 		&self,
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Avatar {
-		match self {
+	) -> Result<Avatar, ()> {
+		let avatar = match self {
 			SpecialItemType::Dust => AvatarBuilder::with_base_avatar(base_avatar).into_dust(1),
 			SpecialItemType::Unidentified => {
 				let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
@@ -238,6 +258,8 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 					.into_unidentified(color_pair, force, soul_count)
 			},
 		}
-		.build()
+		.build();
+
+		Ok(avatar)
 	}
 }

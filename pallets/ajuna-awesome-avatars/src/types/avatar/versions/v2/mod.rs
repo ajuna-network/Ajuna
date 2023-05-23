@@ -38,23 +38,58 @@ impl AttributeMapper for AttributeMapperV2 {
 	}
 }
 
-pub(super) struct AvatarMinterV2<T: Config>(pub PhantomData<T>);
+pub(crate) struct MinterV2<T: Config>(pub PhantomData<T>);
 
-impl<T: Config> Minter<T> for AvatarMinterV2<T> {
-	fn mint_avatar_set(
-		&self,
+impl<T: Config> Minter<T> for MinterV2<T> {
+	fn mint(
 		player: &T::AccountId,
 		season_id: &SeasonId,
-		_season: &SeasonOf<T>,
 		mint_option: &MintOption,
-	) -> Result<Vec<MintOutput<T>>, DispatchError> {
-		self.mint_avatar_set_for(player, season_id, mint_option)
+	) -> Result<Vec<AvatarIdOf<T>>, DispatchError> {
+		let mut hash_provider =
+			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
+
+		let roll_amount = mint_option.pack_size.as_mint_count() as usize;
+		(0..roll_amount)
+			.map(|i| {
+				let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
+					mint_option.pack_type.clone(),
+					&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
+					&PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES,
+					&PACK_TYPE_SPECIAL_ITEM_PROBABILITIES,
+					&mut hash_provider,
+				);
+
+				let avatar_id = Pallet::<T>::random_hash(b"avatar_minter_v2", player);
+
+				let dna_mutation = (i * 13) % 31;
+				let base_dna = Self::generate_base_avatar_dna(&mut hash_provider, dna_mutation)?;
+				let base_avatar = Avatar {
+					season_id: *season_id,
+					version: AvatarVersion::V2,
+					dna: base_dna,
+					souls: SoulCount::zero(),
+				};
+
+				let avatar = Self::mutate_from_item_type(
+					mint_option.pack_type.clone(),
+					rolled_item_type,
+					&mut hash_provider,
+					base_avatar,
+				)?;
+
+				Avatars::<T>::insert(avatar_id, (player, avatar));
+				Owners::<T>::try_append(&player, avatar_id)
+					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+
+				Ok(avatar_id)
+			})
+			.collect()
 	}
 }
 
-impl<T: Config> AvatarMinterV2<T> {
+impl<T: Config> MinterV2<T> {
 	pub(super) fn generate_base_avatar_dna(
-		&self,
 		hash_provider: &mut HashProvider<T, 32>,
 		starting_index: usize,
 	) -> Result<Dna, DispatchError> {
@@ -64,102 +99,63 @@ impl<T: Config> AvatarMinterV2<T> {
 			.map_err(|_| Error::<T>::IncorrectDna.into())
 	}
 
-	fn get_mutator_from_item_type(
-		&self,
+	fn mutate_from_item_type(
 		pack_type: PackType,
 		item_type: ItemType,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Box<dyn AvatarMutator<T>> {
+		avatar: Avatar,
+	) -> Result<Avatar, DispatchError> {
 		match item_type {
-			ItemType::Pet => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			ItemType::Pet => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_PET_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_PET_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_PET_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Material => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Material => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_MATERIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_MATERIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_MATERIAL_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Essence => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Essence => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_ESSENCE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_ESSENCE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_ESSENCE_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Equipable => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Equippable => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Blueprint => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Blueprint => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Special => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Special => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_SPECIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_SPECIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_SPECIAL_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
+			)
+			.mutate_from_base(avatar, hash_provider),
 		}
-	}
-
-	fn mint_avatar_set_for(
-		&self,
-		player: &T::AccountId,
-		season_id: &SeasonId,
-		mint_option: &MintOption,
-	) -> Result<Vec<MintOutput<T>>, DispatchError> {
-		let mut hash_provider =
-			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_minter_v2", player));
-
-		let roll_amount = mint_option.count.clone() as usize;
-		let mut minted_avatars = Vec::with_capacity(roll_amount);
-
-		for i in 0..roll_amount {
-			let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
-				mint_option.mint_pack.clone(),
-				&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
-				&PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES,
-				&PACK_TYPE_SPECIAL_ITEM_PROBABILITIES,
-				&mut hash_provider,
-			);
-
-			let avatar_id = Pallet::<T>::random_hash(b"avatar_minter_v2", player);
-
-			let dna_mutation = (i * 13) % 31;
-			let base_dna = self.generate_base_avatar_dna(&mut hash_provider, dna_mutation)?;
-			let base_avatar = Avatar {
-				season_id: *season_id,
-				version: AvatarVersion::V2,
-				dna: base_dna,
-				souls: SoulCount::zero(),
-			};
-
-			let avatar = self
-				.get_mutator_from_item_type(
-					mint_option.mint_pack.clone(),
-					rolled_item_type,
-					&mut hash_provider,
-				)
-				.mutate_from_base(base_avatar, &mut hash_provider);
-
-			minted_avatars.push((avatar_id, avatar));
-		}
-
-		Ok(minted_avatars)
+		.map_err(|_| Error::<T>::IncompatibleMintComponents.into())
 	}
 }
 
@@ -257,7 +253,7 @@ impl<T: Config> AvatarForgerV2<T> {
 					RarityTier::Legendary => match leader_sub_type {
 						PetItemType::Pet => {
 							if input_sacrifices.iter().all(|sacrifice| {
-								let equipable_item = AvatarUtils::read_attribute_as(
+								let equippable_item = AvatarUtils::read_attribute_as(
 									sacrifice,
 									&AvatarAttributes::ItemSubType,
 								);
@@ -269,9 +265,9 @@ impl<T: Config> AvatarForgerV2<T> {
 								) && AvatarUtils::has_attribute_with_value(
 									sacrifice,
 									&AvatarAttributes::ItemType,
-									ItemType::Equipable,
-								) && (equipable_item == EquipableItemType::ArmorBase ||
-									EquipableItemType::is_weapon(equipable_item))
+									ItemType::Equippable,
+								) && (equippable_item == EquippableItemType::ArmorBase ||
+									EquippableItemType::is_weapon(equippable_item))
 							}) {
 								ForgeType::Equip
 							} else if input_sacrifices.iter().all(|sacrifice| {
@@ -418,7 +414,7 @@ impl<T: Config> AvatarForgerV2<T> {
 					EssenceItemType::PaintFlask | EssenceItemType::ForceGlow => ForgeType::None,
 				}
 			},
-			ItemType::Equipable => {
+			ItemType::Equippable => {
 				let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
 					input_leader,
 					&AvatarAttributes::RarityTier,
@@ -427,7 +423,7 @@ impl<T: Config> AvatarForgerV2<T> {
 				match leader_rarity {
 					RarityTier::Legendary | RarityTier::Mythical => ForgeType::None,
 					_ => {
-						let equipable_item = AvatarUtils::read_attribute_as::<EquipableItemType>(
+						let equippable_item = AvatarUtils::read_attribute_as::<EquippableItemType>(
 							input_leader,
 							&AvatarAttributes::ItemSubType,
 						);
@@ -448,8 +444,8 @@ impl<T: Config> AvatarForgerV2<T> {
 
 						let all_sacrifice_are_armor_part_or_essence =
 							input_sacrifices.iter().all(|sacrifice| {
-								let equipable_sacrifice_item =
-									AvatarUtils::read_attribute_as::<EquipableItemType>(
+								let equippable_sacrifice_item =
+									AvatarUtils::read_attribute_as::<EquippableItemType>(
 										input_leader,
 										&AvatarAttributes::ItemSubType,
 									);
@@ -462,7 +458,7 @@ impl<T: Config> AvatarForgerV2<T> {
 										AvatarAttributes::ClassType1,
 										AvatarAttributes::ClassType2,
 									],
-								) && EquipableItemType::is_armor(equipable_sacrifice_item)) ||
+								) && EquippableItemType::is_armor(equippable_sacrifice_item)) ||
 									AvatarUtils::has_attribute_with_value(
 										sacrifice,
 										&AvatarAttributes::ItemType,
@@ -470,7 +466,7 @@ impl<T: Config> AvatarForgerV2<T> {
 									)
 							});
 
-						if EquipableItemType::is_armor(equipable_item) &&
+						if EquippableItemType::is_armor(equippable_item) &&
 							any_sacrifice_full_match_leader &&
 							all_sacrifice_are_armor_part_or_essence
 						{
@@ -569,7 +565,7 @@ mod test {
 				&PetType::TankyBullwog,
 				&SlotType::ArmBack,
 				&RarityTier::Uncommon,
-				&[EquipableItemType::ArmorComponent2],
+				&[EquippableItemType::ArmorComponent2],
 				&(ColorType::ColorA, ColorType::None),
 				&Force::Thermal,
 				2,
@@ -581,7 +577,7 @@ mod test {
 					&PetType::TankyBullwog,
 					&SlotType::ArmBack,
 					&RarityTier::Common,
-					&[EquipableItemType::ArmorComponent2],
+					&[EquippableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,
@@ -603,7 +599,7 @@ mod test {
 				&PetType::FoxishDude,
 				&SlotType::ArmBack,
 				&RarityTier::Common,
-				&[EquipableItemType::ArmorComponent2],
+				&[EquippableItemType::ArmorComponent2],
 				&(ColorType::None, ColorType::ColorD),
 				&Force::Astral,
 				2,
@@ -643,7 +639,7 @@ mod test {
 
 			let pet_type = PetType::TankyBullwog;
 			let slot_type = SlotType::ArmBack;
-			let equip_type = EquipableItemType::ArmorComponent2;
+			let equip_type = EquippableItemType::ArmorComponent2;
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
 				base_seed,
@@ -685,7 +681,7 @@ mod test {
 					&PetType::TankyBullwog,
 					&SlotType::ArmBack,
 					&RarityTier::Legendary,
-					&[EquipableItemType::ArmorBase],
+					&[EquippableItemType::ArmorBase],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,
@@ -705,7 +701,7 @@ mod test {
 					&PetType::FoxishDude,
 					&SlotType::ArmBack,
 					&RarityTier::Common,
-					&[EquipableItemType::ArmorComponent2],
+					&[EquippableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,

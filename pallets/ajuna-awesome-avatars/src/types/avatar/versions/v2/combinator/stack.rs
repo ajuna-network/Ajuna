@@ -32,8 +32,7 @@ impl<T: Config> AvatarCombinator<T> {
 			if hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC < STACK_PROB_PERC * MAX_BYTE {
 				match glimmer_avatar {
 					None => {
-						let dna = AvatarMinterV2::<T>(PhantomData)
-							.generate_base_avatar_dna(hash_provider, i)?;
+						let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, i)?;
 						glimmer_avatar =
 							Some(AvatarBuilder::with_dna(season_id, dna).into_glimmer(1).build());
 					},

@@ -1,8 +1,8 @@
 mod v1;
 mod v2;
 
-pub(crate) use v1::AttributeMapperV1;
-pub(crate) use v2::AttributeMapperV2;
+pub(crate) use v1::{AttributeMapperV1, MinterV1};
+pub(crate) use v2::{AttributeMapperV2, MinterV2};
 
 use crate::*;
 use frame_support::pallet_prelude::*;
@@ -16,44 +16,12 @@ pub(crate) trait AttributeMapper {
 	fn force(target: &Avatar) -> u8;
 }
 
-/// Trait used to implement generic minting logic for an entity.
-pub(crate) trait MintProvider<T: Config> {
-	fn get_minter(&self) -> Box<dyn Minter<T>>;
-	fn with_minter<F, R>(&self, func: F) -> R
-	where
-		F: Fn(Box<dyn Minter<T>>) -> R;
-}
-
-impl<T> MintProvider<T> for AvatarVersion
-where
-	T: Config,
-{
-	fn get_minter(&self) -> Box<dyn Minter<T>> {
-		match self {
-			AvatarVersion::V1 => Box::new(v1::AvatarMinterV1::<T>(PhantomData)),
-			AvatarVersion::V2 => Box::new(v2::AvatarMinterV2::<T>(PhantomData)),
-		}
-	}
-
-	fn with_minter<F, R>(&self, func: F) -> R
-	where
-		F: Fn(Box<dyn Minter<T>>) -> R,
-	{
-		func(self.get_minter())
-	}
-}
-
-/// A tuple containing and avatar identifier with its represented avatar, returned as mint output.
-pub(crate) type MintOutput<T> = (AvatarIdOf<T>, Avatar);
-
 pub(crate) trait Minter<T: Config> {
-	fn mint_avatar_set(
-		&self,
+	fn mint(
 		player: &T::AccountId,
 		season_id: &SeasonId,
-		season: &SeasonOf<T>,
 		mint_option: &MintOption,
-	) -> Result<Vec<MintOutput<T>>, DispatchError>;
+	) -> Result<Vec<AvatarIdOf<T>>, DispatchError>;
 }
 
 /// Trait used to implement generic forging logic for an entity.

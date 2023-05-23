@@ -65,7 +65,7 @@ impl<T: Config> AvatarCombinator<T> {
 			let max_build = 6_usize;
 			let mut build_prop = SCALING_FACTOR_PERC;
 
-			let mut generated_equipables = Vec::with_capacity(3);
+			let mut generated_equippables = Vec::with_capacity(3);
 
 			for i in 0..=max_build {
 				if soul_points > 0 &&
@@ -81,7 +81,7 @@ impl<T: Config> AvatarCombinator<T> {
 						&AvatarAttributes::ClassType1,
 					);
 
-					let equipable_item_type = AvatarUtils::read_spec_byte_as::<EquipableItemType>(
+					let equippable_item_type = AvatarUtils::read_spec_byte_as::<EquippableItemType>(
 						&input_leader.1,
 						&AvatarSpecBytes::SpecByte3,
 					);
@@ -99,13 +99,12 @@ impl<T: Config> AvatarCombinator<T> {
 						}
 					};
 
-					let dna = AvatarMinterV2::<T>(PhantomData)
-						.generate_base_avatar_dna(hash_provider, 9)?;
-					let generated_equipable = AvatarBuilder::with_dna(season_id, dna)
+					let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, 9)?;
+					let generated_equippable = AvatarBuilder::with_dna(season_id, dna)
 						.try_into_armor_and_component(
 							&pet_type,
 							&slot_type,
-							&[equipable_item_type],
+							&[equippable_item_type],
 							&rarity_value,
 							&(ColorType::None, ColorType::None),
 							&Force::None,
@@ -114,7 +113,7 @@ impl<T: Config> AvatarCombinator<T> {
 						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?
 						.build();
 
-					generated_equipables.push(generated_equipable);
+					generated_equippables.push(generated_equippable);
 
 					soul_points -= 1;
 				}
@@ -124,12 +123,12 @@ impl<T: Config> AvatarCombinator<T> {
 
 			for _ in 0..soul_points as usize {
 				let sacrifice_index =
-					hash_provider.get_hash_byte() as usize % generated_equipables.len();
-				generated_equipables[sacrifice_index].souls.saturating_inc();
+					hash_provider.get_hash_byte() as usize % generated_equippables.len();
+				generated_equippables[sacrifice_index].souls.saturating_inc();
 			}
 
 			output_sacrifices
-				.extend(generated_equipables.into_iter().map(|gen| ForgeOutput::Minted(gen)));
+				.extend(generated_equippables.into_iter().map(|gen| ForgeOutput::Minted(gen)));
 		} else {
 			// TODO: Incomplete
 			output_sacrifices.extend(
@@ -159,7 +158,7 @@ mod test {
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
+			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
@@ -206,7 +205,7 @@ mod test {
 			// We minted equipment pieces for each material
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 4);
 
-			// All minted items are ArmorBase equipables
+			// All minted items are ArmorBase equippables
 			assert_eq!(
 				sacrifice_output
 					.iter()
@@ -214,10 +213,10 @@ mod test {
 						is_minted_with_attributes(
 							output,
 							&[
-								(AvatarAttributes::ItemType, ItemType::Equipable.as_byte()),
+								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
 								(
 									AvatarAttributes::ItemSubType,
-									EquipableItemType::ArmorBase.as_byte(),
+									EquippableItemType::ArmorBase.as_byte(),
 								),
 							],
 						)
@@ -246,7 +245,7 @@ mod test {
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
+			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
@@ -294,7 +293,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
 			// We minted equipment pieces for each material
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 4);
-			// All minted items are ArmorBase equipables
+			// All minted items are ArmorBase equippables
 			assert_eq!(
 				sacrifice_output
 					.iter()
@@ -302,10 +301,10 @@ mod test {
 						is_minted_with_attributes(
 							output,
 							&[
-								(AvatarAttributes::ItemType, ItemType::Equipable.as_byte()),
+								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
 								(
 									AvatarAttributes::ItemSubType,
-									EquipableItemType::ArmorBase.as_byte(),
+									EquippableItemType::ArmorBase.as_byte(),
 								),
 							],
 						)
@@ -350,7 +349,7 @@ mod test {
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
+			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
@@ -398,7 +397,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 4);
 			// We minted equipment pieces for each material
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 7);
-			// All minted items are ArmorBase equipables
+			// All minted items are ArmorBase equippables
 			assert_eq!(
 				sacrifice_output
 					.iter()
@@ -406,10 +405,10 @@ mod test {
 						is_minted_with_attributes(
 							output,
 							&[
-								(AvatarAttributes::ItemType, ItemType::Equipable.as_byte()),
+								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
 								(
 									AvatarAttributes::ItemSubType,
-									EquipableItemType::ArmorBase.as_byte(),
+									EquippableItemType::ArmorBase.as_byte(),
 								),
 							],
 						)
@@ -454,7 +453,7 @@ mod test {
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
+			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
@@ -539,7 +538,7 @@ mod test {
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
-			let equip_type = EquipableItemType::ArmorBase;
+			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
@@ -633,7 +632,7 @@ mod test {
 
 			let pet_type = PetType::TankyBullwog;
 			let slot_type = SlotType::ArmBack;
-			let equip_type = EquipableItemType::ArmorComponent2;
+			let equip_type = EquippableItemType::ArmorComponent2;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
 			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
@@ -680,7 +679,7 @@ mod test {
 			// We minted equipment pieces for each material
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 4);
 
-			// All minted items are ArmorBase equipables
+			// All minted items are ArmorBase equippables
 			assert_eq!(
 				sacrifice_output
 					.iter()
@@ -688,10 +687,10 @@ mod test {
 						is_minted_with_attributes(
 							output,
 							&[
-								(AvatarAttributes::ItemType, ItemType::Equipable.as_byte()),
+								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
 								(
 									AvatarAttributes::ItemSubType,
-									EquipableItemType::ArmorComponent2.as_byte(),
+									EquippableItemType::ArmorComponent2.as_byte(),
 								),
 							],
 						)

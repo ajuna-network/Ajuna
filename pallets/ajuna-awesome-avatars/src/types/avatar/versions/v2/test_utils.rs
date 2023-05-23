@@ -2,10 +2,10 @@ use crate::{
 	mock::{MockAccountId, Test},
 	pallet::AvatarIdOf,
 	types::{
-		avatar::tools::v2::{
+		avatar::versions::v2::{
 			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils},
 			types::{
-				BlueprintItemType, ColorType, EquipableItemType, MaterialItemType, PetType,
+				BlueprintItemType, ColorType, EquippableItemType, MaterialItemType, PetType,
 				SlotType,
 			},
 		},
@@ -100,7 +100,7 @@ pub(crate) fn create_random_blueprint(
 	account: &MockAccountId,
 	pet_type: &PetType,
 	slot_type: &SlotType,
-	equipable_type: &EquipableItemType,
+	equippable_type: &EquippableItemType,
 	material_pattern: &[MaterialItemType],
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
@@ -113,7 +113,7 @@ pub(crate) fn create_random_blueprint(
 					&BlueprintItemType::Blueprint,
 					pet_type,
 					slot_type,
-					equipable_type,
+					equippable_type,
 					material_pattern,
 					soul_points,
 				)
@@ -128,7 +128,7 @@ pub(crate) fn create_random_armor_component(
 	pet_type: &PetType,
 	slot_type: &SlotType,
 	rarity: &RarityTier,
-	equipable_type: &[EquipableItemType],
+	equippable_type: &[EquippableItemType],
 	color_pair: &(ColorType, ColorType),
 	force: &Force,
 	soul_points: SoulCount,
@@ -141,7 +141,7 @@ pub(crate) fn create_random_armor_component(
 				.try_into_armor_and_component(
 					pet_type,
 					slot_type,
-					equipable_type,
+					equippable_type,
 					rarity,
 					color_pair,
 					force,
@@ -158,7 +158,7 @@ pub(crate) fn create_random_weapon(
 	account: &MockAccountId,
 	pet_type: &PetType,
 	slot_type: &SlotType,
-	equipable_type: &EquipableItemType,
+	equippable_type: &EquippableItemType,
 	color_pair: &(ColorType, ColorType),
 	force: &Force,
 	soul_points: SoulCount,
@@ -171,7 +171,7 @@ pub(crate) fn create_random_weapon(
 				.try_into_weapon(
 					pet_type,
 					slot_type,
-					equipable_type,
+					equippable_type,
 					color_pair,
 					force,
 					soul_points,

@@ -21,14 +21,21 @@ use frame_support::pallet_prelude::*;
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum MintPackSize {
 	#[default]
-	One = 1,
-	Three = 3,
-	Six = 6,
+	One,
+	Three,
+	Six,
 }
 
 impl MintPackSize {
 	pub(crate) fn is_batched(&self) -> bool {
 		self != &Self::One
+	}
+	pub(crate) fn as_mint_count(&self) -> MintCount {
+		match self {
+			MintPackSize::One => 1,
+			MintPackSize::Three => 3,
+			MintPackSize::Six => 6,
+		}
 	}
 }
 
@@ -51,7 +58,7 @@ impl<Balance> MintFees<Balance> {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub enum MintType {
+pub enum MintPayment {
 	/// Mint using free mint credits.
 	#[default]
 	Free,
@@ -70,14 +77,14 @@ pub enum PackType {
 /// Minting options
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct MintOption {
-	/// Type of minting.
-	pub mint_type: MintType,
-	/// Type of pack to mint
-	pub mint_pack: PackType,
-	/// Avatar version to mint
-	pub mint_version: AvatarVersion,
-	/// Number of avatars to mint.
-	pub count: MintPackSize,
+	/// The choice of payment for minting.
+	pub payment: MintPayment,
+	/// The choice of pack to mint.
+	pub pack_type: PackType,
+	/// The version of avatar to mint.
+	pub version: AvatarVersion,
+	/// The number of avatars to mint.
+	pub pack_size: MintPackSize,
 }
 
 pub type MintCount = u16;
