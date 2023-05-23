@@ -71,12 +71,12 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 					souls: SoulCount::zero(),
 				};
 
-				let avatar = Self::get_mutator_from_item_type(
+				let avatar = Self::mutate_from_item_type(
 					mint_option.pack_type.clone(),
 					rolled_item_type,
 					&mut hash_provider,
-				)
-				.mutate_from_base(base_avatar, &mut hash_provider);
+					base_avatar,
+				);
 
 				Avatars::<T>::insert(avatar_id, (player, avatar));
 				Owners::<T>::try_append(&player, avatar_id)
@@ -99,54 +99,61 @@ impl<T: Config> MinterV2<T> {
 			.map_err(|_| Error::<T>::IncorrectDna.into())
 	}
 
-	fn get_mutator_from_item_type(
+	fn mutate_from_item_type(
 		pack_type: PackType,
 		item_type: ItemType,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> Box<dyn AvatarMutator<T>> {
+		avatar: Avatar,
+	) -> Avatar {
 		match item_type {
-			ItemType::Pet => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			ItemType::Pet => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_PET_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_PET_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_PET_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Material => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Material => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_MATERIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_MATERIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_MATERIAL_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Essence => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Essence => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_ESSENCE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_ESSENCE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_ESSENCE_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Equipable => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Equipable => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Blueprint => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Blueprint => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
-			ItemType::Special => Box::new(SlotRoller::<T>::roll_on_pack_type(
+			)
+			.mutate_from_base(avatar, hash_provider),
+			ItemType::Special => SlotRoller::<T>::roll_on_pack_type(
 				pack_type,
 				&PACK_TYPE_MATERIAL_SPECIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_EQUIPMENT_SPECIAL_ITEM_TYPE_PROBABILITIES,
 				&PACK_TYPE_SPECIAL_SPECIAL_ITEM_TYPE_PROBABILITIES,
 				hash_provider,
-			)),
+			)
+			.mutate_from_base(avatar, hash_provider),
 		}
 	}
 }
