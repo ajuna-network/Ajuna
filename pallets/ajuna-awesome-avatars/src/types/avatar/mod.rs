@@ -58,15 +58,15 @@ pub struct Avatar {
 impl Avatar {
 	pub(crate) fn rarity(&self) -> u8 {
 		match self.version {
-			AvatarVersion::V1 => tools::AttributeMapperV1.rarity(self),
-			AvatarVersion::V2 => tools::AttributeMapperV2.rarity(self),
+			AvatarVersion::V1 => tools::AttributeMapperV1::rarity(self),
+			AvatarVersion::V2 => tools::AttributeMapperV2::rarity(self),
 		}
 	}
 
 	pub(crate) fn force(&self) -> u8 {
 		match self.version {
-			AvatarVersion::V1 => tools::AttributeMapperV1.force(self),
-			AvatarVersion::V2 => tools::AttributeMapperV2.force(self),
+			AvatarVersion::V1 => tools::AttributeMapperV1::force(self),
+			AvatarVersion::V2 => tools::AttributeMapperV2::force(self),
 		}
 	}
 }

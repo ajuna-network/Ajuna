@@ -5,11 +5,11 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData, vec::Vec};
 pub(crate) struct AttributeMapperV1;
 
 impl AttributeMapper for AttributeMapperV1 {
-	fn rarity(&self, target: &Avatar) -> u8 {
+	fn rarity(target: &Avatar) -> u8 {
 		target.dna.iter().map(|x| *x >> 4).min().unwrap_or_default()
 	}
 
-	fn force(&self, target: &Avatar) -> u8 {
+	fn force(target: &Avatar) -> u8 {
 		(target.dna.last().unwrap_or(&0) & 0b0000_1111).saturating_add(1)
 	}
 }
@@ -175,11 +175,11 @@ impl<T: Config> AvatarForgerV1<T> {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8, SoulCount), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes_for_target(target)?;
-		let leader_tier = AttributeMapperV1.rarity(target);
+		let leader_tier = AttributeMapperV1::rarity(target);
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0, SoulCount::zero()),
 			|(mut matched_components, mut matches, mut souls), other| {
-				let sacrifice_tier = AttributeMapperV1.rarity(other);
+				let sacrifice_tier = AttributeMapperV1::rarity(other);
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
 						self.compare(target, other, &upgradable_indexes, max_variations, max_tier);
@@ -197,7 +197,7 @@ impl<T: Config> AvatarForgerV1<T> {
 	}
 
 	fn upgradable_indexes_for_target(&self, target: &Avatar) -> Result<Vec<usize>, DispatchError> {
-		let min_tier = AttributeMapperV1.rarity(target);
+		let min_tier = AttributeMapperV1::rarity(target);
 		Ok(target
 			.dna
 			.iter()
@@ -271,7 +271,7 @@ impl<T: Config> AvatarForgerV1<T> {
 
 	fn forge_multiplier(&self, target: &Avatar, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
 		let current_period = season.current_period(now).saturating_add(1);
-		let last_variation = AttributeMapperV1.force(target) as u16;
+		let last_variation = AttributeMapperV1::force(target) as u16;
 		let max_variations = season.max_variations as u16;
 		let is_in_period = if last_variation == max_variations {
 			(current_period % max_variations).is_zero()

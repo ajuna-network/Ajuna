@@ -28,11 +28,11 @@ use sp_std::{mem::variant_count, prelude::*};
 pub(crate) struct AttributeMapperV2;
 
 impl AttributeMapper for AttributeMapperV2 {
-	fn rarity(&self, target: &Avatar) -> u8 {
+	fn rarity(target: &Avatar) -> u8 {
 		AvatarUtils::read_attribute(target, &AvatarAttributes::RarityTier).saturating_sub(1)
 	}
 
-	fn force(&self, target: &Avatar) -> u8 {
+	fn force(target: &Avatar) -> u8 {
 		// TODO: Determine proper mapping
 		AvatarUtils::read_spec_byte(target, &AvatarSpecBytes::SpecByte1).saturating_sub(1)
 	}
