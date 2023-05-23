@@ -28,7 +28,7 @@ use sp_std::{mem::variant_count, prelude::*};
 pub(crate) struct AttributeMapperV2;
 
 impl AttributeMapper for AttributeMapperV2 {
-	fn min_tier(&self, target: &Avatar) -> u8 {
+	fn rarity(&self, target: &Avatar) -> u8 {
 		AvatarUtils::read_attribute(target, &AvatarAttributes::RarityType).saturating_sub(1)
 	}
 

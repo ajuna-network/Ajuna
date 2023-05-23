@@ -5,7 +5,7 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData, vec::Vec};
 pub(crate) struct AttributeMapperV1;
 
 impl AttributeMapper for AttributeMapperV1 {
-	fn min_tier(&self, target: &Avatar) -> u8 {
+	fn rarity(&self, target: &Avatar) -> u8 {
 		target.dna.iter().map(|x| *x >> 4).min().unwrap_or_default()
 	}
 
@@ -175,11 +175,11 @@ impl<T: Config> AvatarForgerV1<T> {
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8, SoulCount), DispatchError> {
 		let upgradable_indexes = self.upgradable_indexes_for_target(target)?;
-		let leader_tier = AttributeMapperV1.min_tier(target);
+		let leader_tier = AttributeMapperV1.rarity(target);
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0, SoulCount::zero()),
 			|(mut matched_components, mut matches, mut souls), other| {
-				let sacrifice_tier = AttributeMapperV1.min_tier(other);
+				let sacrifice_tier = AttributeMapperV1.rarity(other);
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
 						self.compare(target, other, &upgradable_indexes, max_variations, max_tier);
@@ -197,7 +197,7 @@ impl<T: Config> AvatarForgerV1<T> {
 	}
 
 	fn upgradable_indexes_for_target(&self, target: &Avatar) -> Result<Vec<usize>, DispatchError> {
-		let min_tier = AttributeMapperV1.min_tier(target);
+		let min_tier = AttributeMapperV1.rarity(target);
 		Ok(target
 			.dna
 			.iter()

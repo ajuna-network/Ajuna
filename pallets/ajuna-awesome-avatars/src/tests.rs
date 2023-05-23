@@ -1440,7 +1440,7 @@ mod forging {
 
 	fn create_avatar_for_bob(dna: &[u8]) -> AvatarIdOf<Test> {
 		let avatar = Avatar::default().season_id(1).dna(dna);
-		if avatar.min_tier() == RarityTier::Legendary as u8 {
+		if avatar.rarity() == RarityTier::Legendary as u8 {
 			CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
 		}
 
@@ -1507,7 +1507,7 @@ mod forging {
 				));
 				let leader = Avatars::<Test>::get(leader_id).unwrap().1;
 				assert_eq!(leader.dna.to_vec(), dna_after.to_vec());
-				assert_eq!(leader.min_tier(), RarityTier::Common as u8);
+				assert_eq!(leader.rarity(), RarityTier::Common as u8);
 			});
 	}
 
@@ -1918,7 +1918,7 @@ mod forging {
 					&[0x04, 0x05, 0x05, 0x03]
 				);
 				assert_eq!(
-					Avatars::<Test>::get(leader_id).unwrap().1.min_tier(),
+					Avatars::<Test>::get(leader_id).unwrap().1.rarity(),
 					tiers[0].clone() as u8,
 				);
 
@@ -1934,7 +1934,7 @@ mod forging {
 					.unwrap();
 				Avatars::<Test>::insert(leader_id, &leader_avatar);
 				assert_eq!(
-					Avatars::<Test>::get(leader_id).unwrap().1.min_tier(),
+					Avatars::<Test>::get(leader_id).unwrap().1.rarity(),
 					tiers[1].clone() as u8
 				);
 

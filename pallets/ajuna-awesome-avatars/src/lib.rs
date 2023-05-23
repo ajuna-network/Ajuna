@@ -1275,8 +1275,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			match output_leader {
 				LeaderForgeOutput::Forged((leader_id, leader), upgraded_components) => {
-					let prev_leader_tier = input_leader.1.min_tier();
-					let after_leader_tier = leader.min_tier();
+					let prev_leader_tier = input_leader.1.rarity();
+					let after_leader_tier = leader.rarity();
 					let max_tier = season.max_tier() as u8;
 
 					if prev_leader_tier != max_tier && after_leader_tier == max_tier {

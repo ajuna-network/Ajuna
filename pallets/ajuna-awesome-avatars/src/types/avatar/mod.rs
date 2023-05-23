@@ -56,10 +56,10 @@ pub struct Avatar {
 }
 
 impl Avatar {
-	pub(crate) fn min_tier(&self) -> u8 {
+	pub(crate) fn rarity(&self) -> u8 {
 		match self.version {
-			AvatarVersion::V1 => tools::AttributeMapperV1.min_tier(self),
-			AvatarVersion::V2 => tools::AttributeMapperV2.min_tier(self),
+			AvatarVersion::V1 => tools::AttributeMapperV1.rarity(self),
+			AvatarVersion::V2 => tools::AttributeMapperV2.rarity(self),
 		}
 	}
 
