@@ -9,8 +9,8 @@ impl AttributeMapper for AttributeMapperV1 {
 		target.dna.iter().map(|x| *x >> 4).min().unwrap_or_default()
 	}
 
-	fn last_variation(&self, target: &Avatar) -> u8 {
-		target.dna.last().unwrap_or(&0) & 0b0000_1111
+	fn force(&self, target: &Avatar) -> u8 {
+		(target.dna.last().unwrap_or(&0) & 0b0000_1111).saturating_add(1)
 	}
 }
 
@@ -270,12 +270,8 @@ impl<T: Config> AvatarForgerV1<T> {
 	}
 
 	fn forge_multiplier(&self, target: &Avatar, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
-		let mut current_period = season.current_period(now);
-		let mut last_variation = AttributeMapperV1.last_variation(target) as u16;
-
-		current_period.saturating_inc();
-		last_variation.saturating_inc();
-
+		let current_period = season.current_period(now).saturating_add(1);
+		let last_variation = AttributeMapperV1.force(target) as u16;
 		let max_variations = season.max_variations as u16;
 		let is_in_period = if last_variation == max_variations {
 			(current_period % max_variations).is_zero()
@@ -286,7 +282,7 @@ impl<T: Config> AvatarForgerV1<T> {
 		if (current_period == last_variation) || is_in_period {
 			1
 		} else {
-			2 // TODO: move this to config
+			2
 		}
 	}
 }

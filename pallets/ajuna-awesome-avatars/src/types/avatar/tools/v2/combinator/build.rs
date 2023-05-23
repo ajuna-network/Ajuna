@@ -108,7 +108,7 @@ impl<T: Config> AvatarCombinator<T> {
 							&[equipable_item_type],
 							&rarity_value,
 							&(ColorType::None, ColorType::None),
-							&ForceType::None,
+							&Force::None,
 							1,
 						)
 						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?

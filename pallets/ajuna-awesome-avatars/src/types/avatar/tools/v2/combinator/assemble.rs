@@ -178,7 +178,7 @@ mod test {
 						&RarityType::Common,
 						&[EquipableItemType::ArmorBase],
 						&(ColorType::None, ColorType::None),
-						&ForceType::None,
+						&Force::None,
 						i as SoulCount,
 					)
 				})
@@ -284,7 +284,7 @@ mod test {
 					&RarityType::Common,
 					&[equip_type],
 					&(ColorType::None, ColorType::None),
-					&ForceType::None,
+					&Force::None,
 					i as SoulCount,
 				);
 				AvatarUtils::write_progress_array(&mut avatar, progress_array);
@@ -393,7 +393,7 @@ mod test {
 						&RarityType::Common,
 						&[EquipableItemType::ArmorBase],
 						&(ColorType::None, ColorType::None),
-						&ForceType::None,
+						&Force::None,
 						i as SoulCount,
 					)
 				})

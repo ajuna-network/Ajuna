@@ -32,7 +32,7 @@ impl AttributeMapper for AttributeMapperV2 {
 		AvatarUtils::read_attribute(target, &AvatarAttributes::RarityType).saturating_sub(1)
 	}
 
-	fn last_variation(&self, target: &Avatar) -> u8 {
+	fn force(&self, target: &Avatar) -> u8 {
 		// TODO: Determine proper mapping
 		AvatarUtils::read_spec_byte(target, &AvatarSpecBytes::SpecByte1).saturating_sub(1)
 	}
@@ -571,7 +571,7 @@ mod test {
 				&RarityType::Uncommon,
 				&[EquipableItemType::ArmorComponent2],
 				&(ColorType::ColorA, ColorType::None),
-				&ForceType::Thermal,
+				&Force::Thermal,
 				2,
 			);
 			let sacrifices = [
@@ -583,7 +583,7 @@ mod test {
 					&RarityType::Common,
 					&[EquipableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
-					&ForceType::Astral,
+					&Force::Astral,
 					2,
 				)
 				.1,
@@ -605,7 +605,7 @@ mod test {
 				&RarityType::Common,
 				&[EquipableItemType::ArmorComponent2],
 				&(ColorType::None, ColorType::ColorD),
-				&ForceType::Astral,
+				&Force::Astral,
 				2,
 			)
 			.1];
@@ -687,7 +687,7 @@ mod test {
 					&RarityType::Legendary,
 					&[EquipableItemType::ArmorBase],
 					&(ColorType::None, ColorType::ColorD),
-					&ForceType::Astral,
+					&Force::Astral,
 					2,
 				)
 				.1];
@@ -707,7 +707,7 @@ mod test {
 					&RarityType::Common,
 					&[EquipableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
-					&ForceType::Astral,
+					&Force::Astral,
 					2,
 				)
 				.1];
@@ -839,9 +839,9 @@ mod test {
 
 			// Spark with GlowSpark
 			let (_, leader_glow) =
-				create_random_glow_spark(None, &ALICE, &ForceType::Kinetic, 100, None);
+				create_random_glow_spark(None, &ALICE, &Force::Kinetic, 100, None);
 			let sacrifices_glow =
-				[&create_random_glow_spark(None, &ALICE, &ForceType::Thermal, 100, None).1];
+				[&create_random_glow_spark(None, &ALICE, &Force::Thermal, 100, None).1];
 			assert_eq!(
 				forger.determine_forge_type(&leader_glow, &sacrifices_glow),
 				ForgeType::Spark

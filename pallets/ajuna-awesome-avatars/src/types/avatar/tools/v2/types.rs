@@ -1,13 +1,5 @@
+use crate::{ByteConvertible, Ranged};
 use sp_std::ops::Range;
-
-pub(crate) trait ByteConvertible: Clone {
-	fn from_byte(byte: u8) -> Self;
-	fn as_byte(&self) -> u8;
-}
-
-pub(crate) trait Ranged {
-	fn range() -> Range<usize>;
-}
 
 #[derive(Clone, Default)]
 pub(crate) enum ByteType {
@@ -475,43 +467,6 @@ impl ByteConvertible for ColorType {
 impl Ranged for ColorType {
 	fn range() -> Range<usize> {
 		0..5
-	}
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) enum ForceType {
-	#[default]
-	None = 0,
-	Kinetic = 1,
-	Dream = 2,
-	Solar = 3,
-	Thermal = 4,
-	Astral = 5,
-	Empathy = 6,
-}
-
-impl ByteConvertible for ForceType {
-	fn from_byte(byte: u8) -> Self {
-		match byte {
-			0 => Self::None,
-			1 => Self::Kinetic,
-			2 => Self::Dream,
-			3 => Self::Solar,
-			4 => Self::Thermal,
-			5 => Self::Astral,
-			6 => Self::Empathy,
-			_ => Self::default(),
-		}
-	}
-
-	fn as_byte(&self) -> u8 {
-		self.clone() as u8
-	}
-}
-
-impl Ranged for ForceType {
-	fn range() -> Range<usize> {
-		0..7
 	}
 }
 

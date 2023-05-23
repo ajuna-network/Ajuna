@@ -16,22 +16,24 @@
 
 use crate::*;
 use codec::alloc::string::ToString;
-use sp_std::{fmt, prelude::*};
+use sp_std::{fmt, ops::Range, prelude::*};
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default, PartialEq)]
+#[derive(Encode, Clone, Debug, Default, PartialEq)]
 pub enum Force {
 	#[default]
-	Kinetic = 0,
-	Dream = 1,
-	Solar = 2,
-	Thermal = 3,
-	Astral = 4,
-	Empathy = 5,
+	None,
+	Kinetic,
+	Dream,
+	Solar,
+	Thermal,
+	Astral,
+	Empathy,
 }
 
 impl fmt::Display for Force {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
+			Force::None => write!(f, ""),
 			Force::Kinetic => write!(f, "Kinetic"),
 			Force::Dream => write!(f, "Dream"),
 			Force::Solar => write!(f, "Solar"),
@@ -42,19 +44,28 @@ impl fmt::Display for Force {
 	}
 }
 
-impl TryFrom<u8> for Force {
-	type Error = ();
-
-	fn try_from(x: u8) -> Result<Self, Self::Error> {
-		match x {
-			x if x == 0 => Ok(Force::Kinetic),
-			x if x == 1 => Ok(Force::Dream),
-			x if x == 2 => Ok(Force::Solar),
-			x if x == 3 => Ok(Force::Thermal),
-			x if x == 4 => Ok(Force::Astral),
-			x if x == 5 => Ok(Force::Empathy),
-			_ => Err(()),
+impl ByteConvertible for Force {
+	fn from_byte(byte: u8) -> Self {
+		match byte {
+			0 => Self::None,
+			1 => Self::Kinetic,
+			2 => Self::Dream,
+			3 => Self::Solar,
+			4 => Self::Thermal,
+			5 => Self::Astral,
+			6 => Self::Empathy,
+			_ => Self::default(),
 		}
+	}
+
+	fn as_byte(&self) -> u8 {
+		self.clone() as u8
+	}
+}
+
+impl Ranged for Force {
+	fn range() -> Range<usize> {
+		0..7
 	}
 }
 

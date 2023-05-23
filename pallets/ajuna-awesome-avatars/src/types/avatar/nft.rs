@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::{Avatar, Force, RarityTier};
+use crate::types::{Avatar, ByteConvertible, Force, RarityTier};
 use codec::Encode;
 use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
 use sp_std::prelude::*;
@@ -37,7 +37,7 @@ impl NftConvertible for Avatar {
 			(DNA, self.dna.clone().encode()),
 			(SOUL_POINTS, self.souls.encode()),
 			(RARITY, RarityTier::try_from(self.min_tier()).unwrap_or_default().encode()),
-			(FORCE, Force::try_from(self.last_variation()).unwrap_or_default().encode()),
+			(FORCE, Force::from_byte(self.force()).encode()),
 		]
 	}
 }

@@ -1,7 +1,7 @@
 use super::{constants::*, types::*, ByteType};
 use crate::{
 	types::{Avatar, AvatarVersion, Dna, SeasonId, SoulCount},
-	Config,
+	ByteConvertible, Config, Force, Ranged,
 };
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
@@ -283,7 +283,7 @@ impl AvatarBuilder {
 
 	pub fn into_glow_spark(
 		self,
-		force_type: &ForceType,
+		force: &Force,
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
@@ -307,7 +307,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
 			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force_type.as_byte())
+			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
@@ -361,7 +361,7 @@ impl AvatarBuilder {
 
 	pub fn into_force_glow(
 		self,
-		force_type: &ForceType,
+		force: &Force,
 		soul_points: SoulCount,
 		progress_array: Option<[u8; 11]>,
 	) -> Self {
@@ -385,7 +385,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
 			.with_attribute(&AvatarAttributes::RarityType, &rarity_type)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force_type.as_byte())
+			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
@@ -404,7 +404,7 @@ impl AvatarBuilder {
 		equipable_type: &[EquipableItemType],
 		rarity_type: &RarityType,
 		color_pair: &(ColorType, ColorType),
-		force_type: &ForceType,
+		force: &Force,
 		soul_points: SoulCount,
 	) -> Result<Self, ()> {
 		if equipable_type.is_empty() ||
@@ -445,7 +445,7 @@ impl AvatarBuilder {
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, armor_assemble_progress)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force_type.as_byte())
+			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
@@ -462,7 +462,7 @@ impl AvatarBuilder {
 		slot_type: &SlotType,
 		equipable_type: &EquipableItemType,
 		color_pair: &(ColorType, ColorType),
-		force_type: &ForceType,
+		force: &Force,
 		soul_points: SoulCount,
 	) -> Result<Self, ()> {
 		if !EquipableItemType::is_weapon(equipable_type.clone()) {
@@ -499,7 +499,7 @@ impl AvatarBuilder {
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, weapon_info)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force_type.as_byte())
+			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
@@ -555,7 +555,7 @@ impl AvatarBuilder {
 	pub fn into_unidentified(
 		self,
 		color_pair: (ColorType, ColorType),
-		force_type: ForceType,
+		force: Force,
 		soul_points: SoulCount,
 	) -> Self {
 		let git_info = 0b0000_1111 |
@@ -572,7 +572,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::RarityType, &RarityType::Legendary)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, git_info)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force_type.as_byte())
+			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte())
 			.with_soul_count(soul_points)
 	}
 

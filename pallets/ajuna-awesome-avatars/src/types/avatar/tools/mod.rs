@@ -13,7 +13,7 @@ pub(crate) trait AttributeMapper {
 	fn min_tier(&self, target: &Avatar) -> u8;
 
 	/// Used to get the ForceType of a given avatar as an u8.
-	fn last_variation(&self, target: &Avatar) -> u8;
+	fn force(&self, target: &Avatar) -> u8;
 }
 
 /// Trait used to implement generic minting logic for an entity.
