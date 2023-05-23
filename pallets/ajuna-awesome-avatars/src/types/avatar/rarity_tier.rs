@@ -70,3 +70,17 @@ impl From<RarityTier> for BoundedVec<u8, ConstU32<20>> {
 		x.to_string().as_bytes().to_owned().try_into().unwrap_or_default()
 	}
 }
+
+impl RarityTier {
+	pub(crate) fn upgrade(&self) -> Self {
+		match self {
+			Self::None => Self::None,
+			Self::Common => Self::Uncommon,
+			Self::Uncommon => Self::Rare,
+			Self::Rare => Self::Epic,
+			Self::Epic => Self::Legendary,
+			Self::Legendary => Self::Mythical,
+			Self::Mythical => Self::Mythical,
+		}
+	}
+}

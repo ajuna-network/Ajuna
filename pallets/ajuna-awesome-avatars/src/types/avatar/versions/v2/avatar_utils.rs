@@ -1018,12 +1018,14 @@ impl AvatarUtils {
 	) -> [u8; 11] {
 		for i in 0..progress_bytes.len() {
 			let random_value = Self::read_dna_at(&progress_bytes, i, &ByteType::Full);
-			let mut new_rarity = rarity.as_byte();
 
 			// Upcast random_value
-			if (random_value as u32).saturating_mul(scale_factor) < (probability * MAX_BYTE) {
-				new_rarity = new_rarity.saturating_add(1);
-			}
+			let new_rarity =
+				if (random_value as u32).saturating_mul(scale_factor) < (probability * MAX_BYTE) {
+					rarity.upgrade().as_byte()
+				} else {
+					rarity.as_byte()
+				};
 
 			Self::write_dna_at(&mut progress_bytes, i, ByteType::High, new_rarity);
 			Self::write_dna_at(
