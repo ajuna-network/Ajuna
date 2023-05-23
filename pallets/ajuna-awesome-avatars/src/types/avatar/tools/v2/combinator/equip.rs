@@ -104,7 +104,7 @@ mod test {
 
 			let armor_slots = [SlotType::Head, SlotType::Breast, SlotType::ArmFront];
 			let pet_type = PetType::FoxishDude;
-			let force_type = ForceType::Astral;
+			let force = Force::Astral;
 			let color_pair = (ColorType::ColorC, ColorType::ColorB);
 
 			let mut armor_sacrifices = sacrifice_hash_base
@@ -116,10 +116,10 @@ mod test {
 						&ALICE,
 						&pet_type,
 						&armor_slot,
-						&RarityType::Legendary,
+						&RarityTier::Legendary,
 						&armor_progress,
 						&color_pair,
-						&force_type,
+						&force,
 						100,
 					)
 				})
@@ -132,7 +132,7 @@ mod test {
 				&SlotType::WeaponBack,
 				&EquipableItemType::WeaponVersion2,
 				&color_pair,
-				&force_type,
+				&force,
 				100,
 			);
 
@@ -179,7 +179,7 @@ mod test {
 					&SlotType::WeaponFront,
 					&EquipableItemType::WeaponVersion3,
 					&color_pair,
-					&force_type,
+					&force,
 					100,
 				);
 
@@ -239,14 +239,14 @@ mod test {
 				&ALICE,
 				&PetType::FoxishDude,
 				&SlotType::ArmFront,
-				&RarityType::Legendary,
+				&RarityTier::Legendary,
 				&[
 					EquipableItemType::ArmorBase,
 					EquipableItemType::ArmorComponent1,
 					EquipableItemType::ArmorComponent2,
 				],
 				&(ColorType::ColorC, ColorType::ColorB),
-				&ForceType::Astral,
+				&Force::Astral,
 				100,
 			);
 

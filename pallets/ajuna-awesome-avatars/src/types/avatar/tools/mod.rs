@@ -1,39 +1,19 @@
 mod v1;
 mod v2;
 
+pub(crate) use v1::AttributeMapperV1;
+pub(crate) use v2::AttributeMapperV2;
+
 use crate::*;
 use frame_support::pallet_prelude::*;
 use sp_std::{boxed::Box, vec::Vec};
 
-pub(crate) trait AttributeProvider {
-	fn get_mapper(&self) -> Box<dyn AttributeMapper>;
-	fn with_mapper<F, R>(&self, func: F) -> R
-	where
-		F: Fn(Box<dyn AttributeMapper>) -> R;
-}
-
-impl AttributeProvider for AvatarVersion {
-	fn get_mapper(&self) -> Box<dyn AttributeMapper> {
-		match self {
-			AvatarVersion::V1 => Box::new(v1::AttributeMapperV1),
-			AvatarVersion::V2 => Box::new(v2::AttributeMapperV2),
-		}
-	}
-
-	fn with_mapper<F, R>(&self, func: F) -> R
-	where
-		F: Fn(Box<dyn AttributeMapper>) -> R,
-	{
-		func(self.get_mapper())
-	}
-}
-
 pub(crate) trait AttributeMapper {
 	/// Used to obtain the RarityTier of a given avatar as an u8.
-	fn min_tier(&self, target: &Avatar) -> u8;
+	fn rarity(target: &Avatar) -> u8;
 
 	/// Used to get the ForceType of a given avatar as an u8.
-	fn last_variation(&self, target: &Avatar) -> u8;
+	fn force(target: &Avatar) -> u8;
 }
 
 /// Trait used to implement generic minting logic for an entity.

@@ -5,13 +5,13 @@ use crate::{
 		avatar::tools::v2::{
 			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils},
 			types::{
-				BlueprintItemType, ColorType, EquipableItemType, ForceType, MaterialItemType,
-				PetType, RarityType, SlotType,
+				BlueprintItemType, ColorType, EquipableItemType, MaterialItemType, PetType,
+				SlotType,
 			},
 		},
-		Avatar, AvatarVersion, ForgeOutput, LeaderForgeOutput, SoulCount,
+		Avatar, AvatarVersion, ForgeOutput, LeaderForgeOutput, RarityTier, SoulCount,
 	},
-	Config, Pallet,
+	Config, Force, Pallet,
 };
 use sp_core::bounded::BoundedVec;
 
@@ -127,10 +127,10 @@ pub(crate) fn create_random_armor_component(
 	account: &MockAccountId,
 	pet_type: &PetType,
 	slot_type: &SlotType,
-	rarity_type: &RarityType,
+	rarity: &RarityTier,
 	equipable_type: &[EquipableItemType],
 	color_pair: &(ColorType, ColorType),
-	force_type: &ForceType,
+	force: &Force,
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -142,9 +142,9 @@ pub(crate) fn create_random_armor_component(
 					pet_type,
 					slot_type,
 					equipable_type,
-					rarity_type,
+					rarity,
 					color_pair,
-					force_type,
+					force,
 					soul_points,
 				)
 				.unwrap()
@@ -160,7 +160,7 @@ pub(crate) fn create_random_weapon(
 	slot_type: &SlotType,
 	equipable_type: &EquipableItemType,
 	color_pair: &(ColorType, ColorType),
-	force_type: &ForceType,
+	force: &Force,
 	soul_points: SoulCount,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
@@ -173,7 +173,7 @@ pub(crate) fn create_random_weapon(
 					slot_type,
 					equipable_type,
 					color_pair,
-					force_type,
+					force,
 					soul_points,
 				)
 				.unwrap()
@@ -185,7 +185,7 @@ pub(crate) fn create_random_weapon(
 pub(crate) fn create_random_egg(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	rarity_type: &RarityType,
+	rarity: &RarityTier,
 	pet_variation: u8,
 	soul_points: SoulCount,
 	progress_array: [u8; 11],
@@ -195,7 +195,7 @@ pub(crate) fn create_random_egg(
 		base_dna,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_egg(rarity_type, pet_variation, soul_points, Some(progress_array))
+				.into_egg(rarity, pet_variation, soul_points, Some(progress_array))
 				.build()
 		}),
 	)
@@ -204,7 +204,7 @@ pub(crate) fn create_random_egg(
 pub(crate) fn create_random_glow_spark(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,
-	force_type: &ForceType,
+	force: &Force,
 	soul_points: SoulCount,
 	progress_array: Option<[u8; 11]>,
 ) -> (AvatarIdOf<Test>, Avatar) {
@@ -213,7 +213,7 @@ pub(crate) fn create_random_glow_spark(
 		base_dna,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_glow_spark(force_type, soul_points, progress_array)
+				.into_glow_spark(force, soul_points, progress_array)
 				.build()
 		}),
 	)

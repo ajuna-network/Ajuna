@@ -9,12 +9,12 @@ impl<T: Config> AvatarCombinator<T> {
 		let (mut input_leader, matching_sacrifices, consumed_sacrifices, non_matching_sacrifices) =
 			Self::match_avatars(input_leader, input_sacrifices, hash_provider);
 
-		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
+		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader.1),
 			&ByteType::High,
 		));
 
-		let is_leader_legendary = rarity_type == RarityType::Legendary;
+		let is_leader_legendary = rarity == RarityTier::Legendary;
 		let is_leader_egg = AvatarUtils::has_attribute_set_with_values(
 			&input_leader.1,
 			&[
@@ -44,8 +44,8 @@ impl<T: Config> AvatarCombinator<T> {
 
 		AvatarUtils::write_typed_attribute(
 			&mut input_leader.1,
-			&AvatarAttributes::RarityType,
-			&rarity_type,
+			&AvatarAttributes::RarityTier,
+			&rarity,
 		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
@@ -169,7 +169,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						&RarityType::Epic,
+						&RarityTier::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -219,7 +219,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						&RarityType::Epic,
+						&RarityTier::Epic,
 						0b0000_1111,
 						soul_points as SoulCount,
 						progress_arrays[i],
@@ -254,7 +254,7 @@ mod test {
 		ExtBuilder::default().build().execute_with(|| {
 			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
-			let rarity_type = RarityType::Epic;
+			let rarity = RarityTier::Epic;
 
 			let mut egg_set = (0..5)
 				.into_iter()
@@ -263,7 +263,7 @@ mod test {
 					let pet_type =
 						SlotRoller::<Test>::roll_on(&PET_TYPE_PROBABILITIES, &mut hash_provider);
 					let progress_array = AvatarUtils::generate_progress_bytes(
-						&rarity_type,
+						&rarity,
 						SCALING_FACTOR_PERC,
 						PROGRESS_PROBABILITY_PERC,
 						[i; 11],
@@ -272,7 +272,7 @@ mod test {
 					create_random_egg(
 						None,
 						&ALICE,
-						rarity_type,
+						rarity,
 						pet_type,
 						soul_points as SoulCount,
 						progress_array,

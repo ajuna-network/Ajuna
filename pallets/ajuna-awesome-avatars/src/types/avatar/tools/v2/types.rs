@@ -1,13 +1,5 @@
+use crate::{ByteConvertible, Ranged};
 use sp_std::ops::Range;
-
-pub(crate) trait ByteConvertible: Clone {
-	fn from_byte(byte: u8) -> Self;
-	fn as_byte(&self) -> u8;
-}
-
-pub(crate) trait Ranged: ByteConvertible {
-	fn range() -> Range<usize>;
-}
 
 #[derive(Clone, Default)]
 pub(crate) enum ByteType {
@@ -140,35 +132,6 @@ impl ByteConvertible for ItemType {
 			4 => Self::Equipable,
 			5 => Self::Blueprint,
 			6 => Self::Special,
-			_ => Self::default(),
-		}
-	}
-
-	fn as_byte(&self) -> u8 {
-		self.clone() as u8
-	}
-}
-
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
-pub(crate) enum RarityType {
-	#[default]
-	Common = 1,
-	Uncommon = 2,
-	Rare = 3,
-	Epic = 4,
-	Legendary = 5,
-	Mythical = 6,
-}
-
-impl ByteConvertible for RarityType {
-	fn from_byte(byte: u8) -> Self {
-		match byte {
-			1 => Self::Common,
-			2 => Self::Uncommon,
-			3 => Self::Rare,
-			4 => Self::Epic,
-			5 => Self::Legendary,
-			6 => Self::Mythical,
 			_ => Self::default(),
 		}
 	}
@@ -475,43 +438,6 @@ impl ByteConvertible for ColorType {
 impl Ranged for ColorType {
 	fn range() -> Range<usize> {
 		0..5
-	}
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) enum ForceType {
-	#[default]
-	None = 0,
-	Kinetic = 1,
-	Dream = 2,
-	Solar = 3,
-	Thermal = 4,
-	Astral = 5,
-	Empathy = 6,
-}
-
-impl ByteConvertible for ForceType {
-	fn from_byte(byte: u8) -> Self {
-		match byte {
-			0 => Self::None,
-			1 => Self::Kinetic,
-			2 => Self::Dream,
-			3 => Self::Solar,
-			4 => Self::Thermal,
-			5 => Self::Astral,
-			6 => Self::Empathy,
-			_ => Self::default(),
-		}
-	}
-
-	fn as_byte(&self) -> u8 {
-		self.clone() as u8
-	}
-}
-
-impl Ranged for ForceType {
-	fn range() -> Range<usize> {
-		0..7
 	}
 }
 

@@ -13,14 +13,14 @@ impl<T: Config> AvatarCombinator<T> {
 			non_matching_sacrifices,
 		) = Self::match_avatars(input_leader, input_sacrifices, hash_provider);
 
-		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
+		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader),
 			&ByteType::High,
 		));
 
-		let leader_rarity = AvatarUtils::read_attribute_as::<RarityType>(
+		let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
 			&input_leader,
-			&AvatarAttributes::RarityType,
+			&AvatarAttributes::RarityTier,
 		);
 
 		if AvatarUtils::has_attribute_set_with_values(
@@ -29,7 +29,7 @@ impl<T: Config> AvatarCombinator<T> {
 				(AvatarAttributes::ItemType, ItemType::Equipable.as_byte()),
 				(AvatarAttributes::ItemSubType, EquipableItemType::ArmorBase.as_byte()),
 			],
-		) && leader_rarity < rarity_type
+		) && leader_rarity < rarity
 		{
 			// Add a component to the base armor, only first component will be added
 			if let Some((_, armor_component)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
@@ -100,8 +100,8 @@ impl<T: Config> AvatarCombinator<T> {
 
 		AvatarUtils::write_typed_attribute(
 			&mut input_leader,
-			&AvatarAttributes::RarityType,
-			&rarity_type,
+			&AvatarAttributes::RarityTier,
+			&rarity,
 		);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
@@ -175,10 +175,10 @@ mod test {
 						&ALICE,
 						&PetType::FoxishDude,
 						&SlotType::Head,
-						&RarityType::Common,
+						&RarityTier::Common,
 						&[EquipableItemType::ArmorBase],
 						&(ColorType::None, ColorType::None),
-						&ForceType::None,
+						&Force::None,
 						i as SoulCount,
 					)
 				})
@@ -281,10 +281,10 @@ mod test {
 					&ALICE,
 					&PetType::FoxishDude,
 					&SlotType::Head,
-					&RarityType::Common,
+					&RarityTier::Common,
 					&[equip_type],
 					&(ColorType::None, ColorType::None),
-					&ForceType::None,
+					&Force::None,
 					i as SoulCount,
 				);
 				AvatarUtils::write_progress_array(&mut avatar, progress_array);
@@ -390,10 +390,10 @@ mod test {
 						&ALICE,
 						&PetType::FoxishDude,
 						&slot_type,
-						&RarityType::Common,
+						&RarityTier::Common,
 						&[EquipableItemType::ArmorBase],
 						&(ColorType::None, ColorType::None),
-						&ForceType::None,
+						&Force::None,
 						i as SoulCount,
 					)
 				})

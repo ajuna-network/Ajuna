@@ -89,13 +89,13 @@ impl<T: Config> AvatarCombinator<T> {
 					let rarity_value = {
 						let rarity_val = hash_provider.hash[i] % 8 + 1;
 						if rarity_val < level {
-							if rarity_val > RarityType::Rare.as_byte() {
-								RarityType::Rare
+							if rarity_val > RarityTier::Rare.as_byte() {
+								RarityTier::Rare
 							} else {
-								RarityType::from_byte(rarity_val)
+								RarityTier::from_byte(rarity_val)
 							}
 						} else {
-							RarityType::from_byte(1)
+							RarityTier::from_byte(1)
 						}
 					};
 
@@ -108,7 +108,7 @@ impl<T: Config> AvatarCombinator<T> {
 							&[equipable_item_type],
 							&rarity_value,
 							&(ColorType::None, ColorType::None),
-							&ForceType::None,
+							&Force::None,
 							1,
 						)
 						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?

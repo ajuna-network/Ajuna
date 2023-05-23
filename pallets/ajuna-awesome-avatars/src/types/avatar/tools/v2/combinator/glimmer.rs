@@ -7,8 +7,8 @@ impl<T: Config> AvatarCombinator<T> {
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		let color_types = ColorType::range().len() as u8;
-		let force_types = ForceType::range().len() as u8;
+		let color_types = variant_count::<ColorType>() as u8;
+		let forces = variant_count::<Force>() as u8;
 
 		let (leader_id, mut leader) = input_leader;
 		let mut leader_consumed = false;
@@ -64,7 +64,7 @@ impl<T: Config> AvatarCombinator<T> {
 				if rand_1 == rand_2 &&
 					AvatarUtils::high_nibble_of(rand_1) == AvatarUtils::low_nibble_of(rand_2)
 				{
-					gen_avatar = gen_avatar.into_egg(&RarityType::Rare, 0x00, soul_points, None);
+					gen_avatar = gen_avatar.into_egg(&RarityTier::Rare, 0x00, soul_points, None);
 				} else if rand_1 ==
 					(AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
 				{
@@ -72,9 +72,9 @@ impl<T: Config> AvatarCombinator<T> {
 						ColorType::from_byte(rand_1 % (color_types + 1)),
 						ColorType::from_byte(rand_2 % (color_types + 1)),
 					);
-					let force_type = ForceType::from_byte((rand_3 % force_types) + 1);
+					let force = Force::from_byte((rand_3 % forces) + 1);
 
-					gen_avatar = gen_avatar.into_unidentified(color_pair, force_type, soul_points);
+					gen_avatar = gen_avatar.into_unidentified(color_pair, force, soul_points);
 				} else if rand_1 as u32 * SCALING_FACTOR_PERC < COLOR_GLOW_SPARK * MAX_BYTE {
 					let color_pair = (
 						ColorType::from_byte(rand_2 % (color_types + 1)),
@@ -82,8 +82,8 @@ impl<T: Config> AvatarCombinator<T> {
 					);
 					gen_avatar = gen_avatar.into_color_spark(&color_pair, soul_points, None);
 				} else {
-					let force_type = ForceType::from_byte((rand_2 % force_types) + 1);
-					gen_avatar = gen_avatar.into_glow_spark(&force_type, soul_points, None);
+					let force = Force::from_byte((rand_2 % forces) + 1);
+					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, None);
 				}
 			} else {
 				gen_avatar = gen_avatar.into_dust(soul_points);

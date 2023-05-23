@@ -15,7 +15,7 @@ impl<T: Config> AvatarCombinator<T> {
 			non_matching_sacrifices,
 		) = Self::match_avatars(input_leader, input_sacrifices, hash_provider);
 
-		let rarity_type = RarityType::from_byte(AvatarUtils::read_lowest_progress_byte(
+		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&leader),
 			&ByteType::High,
 		));
@@ -24,7 +24,7 @@ impl<T: Config> AvatarCombinator<T> {
 			&AvatarAttributes::ItemSubType,
 		);
 
-		if essence_type == EssenceItemType::ColorSpark && rarity_type == RarityType::Rare {
+		if essence_type == EssenceItemType::ColorSpark && rarity == RarityTier::Rare {
 			let rolls = MAX_SACRIFICE - all_count + 1;
 
 			for _ in 0..rolls {
@@ -58,7 +58,7 @@ impl<T: Config> AvatarCombinator<T> {
 					&EssenceItemType::PaintFlask,
 				);
 			}
-		} else if essence_type == EssenceItemType::GlowSpark && rarity_type == RarityType::Epic {
+		} else if essence_type == EssenceItemType::GlowSpark && rarity == RarityTier::Epic {
 			AvatarUtils::write_typed_attribute(
 				&mut leader,
 				&AvatarAttributes::ItemSubType,
@@ -66,11 +66,7 @@ impl<T: Config> AvatarCombinator<T> {
 			);
 		}
 
-		AvatarUtils::write_typed_attribute(
-			&mut leader,
-			&AvatarAttributes::RarityType,
-			&rarity_type,
-		);
+		AvatarUtils::write_typed_attribute(&mut leader, &AvatarAttributes::RarityTier, &rarity);
 
 		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
 			.into_iter()
@@ -150,11 +146,11 @@ mod test {
 					expected_progress_array
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<RarityType>(
+					AvatarUtils::read_attribute_as::<RarityTier>(
 						&leader_avatar,
-						&AvatarAttributes::RarityType
+						&AvatarAttributes::RarityTier
 					),
-					RarityType::Rare
+					RarityTier::Rare
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
@@ -191,19 +187,14 @@ mod test {
 				[0x44, 0x33, 0x34, 0x32, 0x35, 0x32, 0x31, 0x34, 0x30, 0x41, 0x31],
 			];
 
-			let force_types = [
-				ForceType::Kinetic,
-				ForceType::Thermal,
-				ForceType::Thermal,
-				ForceType::Thermal,
-				ForceType::Kinetic,
-			];
+			let forces =
+				[Force::Kinetic, Force::Thermal, Force::Thermal, Force::Thermal, Force::Kinetic];
 
-			let mut avatars = force_types
+			let mut avatars = forces
 				.into_iter()
 				.zip(progress_arrays)
-				.map(|(force_type, progress_array)| {
-					create_random_glow_spark(None, &ALICE, &force_type, 5, Some(progress_array))
+				.map(|(force, progress_array)| {
+					create_random_glow_spark(None, &ALICE, &force, 5, Some(progress_array))
 				})
 				.collect::<Vec<_>>();
 
@@ -230,11 +221,11 @@ mod test {
 					expected_progress_array
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<RarityType>(
+					AvatarUtils::read_attribute_as::<RarityTier>(
 						&leader_avatar,
-						&AvatarAttributes::RarityType
+						&AvatarAttributes::RarityTier
 					),
-					RarityType::Epic
+					RarityTier::Epic
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
@@ -244,11 +235,11 @@ mod test {
 					EssenceItemType::ForceGlow
 				);
 				assert_eq!(
-					ForceType::from_byte(AvatarUtils::read_spec_byte(
+					Force::from_byte(AvatarUtils::read_spec_byte(
 						&leader_avatar,
 						&AvatarSpecBytes::SpecByte1
 					)),
-					ForceType::Kinetic
+					Force::Kinetic
 				);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")

@@ -49,9 +49,9 @@ mod test {
 				1000,
 			);
 			let sacrifice_1 =
-				create_random_egg(None, &ALICE, &RarityType::Epic, 0b0000_1111, 100, [0x00; 11]);
+				create_random_egg(None, &ALICE, &RarityTier::Epic, 0b0000_1111, 100, [0x00; 11]);
 			let sacrifice_2 =
-				create_random_egg(None, &ALICE, &RarityType::Epic, 0b0000_1111, 100, [0x00; 11]);
+				create_random_egg(None, &ALICE, &RarityTier::Epic, 0b0000_1111, 100, [0x00; 11]);
 
 			let total_soul_points = leader.1.souls + sacrifice_1.1.souls + sacrifice_2.1.souls;
 
