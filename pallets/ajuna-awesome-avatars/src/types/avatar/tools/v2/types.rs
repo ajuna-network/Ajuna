@@ -141,35 +141,6 @@ impl ByteConvertible for ItemType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
-pub(crate) enum RarityType {
-	#[default]
-	Common = 1,
-	Uncommon = 2,
-	Rare = 3,
-	Epic = 4,
-	Legendary = 5,
-	Mythical = 6,
-}
-
-impl ByteConvertible for RarityType {
-	fn from_byte(byte: u8) -> Self {
-		match byte {
-			1 => Self::Common,
-			2 => Self::Uncommon,
-			3 => Self::Rare,
-			4 => Self::Epic,
-			5 => Self::Legendary,
-			6 => Self::Mythical,
-			_ => Self::default(),
-		}
-	}
-
-	fn as_byte(&self) -> u8 {
-		self.clone() as u8
-	}
-}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum PetItemType {
 	#[default]

@@ -10,7 +10,7 @@ use sp_std::{boxed::Box, vec::Vec};
 
 pub(crate) trait AttributeMapper {
 	/// Used to obtain the RarityTier of a given avatar as an u8.
-	fn min_tier(&self, target: &Avatar) -> u8;
+	fn rarity(&self, target: &Avatar) -> u8;
 
 	/// Used to get the ForceType of a given avatar as an u8.
 	fn force(&self, target: &Avatar) -> u8;

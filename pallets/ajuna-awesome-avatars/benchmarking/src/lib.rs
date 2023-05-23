@@ -26,10 +26,7 @@ use frame_support::{
 	traits::{Currency, Get},
 };
 use frame_system::RawOrigin;
-use pallet_ajuna_awesome_avatars::{
-	types::{RarityTier::*, *},
-	Config as AvatarsConfig, Pallet as AAvatars, *,
-};
+use pallet_ajuna_awesome_avatars::{types::*, Config as AvatarsConfig, Pallet as AAvatars, *};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::traits::{
 	Saturating, StaticLookup, UniqueSaturatedFrom, UniqueSaturatedInto, Zero,
@@ -86,7 +83,16 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				max_components: 16,
 				min_sacrifices: 1,
 				max_sacrifices: 4,
-				tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
+				tiers: vec![
+					RarityTier::Common,
+					RarityTier::Uncommon,
+					RarityTier::Rare,
+					RarityTier::Epic,
+					RarityTier::Legendary,
+					RarityTier::Mythical,
+				]
+				.try_into()
+				.unwrap(),
 				single_mint_probs: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 				batch_mint_probs: vec![40, 30, 15, 10, 5].try_into().unwrap(),
 				base_prob: 0,
@@ -383,7 +389,16 @@ benchmarks! {
 			max_components: 16,
 			min_sacrifices: SacrificeCount::MAX,
 			max_sacrifices: SacrificeCount::MAX,
-			tiers: vec![Common, Uncommon, Rare, Epic, Legendary, Mythical].try_into().unwrap(),
+			tiers: vec![
+				RarityTier::Common,
+				RarityTier::Uncommon,
+				RarityTier::Rare,
+				RarityTier::Epic,
+				RarityTier::Legendary,
+				RarityTier::Mythical,
+			]
+			.try_into()
+			.unwrap(),
 			single_mint_probs: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 			batch_mint_probs: vec![40, 30, 15, 10, 5].try_into().unwrap(),
 			base_prob: 99,

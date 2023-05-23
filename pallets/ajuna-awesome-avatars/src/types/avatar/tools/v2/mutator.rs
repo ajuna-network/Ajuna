@@ -23,7 +23,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				let spec_bytes = [0; 16];
 
 				let progress_array = AvatarUtils::generate_progress_bytes(
-					&RarityType::Legendary,
+					&RarityTier::Legendary,
 					SCALING_FACTOR_PERC,
 					SPARK_PROGRESS_PROB_PERC,
 					[0; 11],
@@ -52,7 +52,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				let soul_points = (hash_provider.get_hash_byte() % 99) + 1;
 
 				AvatarBuilder::with_base_avatar(base_avatar).into_egg(
-					&RarityType::Epic,
+					&RarityTier::Epic,
 					pet_variation,
 					soul_points as SoulCount,
 					None,
@@ -147,11 +147,11 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 			EquipableItemType::ArmorComponent3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
 
-				let rarity_type = {
+				let rarity = {
 					if (hash_provider.get_hash_byte() % 3) > 1 {
-						RarityType::Rare
+						RarityTier::Rare
 					} else {
-						RarityType::Epic
+						RarityTier::Epic
 					}
 				};
 
@@ -160,7 +160,7 @@ impl<T: Config> AvatarMutator<T> for EquipableItemType {
 						&pet_type,
 						&slot_type,
 						&[self.clone()],
-						&rarity_type,
+						&rarity,
 						&(ColorType::None, ColorType::None),
 						&Force::None,
 						soul_count,

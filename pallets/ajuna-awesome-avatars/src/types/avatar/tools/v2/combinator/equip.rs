@@ -116,7 +116,7 @@ mod test {
 						&ALICE,
 						&pet_type,
 						&armor_slot,
-						&RarityType::Legendary,
+						&RarityTier::Legendary,
 						&armor_progress,
 						&color_pair,
 						&force,
@@ -239,7 +239,7 @@ mod test {
 				&ALICE,
 				&PetType::FoxishDude,
 				&SlotType::ArmFront,
-				&RarityType::Legendary,
+				&RarityTier::Legendary,
 				&[
 					EquipableItemType::ArmorBase,
 					EquipableItemType::ArmorComponent1,

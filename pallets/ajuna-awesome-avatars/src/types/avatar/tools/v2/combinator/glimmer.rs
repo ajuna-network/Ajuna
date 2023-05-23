@@ -64,7 +64,7 @@ impl<T: Config> AvatarCombinator<T> {
 				if rand_1 == rand_2 &&
 					AvatarUtils::high_nibble_of(rand_1) == AvatarUtils::low_nibble_of(rand_2)
 				{
-					gen_avatar = gen_avatar.into_egg(&RarityType::Rare, 0x00, soul_points, None);
+					gen_avatar = gen_avatar.into_egg(&RarityTier::Rare, 0x00, soul_points, None);
 				} else if rand_1 ==
 					(AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
 				{

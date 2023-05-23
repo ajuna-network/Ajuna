@@ -23,17 +23,19 @@ use sp_std::{fmt, prelude::*};
 )]
 pub enum RarityTier {
 	#[default]
-	Common = 0,
-	Uncommon = 1,
-	Rare = 2,
-	Epic = 3,
-	Legendary = 4,
-	Mythical = 5,
+	None,
+	Common,
+	Uncommon,
+	Rare,
+	Epic,
+	Legendary,
+	Mythical,
 }
 
 impl fmt::Display for RarityTier {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
+			RarityTier::None => write!(f, ""),
 			RarityTier::Common => write!(f, "Common"),
 			RarityTier::Uncommon => write!(f, "Uncommon"),
 			RarityTier::Rare => write!(f, "Rare"),
@@ -44,19 +46,22 @@ impl fmt::Display for RarityTier {
 	}
 }
 
-impl TryFrom<u8> for RarityTier {
-	type Error = ();
-
-	fn try_from(x: u8) -> Result<Self, Self::Error> {
-		match x {
-			x if x == 0 => Ok(RarityTier::Common),
-			x if x == 1 => Ok(RarityTier::Uncommon),
-			x if x == 2 => Ok(RarityTier::Rare),
-			x if x == 3 => Ok(RarityTier::Epic),
-			x if x == 4 => Ok(RarityTier::Legendary),
-			x if x == 5 => Ok(RarityTier::Mythical),
-			_ => Err(()),
+impl ByteConvertible for RarityTier {
+	fn from_byte(byte: u8) -> Self {
+		match byte {
+			0 => Self::None,
+			1 => Self::Common,
+			2 => Self::Uncommon,
+			3 => Self::Rare,
+			4 => Self::Epic,
+			5 => Self::Legendary,
+			6 => Self::Mythical,
+			_ => Self::default(),
 		}
+	}
+
+	fn as_byte(&self) -> u8 {
+		self.clone() as u8
 	}
 }
 

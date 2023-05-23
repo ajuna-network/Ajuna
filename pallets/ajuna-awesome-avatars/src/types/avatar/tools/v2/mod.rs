@@ -28,8 +28,8 @@ use sp_std::{mem::variant_count, prelude::*};
 pub(crate) struct AttributeMapperV2;
 
 impl AttributeMapper for AttributeMapperV2 {
-	fn min_tier(&self, target: &Avatar) -> u8 {
-		AvatarUtils::read_attribute(target, &AvatarAttributes::RarityType).saturating_sub(1)
+	fn rarity(&self, target: &Avatar) -> u8 {
+		AvatarUtils::read_attribute(target, &AvatarAttributes::RarityTier).saturating_sub(1)
 	}
 
 	fn force(&self, target: &Avatar) -> u8 {
@@ -243,9 +243,9 @@ impl<T: Config> AvatarForgerV2<T> {
 
 		match input_leader_item_type {
 			ItemType::Pet => {
-				let leader_rarity = AvatarUtils::read_attribute_as::<RarityType>(
+				let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
 					input_leader,
-					&AvatarAttributes::RarityType,
+					&AvatarAttributes::RarityTier,
 				);
 
 				let leader_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
@@ -254,7 +254,7 @@ impl<T: Config> AvatarForgerV2<T> {
 				);
 
 				match leader_rarity {
-					RarityType::Legendary => match leader_sub_type {
+					RarityTier::Legendary => match leader_sub_type {
 						PetItemType::Pet => {
 							if input_sacrifices.iter().all(|sacrifice| {
 								let equipable_item = AvatarUtils::read_attribute_as(
@@ -265,7 +265,7 @@ impl<T: Config> AvatarForgerV2<T> {
 								AvatarUtils::has_attribute_set_with_same_values_as(
 									input_leader,
 									sacrifice,
-									&[AvatarAttributes::RarityType, AvatarAttributes::ClassType2],
+									&[AvatarAttributes::RarityTier, AvatarAttributes::ClassType2],
 								) && AvatarUtils::has_attribute_with_value(
 									sacrifice,
 									&AvatarAttributes::ItemType,
@@ -281,7 +281,7 @@ impl<T: Config> AvatarForgerV2<T> {
 									&[
 										AvatarAttributes::ItemType,
 										AvatarAttributes::ItemSubType,
-										AvatarAttributes::RarityType,
+										AvatarAttributes::RarityTier,
 									],
 								)
 							}) {
@@ -295,10 +295,10 @@ impl<T: Config> AvatarForgerV2<T> {
 									sacrifice,
 									&AvatarAttributes::ItemSubType,
 									PetItemType::Egg,
-								) && AvatarUtils::read_attribute_as::<RarityType>(
+								) && AvatarUtils::read_attribute_as::<RarityTier>(
 									sacrifice,
-									&AvatarAttributes::RarityType,
-								) < RarityType::Legendary
+									&AvatarAttributes::RarityTier,
+								) < RarityTier::Legendary
 							}) {
 								ForgeType::Feed
 							} else {
@@ -308,7 +308,7 @@ impl<T: Config> AvatarForgerV2<T> {
 						PetItemType::PetPart => ForgeType::None,
 						PetItemType::Egg => ForgeType::None,
 					},
-					RarityType::Mythical => ForgeType::None,
+					RarityTier::Mythical => ForgeType::None,
 					_ => match leader_sub_type {
 						PetItemType::Pet => ForgeType::None,
 						PetItemType::PetPart => {
@@ -419,13 +419,13 @@ impl<T: Config> AvatarForgerV2<T> {
 				}
 			},
 			ItemType::Equipable => {
-				let leader_rarity = AvatarUtils::read_attribute_as::<RarityType>(
+				let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
 					input_leader,
-					&AvatarAttributes::RarityType,
+					&AvatarAttributes::RarityTier,
 				);
 
 				match leader_rarity {
-					RarityType::Legendary | RarityType::Mythical => ForgeType::None,
+					RarityTier::Legendary | RarityTier::Mythical => ForgeType::None,
 					_ => {
 						let equipable_item = AvatarUtils::read_attribute_as::<EquipableItemType>(
 							input_leader,
@@ -568,7 +568,7 @@ mod test {
 				&ALICE,
 				&PetType::TankyBullwog,
 				&SlotType::ArmBack,
-				&RarityType::Uncommon,
+				&RarityTier::Uncommon,
 				&[EquipableItemType::ArmorComponent2],
 				&(ColorType::ColorA, ColorType::None),
 				&Force::Thermal,
@@ -580,7 +580,7 @@ mod test {
 					&ALICE,
 					&PetType::TankyBullwog,
 					&SlotType::ArmBack,
-					&RarityType::Common,
+					&RarityTier::Common,
 					&[EquipableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
@@ -602,7 +602,7 @@ mod test {
 				&ALICE,
 				&PetType::FoxishDude,
 				&SlotType::ArmBack,
-				&RarityType::Common,
+				&RarityTier::Common,
 				&[EquipableItemType::ArmorComponent2],
 				&(ColorType::None, ColorType::ColorD),
 				&Force::Astral,
@@ -620,14 +620,14 @@ mod test {
 
 			// Breed
 			let (_, leader) =
-				create_random_egg(None, &ALICE, &RarityType::Rare, 0b0001_1110, 10, [0; 11]);
+				create_random_egg(None, &ALICE, &RarityTier::Rare, 0b0001_1110, 10, [0; 11]);
 			let sacrifices =
-				[&create_random_egg(None, &ALICE, &RarityType::Common, 0b0001_0010, 10, [2; 11]).1];
+				[&create_random_egg(None, &ALICE, &RarityTier::Common, 0b0001_0010, 10, [2; 11]).1];
 			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Breed);
 
 			// Breed with Legendary egg leader fails
 			let (_, leader_err) =
-				create_random_egg(None, &ALICE, &RarityType::Legendary, 0b0101_0010, 10, [9; 11]);
+				create_random_egg(None, &ALICE, &RarityTier::Legendary, 0b0101_0010, 10, [9; 11]);
 			assert_eq!(forger.determine_forge_type(&leader_err, &sacrifices), ForgeType::None);
 
 			// Breed with non-eggs fails
@@ -684,7 +684,7 @@ mod test {
 					&ALICE,
 					&PetType::TankyBullwog,
 					&SlotType::ArmBack,
-					&RarityType::Legendary,
+					&RarityTier::Legendary,
 					&[EquipableItemType::ArmorBase],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
@@ -704,7 +704,7 @@ mod test {
 					&ALICE,
 					&PetType::FoxishDude,
 					&SlotType::ArmBack,
-					&RarityType::Common,
+					&RarityTier::Common,
 					&[EquipableItemType::ArmorComponent2],
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
@@ -725,14 +725,14 @@ mod test {
 			let (_, leader) =
 				create_random_pet(&ALICE, &PetType::TankyBullwog, 0b0001_0001, [0; 16], [0; 11], 2);
 			let sacrifices =
-				[&create_random_egg(None, &ALICE, &RarityType::Common, 0b0001_0010, 10, [2; 11]).1];
+				[&create_random_egg(None, &ALICE, &RarityTier::Common, 0b0001_0010, 10, [2; 11]).1];
 			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Feed);
 
 			// Feed with Legendary egg sacrifices fails
 			let sacrifices_err = [&create_random_egg(
 				None,
 				&ALICE,
-				&RarityType::Legendary,
+				&RarityTier::Legendary,
 				0b0001_0010,
 				10,
 				[2; 11],
@@ -774,7 +774,7 @@ mod test {
 			let sacrifices_err = [&create_random_egg(
 				None,
 				&ALICE,
-				&RarityType::Legendary,
+				&RarityTier::Legendary,
 				0b0001_0010,
 				10,
 				[2; 11],
@@ -801,7 +801,7 @@ mod test {
 			let sacrifices_err = [&create_random_egg(
 				None,
 				&ALICE,
-				&RarityType::Legendary,
+				&RarityTier::Legendary,
 				0b0001_0010,
 				10,
 				[2; 11],
@@ -861,7 +861,7 @@ mod test {
 			let sacrifices_err = [&create_random_egg(
 				None,
 				&ALICE,
-				&RarityType::Legendary,
+				&RarityTier::Legendary,
 				0b0001_0010,
 				10,
 				[2; 11],
