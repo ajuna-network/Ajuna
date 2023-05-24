@@ -259,67 +259,43 @@ pub(crate) fn create_random_color_spark(
 	)
 }
 
-pub(crate) fn is_leader_forged<T>(output: &LeaderForgeOutput<T>) -> bool
-where
-	T: Config,
-{
+pub(crate) fn is_leader_forged<T: Config>(output: &LeaderForgeOutput<T>) -> bool {
 	matches!(output, LeaderForgeOutput::Forged(_, _))
 }
 
-pub(crate) fn is_leader_forged_with_attributes<T>(
+pub(crate) fn is_leader_forged_with_attributes<T: Config>(
 	output: &LeaderForgeOutput<T>,
 	attributes: &[(AvatarAttributes, u8)],
-) -> bool
-where
-	T: Config,
-{
+) -> bool {
 	matches!(output, LeaderForgeOutput::Forged((_, avatar), _) if AvatarUtils::has_attribute_set_with_values(avatar, attributes))
 }
 
-pub(crate) fn is_leader_consumed<T>(output: &LeaderForgeOutput<T>) -> bool
-where
-	T: Config,
-{
+pub(crate) fn is_leader_consumed<T: Config>(output: &LeaderForgeOutput<T>) -> bool {
 	matches!(output, LeaderForgeOutput::Consumed(_))
 }
 
-pub(crate) fn is_forged<T>(output: &ForgeOutput<T>) -> bool
-where
-	T: Config,
-{
+pub(crate) fn is_forged<T: Config>(output: &ForgeOutput<T>) -> bool {
 	matches!(output, ForgeOutput::Forged(_, _))
 }
 
-pub(crate) fn is_forged_with_attributes<T>(
+pub(crate) fn is_forged_with_attributes<T: Config>(
 	output: &ForgeOutput<T>,
 	attributes: &[(AvatarAttributes, u8)],
-) -> bool
-where
-	T: Config,
-{
+) -> bool {
 	matches!(output, ForgeOutput::Forged((_, avatar), _) if AvatarUtils::has_attribute_set_with_values(avatar, attributes))
 }
 
-pub(crate) fn is_minted<T>(output: &ForgeOutput<T>) -> bool
-where
-	T: Config,
-{
+pub(crate) fn is_minted<T: Config>(output: &ForgeOutput<T>) -> bool {
 	matches!(output, ForgeOutput::Minted(_))
 }
 
-pub(crate) fn is_minted_with_attributes<T>(
+pub(crate) fn is_minted_with_attributes<T: Config>(
 	output: &ForgeOutput<T>,
 	attributes: &[(AvatarAttributes, u8)],
-) -> bool
-where
-	T: Config,
-{
+) -> bool {
 	matches!(output, ForgeOutput::Minted(avatar) if AvatarUtils::has_attribute_set_with_values(avatar, attributes))
 }
 
-pub(crate) fn is_consumed<T>(output: &ForgeOutput<T>) -> bool
-where
-	T: Config,
-{
+pub(crate) fn is_consumed<T: Config>(output: &ForgeOutput<T>) -> bool {
 	matches!(output, ForgeOutput::Consumed(_))
 }
