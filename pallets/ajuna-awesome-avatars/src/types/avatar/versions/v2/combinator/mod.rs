@@ -17,7 +17,6 @@ pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn combine_avatars_in(
 		forge_type: ForgeType,
-		_player: &T::AccountId,
 		season_id: SeasonId,
 		_season: &SeasonOf<T>,
 		input_leader: ForgeItem<T>,

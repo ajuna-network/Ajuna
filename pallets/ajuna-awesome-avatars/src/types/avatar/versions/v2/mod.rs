@@ -201,7 +201,6 @@ impl<T: Config> Forger<T> for AvatarForgerV2<T> {
 
 		AvatarCombinator::<T>::combine_avatars_in(
 			forge_type,
-			player,
 			season_id,
 			season,
 			input_leader,
