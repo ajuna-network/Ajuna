@@ -1168,7 +1168,7 @@ pub mod pallet {
 			player: &T::AccountId,
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<Avatar, DispatchError> {
-			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let (owner, avatar) = Self::avatars(avatar_id)?;
 			ensure!(player == &owner, Error::<T>::Ownership);
 			Ok(avatar)
 		}
@@ -1375,7 +1375,7 @@ pub mod pallet {
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<(T::AccountId, BalanceOf<T>), DispatchError> {
 			let price = Trade::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatarForSale)?;
-			let (seller, _) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let (seller, _) = Self::avatars(avatar_id)?;
 			Ok((seller, price))
 		}
 
@@ -1428,6 +1428,11 @@ pub mod pallet {
 			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
 				Self::start_season(weight, block_number, next_season_id, &next_season);
 			}
+		}
+
+		fn avatars(avatar_id: &AvatarIdOf<T>) -> Result<(T::AccountId, Avatar), DispatchError> {
+			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			Ok((owner, avatar))
 		}
 	}
 }
