@@ -1111,17 +1111,25 @@ pub mod pallet {
 			let (leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
 
-			let forger: Box<dyn Forger<T>> = leader.version.get_forger();
-			let input_leader = (*leader_id, leader);
+			let input_leader = (*leader_id, leader.clone());
 			let input_sacrifices =
 				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
-			let (output_leader, output_other) = forger.forge_with(
-				player,
-				season_id,
-				&season,
-				input_leader.clone(),
-				input_sacrifices,
-			)?;
+			let (output_leader, output_other) = match leader.version {
+				AvatarVersion::V1 => ForgerV1::<T>::forge(
+					player,
+					season_id,
+					&season,
+					input_leader.clone(),
+					input_sacrifices,
+				),
+				AvatarVersion::V2 => ForgerV2::<T>::forge(
+					player,
+					season_id,
+					&season,
+					input_leader.clone(),
+					input_sacrifices,
+				),
+			}?;
 
 			Self::process_leader_forge_output(player, &season, input_leader, output_leader)?;
 			Self::process_other_forge_outputs(player, &season, output_other)?;
@@ -1173,7 +1181,7 @@ pub mod pallet {
 			player: &T::AccountId,
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<Avatar, DispatchError> {
-			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let (owner, avatar) = Self::avatars(avatar_id)?;
 			ensure!(player == &owner, Error::<T>::Ownership);
 			Ok(avatar)
 		}
@@ -1380,7 +1388,7 @@ pub mod pallet {
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<(T::AccountId, BalanceOf<T>), DispatchError> {
 			let price = Trade::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatarForSale)?;
-			let (seller, _) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			let (seller, _) = Self::avatars(avatar_id)?;
 			Ok((seller, price))
 		}
 
@@ -1433,6 +1441,11 @@ pub mod pallet {
 			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
 				Self::start_season(weight, block_number, next_season_id, &next_season);
 			}
+		}
+
+		fn avatars(avatar_id: &AvatarIdOf<T>) -> Result<(T::AccountId, Avatar), DispatchError> {
+			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
+			Ok((owner, avatar))
 		}
 	}
 }

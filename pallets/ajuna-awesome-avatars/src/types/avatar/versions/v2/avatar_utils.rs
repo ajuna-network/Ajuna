@@ -19,7 +19,6 @@ pub enum AvatarAttributes {
 	Quantity,
 }
 
-#[allow(dead_code)]
 #[derive(Clone)]
 pub enum AvatarSpecBytes {
 	SpecByte1,
@@ -30,13 +29,21 @@ pub enum AvatarSpecBytes {
 	SpecByte6,
 	SpecByte7,
 	SpecByte8,
+	#[allow(dead_code)]
 	SpecByte9,
+	#[allow(dead_code)]
 	SpecByte10,
+	#[allow(dead_code)]
 	SpecByte11,
+	#[allow(dead_code)]
 	SpecByte12,
+	#[allow(dead_code)]
 	SpecByte13,
+	#[allow(dead_code)]
 	SpecByte14,
+	#[allow(dead_code)]
 	SpecByte15,
+	#[allow(dead_code)]
 	SpecByte16,
 }
 

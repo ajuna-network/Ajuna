@@ -14,13 +14,9 @@ use sp_std::{collections::vec_deque::VecDeque, mem::variant_count};
 
 pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 
-impl<T> AvatarCombinator<T>
-where
-	T: Config,
-{
+impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn combine_avatars_in(
 		forge_type: ForgeType,
-		_player: &T::AccountId,
 		season_id: SeasonId,
 		_season: &SeasonOf<T>,
 		input_leader: ForgeItem<T>,
