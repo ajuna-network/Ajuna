@@ -87,7 +87,7 @@ impl<T: Config> MinterV1<T> {
 pub(super) struct AvatarForgerV1<T: Config>(pub PhantomData<T>);
 
 impl<T: Config> Forger<T> for AvatarForgerV1<T> {
-	fn forge_with(
+	fn forge(
 		&self,
 		player: &T::AccountId,
 		_season_id: SeasonId,

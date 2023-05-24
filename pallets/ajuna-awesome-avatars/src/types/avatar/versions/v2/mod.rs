@@ -182,7 +182,7 @@ impl<T> Forger<T> for AvatarForgerV2<T>
 where
 	T: Config,
 {
-	fn forge_with(
+	fn forge(
 		&self,
 		player: &T::AccountId,
 		season_id: SeasonId,

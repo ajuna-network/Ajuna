@@ -78,7 +78,7 @@ pub(crate) enum ForgeOutput<T: Config> {
 /// Trait used to define the surface logic of the forging algorithm.
 pub(crate) trait Forger<T: Config> {
 	/// Tries to use the supplied inputs and forge them.
-	fn forge_with(
+	fn forge(
 		&self,
 		player: &T::AccountId,
 		season_id: SeasonId,
