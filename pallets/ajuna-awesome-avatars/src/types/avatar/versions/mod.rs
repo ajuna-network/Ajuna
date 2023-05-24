@@ -1,8 +1,8 @@
 mod v1;
 mod v2;
 
-pub(crate) use v1::{AttributeMapperV1, AvatarForgerV1, MinterV1};
-pub(crate) use v2::{AttributeMapperV2, AvatarForgerV2, MinterV2};
+pub(crate) use v1::{AttributeMapperV1, ForgerV1, MinterV1};
+pub(crate) use v2::{AttributeMapperV2, ForgerV2, MinterV2};
 
 use crate::*;
 use frame_support::pallet_prelude::*;

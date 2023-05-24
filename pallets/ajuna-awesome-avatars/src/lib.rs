@@ -1115,14 +1115,14 @@ pub mod pallet {
 			let input_sacrifices =
 				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
 			let (output_leader, output_other) = match leader.version {
-				AvatarVersion::V1 => AvatarForgerV1::<T>::forge(
+				AvatarVersion::V1 => ForgerV1::<T>::forge(
 					player,
 					season_id,
 					&season,
 					input_leader.clone(),
 					input_sacrifices,
 				),
-				AvatarVersion::V2 => AvatarForgerV2::<T>::forge(
+				AvatarVersion::V2 => ForgerV2::<T>::forge(
 					player,
 					season_id,
 					&season,
