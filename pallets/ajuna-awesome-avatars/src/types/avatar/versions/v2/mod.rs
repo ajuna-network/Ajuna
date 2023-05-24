@@ -176,14 +176,10 @@ pub(crate) enum ForgeType {
 	Special = 11,
 }
 
-pub(super) struct AvatarForgerV2<T: Config>(pub PhantomData<T>);
+pub(crate) struct AvatarForgerV2<T: Config>(pub PhantomData<T>);
 
-impl<T> Forger<T> for AvatarForgerV2<T>
-where
-	T: Config,
-{
+impl<T: Config> Forger<T> for AvatarForgerV2<T> {
 	fn forge(
-		&self,
 		player: &T::AccountId,
 		season_id: SeasonId,
 		season: &SeasonOf<T>,
@@ -201,7 +197,7 @@ where
 		let sacrifices =
 			input_sacrifices.iter().map(|(_, sacrifice)| sacrifice).collect::<Vec<_>>();
 
-		let forge_type = self.determine_forge_type(&input_leader.1, sacrifices.as_slice());
+		let forge_type = Self::determine_forge_type(&input_leader.1, sacrifices.as_slice());
 
 		AvatarCombinator::<T>::combine_avatars_in(
 			forge_type,
@@ -216,11 +212,7 @@ where
 }
 
 impl<T: Config> AvatarForgerV2<T> {
-	fn determine_forge_type(
-		&self,
-		input_leader: &Avatar,
-		input_sacrifices: &[&Avatar],
-	) -> ForgeType {
+	fn determine_forge_type(input_leader: &Avatar, input_sacrifices: &[&Avatar]) -> ForgeType {
 		let input_leader_item_type =
 			AvatarUtils::read_attribute_as::<ItemType>(input_leader, &AvatarAttributes::ItemType);
 
@@ -513,8 +505,6 @@ mod test {
 		ExtBuilder::default().build().execute_with(|| {
 			let season = Season::default();
 
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			let leader = create_random_material(&ALICE, &MaterialItemType::Polymers, 10);
 			let sacrifices = [
 				create_random_material(&ALICE, &MaterialItemType::Polymers, 10),
@@ -526,23 +516,33 @@ mod test {
 			];
 
 			// Can forge with V2 avatar and correct number of sacrifices
-			assert!(forger
-				.forge(&ALICE, 1, &season, leader.clone(), sacrifices[0..4].to_vec())
-				.is_ok());
+			assert!(AvatarForgerV2::<Test>::forge(
+				&ALICE,
+				1,
+				&season,
+				leader.clone(),
+				sacrifices[0..4].to_vec()
+			)
+			.is_ok());
 
 			// Can't forge with more than MAX_SACRIFICE amount
-			assert!(forger.forge(&ALICE, 1, &season, leader.clone(), sacrifices.to_vec()).is_err());
+			assert!(AvatarForgerV2::<Test>::forge(
+				&ALICE,
+				1,
+				&season,
+				leader.clone(),
+				sacrifices.to_vec()
+			)
+			.is_err());
 
 			// Can't forge with less than MIN_SACRIFICE amount
-			assert!(forger.forge(&ALICE, 1, &season, leader, [].to_vec()).is_err());
+			assert!(AvatarForgerV2::<Test>::forge(&ALICE, 1, &season, leader, [].to_vec()).is_err());
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_assemble() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Assemble with armor and essence
 			let (_, leader) = create_random_armor_component(
 				[0xA2; 32],
@@ -570,12 +570,18 @@ mod test {
 				.1,
 				&create_random_glimmer(&ALICE, 10).1,
 			];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Assemble);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Assemble
+			);
 
 			// Assemble without armor-parts or essence fails
 			let sacrifices_err =
 				[&create_random_material(&ALICE, &MaterialItemType::Polymers, 4).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 
 			// Assemble with incompatible armor component fails
 			let sacrifices_err = [&create_random_armor_component(
@@ -590,38 +596,46 @@ mod test {
 				2,
 			)
 			.1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_breed() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Breed
 			let (_, leader) =
 				create_random_egg(None, &ALICE, &RarityTier::Rare, 0b0001_1110, 10, [0; 11]);
 			let sacrifices =
 				[&create_random_egg(None, &ALICE, &RarityTier::Common, 0b0001_0010, 10, [2; 11]).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Breed);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Breed
+			);
 
 			// Breed with Legendary egg leader fails
 			let (_, leader_err) =
 				create_random_egg(None, &ALICE, &RarityTier::Legendary, 0b0101_0010, 10, [9; 11]);
-			assert_eq!(forger.determine_forge_type(&leader_err, &sacrifices), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_err, &sacrifices),
+				ForgeType::None
+			);
 
 			// Breed with non-eggs fails
 			let sacrifices_err = [&create_random_material(&ALICE, &MaterialItemType::Metals, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_build() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			let pet_type = PetType::TankyBullwog;
 			let slot_type = SlotType::ArmBack;
 			let equip_type = EquippableItemType::ArmorComponent2;
@@ -635,13 +649,19 @@ mod test {
 			let (_, leader) =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 2);
 			let sacrifices = [&create_random_material(&ALICE, &MaterialItemType::Ceramics, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Build);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Build
+			);
 
 			// Build with non-materials fails
 			let sacrifices_err =
 				[&create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 4)
 					.1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
@@ -649,8 +669,6 @@ mod test {
 	fn test_determine_forge_types_equip() {
 		ExtBuilder::default().build().execute_with(|| {
 			ExtBuilder::default().build().execute_with(|| {
-				let forger = AvatarForgerV2::<Test>(PhantomData);
-
 				// Equip
 				let (_, leader) = create_random_pet(
 					&ALICE,
@@ -672,12 +690,18 @@ mod test {
 					2,
 				)
 				.1];
-				assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Equip);
+				assert_eq!(
+					AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+					ForgeType::Equip
+				);
 
 				// Equip without armor-parts fails
 				let sacrifices_err =
 					[&create_random_material(&ALICE, &MaterialItemType::Polymers, 4).1];
-				assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+				assert_eq!(
+					AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+					ForgeType::None
+				);
 
 				// Equip with incompatible armor component fails
 				let sacrifices_err = [&create_random_armor_component(
@@ -692,7 +716,10 @@ mod test {
 					2,
 				)
 				.1];
-				assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+				assert_eq!(
+					AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+					ForgeType::None
+				);
 			});
 		});
 	}
@@ -700,14 +727,15 @@ mod test {
 	#[test]
 	fn test_determine_forge_types_feed() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Feed
 			let (_, leader) =
 				create_random_pet(&ALICE, &PetType::TankyBullwog, 0b0001_0001, [0; 16], [0; 11], 2);
 			let sacrifices =
 				[&create_random_egg(None, &ALICE, &RarityTier::Common, 0b0001_0010, 10, [2; 11]).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Feed);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Feed
+			);
 
 			// Feed with Legendary egg sacrifices fails
 			let sacrifices_err = [&create_random_egg(
@@ -719,37 +747,50 @@ mod test {
 				[2; 11],
 			)
 			.1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 
 			// Feed with non-eggs fails
 			let sacrifices_err = [&create_random_material(&ALICE, &MaterialItemType::Metals, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_glimmer() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Glimmer
 			let (_, leader) = create_random_glimmer(&ALICE, 5);
 			let sacrifices = [
 				&create_random_material(&ALICE, &MaterialItemType::Ceramics, 4).1,
 				&create_random_material(&ALICE, &MaterialItemType::Nanomaterials, 5).1,
 			];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Glimmer);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Glimmer
+			);
 
 			// Glimmer without enough materials fails
 			let sacrifices_err = [
 				&create_random_material(&ALICE, &MaterialItemType::Polymers, 2).1,
 				&create_random_material(&ALICE, &MaterialItemType::Optics, 4).1,
 			];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 
 			// Glimmer without enough glimmer amount fails
 			let (_, leader_err) = create_random_glimmer(&ALICE, 1);
-			assert_eq!(forger.determine_forge_type(&leader_err, &sacrifices), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_err, &sacrifices),
+				ForgeType::None
+			);
 
 			// Glimmer without material sacrifices fails
 			let sacrifices_err = [&create_random_egg(
@@ -761,22 +802,26 @@ mod test {
 				[2; 11],
 			)
 			.1];
-			assert_eq!(forger.determine_forge_type(&leader_err, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_err, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_mate() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Mate
 			let (_, leader) =
 				create_random_pet(&ALICE, &PetType::TankyBullwog, 0b0001_0001, [0; 16], [0; 11], 2);
 			let sacrifices =
 				[&create_random_pet(&ALICE, &PetType::CrazyDude, 0b0001_0001, [0; 16], [0; 11], 2)
 					.1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Mate);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Mate
+			);
 
 			// Mate with non-pet fails
 			let sacrifices_err = [&create_random_egg(
@@ -788,15 +833,16 @@ mod test {
 				[2; 11],
 			)
 			.1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_spark() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Spark with ColorSpark
 			let (_, leader_color) = create_random_color_spark(
 				None,
@@ -814,7 +860,7 @@ mod test {
 			)
 			.1];
 			assert_eq!(
-				forger.determine_forge_type(&leader_color, &sacrifices_color),
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_color, &sacrifices_color),
 				ForgeType::Spark
 			);
 
@@ -824,17 +870,17 @@ mod test {
 			let sacrifices_glow =
 				[&create_random_glow_spark(None, &ALICE, &Force::Thermal, 100, None).1];
 			assert_eq!(
-				forger.determine_forge_type(&leader_glow, &sacrifices_glow),
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_glow, &sacrifices_glow),
 				ForgeType::Spark
 			);
 
 			// Spark with incompatible spark types fails
 			assert_eq!(
-				forger.determine_forge_type(&leader_glow, &sacrifices_color),
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_glow, &sacrifices_color),
 				ForgeType::None
 			);
 			assert_eq!(
-				forger.determine_forge_type(&leader_color, &sacrifices_glow),
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_color, &sacrifices_glow),
 				ForgeType::None
 			);
 
@@ -849,65 +895,91 @@ mod test {
 			)
 			.1];
 			assert_eq!(
-				forger.determine_forge_type(&leader_color, &sacrifices_err),
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_color, &sacrifices_err),
 				ForgeType::None
 			);
-			assert_eq!(forger.determine_forge_type(&leader_glow, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader_glow, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_stack() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Stack Materials
 			let (_, leader) = create_random_material(&ALICE, &MaterialItemType::Polymers, 10);
 			let sacrifices = [&create_random_material(&ALICE, &MaterialItemType::Polymers, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Stack);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Stack
+			);
 			// Stack different Materials fails
 			let sacrifices_err = [&create_random_material(&ALICE, &MaterialItemType::Metals, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 
 			// Stack Dust
 			let (_, leader) = create_random_dust(&ALICE, 10);
 			let sacrifices = [&create_random_dust(&ALICE, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Stack);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Stack
+			);
 			// Stack dust with non-dust fails
 			let sacrifices_err = [&create_random_material(&ALICE, &MaterialItemType::Metals, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 
 			// Stack Glimmer
 			let (_, leader) = create_random_glimmer(&ALICE, 1);
 			let sacrifices = [&create_random_glimmer(&ALICE, 2).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Stack);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Stack
+			);
 			// Stack Glimmer with different non-glimmer fails
 			let sacrifices_err = [&create_random_dust(&ALICE, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 
 			// Stack PetPart
 			let (_, leader) =
 				create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::Head, 1);
 			let sacrifices =
 				[&create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::Head, 1).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Stack);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Stack
+			);
 			// Stack PetPart with different PetType fails
 			let sacrifices_err =
 				[&create_random_pet_part(&ALICE, &PetType::BigHybrid, &SlotType::Head, 1).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 
 	#[test]
 	fn test_determine_forge_types_tinker() {
 		ExtBuilder::default().build().execute_with(|| {
-			let forger = AvatarForgerV2::<Test>(PhantomData);
-
 			// Tinker
 			let (_, leader) =
 				create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::Head, 1);
 			let sacrifices = [&create_random_material(&ALICE, &MaterialItemType::Polymers, 10).1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices), ForgeType::Tinker);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Tinker
+			);
 
 			// Tinker with non-materials fails
 			let sacrifices_err = [&create_random_color_spark(
@@ -918,7 +990,10 @@ mod test {
 				None,
 			)
 			.1];
-			assert_eq!(forger.determine_forge_type(&leader, &sacrifices_err), ForgeType::None);
+			assert_eq!(
+				AvatarForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
 		});
 	}
 }

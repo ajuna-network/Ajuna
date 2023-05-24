@@ -84,11 +84,10 @@ impl<T: Config> MinterV1<T> {
 	}
 }
 
-pub(super) struct AvatarForgerV1<T: Config>(pub PhantomData<T>);
+pub(crate) struct AvatarForgerV1<T: Config>(pub PhantomData<T>);
 
 impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 	fn forge(
-		&self,
 		player: &T::AccountId,
 		_season_id: SeasonId,
 		season: &SeasonOf<T>,
@@ -103,7 +102,7 @@ impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 		let (sacrifice_ids, sacrifice_avatars): (Vec<AvatarIdOf<T>>, Vec<Avatar>) =
 			input_sacrifices.into_iter().unzip();
 
-		let (mut unique_matched_indexes, matches, soul_count) = self.compare_all(
+		let (mut unique_matched_indexes, matches, soul_count) = Self::compare_all(
 			&leader,
 			sacrifice_avatars.as_slice(),
 			season.max_variations,
@@ -113,7 +112,7 @@ impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 		leader.souls += soul_count;
 
 		let mut upgraded_components = 0;
-		let prob = self.forge_probability(&leader, season, &current_block, matches);
+		let prob = Self::forge_probability(&leader, season, &current_block, matches);
 		let rolls = sacrifice_avatars.len();
 		let random_hash = Pallet::<T>::random_hash(b"forging avatar", player);
 
@@ -152,13 +151,12 @@ impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 
 impl<T: Config> AvatarForgerV1<T> {
 	fn compare_all(
-		&self,
 		target: &Avatar,
 		others: &[Avatar],
 		max_variations: u8,
 		max_tier: u8,
 	) -> Result<(BTreeSet<usize>, u8, SoulCount), DispatchError> {
-		let upgradable_indexes = self.upgradable_indexes_for_target(target)?;
+		let upgradable_indexes = Self::upgradable_indexes_for_target(target)?;
 		let leader_tier = AttributeMapperV1::rarity(target);
 		others.iter().try_fold(
 			(BTreeSet::<usize>::new(), 0, SoulCount::zero()),
@@ -166,7 +164,7 @@ impl<T: Config> AvatarForgerV1<T> {
 				let sacrifice_tier = AttributeMapperV1::rarity(other);
 				if sacrifice_tier >= leader_tier {
 					let (is_match, matching_components) =
-						self.compare(target, other, &upgradable_indexes, max_variations, max_tier);
+						Self::compare(target, other, &upgradable_indexes, max_variations, max_tier);
 
 					if is_match {
 						matches += 1;
@@ -180,7 +178,7 @@ impl<T: Config> AvatarForgerV1<T> {
 		)
 	}
 
-	fn upgradable_indexes_for_target(&self, target: &Avatar) -> Result<Vec<usize>, DispatchError> {
+	fn upgradable_indexes_for_target(target: &Avatar) -> Result<Vec<usize>, DispatchError> {
 		let min_tier = AttributeMapperV1::rarity(target);
 		Ok(target
 			.dna
@@ -192,7 +190,6 @@ impl<T: Config> AvatarForgerV1<T> {
 	}
 
 	fn compare(
-		&self,
 		target: &Avatar,
 		other: &Avatar,
 		indexes: &[usize],
@@ -240,20 +237,19 @@ impl<T: Config> AvatarForgerV1<T> {
 	}
 
 	fn forge_probability(
-		&self,
 		target: &Avatar,
 		season: &SeasonOf<T>,
 		now: &T::BlockNumber,
 		matches: u8,
 	) -> u8 {
-		let period_multiplier = self.forge_multiplier(target, season, now);
+		let period_multiplier = Self::forge_multiplier(target, season, now);
 		// p = base_prob + (1 - base_prob) * (matches / max_sacrifices) * (1 / period_multiplier)
 		season.base_prob +
 			(((MAX_PERCENTAGE - season.base_prob) / season.max_sacrifices) * matches) /
 				period_multiplier
 	}
 
-	fn forge_multiplier(&self, target: &Avatar, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
+	fn forge_multiplier(target: &Avatar, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
 		let current_period = season.current_period(now).saturating_add(1);
 		let last_variation = AttributeMapperV1::force(target) as u16;
 		let max_variations = season.max_variations as u16;
@@ -311,37 +307,36 @@ mod test {
 			.base_prob(0);
 
 		let avatar = Avatar::default().dna(&[1, 3, 3, 7, 0]);
-		let forger = AvatarForgerV1::<Test>(PhantomData);
 
 		// in period
 		let now = 1;
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 1), 25);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 2), 50);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 3), 75);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 4), 100);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 1), 25);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 2), 50);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 3), 75);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 4), 100);
 
 		// not in period
 		let now = 2;
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 1), 12);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 2), 25);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 3), 37);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 4), 50);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 1), 12);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 2), 25);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 3), 37);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 4), 50);
 
 		// increase base_prob to 10
 		let season = season.base_prob(10);
 		// in period
 		let now = 1;
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 1), 32);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 2), 54);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 3), 76);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 4), 98);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 1), 32);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 2), 54);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 3), 76);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 4), 98);
 
 		// not in period
 		let now = 2;
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 1), 21);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 2), 32);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 3), 43);
-		assert_eq!(forger.forge_probability(&avatar, &season, &now, 4), 54);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 1), 21);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 2), 32);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 3), 43);
+		assert_eq!(AvatarForgerV1::<Test>::forge_probability(&avatar, &season, &now, 4), 54);
 	}
 
 	#[test]
@@ -391,8 +386,10 @@ mod test {
 				assert_eq!(season.current_period(&now), expected_period);
 
 				let avatar = Avatar::default().dna(&dna);
-				let forger = AvatarForgerV1::<Test>(PhantomData);
-				assert_eq!(forger.forge_multiplier(&avatar, &season, &now), expected_multiplier);
+				assert_eq!(
+					AvatarForgerV1::<Test>::forge_multiplier(&avatar, &season, &now),
+					expected_multiplier
+				);
 			}
 		}
 	}
@@ -419,10 +416,9 @@ mod test {
 			.dna(&[0x21, 0x05, 0x23, 0x24, 0x20, 0x22, 0x25, 0x23, 0x05, 0x04, 0x02]);
 		let other = Avatar::default()
 			.dna(&[0x04, 0x00, 0x00, 0x04, 0x02, 0x04, 0x02, 0x00, 0x05, 0x05, 0x04]);
-		let forger = AvatarForgerV1::<Test>(PhantomData);
 
 		assert_eq!(
-			forger.compare(
+			AvatarForgerV1::<Test>::compare(
 				&leader,
 				&other,
 				&[1, 8, 9, 10],
@@ -481,15 +477,15 @@ mod test {
 				let forged_leader = Avatars::<Test>::get(leader_id).unwrap().1;
 
 				// check the result of the compare method
-				let forger = AvatarForgerV1::<Test>(PhantomData);
 				let upgradable_indexes =
-					forger.upgradable_indexes_for_target(&original_leader).unwrap();
+					AvatarForgerV1::<Test>::upgradable_indexes_for_target(&original_leader)
+						.unwrap();
 				for (sacrifice, result) in original_sacrifices
 					.iter()
 					.zip([(true, BTreeSet::from([0, 2, 3])), (true, BTreeSet::from([0, 2, 3, 4]))])
 				{
 					assert_eq!(
-						forger.compare(
+						AvatarForgerV1::<Test>::compare(
 							&original_leader,
 							sacrifice,
 							&upgradable_indexes,
@@ -580,11 +576,11 @@ mod test {
 				let forged_leader = Avatars::<Test>::get(leader_id).unwrap().1;
 
 				// check the result of the compare method
-				let forger = AvatarForgerV1::<Test>(PhantomData);
 				let upgradable_indexes =
-					forger.upgradable_indexes_for_target(&original_leader).unwrap();
+					AvatarForgerV1::<Test>::upgradable_indexes_for_target(&original_leader)
+						.unwrap();
 				assert_eq!(
-					forger.compare(
+					AvatarForgerV1::<Test>::compare(
 						&original_leader,
 						&original_sacrifice,
 						&upgradable_indexes,

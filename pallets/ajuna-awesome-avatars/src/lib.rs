@@ -1111,12 +1111,25 @@ pub mod pallet {
 			let (leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
 
-			let forger: Box<dyn Forger<T>> = leader.version.get_forger();
-			let input_leader = (*leader_id, leader);
+			let input_leader = (*leader_id, leader.clone());
 			let input_sacrifices =
 				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
-			let (output_leader, output_other) =
-				forger.forge(player, season_id, &season, input_leader.clone(), input_sacrifices)?;
+			let (output_leader, output_other) = match leader.version {
+				AvatarVersion::V1 => AvatarForgerV1::<T>::forge(
+					player,
+					season_id,
+					&season,
+					input_leader.clone(),
+					input_sacrifices,
+				),
+				AvatarVersion::V2 => AvatarForgerV2::<T>::forge(
+					player,
+					season_id,
+					&season,
+					input_leader.clone(),
+					input_sacrifices,
+				),
+			}?;
 
 			Self::process_leader_forge_output(player, &season, input_leader, output_leader)?;
 			Self::process_other_forge_outputs(player, &season, output_other)?;
