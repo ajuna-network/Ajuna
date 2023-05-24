@@ -95,8 +95,6 @@ impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		self.can_be_forged(season, &input_leader, &input_sacrifices)?;
-
 		let (leader_id, mut leader) = input_leader;
 
 		let max_tier = season.max_tier() as u8;
@@ -149,21 +147,6 @@ impl<T: Config> Forger<T> for AvatarForgerV1<T> {
 				.map(|sacrifice_id| ForgeOutput::Consumed(sacrifice_id))
 				.collect(),
 		))
-	}
-
-	fn can_be_forged(
-		&self,
-		_season: &SeasonOf<T>,
-		input_leader: &ForgeItem<T>,
-		input_sacrifices: &[ForgeItem<T>],
-	) -> DispatchResult {
-		ensure!(
-			input_sacrifices
-				.iter()
-				.all(|(_, avatar)| avatar.version == input_leader.1.version),
-			Error::<T>::IncompatibleAvatarVersions
-		);
-		Ok(())
 	}
 }
 

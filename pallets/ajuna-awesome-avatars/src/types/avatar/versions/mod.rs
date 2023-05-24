@@ -86,12 +86,4 @@ pub(crate) trait Forger<T: Config> {
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError>;
-
-	/// Validates that all inputs can be used in the forging process.
-	fn can_be_forged(
-		&self,
-		season: &SeasonOf<T>,
-		input_leader: &ForgeItem<T>,
-		input_sacrifices: &[ForgeItem<T>],
-	) -> DispatchResult;
 }

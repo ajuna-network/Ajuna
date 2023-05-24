@@ -193,7 +193,10 @@ where
 		let mut hash_provider =
 			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_forger_v2", player));
 
-		self.can_be_forged(season, &input_leader, &input_sacrifices)?;
+		ensure!(
+			input_sacrifices.len() >= MIN_SACRIFICE && input_sacrifices.len() <= MAX_SACRIFICE,
+			Error::<T>::IncompatibleAvatarVersions
+		);
 
 		let sacrifices =
 			input_sacrifices.iter().map(|(_, sacrifice)| sacrifice).collect::<Vec<_>>();
@@ -209,22 +212,6 @@ where
 			input_sacrifices,
 			&mut hash_provider,
 		)
-	}
-
-	fn can_be_forged(
-		&self,
-		_season: &SeasonOf<T>,
-		input_leader: &ForgeItem<T>,
-		input_sacrifices: &[ForgeItem<T>],
-	) -> DispatchResult {
-		ensure!(
-			(input_leader.1.version == AvatarVersion::V2) &&
-				(input_sacrifices.len() >= MIN_SACRIFICE &&
-					input_sacrifices.len() <= MAX_SACRIFICE) &&
-				(input_sacrifices.iter().all(|(_, avatar)| avatar.version == AvatarVersion::V2)),
-			Error::<T>::IncompatibleAvatarVersions
-		);
-		Ok(())
 	}
 }
 
@@ -528,7 +515,7 @@ mod test {
 
 			let forger = AvatarForgerV2::<Test>(PhantomData);
 
-			let mut leader = create_random_material(&ALICE, &MaterialItemType::Polymers, 10);
+			let leader = create_random_material(&ALICE, &MaterialItemType::Polymers, 10);
 			let sacrifices = [
 				create_random_material(&ALICE, &MaterialItemType::Polymers, 10),
 				create_random_material(&ALICE, &MaterialItemType::Polymers, 10),
@@ -538,18 +525,16 @@ mod test {
 				create_random_material(&ALICE, &MaterialItemType::Polymers, 10),
 			];
 
-			// Can't forge non V2 avatar
-			leader.1.version = AvatarVersion::V1;
-			assert!(forger.can_be_forged(&season, &leader, &sacrifices[0..4]).is_err());
-			leader.1.version = AvatarVersion::V2;
 			// Can forge with V2 avatar and correct number of sacrifices
-			assert!(forger.can_be_forged(&season, &leader, &sacrifices[0..4]).is_ok());
+			assert!(forger
+				.forge(&ALICE, 1, &season, leader.clone(), sacrifices[0..4].to_vec())
+				.is_ok());
 
 			// Can't forge with more than MAX_SACRIFICE amount
-			assert!(forger.can_be_forged(&season, &leader, &sacrifices).is_err());
+			assert!(forger.forge(&ALICE, 1, &season, leader.clone(), sacrifices.to_vec()).is_err());
 
 			// Can't forge with less than MIN_SACRIFICE amount
-			assert!(forger.can_be_forged(&season, &leader, &[]).is_err());
+			assert!(forger.forge(&ALICE, 1, &season, leader, [].to_vec()).is_err());
 		});
 	}
 
