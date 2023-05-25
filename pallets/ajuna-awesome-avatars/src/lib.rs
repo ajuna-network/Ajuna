@@ -486,7 +486,6 @@ pub mod pallet {
 		pub fn transfer_avatar(
 			origin: OriginFor<T>,
 			to: T::AccountId,
-			season_id: SeasonId,
 			avatar_id: AvatarIdOf<T>,
 		) -> DispatchResult {
 			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
@@ -507,7 +506,7 @@ pub mod pallet {
 			T::Currency::withdraw(&from, fee, WithdrawReasons::FEE, AllowDeath)?;
 			Self::deposit_into_treasury(&avatar.season_id, fee);
 
-			Self::do_transfer_avatar(&from, &to, &season_id, &avatar_id)?;
+			Self::do_transfer_avatar(&from, &to, &avatar.season_id, &avatar_id)?;
 			Self::deposit_event(Event::AvatarTransferred { from, to, avatar_id });
 			Ok(())
 		}
@@ -604,11 +603,7 @@ pub mod pallet {
 		/// Weight: `O(1)`
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
-		pub fn buy(
-			origin: OriginFor<T>,
-			season_id: SeasonId,
-			avatar_id: AvatarIdOf<T>,
-		) -> DispatchResult {
+		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = GlobalConfigs::<T>::get();
 			ensure!(trade.open, Error::<T>::TradeClosed);
@@ -626,7 +621,7 @@ pub mod pallet {
 			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::deposit_into_treasury(&avatar.season_id, trade_fee);
 
-			Self::do_transfer_avatar(&seller, &buyer, &season_id, &avatar_id)?;
+			Self::do_transfer_avatar(&seller, &buyer, &avatar.season_id, &avatar_id)?;
 			Trade::<T>::remove(avatar_id);
 
 			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
@@ -837,11 +832,7 @@ pub mod pallet {
 		/// - `n = max avatars per player`
 		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::lock_avatar(MaxAvatarsPerPlayer::get()))]
-		pub fn lock_avatar(
-			origin: OriginFor<T>,
-			season_id: SeasonId,
-			avatar_id: AvatarIdOf<T>,
-		) -> DispatchResult {
+		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
@@ -852,7 +843,7 @@ pub mod pallet {
 			Self::do_transfer_avatar(
 				&player,
 				&Self::technical_account_id(),
-				&season_id,
+				&avatar.season_id,
 				&avatar_id,
 			)?;
 
@@ -876,13 +867,9 @@ pub mod pallet {
 		/// - `n = max avatars per player`
 		#[pallet::call_index(16)]
 		#[pallet::weight(T::WeightInfo::unlock_avatar(MaxAvatarsPerPlayer::get()))]
-		pub fn unlock_avatar(
-			origin: OriginFor<T>,
-			season_id: SeasonId,
-			avatar_id: AvatarIdOf<T>,
-		) -> DispatchResult {
+		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
+			let avatar = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarUnlocked);
@@ -890,7 +877,7 @@ pub mod pallet {
 			Self::do_transfer_avatar(
 				&Self::technical_account_id(),
 				&player,
-				&season_id,
+				&avatar.season_id,
 				&avatar_id,
 			)?;
 			let collection_id = CollectionId::<T>::get().ok_or(Error::<T>::CollectionIdNotSet)?;

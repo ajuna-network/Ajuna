@@ -256,7 +256,7 @@ benchmarks! {
 
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		<T as AvatarsConfig>::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
-	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), season_id, avatar_id)
+	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id })
 	}
@@ -272,7 +272,7 @@ benchmarks! {
 
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		CurrencyOf::<T>::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
-	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), season_id, avatar_id)
+	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id })
 	}
@@ -329,7 +329,7 @@ benchmarks! {
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&seller, season_id)[0];
 		Trade::<T>::insert(avatar_id, sell_fee);
-	}: _(RawOrigin::Signed(buyer.clone()), season_id, avatar_id)
+	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer })
 	}
@@ -489,7 +489,7 @@ benchmarks! {
 		let item_deposit = <T as pallet_nfts::Config>::ItemDeposit::get();
 		let ed = <T as pallet_nfts::Config>::Currency::minimum_balance();
 		<T as pallet_nfts::Config>::Currency::make_free_balance_be(&player, item_deposit + ed);
-	}: _(RawOrigin::Signed(player), season_id, avatar_id)
+	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarLocked { avatar_id })
 	}
@@ -514,8 +514,8 @@ benchmarks! {
 		let item_deposit = <T as pallet_nfts::Config>::ItemDeposit::get();
 		let ed = <T as pallet_nfts::Config>::Currency::minimum_balance();
 		<T as pallet_nfts::Config>::Currency::make_free_balance_be(&player, item_deposit + ed);
-		AAvatars::<T>::lock_avatar(RawOrigin::Signed(player.clone()).into(), season_id, avatar_id)?;
-	}: _(RawOrigin::Signed(player), season_id, avatar_id)
+		AAvatars::<T>::lock_avatar(RawOrigin::Signed(player.clone()).into(), avatar_id)?;
+	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarUnlocked { avatar_id })
 	}
