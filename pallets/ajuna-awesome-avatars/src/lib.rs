@@ -88,7 +88,7 @@ use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 pub mod pallet {
 	use super::*;
 
-	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
 	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
