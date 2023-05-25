@@ -145,8 +145,15 @@ pub mod pallet {
 	pub type Avatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, (T::AccountId, Avatar)>;
 
 	#[pallet::storage]
-	pub type Owners<T: Config> =
-		StorageMap<_, Identity, T::AccountId, BoundedAvatarIdsOf<T>, ValueQuery>;
+	pub type Owners<T: Config> = StorageDoubleMap<
+		_,
+		Identity,
+		T::AccountId,
+		Identity,
+		SeasonId,
+		BoundedAvatarIdsOf<T>,
+		ValueQuery,
+	>;
 
 	#[pallet::storage]
 	pub type LockedAvatars<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, ()>;
@@ -479,6 +486,7 @@ pub mod pallet {
 		pub fn transfer_avatar(
 			origin: OriginFor<T>,
 			to: T::AccountId,
+			season_id: SeasonId,
 			avatar_id: AvatarIdOf<T>,
 		) -> DispatchResult {
 			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
@@ -499,7 +507,7 @@ pub mod pallet {
 			T::Currency::withdraw(&from, fee, WithdrawReasons::FEE, AllowDeath)?;
 			Self::deposit_into_treasury(&avatar.season_id, fee);
 
-			Self::do_transfer_avatar(&from, &to, &avatar_id)?;
+			Self::do_transfer_avatar(&from, &to, &season_id, &avatar_id)?;
 			Self::deposit_event(Event::AvatarTransferred { from, to, avatar_id });
 			Ok(())
 		}
@@ -596,7 +604,11 @@ pub mod pallet {
 		/// Weight: `O(1)`
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
-		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+		pub fn buy(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			avatar_id: AvatarIdOf<T>,
+		) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = GlobalConfigs::<T>::get();
 			ensure!(trade.open, Error::<T>::TradeClosed);
@@ -614,7 +626,7 @@ pub mod pallet {
 			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::deposit_into_treasury(&avatar.season_id, trade_fee);
 
-			Self::do_transfer_avatar(&seller, &buyer, &avatar_id)?;
+			Self::do_transfer_avatar(&seller, &buyer, &season_id, &avatar_id)?;
 			Trade::<T>::remove(avatar_id);
 
 			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
@@ -825,7 +837,11 @@ pub mod pallet {
 		/// - `n = max avatars per player`
 		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::lock_avatar(MaxAvatarsPerPlayer::get()))]
-		pub fn lock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+		pub fn lock_avatar(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			avatar_id: AvatarIdOf<T>,
+		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
@@ -833,7 +849,12 @@ pub mod pallet {
 			Self::ensure_unlocked(&avatar_id)?;
 			ensure!(Preparation::<T>::contains_key(avatar_id), Error::<T>::NotPrepared);
 
-			Self::do_transfer_avatar(&player, &Self::technical_account_id(), &avatar_id)?;
+			Self::do_transfer_avatar(
+				&player,
+				&Self::technical_account_id(),
+				&season_id,
+				&avatar_id,
+			)?;
 
 			let collection_id = CollectionId::<T>::get().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let url = Preparation::<T>::take(avatar_id).ok_or(Error::<T>::UnknownPreparation)?;
@@ -855,14 +876,23 @@ pub mod pallet {
 		/// - `n = max avatars per player`
 		#[pallet::call_index(16)]
 		#[pallet::weight(T::WeightInfo::unlock_avatar(MaxAvatarsPerPlayer::get()))]
-		pub fn unlock_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+		pub fn unlock_avatar(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			avatar_id: AvatarIdOf<T>,
+		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
 			let _ = Self::ensure_ownership(&Self::technical_account_id(), &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			ensure!(LockedAvatars::<T>::contains_key(avatar_id), Error::<T>::AvatarUnlocked);
 
-			Self::do_transfer_avatar(&Self::technical_account_id(), &player, &avatar_id)?;
+			Self::do_transfer_avatar(
+				&Self::technical_account_id(),
+				&player,
+				&season_id,
+				&avatar_id,
+			)?;
 			let collection_id = CollectionId::<T>::get().ok_or(Error::<T>::CollectionIdNotSet)?;
 			let _ = T::NftHandler::recover_from_nft(player, collection_id, avatar_id)?;
 
@@ -1131,8 +1161,14 @@ pub mod pallet {
 				),
 			}?;
 
-			Self::process_leader_forge_output(player, &season, input_leader, output_leader)?;
-			Self::process_other_forge_outputs(player, &season, output_other)?;
+			Self::process_leader_forge_output(
+				player,
+				&season_id,
+				&season,
+				input_leader,
+				output_leader,
+			)?;
+			Self::process_other_forge_outputs(player, &season_id, output_other)?;
 			Self::update_forging_statistics_for_player(player, season_id)?;
 			Ok(())
 		}
@@ -1140,12 +1176,13 @@ pub mod pallet {
 		fn do_transfer_avatar(
 			from: &T::AccountId,
 			to: &T::AccountId,
+			season_id: &SeasonId,
 			avatar_id: &AvatarIdOf<T>,
 		) -> DispatchResult {
-			let mut from_avatar_ids = Owners::<T>::get(from);
+			let mut from_avatar_ids = Owners::<T>::get(from, season_id);
 			from_avatar_ids.retain(|existing_avatar_id| existing_avatar_id != avatar_id);
 
-			let mut to_avatar_ids = Owners::<T>::get(to);
+			let mut to_avatar_ids = Owners::<T>::get(to, season_id);
 			to_avatar_ids
 				.try_push(*avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
@@ -1154,8 +1191,8 @@ pub mod pallet {
 				Error::<T>::MaxOwnershipReached
 			);
 
-			Owners::<T>::mutate(from, |avatar_ids| *avatar_ids = from_avatar_ids);
-			Owners::<T>::mutate(to, |avatar_ids| *avatar_ids = to_avatar_ids);
+			Owners::<T>::mutate(from, season_id, |avatar_ids| *avatar_ids = from_avatar_ids);
+			Owners::<T>::mutate(to, season_id, |avatar_ids| *avatar_ids = to_avatar_ids);
 			Avatars::<T>::try_mutate(avatar_id, |maybe_avatar| -> DispatchResult {
 				let (from_owner, _) = maybe_avatar.as_mut().ok_or(Error::<T>::UnknownAvatar)?;
 				*from_owner = to.clone();
@@ -1220,9 +1257,9 @@ pub mod pallet {
 				},
 			};
 
-			let new_count = Owners::<T>::get(player).len() + mint_count as usize;
-			let max_count = Accounts::<T>::get(player).storage_tier as usize;
-			ensure!(new_count <= max_count, Error::<T>::MaxOwnershipReached);
+			let current_count = Owners::<T>::iter_prefix_values(player).flatten().count() as u16;
+			let max_count = Accounts::<T>::get(player).storage_tier as u16;
+			ensure!(current_count + mint_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())
 		}
 
@@ -1269,6 +1306,7 @@ pub mod pallet {
 
 		fn process_leader_forge_output(
 			player: &AccountIdOf<T>,
+			season_id: &SeasonId,
 			season: &SeasonOf<T>,
 			input_leader: ForgeItem<T>,
 			output_leader: LeaderForgeOutput<T>,
@@ -1296,7 +1334,7 @@ pub mod pallet {
 					});
 				},
 				LeaderForgeOutput::Consumed(leader_id) =>
-					Self::remove_avatar_from(player, &leader_id),
+					Self::remove_avatar_from(player, season_id, &leader_id),
 			}
 
 			Ok(())
@@ -1304,7 +1342,7 @@ pub mod pallet {
 
 		fn process_other_forge_outputs(
 			player: &AccountIdOf<T>,
-			_season: &SeasonOf<T>,
+			season_id: &SeasonId,
 			other_outputs: Vec<ForgeOutput<T>>,
 		) -> DispatchResult {
 			let mut minted_avatars: Vec<AvatarIdOf<T>> = Vec::with_capacity(0);
@@ -1319,11 +1357,11 @@ pub mod pallet {
 					},
 					ForgeOutput::Minted(avatar) => {
 						let avatar_id = Self::random_hash(b"create_avatar", player);
-						Self::try_add_avatar_to(player, avatar_id, avatar)?;
+						Self::try_add_avatar_to(player, season_id, avatar_id, avatar)?;
 						minted_avatars.push(avatar_id);
 					},
 					ForgeOutput::Consumed(avatar_id) =>
-						Self::remove_avatar_from(player, &avatar_id),
+						Self::remove_avatar_from(player, season_id, &avatar_id),
 				}
 			}
 
@@ -1368,18 +1406,23 @@ pub mod pallet {
 
 		fn try_add_avatar_to(
 			player: &AccountIdOf<T>,
+			season_id: &SeasonId,
 			avatar_id: AvatarIdOf<T>,
 			avatar: Avatar,
 		) -> DispatchResult {
 			Avatars::<T>::insert(avatar_id, (player, avatar));
-			Owners::<T>::try_append(&player, avatar_id)
+			Owners::<T>::try_append(&player, &season_id, avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 			Ok(())
 		}
 
-		fn remove_avatar_from(player: &AccountIdOf<T>, avatar_id: &AvatarIdOf<T>) {
+		fn remove_avatar_from(
+			player: &AccountIdOf<T>,
+			season_id: &SeasonId,
+			avatar_id: &AvatarIdOf<T>,
+		) {
 			Avatars::<T>::remove(avatar_id);
-			Owners::<T>::mutate(player, |avatars| {
+			Owners::<T>::mutate(player, season_id, |avatars| {
 				avatars.retain(|id| id != avatar_id);
 			});
 		}

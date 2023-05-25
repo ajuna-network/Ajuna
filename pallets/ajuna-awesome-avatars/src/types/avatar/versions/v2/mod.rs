@@ -79,7 +79,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 				)?;
 
 				Avatars::<T>::insert(avatar_id, (player, avatar));
-				Owners::<T>::try_append(&player, avatar_id)
+				Owners::<T>::try_append(&player, &season_id, avatar_id)
 					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 
 				Ok(avatar_id)

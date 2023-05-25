@@ -32,7 +32,7 @@ impl<T: Config> Minter<T> for MinterV1<T> {
 				let avatar =
 					Avatar { season_id: *season_id, version: AvatarVersion::V1, dna, souls };
 				Avatars::<T>::insert(avatar_id, (player, avatar));
-				Owners::<T>::try_append(&player, avatar_id)
+				Owners::<T>::try_append(&player, &season_id, avatar_id)
 					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 				Ok(avatar_id)
 			})
@@ -432,6 +432,7 @@ mod test {
 	#[test]
 	fn forge_should_work_for_matches() {
 		let tiers = &[RarityTier::Common, RarityTier::Legendary];
+		let season_id = 1;
 		let season = Season::default()
 			.tiers(tiers)
 			.batch_mint_probs(&[100])
@@ -441,7 +442,7 @@ mod test {
 			.max_sacrifices(2);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(season_id, season.clone())])
 			.mint_cooldown(1)
 			.free_mints(&[(BOB, 10)])
 			.build()
@@ -459,7 +460,7 @@ mod test {
 				));
 
 				// forge
-				let owned_avatar_ids = Owners::<Test>::get(BOB);
+				let owned_avatar_ids = Owners::<Test>::get(BOB, season_id);
 				let leader_id = owned_avatar_ids[0];
 				let sacrifice_ids = &owned_avatar_ids[1..3];
 
@@ -533,6 +534,7 @@ mod test {
 	fn forge_should_work_for_non_matches() {
 		let tiers =
 			&[RarityTier::Common, RarityTier::Uncommon, RarityTier::Rare, RarityTier::Legendary];
+		let season_id = 1;
 		let season = Season::default()
 			.tiers(tiers)
 			.batch_mint_probs(&[33, 33, 34])
@@ -542,7 +544,7 @@ mod test {
 			.max_sacrifices(5);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(season_id, season.clone())])
 			.mint_cooldown(1)
 			.free_mints(&[(BOB, 10)])
 			.build()
@@ -560,7 +562,7 @@ mod test {
 				));
 
 				// forge
-				let owned_avatar_ids = Owners::<Test>::get(BOB);
+				let owned_avatar_ids = Owners::<Test>::get(BOB, season_id);
 				let leader_id = owned_avatar_ids[0];
 				let sacrifice_id = owned_avatar_ids[1];
 
