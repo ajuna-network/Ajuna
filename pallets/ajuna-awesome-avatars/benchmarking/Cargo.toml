@@ -55,4 +55,4 @@ std = [
     "sp-std/std",
     "log/std",
 ]
-try-runtime = [ "frame-support/try-runtime", "pallet-ajuna-nft-transfer/try-runtime" ]
+try-runtime = [ "frame-support/try-runtime" ]
