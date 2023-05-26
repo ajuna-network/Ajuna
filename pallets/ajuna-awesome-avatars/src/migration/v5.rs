@@ -64,10 +64,10 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			.map(|(owner, avatar_ids)| (T::AccountId::decode(&mut &owner[..]).unwrap(), avatar_ids))
 			.collect::<Vec<_>>();
 
+			let season_id = 1;
 			let mut translated_account = 0_u64;
 			let mut translated_avatars = 0_u64;
 			owners.iter().for_each(|(owner, avatar_ids)| {
-				let season_id = 1;
 				Owners::<T>::insert(owner, season_id, avatar_ids);
 				translated_account += 1;
 				translated_avatars += avatar_ids.len() as u64;
@@ -79,9 +79,26 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 				translated_avatars,
 			);
 
+			let mut translated_trades = 0_u64;
+			let trade =
+				migration::storage_iter::<BalanceOf<T>>(<Pallet<T>>::name().as_bytes(), b"Trade")
+					.drain()
+					.map(|(avatar_id, price)| {
+						(AvatarIdOf::<T>::decode(&mut &avatar_id[..]).unwrap(), price)
+					})
+					.collect::<Vec<_>>();
+			trade.iter().for_each(|(avatar_id, price)| {
+				Trade::<T>::insert(season_id, avatar_id, price);
+				translated_trades += 1;
+			});
+			log::info!(target: LOG_TARGET, "Updated {} avatars in trade", translated_trades);
+
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
-			T::DbWeight::get().reads_writes(2 + 2 * translated_account, 2 + 2 * translated_account)
+			T::DbWeight::get().reads_writes(
+				2 + 2 * translated_account + translated_trades,
+				2 + 2 * translated_account + translated_trades,
+			)
 		} else {
 			log::info!(
 				target: LOG_TARGET,
@@ -113,17 +130,30 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		// There are 892 owners of avatars in storage as of 26/05/2023. But the exact number could
 		// change as avatars are traded between accounts. We estimate there should be between 850
 		// and 1,000 accounts.
-		let mut season_ids = Owners::<T>::iter_keys()
+		let mut owners_season_ids = Owners::<T>::iter_keys()
 			.filter(|(owner, season_id)| !Owners::<T>::get(owner, season_id).is_empty())
 			.map(|(_owner, season_id)| season_id)
 			.collect::<Vec<SeasonId>>();
-		assert!(season_ids.len() > 850 && season_ids.len() < 1_000);
+		assert!(owners_season_ids.len() > 850 && owners_season_ids.len() < 1_000);
 
-		// Check all migrated season IDs are 1.
-		season_ids.sort();
-		season_ids.dedup();
-		assert_eq!(season_ids.len(), 1);
-		assert_eq!(season_ids, vec![1]);
+		// Check all owners are migrated with season ID of 1.
+		owners_season_ids.sort();
+		owners_season_ids.dedup();
+		assert_eq!(owners_season_ids.len(), 1);
+		assert_eq!(owners_season_ids, vec![1]);
+
+		// There are 871 avatars in trade as of 26/05/2023. But the exact number could change. we
+		// estimate between 800 and 1,000 avatars to be in trade.
+		let mut trade_season_ids = Trade::<T>::iter_keys()
+			.map(|(season_id, _avatar_id)| season_id)
+			.collect::<Vec<SeasonId>>();
+		assert!(trade_season_ids.len() > 800 && trade_season_ids.len() < 1_000);
+
+		// Check all trades are migrated with season ID of 1.
+		trade_season_ids.sort();
+		trade_season_ids.dedup();
+		assert_eq!(trade_season_ids.len(), 1);
+		assert_eq!(trade_season_ids, vec![1]);
 
 		Ok(())
 	}
