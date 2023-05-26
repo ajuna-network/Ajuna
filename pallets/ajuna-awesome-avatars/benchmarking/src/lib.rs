@@ -195,7 +195,8 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
-		let avatar_ids = Owners::<T>::get(caller)[n..(n + 6)].to_vec();
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_ids = Owners::<T>::get(caller, season_id)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
 
@@ -213,7 +214,8 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
-		let avatar_ids = Owners::<T>::get(caller)[n..(n + 6)].to_vec();
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_ids = Owners::<T>::get(caller, season_id)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
 
@@ -223,7 +225,8 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = Owners::<T>::get(&player);
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_ids = Owners::<T>::get(&player, season_id);
 		let avatar_id = avatar_ids[0];
 		let (_owner, original_avatar) = Avatars::<T>::get(avatar_id).unwrap();
 	}: _(RawOrigin::Signed(player), avatar_id, avatar_ids[1..5].to_vec())
@@ -248,7 +251,8 @@ benchmarks! {
 		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>("from", MaxAvatarsPerPlayer::get())?;
 		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let avatar_id = Owners::<T>::get(&from)[n as usize - 1];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&from, season_id)[n as usize - 1];
 
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		<T as AvatarsConfig>::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
@@ -263,7 +267,8 @@ benchmarks! {
 		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
 		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let avatar_id = Owners::<T>::get(&organizer)[n as usize - 1];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&organizer, season_id)[n as usize - 1];
 
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		CurrencyOf::<T>::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
@@ -288,7 +293,8 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let avatar_id = Owners::<T>::get(&caller)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&caller, season_id)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
 	}: _(RawOrigin::Signed(caller), avatar_id, price)
 	verify {
@@ -299,7 +305,8 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let avatar_id = Owners::<T>::get(&caller)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&caller, season_id)[0];
 		Trade::<T>::insert(avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
@@ -319,7 +326,8 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&buyer, sell_fee + trade_fee);
 		CurrencyOf::<T>::make_free_balance_be(&seller, sell_fee);
 
-		let avatar_id = Owners::<T>::get(&seller)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&seller, season_id)[0];
 		Trade::<T>::insert(avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
@@ -467,7 +475,8 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = Owners::<T>::get(&player);
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_ids = Owners::<T>::get(&player, season_id);
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
 		let organizer = account::<T>("organizer");
@@ -491,7 +500,8 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let avatar_ids = Owners::<T>::get(&player);
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_ids = Owners::<T>::get(&player, season_id);
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
 		let organizer = account::<T>("organizer");
@@ -515,7 +525,8 @@ benchmarks! {
 		create_avatars::<T>(name, 1)?;
 
 		let player = account::<T>(name);
-		let avatar_id = Owners::<T>::get(&player)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let (_owner, original_avatar) = Avatars::<T>::get(avatar_id).unwrap();
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
@@ -535,7 +546,8 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let avatar_id = Owners::<T>::get(&player)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let _ = create_service_account::<T>();
 		let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
 		CurrencyOf::<T>::make_free_balance_be(&player, prepare_fee);
@@ -548,7 +560,8 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let avatar_id = Owners::<T>::get(&player)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let _ = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
@@ -559,7 +572,8 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let avatar_id = Owners::<T>::get(&player)[0];
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://".to_vec()).unwrap();
 	}: _(RawOrigin::Signed(service_account), avatar_id, url.clone())

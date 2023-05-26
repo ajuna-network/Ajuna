@@ -25,7 +25,7 @@ fn create_avatars(season_id: SeasonId, account: MockAccountId, n: u8) -> Vec<Ava
 			let avatar = Avatar::default().season_id(season_id).dna(&[i; 32]);
 			let avatar_id = H256::random();
 			Avatars::<Test>::insert(avatar_id, (account, avatar));
-			Owners::<Test>::try_append(account, avatar_id).unwrap();
+			Owners::<Test>::try_append(account, season_id, avatar_id).unwrap();
 			avatar_id
 		})
 		.collect()
@@ -175,34 +175,38 @@ mod treasury {
 		let initial_balance = MockExistentialDeposit::get() + 999_999;
 		let total_supply = initial_balance;
 		ExtBuilder::default()
-			.seasons(&[(1, season_1.clone())])
+			.seasons(&[(SEASON_ID, season_1.clone())])
 			.mint_fees(mint_fees)
 			.balances(&[(BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
 				let treasury_account = AAvatars::treasury_account_id();
-				Treasurer::<Test>::insert(1, BOB);
-				assert_eq!(Treasury::<Test>::get(1), 0);
+				Treasurer::<Test>::insert(SEASON_ID, BOB);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), 0);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance);
 				assert_eq!(Balances::free_balance(&treasury_account), 0);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				deposit_into_treasury(1, 333);
-				assert_eq!(Treasury::<Test>::get(1), 333);
+				deposit_into_treasury(SEASON_ID, 333);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), 333);
 				assert_eq!(Balances::free_balance(&treasury_account), 333);
 				assert_noop!(
-					AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 1),
+					AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), SEASON_ID),
 					Error::<Test>::CannotClaimDuringSeason
 				);
 
 				run_to_block(season_1.end + 1);
-				assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), 1));
-				assert_eq!(Treasury::<Test>::get(1), 0);
+				assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), SEASON_ID));
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), 0);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance + 333);
 				assert_eq!(Balances::free_balance(&treasury_account), 0);
 				assert_eq!(Balances::total_issuance(), total_supply + 333); // total supply increases from injection
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
-					crate::Event::TreasuryClaimed { season_id: 1, treasurer: BOB, amount: 333 },
+					crate::Event::TreasuryClaimed {
+						season_id: SEASON_ID,
+						treasurer: BOB,
+						amount: 333,
+					},
 				));
 			})
 	}
@@ -211,7 +215,7 @@ mod treasury {
 	fn claim_treasury_rejects_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::claim_treasury(RuntimeOrigin::none(), 123),
+				AAvatars::claim_treasury(RuntimeOrigin::none(), SeasonId::default()),
 				DispatchError::BadOrigin
 			);
 		});
@@ -221,7 +225,7 @@ mod treasury {
 	fn claim_treasury_rejects_unknown_treasurer() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), 1),
+				AAvatars::claim_treasury(RuntimeOrigin::signed(ALICE), SeasonId::default()),
 				Error::<Test>::UnknownTreasurer
 			);
 		})
@@ -230,9 +234,10 @@ mod treasury {
 	#[test]
 	fn claim_treasury_rejects_non_treasurer_calls() {
 		ExtBuilder::default().build().execute_with(|| {
-			Treasurer::<Test>::insert(3, BOB);
+			let season_id = 3;
+			Treasurer::<Test>::insert(season_id, BOB);
 			assert_noop!(
-				AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 3),
+				AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), season_id),
 				DispatchError::BadOrigin
 			);
 		})
@@ -342,13 +347,13 @@ mod treasury {
 	fn claim_treasury_rejects_empty_treasury() {
 		let season_1 = Season::default();
 		ExtBuilder::default()
-			.seasons(&[(1, season_1.clone())])
+			.seasons(&[(SEASON_ID, season_1.clone())])
 			.build()
 			.execute_with(|| {
 				run_to_block(season_1.end + 1);
 				Treasurer::<Test>::insert(1, CHARLIE);
 				assert_noop!(
-					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
+					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), SEASON_ID),
 					Error::<Test>::CannotClaimZero
 				);
 			})
@@ -358,7 +363,7 @@ mod treasury {
 	fn claim_treasury_rejects_more_than_available() {
 		let season_1 = Season::default();
 		ExtBuilder::default()
-			.seasons(&[(1, season_1.clone())])
+			.seasons(&[(SEASON_ID, season_1.clone())])
 			.build()
 			.execute_with(|| {
 				run_to_block(season_1.end + 1);
@@ -366,7 +371,7 @@ mod treasury {
 				Treasury::<Test>::insert(1, 999);
 				assert!(Balances::free_balance(&AAvatars::treasury_account_id()) < 999);
 				assert_noop!(
-					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), 1),
+					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), SEASON_ID),
 					pallet_balances::Error::<Test>::InsufficientBalance
 				);
 			})
@@ -567,7 +572,11 @@ mod season {
 	fn set_season_should_reject_non_organizer_calls() {
 		ExtBuilder::default().organizer(ALICE).build().execute_with(|| {
 			assert_noop!(
-				AAvatars::set_season(RuntimeOrigin::signed(BOB), 7357, Season::default()),
+				AAvatars::set_season(
+					RuntimeOrigin::signed(BOB),
+					SeasonId::default(),
+					Season::default()
+				),
 				DispatchError::BadOrigin
 			);
 		});
@@ -962,7 +971,7 @@ mod minting {
 		let mut initial_free_mints = 12;
 
 		ExtBuilder::default()
-			.seasons(&[(1, season_1.clone()), (2, season_2)])
+			.seasons(&[(SEASON_ID, season_1.clone()), (2, season_2)])
 			.mint_fees(fees.clone())
 			.mint_cooldown(mint_cooldown)
 			.balances(&[(ALICE, initial_balance)])
@@ -979,7 +988,7 @@ mod minting {
 					CurrentSeasonStatus::<Test>::mutate(|status| status.season_id = 1);
 					SeasonStats::<Test>::mutate(1, ALICE, |info| info.minted = 0);
 					SeasonStats::<Test>::mutate(2, ALICE, |info| info.minted = 0);
-					Owners::<Test>::remove(ALICE);
+					Owners::<Test>::remove(ALICE, SEASON_ID);
 					Accounts::<Test>::mutate(ALICE, |account| {
 						account.stats.mint.first = 0;
 						account.stats.mint.last = 0;
@@ -993,7 +1002,7 @@ mod minting {
 							assert_eq!(Accounts::<Test>::get(ALICE).free_mints, initial_free_mints),
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(Owners::<Test>::get(ALICE).len(), owned_avatar_count);
+					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert!(!CurrentSeasonStatus::<Test>::get().active);
 
 					// single mint
@@ -1025,7 +1034,7 @@ mod minting {
 					minted_count += 1;
 					season_minted_count += 1;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(Owners::<Test>::get(ALICE).len(), owned_avatar_count);
+					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
 					assert!(CurrentSeasonStatus::<Test>::get().active);
 					assert_eq!(Accounts::<Test>::get(ALICE).stats.mint.first, season_1.start);
@@ -1034,7 +1043,7 @@ mod minting {
 					));
 					System::assert_last_event(mock::RuntimeEvent::AAvatars(
 						crate::Event::AvatarsMinted {
-							avatar_ids: vec![Owners::<Test>::get(ALICE)[0]],
+							avatar_ids: vec![Owners::<Test>::get(ALICE, SEASON_ID)[0]],
 						},
 					));
 
@@ -1067,12 +1076,12 @@ mod minting {
 					minted_count += 3;
 					season_minted_count += 3;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(Owners::<Test>::get(ALICE).len(), owned_avatar_count);
+					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
 					assert!(CurrentSeasonStatus::<Test>::get().active);
 					System::assert_last_event(mock::RuntimeEvent::AAvatars(
 						crate::Event::AvatarsMinted {
-							avatar_ids: Owners::<Test>::get(ALICE)[1..=3].to_vec(),
+							avatar_ids: Owners::<Test>::get(ALICE, SEASON_ID)[1..=3].to_vec(),
 						},
 					));
 
@@ -1106,12 +1115,12 @@ mod minting {
 					minted_count += 6;
 					season_minted_count += 6;
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
-					assert_eq!(Owners::<Test>::get(ALICE).len(), owned_avatar_count);
+					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
 					assert!(CurrentSeasonStatus::<Test>::get().active);
 					System::assert_last_event(mock::RuntimeEvent::AAvatars(
 						crate::Event::AvatarsMinted {
-							avatar_ids: Owners::<Test>::get(ALICE)[4..=9].to_vec(),
+							avatar_ids: Owners::<Test>::get(ALICE, SEASON_ID)[4..=9].to_vec(),
 						},
 					));
 
@@ -1177,7 +1186,7 @@ mod minting {
 					assert_eq!(SeasonStats::<Test>::get(2, ALICE).minted, 0);
 
 					// check for minted avatars
-					let minted = Owners::<Test>::get(ALICE)
+					let minted = Owners::<Test>::get(ALICE, SEASON_ID)
 						.into_iter()
 						.map(|avatar_id| Avatars::<Test>::get(avatar_id).unwrap())
 						.collect::<Vec<_>>();
@@ -1278,13 +1287,13 @@ mod minting {
 		assert_eq!(avatar_ids.len(), MaxAvatarsPerPlayer::get() as usize);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, 1_234_567_890_123_456)])
 			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-				Owners::<Test>::insert(ALICE, avatar_ids);
+				Owners::<Test>::insert(ALICE, SEASON_ID, avatar_ids);
 				for count in [MintPackSize::One, MintPackSize::Three, MintPackSize::Six] {
 					for payment in [MintPayment::Normal, MintPayment::Free] {
 						assert_noop!(
@@ -1301,6 +1310,23 @@ mod minting {
 						);
 					}
 				}
+
+				Accounts::<Test>::mutate(BOB, |account| {
+					account.storage_tier = StorageTier::One;
+					account.free_mints = 999;
+				});
+				let mut storage_limit = StorageTier::One as usize;
+				for i in 0..10 {
+					create_avatars(i, BOB, 5);
+					storage_limit -= 5;
+					if storage_limit == 0 {
+						break
+					}
+				}
+				assert_noop!(
+					AAvatars::mint(RuntimeOrigin::signed(BOB), MintOption::default(),),
+					Error::<Test>::MaxOwnershipReached
+				);
 			});
 	}
 
@@ -1310,7 +1336,7 @@ mod minting {
 		let mint_cooldown = 7;
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(mint_cooldown)
 			.balances(&[(ALICE, 1_234_567_890_123_456)])
 			.free_mints(&[(ALICE, 10)])
@@ -1369,7 +1395,7 @@ mod minting {
 
 		ExtBuilder::default()
 			.mint_fees(MintFees { one: 1, three: 2, six: 3 })
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -1439,14 +1465,14 @@ mod forging {
 	use sp_runtime::testing::H256;
 
 	fn create_avatar_for_bob(dna: &[u8]) -> AvatarIdOf<Test> {
-		let avatar = Avatar::default().season_id(1).dna(dna);
+		let avatar = Avatar::default().season_id(SEASON_ID).dna(dna);
 		if avatar.rarity() == RarityTier::Legendary as u8 {
 			CurrentSeasonStatus::<Test>::mutate(|status| status.max_tier_avatars += 1);
 		}
 
 		let avatar_id = H256::random();
 		Avatars::<Test>::insert(avatar_id, (BOB, avatar));
-		Owners::<Test>::try_append(BOB, avatar_id).unwrap();
+		Owners::<Test>::try_append(BOB, SEASON_ID, avatar_id).unwrap();
 
 		avatar_id
 	}
@@ -1474,7 +1500,7 @@ mod forging {
 		};
 
 		ExtBuilder::default()
-			.seasons(&[(1, season)])
+			.seasons(&[(SEASON_ID, season)])
 			.mint_cooldown(5)
 			.build()
 			.execute_with(|| {
@@ -1549,7 +1575,7 @@ mod forging {
 				));
 
 				if let Some(dna) = insert_dna {
-					Owners::<Test>::get(BOB)[1..=4].iter().for_each(|id| {
+					Owners::<Test>::get(BOB, SEASON_ID)[1..=4].iter().for_each(|id| {
 						Avatars::<Test>::mutate(id, |maybe_avatar| {
 							if let Some((_, avatar)) = maybe_avatar {
 								avatar.dna = dna.to_vec().try_into().unwrap();
@@ -1559,7 +1585,7 @@ mod forging {
 				}
 
 				let original_leader_souls = Avatars::<Test>::get(leader_id).unwrap().1.souls;
-				let sacrifice_ids = Owners::<Test>::get(BOB)[1..=4].to_vec();
+				let sacrifice_ids = Owners::<Test>::get(BOB, SEASON_ID)[1..=4].to_vec();
 				let sacrifice_souls = sacrifice_ids
 					.iter()
 					.map(|id| Avatars::<Test>::get(id).unwrap().1.souls)
@@ -1568,10 +1594,10 @@ mod forging {
 
 				assert_ok!(AAvatars::forge(RuntimeOrigin::signed(BOB), *leader_id, sacrifice_ids));
 				assert_eq!(
-					Avatars::<Test>::get(leader_id).unwrap().1.souls,
+					Avatars::<Test>::get(leader_id,).unwrap().1.souls,
 					original_leader_souls + sacrifice_souls
 				);
-				assert_eq!(Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(), expected_dna);
+				assert_eq!(Avatars::<Test>::get(leader_id,).unwrap().1.dna.to_vec(), expected_dna);
 
 				forged_count += 1;
 				assert_eq!(
@@ -1590,7 +1616,7 @@ mod forging {
 			};
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
 			.mint_fees(MintFees { one: 1, three: 3, six: 6 })
 			.balances(&[(BOB, MockBalance::max_value())])
@@ -1607,7 +1633,7 @@ mod forging {
 						version: AvatarVersion::V1
 					}
 				));
-				let leader_id = Owners::<Test>::get(BOB)[0];
+				let leader_id = Owners::<Test>::get(BOB, SEASON_ID)[0];
 				assert_eq!(
 					Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(),
 					&[0x13, 0x12, 0x12, 0x12, 0x11, 0x11, 0x14, 0x11]
@@ -1686,7 +1712,7 @@ mod forging {
 			.max_tier_forges(5);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
 			.free_mints(&[(BOB, MintCount::MAX)])
 			.build()
@@ -1710,7 +1736,7 @@ mod forging {
 				));
 				max_tier_avatars += 1;
 				assert_eq!(CurrentSeasonStatus::<Test>::get().max_tier_avatars, max_tier_avatars);
-				assert_eq!(Owners::<Test>::get(BOB).len(), 4 - 3);
+				assert_eq!(Owners::<Test>::get(BOB, SEASON_ID).len(), 4 - 3);
 
 				// `max_tier_avatars` decreases when legendaries are sacrificed
 				let legendary_avatar_ids = [
@@ -1729,7 +1755,7 @@ mod forging {
 					legendary_avatar_ids[1..].to_vec()
 				));
 				assert_eq!(CurrentSeasonStatus::<Test>::get().max_tier_avatars, max_tier_avatars);
-				assert_eq!(Owners::<Test>::get(BOB).len(), (4 - 3) + (4 - 3));
+				assert_eq!(Owners::<Test>::get(BOB, SEASON_ID).len(), (4 - 3) + (4 - 3));
 				assert_eq!(
 					Accounts::<Test>::get(BOB)
 						.stats
@@ -1758,7 +1784,7 @@ mod forging {
 			.base_prob(100);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(1)
 			.free_mints(&[(BOB, 10)])
 			.build()
@@ -1776,7 +1802,7 @@ mod forging {
 				));
 
 				// forge
-				let owned_avatar_ids = Owners::<Test>::get(BOB);
+				let owned_avatar_ids = Owners::<Test>::get(BOB, SEASON_ID);
 				let leader_id = owned_avatar_ids[0];
 				let sacrifice_ids = &owned_avatar_ids[1..3];
 
@@ -1838,7 +1864,7 @@ mod forging {
 			.max_sacrifices(5);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(1)
 			.free_mints(&[(BOB, 10)])
 			.build()
@@ -1856,7 +1882,7 @@ mod forging {
 				));
 
 				// forge
-				let owned_avatar_ids = Owners::<Test>::get(BOB);
+				let owned_avatar_ids = Owners::<Test>::get(BOB, SEASON_ID);
 				let leader_id = owned_avatar_ids[0];
 				let sacrifice_id = owned_avatar_ids[1];
 
@@ -1897,7 +1923,7 @@ mod forging {
 			.max_sacrifices(4);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
 			.free_mints(&[(ALICE, MintCount::MAX)])
 			.build()
@@ -1912,7 +1938,7 @@ mod forging {
 						version: AvatarVersion::V1
 					}
 				));
-				let leader_id = Owners::<Test>::get(ALICE)[0];
+				let leader_id = Owners::<Test>::get(ALICE, SEASON_ID)[0];
 				assert_eq!(
 					Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(),
 					&[0x14, 0x15, 0x15, 0x13]
@@ -1939,7 +1965,7 @@ mod forging {
 				);
 
 				// forging doesn't take effect
-				let sacrifice_ids = &Owners::<Test>::get(ALICE)[1..5];
+				let sacrifice_ids = &Owners::<Test>::get(ALICE, SEASON_ID)[1..5];
 				assert_ok!(AAvatars::forge(
 					RuntimeOrigin::signed(ALICE),
 					leader_id,
@@ -2039,8 +2065,8 @@ mod forging {
 						run_to_block(n);
 						assert_ok!(AAvatars::forge(
 							RuntimeOrigin::signed(ALICE),
-							Owners::<Test>::get(ALICE)[0],
-							Owners::<Test>::get(ALICE)[1..3].to_vec()
+							Owners::<Test>::get(ALICE, 1)[0],
+							Owners::<Test>::get(ALICE, 1)[1..3].to_vec()
 						));
 					}
 				}
@@ -2070,7 +2096,7 @@ mod forging {
 		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
 			.free_mints(&[(ALICE, 10)])
 			.build()
@@ -2088,7 +2114,7 @@ mod forging {
 					));
 				}
 
-				let owned_avatars = Owners::<Test>::get(ALICE);
+				let owned_avatars = Owners::<Test>::get(ALICE, SEASON_ID);
 				for (leader, sacrifices) in [
 					(H256::default(), vec![owned_avatars[0], owned_avatars[2]]),
 					(owned_avatars[1], vec![H256::default(), H256::default()]),
@@ -2107,7 +2133,7 @@ mod forging {
 		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
 			.free_mints(&[(ALICE, 10), (BOB, 10)])
 			.build()
@@ -2128,9 +2154,21 @@ mod forging {
 				}
 
 				for (player, leader, sacrifices) in [
-					(ALICE, Owners::<Test>::get(ALICE)[0], Owners::<Test>::get(BOB)[0..2].to_vec()),
-					(ALICE, Owners::<Test>::get(BOB)[0], Owners::<Test>::get(ALICE)[0..2].to_vec()),
-					(ALICE, Owners::<Test>::get(BOB)[0], Owners::<Test>::get(BOB)[1..2].to_vec()),
+					(
+						ALICE,
+						Owners::<Test>::get(ALICE, SEASON_ID)[0],
+						Owners::<Test>::get(BOB, SEASON_ID)[0..2].to_vec(),
+					),
+					(
+						ALICE,
+						Owners::<Test>::get(BOB, SEASON_ID)[0],
+						Owners::<Test>::get(ALICE, SEASON_ID)[0..2].to_vec(),
+					),
+					(
+						ALICE,
+						Owners::<Test>::get(BOB, SEASON_ID)[0],
+						Owners::<Test>::get(BOB, SEASON_ID)[1..2].to_vec(),
+					),
 				] {
 					assert_noop!(
 						AAvatars::forge(RuntimeOrigin::signed(player), leader, sacrifices),
@@ -2145,7 +2183,7 @@ mod forging {
 		let season = Season::default().min_sacrifices(1).max_sacrifices(3);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
 			.free_mints(&[(ALICE, 10)])
 			.build()
@@ -2166,13 +2204,13 @@ mod forging {
 				for (player, leader, sacrifices) in [
 					(
 						ALICE,
-						Owners::<Test>::get(ALICE)[0],
-						Owners::<Test>::get(ALICE)[0..2].to_vec(),
+						Owners::<Test>::get(ALICE, SEASON_ID)[0],
+						Owners::<Test>::get(ALICE, SEASON_ID)[0..2].to_vec(),
 					),
 					(
 						ALICE,
-						Owners::<Test>::get(ALICE)[1],
-						Owners::<Test>::get(ALICE)[0..2].to_vec(),
+						Owners::<Test>::get(ALICE, SEASON_ID)[1],
+						Owners::<Test>::get(ALICE, SEASON_ID)[0..2].to_vec(),
 					),
 				] {
 					assert_noop!(
@@ -2190,7 +2228,7 @@ mod forging {
 		let initial_balance = 6 + MockExistentialDeposit::get();
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, initial_balance), (BOB, 6 + initial_balance)])
 			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
@@ -2215,8 +2253,8 @@ mod forging {
 					}
 				));
 
-				let leader = Owners::<Test>::get(ALICE)[0];
-				let sacrifices = Owners::<Test>::get(ALICE)[1..3].to_vec();
+				let leader = Owners::<Test>::get(ALICE, SEASON_ID)[0];
+				let sacrifices = Owners::<Test>::get(ALICE, SEASON_ID)[1..3].to_vec();
 
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), leader, price));
 				assert_noop!(
@@ -2256,55 +2294,24 @@ mod forging {
 			.max_sacrifices(max_sacrifices);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season1.clone()), (2, season2.clone())])
+			.seasons(&[(1, season1), (2, season2)])
 			.mint_cooldown(0)
 			.free_mints(&[(ALICE, 10)])
 			.build()
 			.execute_with(|| {
-				run_to_block(season1.early_start + 1);
-				for _ in 0..max_sacrifices {
-					assert_ok!(AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption {
-							pack_size: MintPackSize::One,
-							payment: MintPayment::Free,
-							pack_type: PackType::Material,
-							version: AvatarVersion::V1
-						}
-					));
-					run_to_block(System::block_number() + 1);
-				}
-				run_to_block(season2.start + 2);
-
-				for _ in 0..max_sacrifices {
-					assert_ok!(AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption {
-							pack_size: MintPackSize::One,
-							payment: MintPayment::Free,
-							pack_type: PackType::Material,
-							version: AvatarVersion::V1
-						}
-					));
-					run_to_block(System::block_number() + 1);
-				}
-				run_to_block(season2.end + 1);
+				create_avatars(1, ALICE, max_sacrifices);
+				create_avatars(2, ALICE, max_sacrifices);
 
 				for (player, leader, sacrifices) in [
 					(
 						ALICE,
-						Owners::<Test>::get(ALICE)[0],
-						Owners::<Test>::get(ALICE)[2..5].to_vec(),
+						Owners::<Test>::get(ALICE, 1)[0],
+						Owners::<Test>::get(ALICE, 2).to_vec(),
 					),
 					(
 						ALICE,
-						Owners::<Test>::get(ALICE)[0],
-						Owners::<Test>::get(ALICE)[3..6].to_vec(),
-					),
-					(
-						ALICE,
-						Owners::<Test>::get(ALICE)[5],
-						Owners::<Test>::get(ALICE)[0..2].to_vec(),
+						Owners::<Test>::get(ALICE, 2)[0],
+						Owners::<Test>::get(ALICE, 1).to_vec(),
 					),
 				] {
 					assert_noop!(
@@ -2379,7 +2386,6 @@ mod transferring {
 		let avatar_transfer_fee = 888;
 		let initial_balance = MockExistentialDeposit::get() + avatar_transfer_fee;
 		let total_supply = initial_balance;
-		let season_id = 999;
 
 		ExtBuilder::default()
 			.balances(&[(ALICE, initial_balance)])
@@ -2391,38 +2397,40 @@ mod transferring {
 				assert_eq!(Balances::free_balance(treasury_account), treasury_balance);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				let mut alice_avatar_ids = create_avatars(1, ALICE, 3);
-				let mut bob_avatar_ids = create_avatars(1, BOB, 6);
+				let season_id_1 = 123;
+				let season_id_2 = 456;
+
+				let alice_avatar_ids = create_avatars(season_id_1, ALICE, 3);
+				let bob_avatar_ids = create_avatars(season_id_2, BOB, 6);
 				let avatar_id = alice_avatar_ids[0];
-				Avatars::<Test>::mutate(avatar_id, |maybe_avatar| {
-					let (_, avatar) = maybe_avatar.as_mut().unwrap();
-					avatar.season_id = season_id;
-				});
 
 				assert_ok!(AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, avatar_id));
-				alice_avatar_ids.retain(|x| x != &avatar_id);
-				bob_avatar_ids.push(avatar_id);
-
-				// transfer checks
-				assert_eq!(Owners::<Test>::get(ALICE).len(), 3 - 1);
-				assert_eq!(Owners::<Test>::get(ALICE), alice_avatar_ids);
-				assert_eq!(Owners::<Test>::get(BOB).len(), 6 + 1);
-				assert_eq!(Owners::<Test>::get(BOB), bob_avatar_ids);
-				assert_eq!(Avatars::<Test>::get(avatar_id).unwrap().0, BOB);
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarTransferred { from: ALICE, to: BOB, avatar_id },
 				));
 
+				// Avatar transferred from Alice.
+				assert_eq!(Owners::<Test>::get(ALICE, season_id_1).len(), 3 - 1);
+				assert_eq!(Owners::<Test>::get(ALICE, season_id_1).to_vec(), alice_avatar_ids[1..]);
+
+				// Avatar transferred to Bob.
+				assert_eq!(Owners::<Test>::get(BOB, season_id_1).len(), 1);
+				assert_eq!(Avatars::<Test>::get(avatar_id).unwrap().0, BOB);
+
+				// Bob's original avatars are safe.
+				assert_eq!(Owners::<Test>::get(BOB, season_id_2).len(), 6);
+				assert_eq!(Owners::<Test>::get(BOB, season_id_2), bob_avatar_ids);
+
 				// balance checks
 				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee);
-				assert_eq!(Treasury::<Test>::get(season_id), avatar_transfer_fee);
+				assert_eq!(Treasury::<Test>::get(season_id_1), avatar_transfer_fee);
 				assert_eq!(
 					Balances::free_balance(treasury_account),
 					treasury_balance + avatar_transfer_fee
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				// check organizer transfer
+				// Organizer can transfer even when trade is closed.
 				GlobalConfigs::<Test>::mutate(|config| config.trade.open = false);
 				Balances::make_free_balance_be(&BOB, avatar_transfer_fee);
 				assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), BOB));
@@ -2431,8 +2439,8 @@ mod transferring {
 					CHARLIE,
 					bob_avatar_ids[0]
 				));
-				assert_eq!(Owners::<Test>::get(BOB).len(), 6);
-				assert_eq!(Owners::<Test>::get(CHARLIE).len(), 1);
+				assert_eq!(Owners::<Test>::get(BOB, season_id_2).len(), 6 - 1);
+				assert_eq!(Owners::<Test>::get(CHARLIE, season_id_2).len(), 1);
 			});
 	}
 
@@ -2457,7 +2465,7 @@ mod transferring {
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|config| config.transfer.open = false);
-				let avatar_id = create_avatars(1, BOB, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, BOB, 1)[0];
 				assert_ok!(AAvatars::transfer_avatar(RuntimeOrigin::signed(BOB), DAVE, avatar_id));
 			});
 	}
@@ -2477,7 +2485,7 @@ mod transferring {
 	#[test]
 	fn transfer_avatar_rejects_avatar_in_trade() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, CHARLIE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, CHARLIE, 1)[0];
 			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_id, 999));
 			assert_noop!(
 				AAvatars::transfer_avatar(RuntimeOrigin::signed(CHARLIE), DAVE, avatar_id),
@@ -2489,7 +2497,7 @@ mod transferring {
 	#[test]
 	fn transfer_avatar_rejects_unowned_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, CHARLIE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, CHARLIE, 1)[0];
 			assert_noop!(
 				AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, avatar_id),
 				Error::<Test>::Ownership
@@ -2517,8 +2525,8 @@ mod transferring {
 			.execute_with(|| {
 				Accounts::<Test>::mutate(BOB, |info| info.storage_tier = StorageTier::Three);
 
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
-				let _ = create_avatars(1, BOB, StorageTier::Three as u8);
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				let _ = create_avatars(SEASON_ID, BOB, StorageTier::Three as u8);
 
 				assert_noop!(
 					AAvatars::transfer_avatar(RuntimeOrigin::signed(ALICE), BOB, avatar_id),
@@ -2535,19 +2543,21 @@ mod trading {
 	fn set_price_should_work() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
-			let avatar_for_sale = create_avatars(1, BOB, 1)[0];
-			let price = 7357;
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_for_sale = create_avatars(SEASON_ID, BOB, 1)[0];
+				let price = 7357;
 
-			assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
-			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
-			assert_eq!(Trade::<Test>::get(avatar_for_sale), Some(price));
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(crate::Event::AvatarPriceSet {
-				avatar_id: avatar_for_sale,
-				price,
-			}));
-		});
+				assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
+				assert_eq!(Trade::<Test>::get(avatar_for_sale), Some(price));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarPriceSet { avatar_id: avatar_for_sale, price },
+				));
+			});
 	}
 
 	#[test]
@@ -2575,36 +2585,42 @@ mod trading {
 	fn set_price_should_reject_incorrect_ownership() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
-			let avatar_ids = create_avatars(1, BOB, 2);
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 2);
 
-			assert_noop!(
-				AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_ids[0], 101),
-				Error::<Test>::Ownership
-			);
-		});
+				assert_noop!(
+					AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_ids[0], 101),
+					Error::<Test>::Ownership
+				);
+			});
 	}
 
 	#[test]
 	fn remove_price_should_work() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
-			let avatar_ids = create_avatars(1, BOB, 2);
-			let avatar_for_sale = avatar_ids[0];
-			let price = 101;
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 2);
+				let avatar_for_sale = avatar_ids[0];
+				let price = 101;
 
-			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 
-			assert_eq!(Trade::<Test>::get(avatar_for_sale), Some(101));
-			assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(BOB), avatar_for_sale));
-			assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::AvatarPriceUnset { avatar_id: avatar_for_sale },
-			));
-		});
+				assert_eq!(Trade::<Test>::get(avatar_for_sale), Some(101));
+				assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(BOB), avatar_for_sale));
+				assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::AvatarPriceUnset { avatar_id: avatar_for_sale },
+				));
+			});
 	}
 
 	#[test]
@@ -2632,17 +2648,20 @@ mod trading {
 	fn remove_price_should_reject_incorrect_ownership() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
-			let avatar_ids = create_avatars(1, BOB, 3);
-			let avatar_for_sale = avatar_ids[0];
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 3);
+				let avatar_for_sale = avatar_ids[0];
 
-			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
-			assert_noop!(
-				AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), avatar_for_sale),
-				Error::<Test>::Ownership
-			);
-		});
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
+				assert_noop!(
+					AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), avatar_for_sale),
+					Error::<Test>::Ownership
+				);
+			});
 	}
 
 	#[test]
@@ -2667,7 +2686,7 @@ mod trading {
 
 		ExtBuilder::default()
 			.existential_deposit(0)
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[
 				(ALICE, alice_initial_bal),
 				(BOB, bob_initial_bal),
@@ -2679,17 +2698,17 @@ mod trading {
 				let mut treasury_balance_season_1 = 0;
 				let treasury_account = AAvatars::treasury_account_id();
 
-				assert_eq!(Treasury::<Test>::get(1), treasury_balance_season_1);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
 				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				run_to_block(season.start);
-				let avatar_ids = create_avatars(1, BOB, 3);
-				assert_eq!(Treasury::<Test>::get(1), treasury_balance_season_1);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 3);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
 				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
 
-				let owned_by_alice = Owners::<Test>::get(ALICE);
-				let owned_by_bob = Owners::<Test>::get(BOB);
+				let owned_by_alice = Owners::<Test>::get(ALICE, SEASON_ID);
+				let owned_by_bob = Owners::<Test>::get(BOB, SEASON_ID);
 
 				let avatar_for_sale = avatar_ids[0];
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
@@ -2699,15 +2718,15 @@ mod trading {
 				// check for balance transfer
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - min_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price);
-				assert_eq!(Treasury::<Test>::get(1), treasury_balance_season_1);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
 				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// check for ownership transfer
-				assert_eq!(Owners::<Test>::get(ALICE).len(), owned_by_alice.len() + 1);
-				assert_eq!(Owners::<Test>::get(BOB).len(), owned_by_bob.len() - 1);
-				assert!(Owners::<Test>::get(ALICE).contains(&avatar_for_sale));
-				assert!(!Owners::<Test>::get(BOB).contains(&avatar_for_sale));
+				assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_by_alice.len() + 1);
+				assert_eq!(Owners::<Test>::get(BOB, SEASON_ID).len(), owned_by_bob.len() - 1);
+				assert!(Owners::<Test>::get(ALICE, SEASON_ID).contains(&avatar_for_sale));
+				assert!(!Owners::<Test>::get(BOB, SEASON_ID).contains(&avatar_for_sale));
 				assert_eq!(Avatars::<Test>::get(avatar_for_sale).unwrap().0, ALICE);
 
 				// check for removal from trade storage
@@ -2735,7 +2754,7 @@ mod trading {
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_on_sale, 369));
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_on_sale));
 				assert_eq!(Treasury::<Test>::get(33), min_fee);
-				assert_eq!(Treasury::<Test>::get(1), treasury_balance_season_1);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
 			});
 	}
 
@@ -2749,12 +2768,12 @@ mod trading {
 		let mut treasury_balance = 0;
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, alice_balance), (BOB, bob_balance)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-				let avatar_ids = create_avatars(1, ALICE, 2);
+				let avatar_ids = create_avatars(SEASON_ID, ALICE, 2);
 
 				GlobalConfigs::<Test>::mutate(|cfg| {
 					cfg.trade.min_fee = min_fee;
@@ -2771,7 +2790,7 @@ mod trading {
 				treasury_balance += expected_fee;
 				assert_eq!(Balances::free_balance(BOB), bob_balance);
 				assert_eq!(Balances::free_balance(ALICE), alice_balance);
-				assert_eq!(Treasury::<Test>::get(1), treasury_balance);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance);
 
 				// when price is less than min_fee, min_fee should be charged
 				let price = 100;
@@ -2782,7 +2801,7 @@ mod trading {
 				treasury_balance += min_fee;
 				assert_eq!(Balances::free_balance(BOB), bob_balance);
 				assert_eq!(Balances::free_balance(ALICE), alice_balance);
-				assert_eq!(Treasury::<Test>::get(1), treasury_balance);
+				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance);
 			});
 	}
 
@@ -2791,7 +2810,7 @@ mod trading {
 		ExtBuilder::default().build().execute_with(|| {
 			GlobalConfigs::<Test>::mutate(|config| config.trade.open = false);
 			assert_noop!(
-				AAvatars::buy(RuntimeOrigin::signed(ALICE), sp_core::H256::default()),
+				AAvatars::buy(RuntimeOrigin::signed(ALICE), H256::default()),
 				Error::<Test>::TradeClosed,
 			);
 		});
@@ -2801,7 +2820,7 @@ mod trading {
 	fn buy_should_reject_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::buy(RuntimeOrigin::none(), sp_core::H256::default()),
+				AAvatars::buy(RuntimeOrigin::none(), H256::default()),
 				DispatchError::BadOrigin,
 			);
 		});
@@ -2811,7 +2830,7 @@ mod trading {
 	fn buy_should_reject_unlisted_avatar() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				AAvatars::buy(RuntimeOrigin::signed(BOB), sp_core::H256::default()),
+				AAvatars::buy(RuntimeOrigin::signed(BOB), H256::default()),
 				Error::<Test>::UnknownAvatarForSale,
 			);
 		});
@@ -2823,12 +2842,12 @@ mod trading {
 		let price = 310_984;
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, price - 1)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
-				let avatar_ids = create_avatars(1, BOB, 3);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 3);
 				let avatar_for_sale = avatar_ids[0];
 
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
@@ -2843,17 +2862,20 @@ mod trading {
 	fn buy_should_reject_when_buyer_buys_its_own_avatar() {
 		let season = Season::default();
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
-			let avatar_ids = create_avatars(1, BOB, 3);
-			let avatar_for_sale = avatar_ids[0];
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 3);
+				let avatar_for_sale = avatar_ids[0];
 
-			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
-			assert_noop!(
-				AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_for_sale),
-				Error::<Test>::AlreadyOwned
-			);
-		});
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 123));
+				assert_noop!(
+					AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_for_sale),
+					Error::<Test>::AlreadyOwned
+				);
+			});
 	}
 }
 
@@ -2975,7 +2997,7 @@ mod nft_transfer {
 		let season = Season::default().max_components(8).max_variations(5);
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -2990,7 +3012,7 @@ mod nft_transfer {
 						version: AvatarVersion::V1
 					}
 				));
-				let avatar_ids = Owners::<Test>::get(ALICE);
+				let avatar_ids = Owners::<Test>::get(ALICE, SEASON_ID);
 				let avatar_id = avatar_ids[0];
 
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
@@ -3050,8 +3072,8 @@ mod nft_transfer {
 
 				// Ensure ownership transferred to technical account
 				let technical_account = AAvatars::technical_account_id();
-				assert!(!Owners::<Test>::get(ALICE).contains(&avatar_id));
-				assert_eq!(Owners::<Test>::get(technical_account)[0], avatar_id);
+				assert!(!Owners::<Test>::get(ALICE, SEASON_ID).contains(&avatar_id));
+				assert_eq!(Owners::<Test>::get(technical_account, SEASON_ID)[0], avatar_id);
 				assert_eq!(Avatars::<Test>::get(avatar_id).unwrap().0, technical_account);
 
 				// Ensure locked avatars cannot be used in trading, transferring and forging
@@ -3080,7 +3102,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3096,7 +3118,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, BOB, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, BOB, 1)[0];
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					Error::<Test>::Ownership
@@ -3111,7 +3133,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1_000));
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3127,7 +3149,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::prepare_ipfs(
@@ -3153,7 +3175,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					Error::<Test>::NotPrepared
@@ -3168,7 +3190,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::prepare_ipfs(
@@ -3197,7 +3219,7 @@ mod nft_transfer {
 			.value_limit(value_limit)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				let (_, avatar) = Avatars::<Test>::get(avatar_id).unwrap();
 				assert!(avatar.encode().len() > value_limit as usize);
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
@@ -3216,7 +3238,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::prepare_ipfs(
@@ -3240,7 +3262,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::prepare_ipfs(
@@ -3264,7 +3286,7 @@ mod nft_transfer {
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, BOB, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, BOB, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(BOB), avatar_id));
 				assert_ok!(AAvatars::prepare_ipfs(
@@ -3285,14 +3307,14 @@ mod nft_transfer {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
 
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 				assert_ok!(AAvatars::prepare_ipfs(
@@ -3323,13 +3345,13 @@ mod fix_variation {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.seasons(&[(1, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
 
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 
 				let (_, mut avatar_before) = Avatars::<Test>::get(avatar_id).unwrap();
 
@@ -3397,10 +3419,10 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_forging_trading_and_transferring() {
 		ExtBuilder::default()
-			.seasons(&[(1, Season::default())])
+			.seasons(&[(SEASON_ID, Season::default())])
 			.build()
 			.execute_with(|| {
-				let avatar_ids = create_avatars(1, ALICE, 5);
+				let avatar_ids = create_avatars(SEASON_ID, ALICE, 5);
 				let avatar_id = avatar_ids[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
@@ -3422,7 +3444,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_unsigned_calls() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_noop!(
 				AAvatars::prepare_avatar(RuntimeOrigin::none(), avatar_id),
 				DispatchError::BadOrigin
@@ -3433,7 +3455,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_unowned_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_noop!(
 				AAvatars::prepare_avatar(RuntimeOrigin::signed(BOB), avatar_id),
 				Error::<Test>::Ownership
@@ -3444,7 +3466,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_avatars_in_trade() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1));
 			assert_noop!(
 				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3456,7 +3478,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_when_closed() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
 			assert_noop!(
 				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3468,7 +3490,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_locked_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			LockedAvatars::<Test>::insert(avatar_id, ());
 			assert_noop!(
 				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3480,7 +3502,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_already_prepared_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			let ipfs_url = IpfsUrl::try_from(Vec::new()).unwrap();
 			Preparation::<Test>::insert(avatar_id, ipfs_url);
 			assert_noop!(
@@ -3497,7 +3519,7 @@ mod ipfs {
 			.balances(&[(ALICE, MockExistentialDeposit::get())])
 			.build()
 			.execute_with(|| {
-				let avatar_id = create_avatars(1, ALICE, 1)[0];
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), BOB));
 				assert_noop!(
 					AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
@@ -3509,7 +3531,7 @@ mod ipfs {
 	#[test]
 	fn unprepare_avatar_works() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 			assert_ok!(AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
@@ -3533,7 +3555,7 @@ mod ipfs {
 	#[test]
 	fn unprepare_avatar_rejects_unowned_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_noop!(
 				AAvatars::unprepare_avatar(RuntimeOrigin::signed(BOB), avatar_id),
 				Error::<Test>::Ownership
@@ -3544,7 +3566,7 @@ mod ipfs {
 	#[test]
 	fn unprepare_avatar_rejects_when_closed() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			GlobalConfigs::<Test>::mutate(|config| config.nft_transfer.open = false);
 			assert_noop!(
 				AAvatars::unprepare_avatar(RuntimeOrigin::signed(BOB), avatar_id),
@@ -3556,7 +3578,7 @@ mod ipfs {
 	#[test]
 	fn unprepare_avatar_rejects_unprepared_avatars() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_noop!(
 				AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 				Error::<Test>::NotPrepared
@@ -3567,7 +3589,7 @@ mod ipfs {
 	#[test]
 	fn prepare_ipfs_works() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 			ServiceAccount::<Test>::put(BOB);
@@ -3601,7 +3623,7 @@ mod ipfs {
 	#[test]
 	fn prepare_ipfs_rejects_empty_url() {
 		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(1, ALICE, 1)[0];
+			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
 			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
 			ServiceAccount::<Test>::put(BOB);

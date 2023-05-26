@@ -27,8 +27,9 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
+pub(crate) use sp_runtime::testing::H256;
 use sp_runtime::{
-	testing::{Header, TestSignature, H256},
+	testing::{Header, TestSignature},
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
 
@@ -44,6 +45,8 @@ pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
 pub const CHARLIE: MockAccountId = 3;
 pub const DAVE: MockAccountId = 4;
+
+pub const SEASON_ID: SeasonId = 1;
 
 frame_support::construct_runtime!(
 	pub enum Test where
