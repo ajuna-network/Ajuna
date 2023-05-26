@@ -104,17 +104,20 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		avatar_ids_from_owners.sort();
 		avatar_ids_from_owners.dedup();
 
-		// There should be 13,111 avatars in storage.
-		assert_eq!(avatar_ids_from_avatars.len(), 13_111);
-		assert_eq!(avatar_ids_from_owners.len(), 13_111);
+		// There are 13,107 avatars as of 26/05/2023. But the exact number could be smaller as
+		// avatars are forged away. We estimate there should be at least 10,000.
+		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_avatars.len() <= 13_107);
+		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_owners.len() <= 13_107);
 		assert_eq!(avatar_ids_from_avatars, avatar_ids_from_owners);
 
-		// There should be 892 owners of avatars in storage.
+		// There are 892 owners of avatars in storage as of 26/05/2023. But the exact number could
+		// change as avatars are traded between accounts. We estimate there should be between 850
+		// and 1,000 accounts.
 		let mut season_ids = Owners::<T>::iter_keys()
 			.filter(|(owner, season_id)| !Owners::<T>::get(owner, season_id).is_empty())
 			.map(|(_owner, season_id)| season_id)
 			.collect::<Vec<SeasonId>>();
-		assert_eq!(season_ids.len(), 892);
+		assert!(season_ids.len() > 850 && season_ids.len() < 1_000);
 
 		// Check all migrated season IDs are 1.
 		season_ids.sort();
