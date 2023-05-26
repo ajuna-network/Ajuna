@@ -9,11 +9,11 @@ impl<T: Config> AvatarCombinator<T> {
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (leader_id, mut leader) = input_leader;
 
-		let (new_quantity, new_souls) = input_sacrifices
+		let (mut new_quantity, new_souls) = input_sacrifices
 			.iter()
 			.map(|sacrifice| {
 				(
-					AvatarUtils::read_attribute(&sacrifice.1, &AvatarAttributes::Quantity),
+					AvatarUtils::read_attribute(&sacrifice.1, &AvatarAttributes::Quantity) as u32,
 					sacrifice.1.souls,
 				)
 			})
@@ -21,37 +21,51 @@ impl<T: Config> AvatarCombinator<T> {
 				(acc_qty.saturating_add(qty), acc_souls.saturating_add(souls))
 			})
 			.unwrap_or_default();
-		let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity)
-			.saturating_add(new_quantity);
-		AvatarUtils::write_attribute(&mut leader, &AvatarAttributes::Quantity, leader_quantity);
 
-		let mut glimmer_avatar: Option<Avatar> = None;
-		let mut glimmer_additional_qty = 0;
+		let dust_quantity = match new_quantity.saturating_sub(MAX_BYTE) {
+			0 => 0,
+			overflow => {
+				new_quantity = MAX_BYTE;
+				let leader_custom_type_1 =
+					AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType1);
+				overflow * leader_custom_type_1 as u32
+			},
+		};
+
+		let exploit_level = (dust_quantity / MAX_BYTE) % 5;
+		let transform_per_cycle = ((exploit_level * exploit_level) + 1) as u8;
+		let add_prob_perc = 3 * (transform_per_cycle - 1) as u32;
+
+		let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity)
+			.saturating_add(new_quantity as u8);
+		AvatarUtils::write_attribute(&mut leader, &AvatarAttributes::Quantity, leader_quantity);
+		leader.souls = new_souls - dust_quantity;
+
+		let mut essences = 0;
 
 		for i in 0..input_sacrifices.len() {
-			if hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC < STACK_PROB_PERC * MAX_BYTE {
-				match glimmer_avatar {
-					None => {
-						let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, i)?;
-						glimmer_avatar =
-							Some(AvatarBuilder::with_dna(season_id, dna).into_glimmer(1).build());
-					},
-					Some(_) => {
-						glimmer_additional_qty += 1;
-					},
-				}
+			if hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC <
+				(STACK_PROB_PERC + add_prob_perc) * MAX_BYTE &&
+				AvatarUtils::can_use_avatar(&leader, transform_per_cycle)
+			{
+				let (_, _, out_soul_points) =
+					AvatarUtils::use_avatar(&mut leader, transform_per_cycle);
+				essences += out_soul_points;
 			}
 		}
 
-		if let Some(ref mut avatar) = glimmer_avatar {
-			AvatarUtils::write_attribute(
-				avatar,
-				&AvatarAttributes::Quantity,
-				glimmer_additional_qty,
-			);
-		}
+		let leader_forge_output = if leader.souls > 0 {
+			LeaderForgeOutput::Forged((leader_id, leader), 0)
+		} else {
+			LeaderForgeOutput::Consumed(leader_id)
+		};
 
-		leader.souls += new_souls;
+		let glimmer_avatar = if essences > 0 {
+			let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, essences as usize)?;
+			Some(AvatarBuilder::with_dna(season_id, dna).into_glimmer(essences as u8).build())
+		} else {
+			None
+		};
 
 		let output_vec: Vec<ForgeOutput<T>> = input_sacrifices
 			.into_iter()
@@ -59,7 +73,7 @@ impl<T: Config> AvatarCombinator<T> {
 			.chain(glimmer_avatar.map(|minted_avatar| ForgeOutput::Minted(minted_avatar)))
 			.collect();
 
-		Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), output_vec))
+		Ok((leader_forge_output, output_vec))
 	}
 }
 
@@ -79,11 +93,6 @@ mod test {
 			let material_input_3 = create_random_material(&ALICE, &MaterialItemType::Polymers, 5);
 			let material_input_4 = create_random_material(&ALICE, &MaterialItemType::Polymers, 3);
 
-			let total_soul_points = material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
-
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				material_input_1,
 				vec![material_input_2, material_input_3, material_input_4],
@@ -97,10 +106,10 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(leader_avatar.souls, total_soul_points);
+				assert_eq!(leader_avatar.souls, 7);
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					11
+					8
 				);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
@@ -123,11 +132,6 @@ mod test {
 			let pet_part_input_4 =
 				create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::LegFront, 5);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				pet_part_input_2.1.souls +
-				pet_part_input_3.1.souls +
-				pet_part_input_4.1.souls;
-
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				pet_part_input_1,
 				vec![pet_part_input_2, pet_part_input_3, pet_part_input_4],
@@ -140,10 +144,10 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(leader_avatar.souls, total_soul_points);
+				assert_eq!(leader_avatar.souls, 11);
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					17
+					14
 				);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")

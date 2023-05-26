@@ -13,7 +13,12 @@ impl<T: Config> AvatarCombinator<T> {
 			matching_sacrifices,
 			consumed_sacrifices,
 			non_matching_sacrifices,
-		) = Self::match_avatars(input_leader, input_sacrifices, hash_provider);
+		) = Self::match_avatars(
+			input_leader,
+			input_sacrifices,
+			MATCH_ALGO_START_RARITY.as_byte(),
+			hash_provider,
+		);
 
 		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&leader),
@@ -24,7 +29,7 @@ impl<T: Config> AvatarCombinator<T> {
 			&AvatarAttributes::ItemSubType,
 		);
 
-		if essence_type == EssenceItemType::ColorSpark && rarity == RarityTier::Rare {
+		if essence_type == EssenceItemType::ColorSpark && rarity == RarityTier::Epic {
 			let rolls = MAX_SACRIFICE - all_count + 1;
 
 			for _ in 0..rolls {
@@ -50,7 +55,7 @@ impl<T: Config> AvatarCombinator<T> {
 				let color_bits = ((leader_spec_byte_1 - 1) << 6) | (leader_spec_byte_2 - 1) << 4;
 
 				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte1, color_bits);
-				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte2, 0x00);
+				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte2, 0b0000_1000);
 
 				AvatarUtils::write_typed_attribute(
 					&mut leader,
@@ -62,7 +67,7 @@ impl<T: Config> AvatarCombinator<T> {
 			AvatarUtils::write_typed_attribute(
 				&mut leader,
 				&AvatarAttributes::ItemSubType,
-				&EssenceItemType::ForceGlow,
+				&EssenceItemType::GlowFlask,
 			);
 		}
 
@@ -103,11 +108,11 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let progress_arrays = [
-				[0x34, 0x35, 0x23, 0x30, 0x30, 0x21, 0x21, 0x34, 0x34, 0x23, 0x32],
-				[0x22, 0x35, 0x22, 0x30, 0x23, 0x23, 0x25, 0x25, 0x24, 0x30, 0x22],
-				[0x24, 0x20, 0x24, 0x24, 0x33, 0x21, 0x20, 0x20, 0x34, 0x23, 0x25],
-				[0x22, 0x21, 0x24, 0x20, 0x33, 0x21, 0x23, 0x24, 0x22, 0x22, 0x22],
-				[0x34, 0x23, 0x24, 0x22, 0x25, 0x22, 0x21, 0x24, 0x20, 0x31, 0x21],
+				[0x44, 0x45, 0x33, 0x40, 0x40, 0x31, 0x31, 0x44, 0x44, 0x33, 0x42],
+				[0x32, 0x45, 0x32, 0x40, 0x33, 0x33, 0x35, 0x35, 0x34, 0x40, 0x32],
+				[0x34, 0x30, 0x34, 0x34, 0x43, 0x31, 0x30, 0x30, 0x44, 0x33, 0x35],
+				[0x32, 0x31, 0x34, 0x30, 0x43, 0x31, 0x33, 0x34, 0x32, 0x32, 0x32],
+				[0x44, 0x33, 0x34, 0x32, 0x35, 0x32, 0x31, 0x34, 0x30, 0x41, 0x31],
 			];
 
 			let mut avatars = progress_arrays
@@ -128,6 +133,13 @@ mod test {
 			let sacrifices = avatars.split_off(1);
 			let leader = avatars.pop().unwrap();
 
+			let expected_dna = [
+				0x32, 0x00, 0x03, 0x01, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x45, 0x33, 0x40, 0x40, 0x31, 0x31,
+				0x44, 0x44, 0x33, 0x42,
+			];
+			assert_eq!(leader.1.dna.as_slice(), &expected_dna);
+
 			let (leader_output, sacrifice_output) =
 				AvatarCombinator::<Test>::spark_avatars(leader, sacrifices, &mut hash_provider)
 					.expect("Should succeed in forging");
@@ -139,7 +151,7 @@ mod test {
 				assert_eq!(leader_avatar.souls, total_soul_points);
 
 				let expected_progress_array =
-					[0x34, 0x35, 0x33, 0x30, 0x30, 0x31, 0x31, 0x34, 0x34, 0x33, 0x32];
+					[0x44, 0x45, 0x43, 0x40, 0x40, 0x41, 0x41, 0x44, 0x44, 0x43, 0x42];
 				let _leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
 				assert_eq!(
 					AvatarUtils::read_progress_array(&leader_avatar),
@@ -150,7 +162,7 @@ mod test {
 						&leader_avatar,
 						&AvatarAttributes::RarityTier
 					),
-					RarityTier::Rare
+					RarityTier::Epic
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<EssenceItemType>(
@@ -232,7 +244,7 @@ mod test {
 						&leader_avatar,
 						&AvatarAttributes::ItemSubType
 					),
-					EssenceItemType::ForceGlow
+					EssenceItemType::GlowFlask
 				);
 				assert_eq!(
 					Force::from_byte(AvatarUtils::read_spec_byte(

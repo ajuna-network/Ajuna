@@ -63,4 +63,63 @@ impl<T: Config> SlotRoller<T> {
 	}
 }
 
-// TODO: Add probability verification tests
+#[cfg(test)]
+mod test {
+	use super::{super::types::*, *};
+	use crate::{mock::*, types::ByteConvertible, Pallet};
+
+	#[test]
+	fn statistics_verification_test() {
+		ExtBuilder::default().build().execute_with(|| {
+			let hash = Pallet::<Test>::random_hash(b"statistics_test", &ALICE);
+			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
+
+			let packs: [ProbabilitySlots<MaterialItemType, 2>; 3] = [
+				[(MaterialItemType::Polymers, 500), (MaterialItemType::Electronics, 500)],
+				[(MaterialItemType::Polymers, 300), (MaterialItemType::Electronics, 700)],
+				[(MaterialItemType::Polymers, 900), (MaterialItemType::Electronics, 100)],
+			];
+
+			let mut probability_array = [[0_u32; 2]; 3];
+
+			let loop_count = 1_000_000_u32;
+			// We expect 10% deviation on the expected probabilities
+			let prob_epsilon = (10 * loop_count) / 1_000;
+
+			for (pack_index, pack_type) in
+				[PackType::Material, PackType::Equipment, PackType::Special]
+					.into_iter()
+					.enumerate()
+			{
+				for i in 0..loop_count {
+					if i % 1000 == 999 {
+						let hash_text = format!("loop_{:#07X}", i);
+						let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+						hash_provider = HashProvider::new(&hash);
+					}
+					let rolled_entry = SlotRoller::<Test>::roll_on_pack_type(
+						pack_type.clone(),
+						&packs[0],
+						&packs[1],
+						&packs[2],
+						&mut hash_provider,
+					);
+					let rolled_index = rolled_entry.as_byte() as usize - 1;
+
+					probability_array[pack_index][rolled_index] += 1;
+				}
+			}
+
+			for (i, entry) in probability_array.iter().enumerate() {
+				for (j, item) in entry.iter().enumerate() {
+					let entry_prob = packs[i][j].1 as u32;
+					let entry_avg_value = (entry_prob * loop_count) / 1_000;
+
+					// All rolls fall between the expected value + epsilon%
+					assert!((entry_avg_value + prob_epsilon) > *item);
+					assert!((entry_avg_value - prob_epsilon) < *item);
+				}
+			}
+		});
+	}
+}

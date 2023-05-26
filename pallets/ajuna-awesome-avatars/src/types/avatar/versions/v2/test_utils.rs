@@ -230,6 +230,40 @@ pub(crate) fn create_random_glimmer(
 	)
 }
 
+pub(crate) fn create_random_paint_flask(
+	account: &MockAccountId,
+	color_pair: &(ColorType, ColorType),
+	soul_points: SoulCount,
+	progress_array: Option<[u8; 11]>,
+) -> (AvatarIdOf<Test>, Avatar) {
+	create_random_avatar::<Test, _>(
+		account,
+		None,
+		Some(|avatar| {
+			AvatarBuilder::with_base_avatar(avatar)
+				.into_paint_flask(color_pair, soul_points, progress_array)
+				.build()
+		}),
+	)
+}
+
+pub(crate) fn create_random_glow_flask(
+	account: &MockAccountId,
+	force_type: &Force,
+	soul_points: SoulCount,
+	progress_array: Option<[u8; 11]>,
+) -> (AvatarIdOf<Test>, Avatar) {
+	create_random_avatar::<Test, _>(
+		account,
+		None,
+		Some(|avatar| {
+			AvatarBuilder::with_base_avatar(avatar)
+				.into_glow_flask(force_type, soul_points, progress_array)
+				.build()
+		}),
+	)
+}
+
 pub(crate) fn create_random_dust(
 	account: &MockAccountId,
 	soul_points: SoulCount,

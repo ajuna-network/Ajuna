@@ -12,7 +12,7 @@ pub(crate) trait AttributeMapper {
 	/// Used to obtain the RarityTier of a given avatar as an u8.
 	fn rarity(target: &Avatar) -> u8;
 
-	/// Used to get the ForceType of a given avatar as an u8.
+	/// Used to get the Force of a given avatar as an u8.
 	fn force(target: &Avatar) -> u8;
 }
 

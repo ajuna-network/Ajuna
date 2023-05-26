@@ -3,6 +3,7 @@ mod breed;
 mod build;
 mod equip;
 mod feed;
+mod flask;
 mod glimmer;
 mod mate;
 mod spark;
@@ -40,6 +41,7 @@ impl<T: Config> AvatarCombinator<T> {
 			ForgeType::Glimmer =>
 				Self::glimmer_avatars(input_leader, input_sacrifices, season_id, hash_provider),
 			ForgeType::Spark => Self::spark_avatars(input_leader, input_sacrifices, hash_provider),
+			ForgeType::Flask => Self::flask_avatars(input_leader, input_sacrifices, hash_provider),
 			ForgeType::Special | ForgeType::None =>
 				Self::forge_none(input_leader, input_sacrifices),
 		}
@@ -61,6 +63,7 @@ impl<T: Config> AvatarCombinator<T> {
 	fn match_avatars(
 		input_leader: ForgeItem<T>,
 		sacrifices: Vec<ForgeItem<T>>,
+		rarity_level: u8,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> (ForgeItem<T>, Vec<ForgeItem<T>>, Vec<ForgeItem<T>>, Vec<ForgeItem<T>>) {
 		let (leader_id, mut leader) = input_leader;
@@ -79,9 +82,11 @@ impl<T: Config> AvatarCombinator<T> {
 		while let Some((sacrifice_id, sacrifice)) = sacrifice_deque.pop_front() {
 			let sacrifice_progress_array = AvatarUtils::read_progress_array(&sacrifice);
 
-			if let Some(matched_indexes) =
-				AvatarUtils::is_array_match(leader_progress_array, sacrifice_progress_array)
-			{
+			if let Some(matched_indexes) = AvatarUtils::is_array_match(
+				leader_progress_array,
+				sacrifice_progress_array,
+				rarity_level,
+			) {
 				if AvatarUtils::has_attribute_set_with_same_values_as(
 					&leader,
 					&sacrifice,
@@ -249,6 +254,7 @@ mod match_test {
 					AvatarCombinator::<Test>::match_avatars(
 						avatar_1,
 						vec![avatar_2],
+						0,
 						&mut hash_provider,
 					);
 

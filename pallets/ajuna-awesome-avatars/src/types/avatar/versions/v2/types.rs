@@ -24,7 +24,7 @@ impl ByteConvertible for ByteType {
 	}
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub(crate) enum HexType {
 	#[default]
 	X0 = 0b0000,
@@ -164,7 +164,7 @@ impl ByteConvertible for PetItemType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub(crate) enum EquippableItemType {
 	#[default]
 	ArmorBase = 1,
@@ -191,7 +191,7 @@ impl ByteConvertible for EquippableItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
@@ -369,7 +369,7 @@ pub(crate) enum EssenceItemType {
 	ColorSpark = 2,
 	GlowSpark = 3,
 	PaintFlask = 4,
-	ForceGlow = 5,
+	GlowFlask = 5,
 }
 
 impl ByteConvertible for EssenceItemType {
@@ -379,7 +379,7 @@ impl ByteConvertible for EssenceItemType {
 			2 => Self::ColorSpark,
 			3 => Self::GlowSpark,
 			4 => Self::PaintFlask,
-			5 => Self::ForceGlow,
+			5 => Self::GlowFlask,
 			_ => Self::default(),
 		}
 	}
@@ -389,7 +389,7 @@ impl ByteConvertible for EssenceItemType {
 	}
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum BlueprintItemType {
 	#[default]
 	Blueprint = 1,
@@ -446,6 +446,8 @@ pub(crate) enum SpecialItemType {
 	#[default]
 	Dust = 1,
 	Unidentified = 2,
+	Fragment = 3,
+	ToolBox = 4,
 }
 
 impl ByteConvertible for SpecialItemType {
@@ -453,6 +455,8 @@ impl ByteConvertible for SpecialItemType {
 		match byte {
 			1 => Self::Dust,
 			2 => Self::Unidentified,
+			3 => Self::Fragment,
+			4 => Self::ToolBox,
 			_ => Self::default(),
 		}
 	}

@@ -41,6 +41,7 @@ impl<T: Config> AvatarCombinator<T> {
 		let (mirrors, _) = AvatarUtils::match_progress_arrays(
 			AvatarUtils::read_progress_array(&leader),
 			AvatarUtils::read_progress_array(&partner),
+			RarityTier::Common.as_byte(),
 		);
 
 		if mirrors < 4 {
@@ -123,6 +124,89 @@ impl<T: Config> AvatarCombinator<T> {
 mod test {
 	use super::*;
 	use crate::mock::*;
+
+	#[test]
+	fn test_mate_extra_sacrifices() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
+
+			let leader =
+				create_random_pet(&ALICE, &PetType::BigHybrid, 0b0001_1001, [0; 16], [0; 11], 1000);
+			let partner =
+				create_random_pet(&ALICE, &PetType::CrazyDude, 0b0101_0011, [0; 16], [0; 11], 1000);
+			let extra_partner =
+				create_random_pet(&ALICE, &PetType::CrazyDude, 0b0101_0011, [0; 16], [0; 11], 1000);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+				leader,
+				vec![partner, extra_partner],
+				0,
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
+
+			assert!(is_leader_forged(&leader_output));
+		});
+	}
+
+	#[test]
+	fn test_mate_all_equipped_slots_leader() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
+
+			let leader =
+				create_random_pet(&ALICE, &PetType::BigHybrid, 0b0001_1001, [0; 16], [0; 11], 1000);
+			let partner =
+				create_random_pet(&ALICE, &PetType::CrazyDude, 0b0101_0011, [0; 16], [0; 11], 1000);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+				leader,
+				vec![partner],
+				0,
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+
+			assert!(is_leader_forged(&leader_output));
+		});
+	}
+
+	#[test]
+	fn test_mate_all_equipped_slots_partner() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
+
+			let leader = create_random_pet(
+				&ALICE,
+				&PetType::BigHybrid,
+				0b0001_1001,
+				[0xFF; 16],
+				[0; 11],
+				1000,
+			);
+			let partner =
+				create_random_pet(&ALICE, &PetType::CrazyDude, 0b0101_0011, [0; 16], [0; 11], 1000);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+				leader,
+				vec![partner],
+				0,
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+
+			assert!(is_leader_forged(&leader_output));
+		});
+	}
 
 	#[test]
 	fn test_mate() {
