@@ -7,7 +7,12 @@ impl<T: Config> AvatarCombinator<T> {
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (mut input_leader, matching_sacrifices, consumed_sacrifices, non_matching_sacrifices) =
-			Self::match_avatars(input_leader, input_sacrifices, hash_provider);
+			Self::match_avatars(
+				input_leader,
+				input_sacrifices,
+				MATCH_ALGO_START_RARITY.as_byte(),
+				hash_provider,
+			);
 
 		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader.1),
@@ -27,7 +32,8 @@ impl<T: Config> AvatarCombinator<T> {
 
 		if is_leader_legendary && is_leader_egg && pet_variation > 0 {
 			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
-			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
+			// only allow 4 starter pets
+			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % 4];
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,

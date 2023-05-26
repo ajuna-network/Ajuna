@@ -11,7 +11,12 @@ impl<T: Config> AvatarCombinator<T> {
 			matching_sacrifices,
 			consumed_sacrifices,
 			non_matching_sacrifices,
-		) = Self::match_avatars(input_leader, input_sacrifices, hash_provider);
+		) = Self::match_avatars(
+			input_leader,
+			input_sacrifices,
+			MATCH_ALGO_START_RARITY.as_byte(),
+			hash_provider,
+		);
 
 		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader),
@@ -43,57 +48,14 @@ impl<T: Config> AvatarCombinator<T> {
 					EquippableItemType::ArmorBase,
 				)
 			}) {
-				AvatarUtils::add_spec_byte_from(
+				let spec_byte = AvatarSpecBytes::SpecByte1;
+				let current_spec = AvatarUtils::read_spec_byte(&input_leader, &spec_byte);
+				let armor_spec = AvatarUtils::read_spec_byte(armor_component, &spec_byte);
+
+				AvatarUtils::write_spec_byte(
 					&mut input_leader,
 					&AvatarSpecBytes::SpecByte1,
-					armor_component,
-					&AvatarSpecBytes::SpecByte1,
-				);
-			}
-
-			// Add color sparks
-			if let Some((_, paint_flask)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
-				let is_essence = AvatarUtils::has_attribute_with_value(
-					sacrifice,
-					&AvatarAttributes::ItemType,
-					ItemType::Essence,
-				);
-				let is_paint_flask = AvatarUtils::has_attribute_with_value(
-					sacrifice,
-					&AvatarAttributes::ItemSubType,
-					EssenceItemType::PaintFlask,
-				);
-
-				is_essence && is_paint_flask
-			}) {
-				AvatarUtils::add_spec_byte_from(
-					&mut input_leader,
-					&AvatarSpecBytes::SpecByte1,
-					paint_flask,
-					&AvatarSpecBytes::SpecByte1,
-				);
-			}
-
-			// Add force glows
-			if let Some((_, force_glow)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
-				let is_essence = AvatarUtils::has_attribute_with_value(
-					sacrifice,
-					&AvatarAttributes::ItemType,
-					ItemType::Essence,
-				);
-				let is_force_glow = AvatarUtils::has_attribute_with_value(
-					sacrifice,
-					&AvatarAttributes::ItemSubType,
-					EssenceItemType::ForceGlow,
-				);
-
-				is_essence && is_force_glow
-			}) {
-				AvatarUtils::add_spec_byte_from(
-					&mut input_leader,
-					&AvatarSpecBytes::SpecByte2,
-					force_glow,
-					&AvatarSpecBytes::SpecByte1,
+					current_spec | armor_spec,
 				);
 			}
 		}
@@ -207,15 +169,15 @@ mod test {
 			.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 2);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(avatar.souls, 7);
+				assert_eq!(avatar.souls, 10);
 
 				let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
 				let expected_leader_progress_array =
-					[0x14, 0x12, 0x10, 0x21, 0x20, 0x21, 0x20, 0x25, 0x11, 0x25, 0x23];
+					[0x14, 0x22, 0x20, 0x11, 0x20, 0x21, 0x20, 0x15, 0x11, 0x25, 0x23];
 				assert_eq!(leader_progress_array, expected_leader_progress_array);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
@@ -421,8 +383,8 @@ mod test {
 			.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 2);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			assert!(is_leader_forged(&leader_output));
 		});

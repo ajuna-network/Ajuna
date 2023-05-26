@@ -17,7 +17,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 	) -> Result<Avatar, ()> {
 		let avatar = match self {
 			PetItemType::Pet => {
-				let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
+				let pet_type = PetType::from_byte((hash_provider.get_hash_byte() % 4) + 1);
 				let pet_variation = 2_u8.pow(pet_type.as_byte() as u32);
 
 				let spec_bytes = [0; 16];
@@ -52,7 +52,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				let soul_points = (hash_provider.get_hash_byte() % 99) + 1;
 
 				AvatarBuilder::with_base_avatar(base_avatar).into_egg(
-					&RarityTier::Epic,
+					&RarityTier::Rare,
 					pet_variation,
 					soul_points as SoulCount,
 					None,
@@ -111,10 +111,9 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 					)
 				}
 			},
-			EssenceItemType::GlowSpark | EssenceItemType::ForceGlow => {
-				let force = Force::from_byte(
-					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
-				);
+			EssenceItemType::GlowSpark | EssenceItemType::GlowFlask => {
+				let force =
+					Force::from_byte(hash_provider.get_hash_byte() % Force::range().end as u8);
 
 				if *self == EssenceItemType::GlowSpark {
 					AvatarBuilder::with_base_avatar(base_avatar).into_glow_spark(
@@ -123,7 +122,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 						None,
 					)
 				} else {
-					AvatarBuilder::with_base_avatar(base_avatar).into_force_glow(
+					AvatarBuilder::with_base_avatar(base_avatar).into_glow_flask(
 						&force,
 						souls as SoulCount,
 						None,
@@ -164,7 +163,7 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 				AvatarBuilder::with_base_avatar(base_avatar).try_into_armor_and_component(
 					&pet_type,
 					&slot_type,
-					&[self.clone()],
+					&[*self],
 					&rarity,
 					&(ColorType::None, ColorType::None),
 					&Force::None,
@@ -257,9 +256,688 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 				AvatarBuilder::with_base_avatar(base_avatar)
 					.into_unidentified(color_pair, force, soul_count)
 			},
+			SpecialItemType::Fragment => AvatarBuilder::with_base_avatar(base_avatar).into_dust(1),
+			SpecialItemType::ToolBox => {
+				let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
+
+				AvatarBuilder::with_base_avatar(base_avatar).into_toolbox(soul_count)
+			},
 		}
 		.build();
 
 		Ok(avatar)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::mock::*;
+
+	#[test]
+	fn test_mutate_pet() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = PetItemType::Pet
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Pet);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, PetItemType::Pet);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType2);
+			assert!({ class_type_2 > 0 && class_type_2 < 5 });
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, 2_u8.pow(class_type_2 as u32));
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Legendary);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+		});
+	}
+
+	#[test]
+	fn test_mutate_pet_part() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = PetItemType::PetPart
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Pet);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, PetItemType::PetPart);
+
+			let class_type_1 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType1);
+			assert!(class_type_1 > 0 && class_type_1 < 10);
+			let class_type_2 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType2);
+			assert!(class_type_2 > 0 && class_type_2 < 8);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X1);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Uncommon);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert!(quantity > 0 && quantity < 9);
+		});
+	}
+
+	#[test]
+	fn test_mutate_egg() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = PetItemType::Egg
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Pet);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, PetItemType::Egg);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute(&avatar, &AvatarAttributes::CustomType2);
+			assert!(custom_type_2 > 0 && custom_type_2 < 16);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Rare);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+		});
+	}
+
+	#[test]
+	fn test_mutate_material() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = MaterialItemType::Polymers
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Material);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<MaterialItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, MaterialItemType::Polymers);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X1);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Common);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert!(quantity > 0 && quantity < 9);
+		});
+	}
+
+	#[test]
+	fn test_mutate_color_spark() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = EssenceItemType::ColorSpark
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Essence);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, EssenceItemType::ColorSpark);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Rare);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 < 5);
+			let spec_byte_2 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte2);
+			assert!(spec_byte_2 < 5);
+		});
+	}
+
+	#[test]
+	fn test_mutate_paint_flask() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = EssenceItemType::PaintFlask
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Essence);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, EssenceItemType::PaintFlask);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Epic);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 < 0b1111_1000);
+			let spec_byte_2 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte2);
+			assert_eq!(spec_byte_2, 0b0000_1000);
+		});
+	}
+
+	#[test]
+	fn test_mutate_glow_spark() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = EssenceItemType::GlowSpark
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Essence);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, EssenceItemType::GlowSpark);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Rare);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 < 7);
+			let spec_byte_2 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte2);
+			assert_eq!(spec_byte_2, 0);
+		});
+	}
+
+	#[test]
+	fn test_mutate_glow_flask() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = EssenceItemType::GlowFlask
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Essence);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, EssenceItemType::GlowFlask);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Epic);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 < 7);
+			let spec_byte_2 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte2);
+			assert_eq!(spec_byte_2, 0);
+		});
+	}
+
+	#[test]
+	fn test_mutate_armor() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = EquippableItemType::ArmorBase
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Equippable);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<EquippableItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, EquippableItemType::ArmorBase);
+
+			let class_type_1 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType1);
+			assert!(class_type_1 > 0 && class_type_1 < 10);
+			let class_type_2 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType2);
+			assert!(class_type_2 > 0 && class_type_2 < 8);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert!(rarity_tier == RarityTier::Rare || rarity_tier == RarityTier::Epic);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 > 0);
+		});
+	}
+
+	#[test]
+	fn test_mutate_weapon() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = EquippableItemType::WeaponVersion3
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Equippable);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<EquippableItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, EquippableItemType::WeaponVersion3);
+
+			let class_type_1 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType1);
+			assert!(class_type_1 > 0 && class_type_1 < 10);
+			let class_type_2 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType2);
+			assert!(class_type_2 > 0 && class_type_2 < 8);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Legendary);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 > 0);
+		});
+	}
+
+	#[test]
+	fn test_mutate_blueprint() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = BlueprintItemType::Blueprint
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Blueprint);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<BlueprintItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, BlueprintItemType::Blueprint);
+
+			let class_type_1 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType1);
+			assert!(class_type_1 > 0 && class_type_1 < 10);
+			let class_type_2 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType2);
+			assert!(class_type_2 > 0 && class_type_2 < 8);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X1);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Rare);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert!(quantity > 0 && quantity < 26);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 > 0);
+		});
+	}
+
+	#[test]
+	fn test_mutate_dust() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = SpecialItemType::Dust
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Special);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, SpecialItemType::Dust);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X1);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Common);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+		});
+	}
+
+	#[test]
+	fn test_mutate_unidentified() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = SpecialItemType::Unidentified
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Special);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, SpecialItemType::Unidentified);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Legendary);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+
+			let spec_byte_1 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1);
+			assert!(spec_byte_1 > 0);
+		});
+	}
+
+	#[test]
+	fn test_mutate_toolbox() {
+		ExtBuilder::default().build().execute_with(|| {
+			let (_, avatar) = create_random_avatar::<Test, _>(&ALICE, None, Some(|avatar| avatar));
+			let mut hash_provider =
+				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
+
+			let avatar = SpecialItemType::ToolBox
+				.mutate_from_base(avatar, &mut hash_provider)
+				.expect("Should mutate avatar");
+
+			let item_type =
+				AvatarUtils::read_attribute_as::<ItemType>(&avatar, &AvatarAttributes::ItemType);
+			assert_eq!(item_type, ItemType::Special);
+
+			let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+				&avatar,
+				&AvatarAttributes::ItemSubType,
+			);
+			assert_eq!(item_sub_type, SpecialItemType::ToolBox);
+
+			let class_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType1);
+			assert_eq!(class_type_1, HexType::X0);
+			let class_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::ClassType2);
+			assert_eq!(class_type_2, HexType::X0);
+
+			let custom_type_1 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
+			assert_eq!(custom_type_1, HexType::X0);
+			let custom_type_2 =
+				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
+			assert_eq!(custom_type_2, HexType::X0);
+
+			let rarity_tier = AvatarUtils::read_attribute_as::<RarityTier>(
+				&avatar,
+				&AvatarAttributes::RarityTier,
+			);
+			assert_eq!(rarity_tier, RarityTier::Epic);
+
+			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+			assert_eq!(quantity, 1);
+		});
 	}
 }

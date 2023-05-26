@@ -84,6 +84,13 @@ impl<T: Config> AvatarCombinator<T> {
 					let force = Force::from_byte((rand_2 % forces) + 1);
 					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, None);
 				}
+			} else if (rand_0 as u32 * SCALING_FACTOR_PERC < TOOLBOX_PERC * MAX_BYTE) &&
+				AvatarUtils::can_use_avatar(&leader, GLIMMER_FORGE_TOOLBOX_USE)
+			{
+				let (_, consumed, out_leader_souls) =
+					AvatarUtils::use_avatar(&mut leader, GLIMMER_FORGE_TOOLBOX_USE);
+				leader_consumed = consumed;
+				gen_avatar = gen_avatar.into_toolbox(soul_points + out_leader_souls);
 			} else {
 				gen_avatar = gen_avatar.into_dust(soul_points);
 			}
@@ -269,7 +276,7 @@ mod test {
 
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					96
+					51
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(
@@ -322,7 +329,7 @@ mod test {
 					if let ForgeOutput::Minted(avatar) = &sacrifice_output[i] {
 						assert_eq!(
 							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-							5
+							if i == 1 { 1 } else { 5 }
 						);
 						assert_eq!(
 							AvatarUtils::read_attribute_as::<ItemType>(
@@ -336,7 +343,7 @@ mod test {
 								avatar,
 								&AvatarAttributes::ItemSubType,
 							),
-							SpecialItemType::Dust
+							if i == 1 { SpecialItemType::ToolBox } else { SpecialItemType::Dust }
 						);
 					} else {
 						panic!("ForgeOutput should have been Minted!")
@@ -659,7 +666,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let mut probability_array = [0; 6];
+			let mut probability_array = [0; 8];
 
 			for i in 0..10_000 {
 				let leader = create_random_glimmer(&ALICE, 20);
@@ -700,6 +707,8 @@ mod test {
 							) {
 								SpecialItemType::Dust => probability_array[4] += 1,
 								SpecialItemType::Unidentified => probability_array[5] += 1,
+								SpecialItemType::Fragment => probability_array[6] += 1,
+								SpecialItemType::ToolBox => probability_array[7] += 1,
 							},
 						_ => panic!("Generated avatar ItemType not valid!"),
 					}
@@ -711,10 +720,12 @@ mod test {
 
 			assert_eq!(probability_array[0], 10_000);
 			assert_eq!(probability_array[1], 0);
-			assert_eq!(probability_array[2], 370);
-			assert_eq!(probability_array[3], 116);
-			assert_eq!(probability_array[4], 9_512);
+			assert_eq!(probability_array[2], 754);
+			assert_eq!(probability_array[3], 250);
+			assert_eq!(probability_array[4], 8994);
 			assert_eq!(probability_array[5], 2);
+			assert_eq!(probability_array[6], 0);
+			assert_eq!(probability_array[7], 0);
 		});
 	}
 }

@@ -174,6 +174,7 @@ pub(crate) enum ForgeType {
 	Spark,
 	#[allow(dead_code)]
 	Special,
+	Flask,
 }
 
 pub(crate) struct ForgerV2<T: Config>(pub PhantomData<T>);
@@ -389,7 +390,7 @@ impl<T: Config> ForgerV2<T> {
 							ForgeType::None
 						}
 					},
-					EssenceItemType::PaintFlask | EssenceItemType::ForceGlow => ForgeType::None,
+					EssenceItemType::PaintFlask | EssenceItemType::GlowFlask => ForgeType::None,
 				}
 			},
 			ItemType::Equippable => {
@@ -398,65 +399,115 @@ impl<T: Config> ForgerV2<T> {
 					&AvatarAttributes::RarityTier,
 				);
 
-				match leader_rarity {
-					RarityTier::Legendary | RarityTier::Mythical => ForgeType::None,
-					_ => {
-						let equippable_item = AvatarUtils::read_attribute_as::<EquippableItemType>(
-							input_leader,
-							&AvatarAttributes::ItemSubType,
+				let leader_equipable_item_type = AvatarUtils::read_attribute_as::<EquippableItemType>(
+					input_leader,
+					&AvatarAttributes::ItemSubType,
+				);
+
+				let any_same_assemble_version = input_sacrifices
+					.iter()
+					.any(|sacrifice| AvatarUtils::same_assemble_version(input_leader, sacrifice));
+
+				let all_sacrifice_are_armor_or_toolbox = input_sacrifices.iter().all(|sacrifice| {
+					let same_assemble_version =
+						AvatarUtils::same_assemble_version(input_leader, sacrifice);
+
+					let equipable_sacrifice_item = AvatarUtils::read_attribute_as::<
+						EquippableItemType,
+					>(input_leader, &AvatarAttributes::ItemSubType);
+
+					let is_toolbox = AvatarUtils::has_attribute_set_with_values(
+						sacrifice,
+						&[
+							(AvatarAttributes::ItemType, ItemType::Special.as_byte()),
+							(AvatarAttributes::ItemSubType, SpecialItemType::ToolBox.as_byte()),
+						],
+					);
+
+					same_assemble_version &&
+						(EquippableItemType::is_armor(equipable_sacrifice_item) || is_toolbox)
+				});
+
+				if EquippableItemType::is_armor(leader_equipable_item_type) &&
+					any_same_assemble_version &&
+					all_sacrifice_are_armor_or_toolbox
+				{
+					ForgeType::Assemble
+				} else if leader_rarity == RarityTier::Epic &&
+					leader_equipable_item_type == EquippableItemType::ArmorBase
+				{
+					let has_one_paint_flask_or_glow = input_sacrifices
+						.iter()
+						.filter(|sacrifice| {
+							let is_essence = AvatarUtils::has_attribute_with_value(
+								sacrifice,
+								&AvatarAttributes::ItemType,
+								ItemType::Essence,
+							);
+
+							let is_flask_or_glow = {
+								let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
+									sacrifice,
+									&AvatarAttributes::ItemSubType,
+								);
+
+								item_sub_type == EssenceItemType::PaintFlask ||
+									item_sub_type == EssenceItemType::GlowFlask
+							};
+
+							is_essence && is_flask_or_glow
+						})
+						.count() == 1;
+
+					let all_are_glimmer_paint_or_force = input_sacrifices.iter().all(|sacrifice| {
+						let is_essence = AvatarUtils::has_attribute_with_value(
+							sacrifice,
+							&AvatarAttributes::ItemType,
+							ItemType::Essence,
 						);
 
-						let any_sacrifice_full_match_leader =
-							input_sacrifices.iter().any(|sacrifice| {
-								AvatarUtils::has_attribute_set_with_same_values_as(
-									input_leader,
-									sacrifice,
-									&[
-										AvatarAttributes::ItemType,
-										AvatarAttributes::ItemSubType,
-										AvatarAttributes::ClassType1,
-										AvatarAttributes::ClassType2,
-									],
-								)
-							});
+						let is_glimmer_flask_or_force = {
+							let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
+								sacrifice,
+								&AvatarAttributes::ItemSubType,
+							);
 
-						let all_sacrifice_are_armor_part_or_essence =
-							input_sacrifices.iter().all(|sacrifice| {
-								let equippable_sacrifice_item =
-									AvatarUtils::read_attribute_as::<EquippableItemType>(
-										input_leader,
-										&AvatarAttributes::ItemSubType,
-									);
+							item_sub_type == EssenceItemType::Glimmer ||
+								item_sub_type == EssenceItemType::PaintFlask ||
+								item_sub_type == EssenceItemType::GlowFlask
+						};
 
-								(AvatarUtils::has_attribute_set_with_same_values_as(
-									sacrifice,
-									input_leader,
-									&[
-										AvatarAttributes::ItemType,
-										AvatarAttributes::ClassType1,
-										AvatarAttributes::ClassType2,
-									],
-								) && EquippableItemType::is_armor(equippable_sacrifice_item)) ||
-									AvatarUtils::has_attribute_with_value(
-										sacrifice,
-										&AvatarAttributes::ItemType,
-										ItemType::Essence,
-									)
-							});
+						is_essence && is_glimmer_flask_or_force
+					});
 
-						if EquippableItemType::is_armor(equippable_item) &&
-							any_sacrifice_full_match_leader &&
-							all_sacrifice_are_armor_part_or_essence
-						{
-							ForgeType::Assemble
-						} else {
-							ForgeType::None
-						}
-					},
+					if has_one_paint_flask_or_glow && all_are_glimmer_paint_or_force {
+						ForgeType::Flask
+					} else {
+						ForgeType::None
+					}
+				} else {
+					ForgeType::None
 				}
 			},
 			ItemType::Blueprint => {
 				if input_sacrifices.iter().all(|sacrifice| {
+					AvatarUtils::has_attribute_set_with_same_values_as(
+						sacrifice,
+						input_leader,
+						&[
+							AvatarAttributes::ItemType,
+							AvatarAttributes::ItemSubType,
+							AvatarAttributes::ClassType1,
+							AvatarAttributes::ClassType2,
+						],
+					) && AvatarUtils::has_same_spec_byte_as(
+						sacrifice,
+						input_leader,
+						&AvatarSpecBytes::SpecByte3,
+					)
+				}) {
+					ForgeType::Stack
+				} else if input_sacrifices.iter().all(|sacrifice| {
 					AvatarUtils::has_attribute_with_value(
 						sacrifice,
 						&AvatarAttributes::ItemType,
@@ -487,7 +538,7 @@ impl<T: Config> ForgerV2<T> {
 						} else {
 							ForgeType::None
 						},
-					SpecialItemType::Unidentified => ForgeType::None,
+					_ => ForgeType::None,
 				}
 			},
 		}
@@ -554,21 +605,18 @@ mod test {
 				&Force::Thermal,
 				2,
 			);
-			let sacrifices = [
-				&create_random_armor_component(
-					[0x2A; 32],
-					&ALICE,
-					&PetType::TankyBullwog,
-					&SlotType::ArmBack,
-					&RarityTier::Common,
-					&[EquippableItemType::ArmorComponent2],
-					&(ColorType::None, ColorType::ColorD),
-					&Force::Astral,
-					2,
-				)
-				.1,
-				&create_random_glimmer(&ALICE, 10).1,
-			];
+			let sacrifices = [&create_random_armor_component(
+				[0x2A; 32],
+				&ALICE,
+				&PetType::TankyBullwog,
+				&SlotType::ArmBack,
+				&RarityTier::Common,
+				&[EquippableItemType::ArmorComponent2],
+				&(ColorType::None, ColorType::ColorD),
+				&Force::Astral,
+				2,
+			)
+			.1];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
 				ForgeType::Assemble
@@ -655,8 +703,7 @@ mod test {
 
 			// Build with non-materials fails
 			let sacrifices_err =
-				[&create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 4)
-					.1];
+				[&create_random_egg(None, &ALICE, &RarityTier::Common, 0b0001_0010, 10, [2; 11]).1];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
 				ForgeType::None
@@ -753,6 +800,63 @@ mod test {
 
 			// Feed with non-eggs fails
 			let sacrifices_err = [&create_random_material(&ALICE, &MaterialItemType::Metals, 10).1];
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
+		});
+	}
+
+	#[test]
+	fn test_determine_forge_types_flask() {
+		ExtBuilder::default().build().execute_with(|| {
+			// Assemble with armor and essence
+			let (_, leader) = create_random_armor_component(
+				[0xA2; 32],
+				&ALICE,
+				&PetType::TankyBullwog,
+				&SlotType::ArmBack,
+				&RarityTier::Epic,
+				&[EquippableItemType::ArmorBase],
+				&(ColorType::ColorA, ColorType::None),
+				&Force::Thermal,
+				2,
+			);
+			let sacrifices = [
+				&create_random_glimmer(&ALICE, 1).1,
+				&create_random_paint_flask(
+					&ALICE,
+					&(ColorType::ColorC, ColorType::ColorD),
+					3,
+					None,
+				)
+				.1,
+			];
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Flask
+			);
+
+			// Assemble without flask fails
+			let sacrifices_err = [&create_random_glimmer(&ALICE, 1).1];
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
+
+			// Assemble with incompatible component fails
+			let sacrifices_err = [&create_random_armor_component(
+				[0x2A; 32],
+				&ALICE,
+				&PetType::FoxishDude,
+				&SlotType::ArmBack,
+				&RarityTier::Common,
+				&[EquippableItemType::ArmorComponent2],
+				&(ColorType::None, ColorType::ColorD),
+				&Force::Astral,
+				2,
+			)
+			.1];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
 				ForgeType::None
@@ -961,6 +1065,43 @@ mod test {
 			// Stack PetPart with different PetType fails
 			let sacrifices_err =
 				[&create_random_pet_part(&ALICE, &PetType::BigHybrid, &SlotType::Head, 1).1];
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
+				ForgeType::None
+			);
+
+			// Stack Blueprint
+			let (_, leader) = create_random_blueprint(
+				&ALICE,
+				&PetType::FoxishDude,
+				&SlotType::Head,
+				&EquippableItemType::ArmorBase,
+				&[MaterialItemType::Metals],
+				10,
+			);
+			let sacrifices = [&create_random_blueprint(
+				&ALICE,
+				&PetType::FoxishDude,
+				&SlotType::Head,
+				&EquippableItemType::ArmorBase,
+				&[MaterialItemType::Metals],
+				10,
+			)
+			.1];
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::Stack
+			);
+			// Stack different Blueprints fails
+			let sacrifices_err = [&create_random_blueprint(
+				&ALICE,
+				&PetType::CrazyDude,
+				&SlotType::Head,
+				&EquippableItemType::ArmorBase,
+				&[MaterialItemType::Metals],
+				10,
+			)
+			.1];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
 				ForgeType::None
