@@ -307,7 +307,7 @@ benchmarks! {
 		let caller = account::<T>(name);
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&caller, season_id)[0];
-		Trade::<T>::insert(avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
+		Trade::<T>::insert(season_id, avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarPriceUnset { avatar_id })
@@ -328,7 +328,7 @@ benchmarks! {
 
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&seller, season_id)[0];
-		Trade::<T>::insert(avatar_id, sell_fee);
+		Trade::<T>::insert(season_id, avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTraded { avatar_id, from: seller, to: buyer })

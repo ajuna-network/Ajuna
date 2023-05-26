@@ -2551,9 +2551,9 @@ mod trading {
 				let avatar_for_sale = create_avatars(SEASON_ID, BOB, 1)[0];
 				let price = 7357;
 
-				assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
+				assert_eq!(Trade::<Test>::get(SEASON_ID, avatar_for_sale), None);
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
-				assert_eq!(Trade::<Test>::get(avatar_for_sale), Some(price));
+				assert_eq!(Trade::<Test>::get(SEASON_ID, avatar_for_sale), Some(price));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarPriceSet { avatar_id: avatar_for_sale, price },
 				));
@@ -2614,9 +2614,9 @@ mod trading {
 
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 
-				assert_eq!(Trade::<Test>::get(avatar_for_sale), Some(101));
+				assert_eq!(Trade::<Test>::get(SEASON_ID, avatar_for_sale), Some(101));
 				assert_ok!(AAvatars::remove_price(RuntimeOrigin::signed(BOB), avatar_for_sale));
-				assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
+				assert_eq!(Trade::<Test>::get(SEASON_ID, avatar_for_sale), None);
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::AvatarPriceUnset { avatar_id: avatar_for_sale },
 				));
@@ -2667,8 +2667,9 @@ mod trading {
 	#[test]
 	fn remove_price_should_reject_unlisted_avatar() {
 		ExtBuilder::default().build().execute_with(|| {
+			let avatar_ids = create_avatars(SEASON_ID, BOB, 1);
 			assert_noop!(
-				AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), sp_core::H256::default()),
+				AAvatars::remove_price(RuntimeOrigin::signed(CHARLIE), avatar_ids[0]),
 				Error::<Test>::UnknownAvatarForSale,
 			);
 		});
@@ -2730,7 +2731,7 @@ mod trading {
 				assert_eq!(Avatars::<Test>::get(avatar_for_sale).unwrap().0, ALICE);
 
 				// check for removal from trade storage
-				assert_eq!(Trade::<Test>::get(avatar_for_sale), None);
+				assert_eq!(Trade::<Test>::get(SEASON_ID, avatar_for_sale), None);
 
 				// check for account stats
 				assert_eq!(Accounts::<Test>::get(ALICE).stats.trade.bought, 1);
@@ -2829,8 +2830,9 @@ mod trading {
 	#[test]
 	fn buy_should_reject_unlisted_avatar() {
 		ExtBuilder::default().build().execute_with(|| {
+			let avatar_ids = create_avatars(SEASON_ID, ALICE, 1);
 			assert_noop!(
-				AAvatars::buy(RuntimeOrigin::signed(BOB), H256::default()),
+				AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[0]),
 				Error::<Test>::UnknownAvatarForSale,
 			);
 		});

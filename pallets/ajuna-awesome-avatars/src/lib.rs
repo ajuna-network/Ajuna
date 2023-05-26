@@ -170,7 +170,8 @@ pub mod pallet {
 		StorageDoubleMap<_, Identity, SeasonId, Identity, T::AccountId, SeasonInfo, ValueQuery>;
 
 	#[pallet::storage]
-	pub type Trade<T: Config> = StorageMap<_, Identity, AvatarIdOf<T>, BalanceOf<T>, OptionQuery>;
+	pub type Trade<T: Config> =
+		StorageDoubleMap<_, Identity, SeasonId, Identity, AvatarIdOf<T>, BalanceOf<T>, OptionQuery>;
 
 	#[pallet::storage]
 	pub type ServiceAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
@@ -564,10 +565,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let seller = ensure_signed(origin)?;
 			ensure!(GlobalConfigs::<T>::get().trade.open, Error::<T>::TradeClosed);
-			Self::ensure_ownership(&seller, &avatar_id)?;
+			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
-			Trade::<T>::insert(avatar_id, price);
+			Trade::<T>::insert(avatar.season_id, avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
 		}
@@ -585,8 +586,8 @@ pub mod pallet {
 			let seller = ensure_signed(origin)?;
 			ensure!(GlobalConfigs::<T>::get().trade.open, Error::<T>::TradeClosed);
 			Self::ensure_for_trade(&avatar_id)?;
-			Self::ensure_ownership(&seller, &avatar_id)?;
-			Trade::<T>::remove(avatar_id);
+			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
+			Trade::<T>::remove(avatar.season_id, avatar_id);
 			Self::deposit_event(Event::AvatarPriceUnset { avatar_id });
 			Ok(())
 		}
@@ -622,7 +623,7 @@ pub mod pallet {
 			Self::deposit_into_treasury(&avatar.season_id, trade_fee);
 
 			Self::do_transfer_avatar(&seller, &buyer, &avatar.season_id, &avatar_id)?;
-			Trade::<T>::remove(avatar_id);
+			Trade::<T>::remove(avatar.season_id, avatar_id);
 
 			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
 			Accounts::<T>::mutate(&seller, |account| account.stats.trade.sold.saturating_inc());
@@ -1417,8 +1418,9 @@ pub mod pallet {
 		fn ensure_for_trade(
 			avatar_id: &AvatarIdOf<T>,
 		) -> Result<(T::AccountId, BalanceOf<T>), DispatchError> {
-			let price = Trade::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatarForSale)?;
-			let (seller, _) = Self::avatars(avatar_id)?;
+			let (seller, avatar) = Self::avatars(avatar_id)?;
+			let price = Trade::<T>::get(avatar.season_id, avatar_id)
+				.ok_or(Error::<T>::UnknownAvatarForSale)?;
 			Ok((seller, price))
 		}
 
