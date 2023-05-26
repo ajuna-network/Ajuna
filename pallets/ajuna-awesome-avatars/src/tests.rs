@@ -1324,7 +1324,7 @@ mod minting {
 					}
 				}
 				assert_noop!(
-					AAvatars::mint(RuntimeOrigin::signed(BOB), MintOption::default(),),
+					AAvatars::mint(RuntimeOrigin::signed(BOB), MintOption::default()),
 					Error::<Test>::MaxOwnershipReached
 				);
 			});
@@ -1594,10 +1594,10 @@ mod forging {
 
 				assert_ok!(AAvatars::forge(RuntimeOrigin::signed(BOB), *leader_id, sacrifice_ids));
 				assert_eq!(
-					Avatars::<Test>::get(leader_id,).unwrap().1.souls,
+					Avatars::<Test>::get(leader_id).unwrap().1.souls,
 					original_leader_souls + sacrifice_souls
 				);
-				assert_eq!(Avatars::<Test>::get(leader_id,).unwrap().1.dna.to_vec(), expected_dna);
+				assert_eq!(Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(), expected_dna);
 
 				forged_count += 1;
 				assert_eq!(
