@@ -37,6 +37,24 @@ impl OldSeasonStatus {
 	}
 }
 
+#[derive(Decode)]
+pub struct OldAvatar {
+	pub season_id: SeasonId,
+	pub dna: Dna,
+	pub souls: SoulCount,
+}
+
+impl OldAvatar {
+	fn migrate_to_v5(self) -> Avatar {
+		Avatar {
+			season_id: self.season_id,
+			version: AvatarVersion::V1,
+			dna: self.dna,
+			souls: self.souls,
+		}
+	}
+}
+
 #[frame_support::storage_alias]
 pub(crate) type CurrentSeasonId<T: Config> = StorageValue<Pallet<T>, SeasonId, ValueQuery>;
 
@@ -65,18 +83,18 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			.collect::<Vec<_>>();
 
 			let season_id = 1;
-			let mut translated_account = 0_u64;
-			let mut translated_avatars = 0_u64;
+			let mut translated_owner_account = 0_u64;
+			let mut translated_owner_avatars = 0_u64;
 			owners.iter().for_each(|(owner, avatar_ids)| {
 				Owners::<T>::insert(owner, season_id, avatar_ids);
-				translated_account += 1;
-				translated_avatars += avatar_ids.len() as u64;
+				translated_owner_account += 1;
+				translated_owner_avatars += avatar_ids.len() as u64;
 			});
 			log::info!(
 				target: LOG_TARGET,
 				"Updated {} accounts and {} avatars",
-				translated_account,
-				translated_avatars,
+				translated_owner_account,
+				translated_owner_avatars,
 			);
 
 			let mut translated_trades = 0_u64;
@@ -93,11 +111,20 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			});
 			log::info!(target: LOG_TARGET, "Updated {} avatars in trade", translated_trades);
 
+			let mut translated_avatars = 0_u64;
+			Avatars::<T>::translate::<(T::AccountId, OldAvatar), _>(
+				|_key, (account_id, old_avatar)| {
+					translated_avatars.saturating_inc();
+					Some((account_id, old_avatar.migrate_to_v5()))
+				},
+			);
+			log::info!(target: LOG_TARGET, "Updated {} old avatars", translated_avatars);
+
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(
-				2 + 2 * translated_account + translated_trades,
-				2 + 2 * translated_account + translated_trades,
+				2 + 2 * translated_owner_account + translated_trades + translated_avatars,
+				2 + 2 * translated_owner_account + translated_trades + translated_avatars,
 			)
 		} else {
 			log::info!(
@@ -154,6 +181,10 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		trade_season_ids.dedup();
 		assert_eq!(trade_season_ids.len(), 1);
 		assert_eq!(trade_season_ids, vec![1]);
+
+		// Check all migrated avatars are of version 1.
+		assert!(Avatars::<T>::iter_values()
+			.all(|(_account, avatar)| avatar.version == AvatarVersion::V1));
 
 		Ok(())
 	}
