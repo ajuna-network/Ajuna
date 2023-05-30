@@ -2484,14 +2484,17 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_rejects_avatar_in_trade() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, CHARLIE, 1)[0];
-			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_id, 999));
-			assert_noop!(
-				AAvatars::transfer_avatar(RuntimeOrigin::signed(CHARLIE), DAVE, avatar_id),
-				Error::<Test>::AvatarInTrade
-			);
-		});
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, CHARLIE, 1)[0];
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_id, 999));
+				assert_noop!(
+					AAvatars::transfer_avatar(RuntimeOrigin::signed(CHARLIE), DAVE, avatar_id),
+					Error::<Test>::AvatarInTrade
+				);
+			});
 	}
 
 	#[test]
@@ -2595,6 +2598,25 @@ mod trading {
 				assert_noop!(
 					AAvatars::set_price(RuntimeOrigin::signed(CHARLIE), avatar_ids[0], 101),
 					Error::<Test>::Ownership
+				);
+			});
+	}
+
+	#[test]
+	fn set_price_should_reject_avatar_not_matching_trade_filters() {
+		let trade_filters = vec![TradeFilter::default().byte_0_h(Some(0b1000_1000))];
+		let season = Season::default().trade_filters(trade_filters);
+
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+				let avatar_ids = create_avatars(SEASON_ID, BOB, 2);
+
+				assert_noop!(
+					AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_ids[0], 101),
+					Error::<Test>::AvatarCannotBeTraded
 				);
 			});
 	}
@@ -3131,6 +3153,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_lock_avatar_on_trade() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3467,14 +3490,17 @@ mod ipfs {
 
 	#[test]
 	fn prepare_avatar_rejects_avatars_in_trade() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1));
-			assert_noop!(
-				AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
-				Error::<Test>::AvatarInTrade
-			);
-		});
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_id, 1));
+				assert_noop!(
+					AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
+					Error::<Test>::AvatarInTrade
+				);
+			});
 	}
 
 	#[test]
