@@ -28,8 +28,9 @@ use frame_support::{
 use frame_system::RawOrigin;
 use pallet_ajuna_awesome_avatars::{types::*, Config as AvatarsConfig, Pallet as AAvatars, *};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
-use sp_runtime::traits::{
-	Saturating, StaticLookup, UniqueSaturatedFrom, UniqueSaturatedInto, Zero,
+use sp_runtime::{
+	traits::{Saturating, StaticLookup, UniqueSaturatedFrom, UniqueSaturatedInto, Zero},
+	BoundedVec,
 };
 
 pub struct Pallet<T: Config>(pallet_ajuna_awesome_avatars::Pallet<T>);
@@ -98,6 +99,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				base_prob: 0,
 				per_period: T::BlockNumber::from(10_u32),
 				periods: 12,
+				trade_filters: BoundedVec::default(),
 			},
 		);
 	}
@@ -412,6 +414,7 @@ benchmarks! {
 			base_prob: 99,
 			per_period: T::BlockNumber::from(1_u32),
 			periods: u16::MAX,
+			trade_filters: BoundedVec::default(),
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {
