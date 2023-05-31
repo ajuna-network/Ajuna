@@ -82,11 +82,12 @@ use sp_runtime::{
 	},
 	ArithmeticError,
 };
-use sp_std::{collections::btree_set::BTreeSet, prelude::*};
+use sp_std::prelude::*;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use std::collections::{HashSet, VecDeque};
 
 	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
@@ -475,7 +476,7 @@ pub mod pallet {
 			sacrifices: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::do_forge(&player, &leader, &sacrifices)
+			Self::do_forge(&player, &leader, sacrifices)
 		}
 
 		#[pallet::call_index(2)]
@@ -1120,7 +1121,7 @@ pub mod pallet {
 		pub(crate) fn do_forge(
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
-			sacrifice_ids: &[AvatarIdOf<T>],
+			sacrifice_ids: Vec<AvatarIdOf<T>>,
 		) -> DispatchResult {
 			let GlobalConfig { forge, .. } = GlobalConfigs::<T>::get();
 			ensure!(forge.open, Error::<T>::ForgeClosed);
@@ -1254,10 +1255,10 @@ pub mod pallet {
 		fn ensure_for_forge(
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
-			sacrifice_ids: &[AvatarIdOf<T>],
+			sacrifice_ids: Vec<AvatarIdOf<T>>,
 			season_id: &SeasonId,
 			season: &SeasonOf<T>,
-		) -> Result<(Avatar, BTreeSet<AvatarIdOf<T>>, Vec<Avatar>), DispatchError> {
+		) -> Result<(Avatar, Vec<AvatarIdOf<T>>, Vec<Avatar>), DispatchError> {
 			let sacrifice_count = sacrifice_ids.len() as u8;
 			ensure!(sacrifice_count >= season.min_sacrifices, Error::<T>::TooFewSacrifices);
 			ensure!(sacrifice_count <= season.max_sacrifices, Error::<T>::TooManySacrifices);
@@ -1273,7 +1274,21 @@ pub mod pallet {
 			let leader = Self::ensure_ownership(player, leader_id)?;
 			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
 
-			let deduplicated_sacrifice_ids = sacrifice_ids.iter().copied().collect::<BTreeSet<_>>();
+			let deduplicated_sacrifice_ids = {
+				let mut id_queue = sacrifice_ids.into_iter().collect::<VecDeque<_>>();
+
+				let mut dedup_id_list = Vec::with_capacity(4);
+				let mut id_set = HashSet::with_capacity(4);
+
+				while let Some(item) = id_queue.pop_front() {
+					if !id_set.contains(&item) {
+						dedup_id_list.push(item);
+						id_set.insert(item);
+					}
+				}
+
+				dedup_id_list
+			};
 			let sacrifices = deduplicated_sacrifice_ids
 				.iter()
 				.map(|id| {
