@@ -35,6 +35,74 @@ impl SeasonStatus {
 pub type RarityPercent = u8;
 pub type SacrificeCount = u8;
 
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq, Default)]
+pub struct TradeFilter(
+	Option<u8>,
+	Option<u8>,
+	Option<u8>,
+	Option<u8>,
+	Option<u8>,
+	Option<u8>,
+	Option<u8>,
+);
+
+impl TradeFilter {
+	pub fn byte_0_h(mut self, byte_filter: Option<u8>) -> Self {
+		self.0 = byte_filter;
+		self
+	}
+
+	pub fn byte_0_l(mut self, byte_filter: Option<u8>) -> Self {
+		self.1 = byte_filter;
+		self
+	}
+
+	pub fn byte_1_h(mut self, byte_filter: Option<u8>) -> Self {
+		self.2 = byte_filter;
+		self
+	}
+
+	pub fn byte_1_l(mut self, byte_filter: Option<u8>) -> Self {
+		self.3 = byte_filter;
+		self
+	}
+
+	pub fn byte_2_h(mut self, byte_filter: Option<u8>) -> Self {
+		self.4 = byte_filter;
+		self
+	}
+
+	pub fn byte_2_l(mut self, byte_filter: Option<u8>) -> Self {
+		self.5 = byte_filter;
+		self
+	}
+
+	pub fn byte_3_f(mut self, byte_filter: Option<u8>) -> Self {
+		self.6 = byte_filter;
+		self
+	}
+
+	pub fn apply_to(&self, avatar: &Avatar) -> bool {
+		let dna_slice = avatar.dna.as_slice();
+
+		let res_0_h =
+			if let Some(pattern) = self.0 { pattern == (dna_slice[0] >> 4) } else { true };
+		let res_0_l =
+			if let Some(pattern) = self.1 { pattern == (dna_slice[0] & 0x0F) } else { true };
+		let res_1_h =
+			if let Some(pattern) = self.2 { pattern == (dna_slice[1] >> 4) } else { true };
+		let res_1_l =
+			if let Some(pattern) = self.3 { pattern == (dna_slice[1] & 0x0F) } else { true };
+		let res_2_h =
+			if let Some(pattern) = self.2 { pattern == (dna_slice[2] >> 4) } else { true };
+		let res_2_l =
+			if let Some(pattern) = self.3 { pattern == (dna_slice[2] & 0x0F) } else { true };
+		let res_3_f = if let Some(pattern) = self.2 { pattern == dna_slice[3] } else { true };
+
+		res_0_h && res_0_l && res_1_h && res_1_l && res_2_h && res_2_l && res_3_f
+	}
+}
+
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
 pub struct Season<BlockNumber> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
@@ -53,6 +121,7 @@ pub struct Season<BlockNumber> {
 	pub base_prob: RarityPercent,
 	pub per_period: BlockNumber,
 	pub periods: u16,
+	pub trade_filters: BoundedVec<TradeFilter, ConstU32<100>>,
 }
 
 impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
@@ -84,6 +153,14 @@ impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
 
 	pub(crate) fn max_tier(&self) -> RarityTier {
 		self.tiers.clone().into_iter().max().unwrap_or_default()
+	}
+
+	pub(crate) fn apply_trade_filters_on(&self, avatar: &Avatar) -> bool {
+		if !self.trade_filters.is_empty() {
+			self.trade_filters.iter().any(|filter| filter.apply_to(avatar))
+		} else {
+			true
+		}
 	}
 
 	fn full_cycle(&self) -> BlockNumber {
@@ -204,6 +281,7 @@ mod test {
 				base_prob: 0,
 				per_period: 10,
 				periods: 12,
+				trade_filters: BoundedVec::default(),
 			}
 		}
 	}
@@ -263,6 +341,10 @@ mod test {
 		}
 		pub fn periods(mut self, periods: u16) -> Self {
 			self.periods = periods;
+			self
+		}
+		pub fn trade_filters(mut self, trade_filters: Vec<TradeFilter>) -> Self {
+			self.trade_filters = trade_filters.try_into().unwrap();
 			self
 		}
 	}
@@ -404,5 +486,39 @@ mod test {
 				assert_eq!(season.current_period(&now), 0);
 			}
 		}
+	}
+
+	#[test]
+	fn apply_trade_filters_test() {
+		let base_type_1 = 0b0000_0001;
+		let base_type_2 = 0b0000_1000;
+		let other_base_type_2 = 0b0000_0100;
+
+		let avatar_ok = {
+			let mut avatar = Avatar::default().dna(&[0; 32]);
+			avatar.dna[0] = (base_type_1 << 4) | base_type_2;
+			avatar
+		};
+
+		let avatar_err = {
+			let mut avatar = Avatar::default().dna(&[0; 32]);
+			avatar.dna[0] = (base_type_1 << 4) | other_base_type_2;
+			avatar
+		};
+
+		let trade_filters =
+			vec![TradeFilter::default().byte_0_h(Some(base_type_1)).byte_0_l(Some(base_type_2))];
+
+		let season = Season::default().trade_filters(trade_filters);
+
+		assert!(season.apply_trade_filters_on(&avatar_ok));
+		assert!(!season.apply_trade_filters_on(&avatar_err));
+
+		let empty_trade_filters = vec![];
+
+		let season_empty = Season::default().trade_filters(empty_trade_filters);
+
+		assert!(season_empty.apply_trade_filters_on(&avatar_ok));
+		assert!(season_empty.apply_trade_filters_on(&avatar_err));
 	}
 }
