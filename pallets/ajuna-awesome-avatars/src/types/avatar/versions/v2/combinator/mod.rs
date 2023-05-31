@@ -11,7 +11,7 @@ mod stack;
 mod tinker;
 
 use super::*;
-use sp_std::{collections::vec_deque::VecDeque, mem::variant_count};
+use sp_std::mem::variant_count;
 
 pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 
@@ -65,41 +65,26 @@ impl<T: Config> AvatarCombinator<T> {
 		sacrifices: Vec<ForgeItem<T>>,
 		rarity_level: u8,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> (ForgeItem<T>, Vec<ForgeItem<T>>, Vec<ForgeItem<T>>, Vec<ForgeItem<T>>) {
+	) -> (ForgeItem<T>, Vec<ForgeItem<T>>) {
 		let (leader_id, mut leader) = input_leader;
 		let mut matches: u8 = 0;
 		let mut no_fit: u8 = 0;
 
 		let mut matching_score = Vec::new();
-		let mut matching_sacrifices = Vec::new();
-		let mut consumed_sacrifices = Vec::new();
-		let mut non_matching_sacrifices = Vec::new();
 
 		let mut leader_progress_array = AvatarUtils::read_progress_array(&leader);
 
-		let mut sacrifice_deque = VecDeque::from(sacrifices);
-
-		while let Some((sacrifice_id, sacrifice)) = sacrifice_deque.pop_front() {
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&sacrifice);
+		for sacrifice in sacrifices.iter() {
+			let sacrifice_progress_array = AvatarUtils::read_progress_array(&sacrifice.1);
 
 			if let Some(matched_indexes) = AvatarUtils::is_array_match(
 				leader_progress_array,
 				sacrifice_progress_array,
 				rarity_level,
 			) {
-				if AvatarUtils::has_attribute_set_with_same_values_as(
-					&leader,
-					&sacrifice,
-					&[AvatarAttributes::ItemType, AvatarAttributes::ItemSubType],
-				) {
-					matching_score.extend(matched_indexes);
-					consumed_sacrifices.push((sacrifice_id, sacrifice));
-					matches += 1;
-				} else {
-					matching_sacrifices.push((sacrifice_id, sacrifice));
-				}
+				matching_score.extend(matched_indexes);
+				matches += 1;
 			} else {
-				non_matching_sacrifices.push((sacrifice_id, sacrifice));
 				no_fit += 1;
 			}
 		}
@@ -130,13 +115,9 @@ impl<T: Config> AvatarCombinator<T> {
 			AvatarUtils::write_progress_array(&mut leader, leader_progress_array);
 		}
 
-		leader.souls += matching_sacrifices
-			.iter()
-			.chain(consumed_sacrifices.iter())
-			.map(|(_, sacrifice)| sacrifice.souls)
-			.sum::<SoulCount>();
+		leader.souls += sacrifices.iter().map(|(_, sacrifice)| sacrifice.souls).sum::<SoulCount>();
 
-		((leader_id, leader), matching_sacrifices, consumed_sacrifices, non_matching_sacrifices)
+		((leader_id, leader), sacrifices)
 	}
 }
 
@@ -156,7 +137,7 @@ mod match_test {
 			let mut hash_provider = HashProvider::new_with_bytes(hash_bytes);
 			let unit_closure = |avatar| avatar;
 
-			let test_set: Vec<([u8; 32], [u8; 32], (usize, usize, usize), (usize, u8), [u8; 11])> = vec![
+			let test_set: Vec<([u8; 32], [u8; 32], usize, (usize, u8), [u8; 11])> = vec![
 				(
 					[
 						0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -168,7 +149,7 @@ mod match_test {
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					],
-					(0, 0, 1),
+					1,
 					(0, 0x10),
 					[0_u8; 11],
 				),
@@ -183,7 +164,7 @@ mod match_test {
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11,
 						0x11, 0x12, 0x13, 0x14, 0x01, 0x05, 0x00, 0x00,
 					],
-					(1, 0, 0),
+					1,
 					(1, 0x20),
 					[0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00, 0x00, 0x01, 0x00],
 				),
@@ -198,7 +179,7 @@ mod match_test {
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x10, 0x11,
 						0x12, 0x13, 0x14, 0x15, 0x01, 0x05, 0x00, 0x00,
 					],
-					(1, 0, 0),
+					1,
 					(1, 0x20),
 					[0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00, 0x00, 0x00, 0x00],
 				),
@@ -213,7 +194,7 @@ mod match_test {
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x10, 0x10,
 						0x10, 0x13, 0x14, 0x15, 0x01, 0x00, 0x00, 0x00,
 					],
-					(1, 0, 0),
+					1,
 					(1, 0x20),
 					[0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00, 0x00, 0x00, 0x00],
 				),
@@ -228,60 +209,34 @@ mod match_test {
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11,
 						0x11, 0x13, 0x14, 0x15, 0x01, 0x00, 0x00, 0x00,
 					],
-					(0, 0, 1),
+					1,
 					(0, 0x10),
 					[0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00, 0x00, 0x00, 0x00],
 				),
 			];
 
-			for (
-				i,
-				(
-					dna_1,
-					dna_2,
-					(match_len, consumed_len, non_match_len),
-					(top_bit_index, top_1_bit),
-					progress_array_1,
-				),
-			) in test_set.into_iter().enumerate()
+			for (i, (dna_1, dna_2, sac_len, (top_bit_index, top_1_bit), progress_array_1)) in
+				test_set.into_iter().enumerate()
 			{
 				let avatar_1 =
 					create_random_avatar::<Test, _>(&ALICE, Some(dna_1), Some(unit_closure));
 				let avatar_2 =
 					create_random_avatar::<Test, _>(&ALICE, Some(dna_2), Some(unit_closure));
 
-				let ((_, leader), matched_avatars, consumed_avatars, non_matched_avatars) =
-					AvatarCombinator::<Test>::match_avatars(
-						avatar_1,
-						vec![avatar_2],
-						0,
-						&mut hash_provider,
-					);
+				let ((_, leader), sacrifices) = AvatarCombinator::<Test>::match_avatars(
+					avatar_1,
+					vec![avatar_2],
+					0,
+					&mut hash_provider,
+				);
 
-				assert_eq!(
-					matched_avatars.len(),
-					match_len,
-					"Test matched_avatars len for case {}",
-					i
-				);
-				assert_eq!(
-					consumed_avatars.len(),
-					consumed_len,
-					"Test consumed_avatars len for case {}",
-					i
-				);
-				assert_eq!(
-					non_matched_avatars.len(),
-					non_match_len,
-					"Test non_match_len len for case {}",
-					i
-				);
+				assert_eq!(sacrifices.len(), sac_len, "Test matched_avatars len for case {}", i);
 
 				if top_bit_index == 0 {
 					assert_eq!(leader.dna[0], top_1_bit, "Test top_bit for case {}", i);
 				} else {
 					assert_eq!(
-						matched_avatars[top_bit_index - 1].1.dna[0],
+						sacrifices[top_bit_index - 1].1.dna[0],
 						top_1_bit,
 						"Test top_bit for case {}",
 						i

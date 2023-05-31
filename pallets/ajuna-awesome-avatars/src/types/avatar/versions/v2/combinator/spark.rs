@@ -8,12 +8,7 @@ impl<T: Config> AvatarCombinator<T> {
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let all_count = input_sacrifices.len();
 
-		let (
-			(leader_id, mut leader),
-			matching_sacrifices,
-			consumed_sacrifices,
-			non_matching_sacrifices,
-		) = Self::match_avatars(
+		let ((leader_id, mut leader), sacrifices) = Self::match_avatars(
 			input_leader,
 			input_sacrifices,
 			MATCH_ALGO_START_RARITY.as_byte(),
@@ -35,7 +30,7 @@ impl<T: Config> AvatarCombinator<T> {
 			for _ in 0..rolls {
 				let rand = hash_provider.get_hash_byte() as usize;
 				if rand > 150 {
-					let (_, sacrifice) = &matching_sacrifices[rand % all_count];
+					let (_, sacrifice) = &sacrifices[rand % all_count];
 					let spec_byte_index = if rand > 200 {
 						AvatarSpecBytes::SpecByte1
 					} else {
@@ -73,19 +68,9 @@ impl<T: Config> AvatarCombinator<T> {
 
 		AvatarUtils::write_typed_attribute(&mut leader, &AvatarAttributes::RarityTier, &rarity);
 
-		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
+		let output_vec: Vec<ForgeOutput<T>> = sacrifices
 			.into_iter()
-			.map(|sacrifice| ForgeOutput::Forged(sacrifice, 0))
-			.chain(
-				consumed_sacrifices
-					.into_iter()
-					.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id)),
-			)
-			.chain(
-				matching_sacrifices
-					.into_iter()
-					.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id)),
-			)
+			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
 		Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), output_vec))

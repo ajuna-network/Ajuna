@@ -6,17 +6,43 @@ impl<T: Config> AvatarCombinator<T> {
 		input_sacrifices: Vec<ForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		let (
-			(leader_id, mut input_leader),
-			matching_sacrifices,
-			consumed_sacrifices,
-			non_matching_sacrifices,
-		) = Self::match_avatars(
+		let (matching_sacrifices, non_matching): (Vec<_>, Vec<_>) =
+			input_sacrifices.into_iter().partition(|(_, sacrifice)| {
+				AvatarUtils::same_assemble_version(sacrifice, &input_leader.1) ||
+					(AvatarUtils::has_attribute_with_value(
+						sacrifice,
+						&AvatarAttributes::ItemType,
+						ItemType::Special,
+					) && AvatarUtils::has_attribute_with_value(
+						sacrifice,
+						&AvatarAttributes::ItemSubType,
+						SpecialItemType::ToolBox,
+					))
+			});
+
+		let ((leader_id, mut input_leader), matching_sacrifices) = Self::match_avatars(
 			input_leader,
-			input_sacrifices,
+			matching_sacrifices,
 			MATCH_ALGO_START_RARITY.as_byte(),
 			hash_provider,
 		);
+
+		let (additionals, non_additionals): (Vec<_>, Vec<_>) =
+			matching_sacrifices.into_iter().chain(non_matching).partition(|(_, sacrifice)| {
+				if !AvatarUtils::same_item_type_and_class_types(&sacrifice, &input_leader) {
+					let leader_progress_array = AvatarUtils::read_progress_array(&input_leader);
+					let sacrifice_progress_array = AvatarUtils::read_progress_array(&sacrifice);
+
+					AvatarUtils::is_array_match(
+						leader_progress_array,
+						sacrifice_progress_array,
+						MATCH_ALGO_START_RARITY.as_byte(),
+					)
+					.is_some()
+				} else {
+					false
+				}
+			});
 
 		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader),
@@ -37,7 +63,7 @@ impl<T: Config> AvatarCombinator<T> {
 		) && leader_rarity < rarity
 		{
 			// Add a component to the base armor, only first component will be added
-			if let Some((_, armor_component)) = matching_sacrifices.iter().find(|(_, sacrifice)| {
+			if let Some((_, armor_component)) = additionals.iter().find(|(_, sacrifice)| {
 				AvatarUtils::has_attribute_with_value(
 					sacrifice,
 					&AvatarAttributes::ItemType,
@@ -66,16 +92,11 @@ impl<T: Config> AvatarCombinator<T> {
 			&rarity,
 		);
 
-		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
+		let output_vec: Vec<ForgeOutput<T>> = additionals
 			.into_iter()
-			.map(|sacrifice| ForgeOutput::Forged(sacrifice, 0))
+			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.chain(
-				consumed_sacrifices
-					.into_iter()
-					.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id)),
-			)
-			.chain(
-				matching_sacrifices
+				non_additionals
 					.into_iter()
 					.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id)),
 			)
@@ -283,11 +304,11 @@ mod test {
 			.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 2);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(avatar.souls, 7);
+				assert_eq!(avatar.souls, 10);
 
 				let post_assemble = AvatarUtils::bits_to_enums::<EquippableItemType>(
 					AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte1) as u32,
