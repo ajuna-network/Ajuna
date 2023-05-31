@@ -1439,7 +1439,7 @@ pub mod pallet {
 
 		fn ensure_tradable(avatar: &Avatar) -> DispatchResult {
 			let (_, season) = Self::current_season_with_id()?;
-			ensure!(season.apply_trade_filters_on(avatar), Error::<T>::AvatarCannotBeTraded);
+			ensure!(season.is_tradable(avatar), Error::<T>::AvatarCannotBeTraded);
 			Ok(())
 		}
 
