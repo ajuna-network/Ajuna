@@ -6,7 +6,7 @@ use crate::{
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 #[derive(Copy, Clone)]
 pub enum AvatarAttributes {
@@ -1128,7 +1128,8 @@ impl AvatarUtils {
 			match lowest.cmp(&value) {
 				Ordering::Greater => {
 					lowest = value;
-					result = vec![i];
+					let mut result = Vec::new();
+					result.push(i);
 				},
 				Ordering::Equal => result.push(i),
 				_ => {},

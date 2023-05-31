@@ -87,7 +87,7 @@ use sp_std::prelude::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use std::collections::{HashSet, VecDeque};
+	use sp_std::collections::{vec_deque::VecDeque};
 
 	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
@@ -1278,12 +1278,10 @@ pub mod pallet {
 				let mut id_queue = sacrifice_ids.into_iter().collect::<VecDeque<_>>();
 
 				let mut dedup_id_list = Vec::with_capacity(4);
-				let mut id_set = HashSet::with_capacity(4);
 
 				while let Some(item) = id_queue.pop_front() {
-					if !id_set.contains(&item) {
+					if !dedup_id_list.contains(&item) {
 						dedup_id_list.push(item);
-						id_set.insert(item);
 					}
 				}
 
