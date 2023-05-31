@@ -29,9 +29,9 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let (additionals, non_additionals): (Vec<_>, Vec<_>) =
 			matching_sacrifices.into_iter().chain(non_matching).partition(|(_, sacrifice)| {
-				if !AvatarUtils::same_item_type_and_class_types(&sacrifice, &input_leader) {
+				if !AvatarUtils::same_item_type_and_class_types(sacrifice, &input_leader) {
 					let leader_progress_array = AvatarUtils::read_progress_array(&input_leader);
-					let sacrifice_progress_array = AvatarUtils::read_progress_array(&sacrifice);
+					let sacrifice_progress_array = AvatarUtils::read_progress_array(sacrifice);
 
 					AvatarUtils::is_array_match(
 						leader_progress_array,

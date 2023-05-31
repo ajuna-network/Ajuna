@@ -6,6 +6,7 @@ use crate::{
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
+use std::cmp::Ordering;
 
 #[derive(Copy, Clone)]
 pub enum AvatarAttributes {
@@ -1123,11 +1124,14 @@ impl AvatarUtils {
 
 		for i in 0..11 {
 			let value = Self::read_dna_at(progress_bytes, i, byte_type);
-			if lowest > value {
-				lowest = value;
-				result = vec![i];
-			} else if lowest == value {
-				result.push(i);
+
+			match lowest.cmp(&value) {
+				Ordering::Greater => {
+					lowest = value;
+					result = vec![i];
+				},
+				Ordering::Equal => result.push(i),
+				_ => {},
 			}
 		}
 
