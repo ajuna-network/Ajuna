@@ -34,74 +34,7 @@ impl SeasonStatus {
 
 pub type RarityPercent = u8;
 pub type SacrificeCount = u8;
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq, Default)]
-pub struct TradeFilter(
-	Option<u8>,
-	Option<u8>,
-	Option<u8>,
-	Option<u8>,
-	Option<u8>,
-	Option<u8>,
-	Option<u8>,
-);
-
-impl TradeFilter {
-	pub fn byte_0_h(mut self, byte_filter: Option<u8>) -> Self {
-		self.0 = byte_filter;
-		self
-	}
-
-	pub fn byte_0_l(mut self, byte_filter: Option<u8>) -> Self {
-		self.1 = byte_filter;
-		self
-	}
-
-	pub fn byte_1_h(mut self, byte_filter: Option<u8>) -> Self {
-		self.2 = byte_filter;
-		self
-	}
-
-	pub fn byte_1_l(mut self, byte_filter: Option<u8>) -> Self {
-		self.3 = byte_filter;
-		self
-	}
-
-	pub fn byte_2_h(mut self, byte_filter: Option<u8>) -> Self {
-		self.4 = byte_filter;
-		self
-	}
-
-	pub fn byte_2_l(mut self, byte_filter: Option<u8>) -> Self {
-		self.5 = byte_filter;
-		self
-	}
-
-	pub fn byte_3_f(mut self, byte_filter: Option<u8>) -> Self {
-		self.6 = byte_filter;
-		self
-	}
-
-	pub fn apply_to(&self, avatar: &Avatar) -> bool {
-		let dna_slice = avatar.dna.as_slice();
-
-		let res_0_h =
-			if let Some(pattern) = self.0 { pattern == (dna_slice[0] >> 4) } else { true };
-		let res_0_l =
-			if let Some(pattern) = self.1 { pattern == (dna_slice[0] & 0x0F) } else { true };
-		let res_1_h =
-			if let Some(pattern) = self.2 { pattern == (dna_slice[1] >> 4) } else { true };
-		let res_1_l =
-			if let Some(pattern) = self.3 { pattern == (dna_slice[1] & 0x0F) } else { true };
-		let res_2_h =
-			if let Some(pattern) = self.2 { pattern == (dna_slice[2] >> 4) } else { true };
-		let res_2_l =
-			if let Some(pattern) = self.3 { pattern == (dna_slice[2] & 0x0F) } else { true };
-		let res_3_f = if let Some(pattern) = self.2 { pattern == dna_slice[3] } else { true };
-
-		res_0_h && res_0_l && res_1_h && res_1_l && res_2_h && res_2_l && res_3_f
-	}
-}
+pub type TradeFilter = u32;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
 pub struct Season<BlockNumber> {
@@ -156,11 +89,29 @@ impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
 	}
 
 	pub(crate) fn is_tradable(&self, avatar: &Avatar) -> bool {
-		if !self.trade_filters.is_empty() {
-			self.trade_filters.iter().any(|filter| filter.apply_to(avatar))
-		} else {
-			true
+		// No filter means we allow everything to be traded.
+		if self.trade_filters.is_empty() {
+			return true
 		}
+
+		let dna = &avatar.dna.as_slice()[..4];
+		self.trade_filters.iter().any(|filter| {
+			let bytes = filter.to_le_bytes();
+			let is_matching_class =
+				(0..3).all(|i| Self::is_matching_with_zero_wildcard(dna[i], bytes[i]));
+			let is_quantity_greater_than = dna[3] >= bytes[3];
+
+			is_matching_class && is_quantity_greater_than
+		})
+	}
+
+	fn is_matching_with_zero_wildcard(dna: u8, filter: u8) -> bool {
+		(0..2).all(|i| {
+			let dna_nibble = (dna >> (4 * i)) & 0x0F;
+			let filter_nibble = (filter >> (4 * i)) & 0x0F;
+
+			filter_nibble == 0 || dna_nibble == filter_nibble
+		})
 	}
 
 	fn full_cycle(&self) -> BlockNumber {
@@ -489,36 +440,55 @@ mod test {
 	}
 
 	#[test]
+	fn is_matching_with_zero_wildcard_works() {
+		for (byte_1, byte_2, expected) in [
+			// true's
+			(0b0000_0000, 0b0000_0000, true),
+			(0b0111_1001, 0b0000_0000, true),
+			(0b1111_1111, 0b0000_0000, true),
+			(0b0111_1001, 0b0111_0000, true),
+			(0b0111_1001, 0b0000_1001, true),
+			// false's
+			(0b0111_1001, 0b0101_1000, false),
+			(0b0111_1001, 0b0001_0001, false),
+			(0b0111_1001, 0b0000_0001, false),
+			(0b0111_1001, 0b0001_0000, false),
+		] {
+			let output = Season::<MockBlockNumber>::is_matching_with_zero_wildcard(byte_1, byte_2);
+
+			assert_eq!(output, expected);
+		}
+	}
+
+	#[test]
 	fn is_tradable_works() {
-		let base_type_1 = 0b0000_0001;
-		let base_type_2 = 0b0000_1000;
-		let other_base_type_2 = 0b0000_0100;
+		let season = Season::default().trade_filters(vec![
+			u32::from_le_bytes([0x11, 0x07, 0x00, 0x00]), // CrazyDude pet
+			u32::from_le_bytes([0x12, 0x36, 0x00, 0x00]), // GiantWoodStick armor front pet part
+			u32::from_le_bytes([0x25, 0x07, 0x00, 0xFF]), // Metals of quantity 255
+			u32::from_le_bytes([0x25, 0x02, 0x00, 0x00]), // Electronics of any quantity
+			u32::from_le_bytes([0x30, 0x00, 0x00, 0x00]), // Any Essence,
+		]);
 
-		let avatar_ok = {
-			let mut avatar = Avatar::default().dna(&[0; 32]);
-			avatar.dna[0] = (base_type_1 << 4) | base_type_2;
-			avatar
-		};
-
-		let avatar_err = {
-			let mut avatar = Avatar::default().dna(&[0; 32]);
-			avatar.dna[0] = (base_type_1 << 4) | other_base_type_2;
-			avatar
-		};
-
-		let trade_filters =
-			vec![TradeFilter::default().byte_0_h(Some(base_type_1)).byte_0_l(Some(base_type_2))];
-
-		let season = Season::default().trade_filters(trade_filters);
-
-		assert!(season.is_tradable(&avatar_ok));
-		assert!(!season.is_tradable(&avatar_err));
-
-		let empty_trade_filters = vec![];
-
-		let season_empty = Season::default().trade_filters(empty_trade_filters);
-
-		assert!(season_empty.is_tradable(&avatar_ok));
-		assert!(season_empty.is_tradable(&avatar_err));
+		for (bytes, expected) in [
+			([0x11, 0x07, 0x01, 0xF0], true),  // Common CrazyDude pet
+			([0x11, 0x07, 0x06, 0x0F], true),  // Mythical CrazyDude pet
+			([0x11, 0x05, 0x01, 0xF0], false), // Common BigHybrid pet
+			([0x12, 0x36, 0x06, 0xFF], true),  // Mythical GiantWoodStick armor front pet part
+			([0x25, 0x07, 0x01, 0xFF], true),  // Common Metals of quantity 255
+			([0x25, 0x07, 0x03, 0xFF], true),  // Rare Metals of quantity 255
+			([0x25, 0x07, 0x03, 0x00], false), // Rare Metals of quantity 0
+			([0x25, 0x07, 0x03, 0x0F], false), // Rare Metals of quantity 15
+			([0x25, 0x02, 0x00, 0x00], true),  // Electronics of quantity 0
+			([0x25, 0x02, 0x00, 0x0A], true),  // Electronics of quantity 10
+			([0x31, 0x00, 0x00, 0x00], true),  // Any Essence (Glimmer)
+			([0x32, 0x00, 0x00, 0x00], true),  // Any Essence (ColorSpark)
+			([0x33, 0x00, 0x00, 0x00], true),  // Any Essence (GlowSpark)
+			([0x34, 0x00, 0x00, 0x00], true),  // Any Essence (PaintFlask)
+			([0x35, 0x00, 0x00, 0x00], true),  // Any Essence (GlowFlask)
+		] {
+			let avatar = Avatar::default().dna(bytes.as_slice());
+			assert_eq!(season.is_tradable(&avatar), expected);
+		}
 	}
 }

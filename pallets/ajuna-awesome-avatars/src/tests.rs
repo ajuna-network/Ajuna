@@ -2604,8 +2604,9 @@ mod trading {
 
 	#[test]
 	fn set_price_should_reject_avatar_not_matching_trade_filters() {
-		let trade_filters = vec![TradeFilter::default().byte_0_h(Some(0b1000_1000))];
-		let season = Season::default().trade_filters(trade_filters);
+		let season = Season::default().trade_filters(vec![
+			u32::from_le_bytes([0x11, 0x07, 0x06, 0x00]), // Mythical CrazyDude pet
+		]);
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
