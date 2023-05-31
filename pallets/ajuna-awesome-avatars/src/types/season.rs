@@ -155,7 +155,7 @@ impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
 		self.tiers.clone().into_iter().max().unwrap_or_default()
 	}
 
-	pub(crate) fn apply_trade_filters_on(&self, avatar: &Avatar) -> bool {
+	pub(crate) fn is_tradable(&self, avatar: &Avatar) -> bool {
 		if !self.trade_filters.is_empty() {
 			self.trade_filters.iter().any(|filter| filter.apply_to(avatar))
 		} else {
@@ -489,7 +489,7 @@ mod test {
 	}
 
 	#[test]
-	fn apply_trade_filters_test() {
+	fn is_tradable_works() {
 		let base_type_1 = 0b0000_0001;
 		let base_type_2 = 0b0000_1000;
 		let other_base_type_2 = 0b0000_0100;
@@ -511,14 +511,14 @@ mod test {
 
 		let season = Season::default().trade_filters(trade_filters);
 
-		assert!(season.apply_trade_filters_on(&avatar_ok));
-		assert!(!season.apply_trade_filters_on(&avatar_err));
+		assert!(season.is_tradable(&avatar_ok));
+		assert!(!season.is_tradable(&avatar_err));
 
 		let empty_trade_filters = vec![];
 
 		let season_empty = Season::default().trade_filters(empty_trade_filters);
 
-		assert!(season_empty.apply_trade_filters_on(&avatar_ok));
-		assert!(season_empty.apply_trade_filters_on(&avatar_err));
+		assert!(season_empty.is_tradable(&avatar_ok));
+		assert!(season_empty.is_tradable(&avatar_err));
 	}
 }
