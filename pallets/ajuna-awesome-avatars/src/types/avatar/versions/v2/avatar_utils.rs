@@ -6,6 +6,7 @@ use crate::{
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
+use std::cmp::Ordering;
 
 #[derive(Copy, Clone)]
 pub enum AvatarAttributes {
@@ -842,6 +843,19 @@ impl AvatarUtils {
 		Self::read_spec_byte(avatar, spec_byte) == Self::read_spec_byte(other, spec_byte)
 	}
 
+	pub fn same_item_type_and_class_types(avatar_1: &Avatar, avatar_2: &Avatar) -> bool {
+		AvatarUtils::has_attribute_set_with_same_values_as(
+			avatar_1,
+			avatar_2,
+			&[
+				AvatarAttributes::ItemType,
+				AvatarAttributes::ItemSubType,
+				AvatarAttributes::ClassType1,
+				AvatarAttributes::ClassType2,
+			],
+		)
+	}
+
 	pub fn same_assemble_version(avatar_1: &Avatar, avatar_2: &Avatar) -> bool {
 		AvatarUtils::has_attribute_set_with_same_values_as(
 			avatar_1,
@@ -1093,6 +1107,31 @@ impl AvatarUtils {
 			let value = Self::read_dna_at(progress_bytes, i, byte_type);
 			if result > value {
 				result = value;
+			}
+		}
+
+		result
+	}
+
+	#[allow(dead_code)]
+	pub fn read_lowest_progress_indexes(
+		progress_bytes: &[u8; 11],
+		byte_type: &ByteType,
+	) -> Vec<usize> {
+		let mut lowest = u8::MAX;
+
+		let mut result = Vec::new();
+
+		for i in 0..11 {
+			let value = Self::read_dna_at(progress_bytes, i, byte_type);
+
+			match lowest.cmp(&value) {
+				Ordering::Greater => {
+					lowest = value;
+					result = vec![i];
+				},
+				Ordering::Equal => result.push(i),
+				_ => {},
 			}
 		}
 

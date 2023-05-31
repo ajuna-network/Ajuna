@@ -6,13 +6,12 @@ impl<T: Config> AvatarCombinator<T> {
 		input_sacrifices: Vec<ForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		let (mut input_leader, matching_sacrifices, consumed_sacrifices, non_matching_sacrifices) =
-			Self::match_avatars(
-				input_leader,
-				input_sacrifices,
-				MATCH_ALGO_START_RARITY.as_byte(),
-				hash_provider,
-			);
+		let (mut input_leader, sacrifices) = Self::match_avatars(
+			input_leader,
+			input_sacrifices,
+			MATCH_ALGO_START_RARITY.as_byte(),
+			hash_provider,
+		);
 
 		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
 			&AvatarUtils::read_progress_array(&input_leader.1),
@@ -32,8 +31,7 @@ impl<T: Config> AvatarCombinator<T> {
 
 		if is_leader_legendary && is_leader_egg && pet_variation > 0 {
 			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
-			// only allow 4 starter pets
-			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % 4];
+			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
 
 			AvatarUtils::write_typed_attribute(
 				&mut input_leader.1,
@@ -54,19 +52,9 @@ impl<T: Config> AvatarCombinator<T> {
 			&rarity,
 		);
 
-		let output_vec: Vec<ForgeOutput<T>> = non_matching_sacrifices
+		let output_vec: Vec<ForgeOutput<T>> = sacrifices
 			.into_iter()
-			.map(|sacrifice| ForgeOutput::Forged(sacrifice, 0))
-			.chain(
-				consumed_sacrifices
-					.into_iter()
-					.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id)),
-			)
-			.chain(
-				matching_sacrifices
-					.into_iter()
-					.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id)),
-			)
+			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
 		Ok((LeaderForgeOutput::Forged(input_leader, 0), output_vec))
@@ -133,8 +121,8 @@ mod test {
 					.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 3);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
 				let expected_dna = [
@@ -191,8 +179,8 @@ mod test {
 					.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 2);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
 				let expected_progress_array =
@@ -254,53 +242,70 @@ mod test {
 		});
 	}
 
-	// TODO: Need original test rewrite
-	/*#[test]
-	fn test_breed_egg() {
+	#[test]
+	fn test_breed_egg_prep_4() {
 		ExtBuilder::default().build().execute_with(|| {
 			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
-			let rarity = RarityTier::Epic;
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 100;
+				avatar
+			};
 
-			let mut egg_set = (0..5)
-				.into_iter()
-				.map(|i| {
-					let soul_points = (i + 1) * 10;
-					let pet_type =
-						SlotRoller::<Test>::roll_on(&PET_TYPE_PROBABILITIES, &mut hash_provider);
-					let progress_array = AvatarUtils::generate_progress_bytes(
-						&rarity,
-						SCALING_FACTOR_PERC,
-						PROGRESS_PROBABILITY_PERC,
-						[i; 11],
-					);
+			let leader = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x13, 0x00, 0x03, 0x01, 0x04, 0xcb, 0x18, 0x98, 0x2c, 0x8b, 0xfe, 0x7d, 0x98,
+					0x61, 0x0b, 0x82, 0xbb, 0x72, 0xc0, 0x01, 0xcc, 0x31, 0x30, 0x33, 0x30, 0x34,
+					0x33, 0x35, 0x31, 0x35, 0x31, 0x34,
+				]),
+				Some(unit_fn),
+			);
 
-					create_random_egg(
-						None,
-						&ALICE,
-						rarity,
-						pet_type,
-						soul_points as SoulCount,
-						progress_array,
-					)
-				})
-				.collect::<Vec<_>>();
+			let sac_1 = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x13, 0x00, 0x03, 0x01, 0x08, 0x3b, 0xaf, 0x5b, 0x35, 0x8d, 0x3b, 0x30, 0x9f,
+					0xf5, 0x6b, 0xc3, 0x8c, 0x18, 0xb5, 0xa2, 0xe9, 0x30, 0x35, 0x32, 0x31, 0x30,
+					0x34, 0x30, 0x34, 0x32, 0x30, 0x30,
+				]),
+				Some(unit_fn),
+			);
 
-			let total_soul_points =
-				egg_set.iter().map(|(_, avatar)| avatar.souls).sum::<SoulCount>();
-			assert_eq!(total_soul_points, 150);
+			let sac_2 = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x13, 0x00, 0x03, 0x01, 0x09, 0x55, 0x20, 0x50, 0x93, 0xf5, 0x34, 0xa6, 0x2e,
+					0xee, 0x3e, 0xd7, 0x10, 0x5a, 0xd2, 0x4d, 0x1e, 0x35, 0x30, 0x31, 0x33, 0x34,
+					0x35, 0x32, 0x32, 0x32, 0x42, 0x35,
+				]),
+				Some(unit_fn),
+			);
 
-			let sacrifices = egg_set.split_off(1);
-			let leader = egg_set.pop().unwrap();
+			let sac_3 = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x13, 0x00, 0x03, 0x01, 0x0c, 0x52, 0x85, 0x28, 0x6b, 0x14, 0x96, 0x00, 0x59,
+					0x47, 0x13, 0xd2, 0xb7, 0x4f, 0xd7, 0x48, 0xd7, 0x32, 0x34, 0x31, 0x33, 0x43,
+					0x32, 0x30, 0x43, 0x33, 0x30, 0x30,
+				]),
+				Some(unit_fn),
+			);
 
-			assert_eq!(AvatarUtils::read_attribute(&leader.1, &AvatarAttributes::CustomType2), 2);
-			let expected_progress_array =
-				[0x41, 0x40, 0x45, 0x43, 0x40, 0x53, 0x41, 0x42, 0x42, 0x52, 0x44];
-			assert_eq!(AvatarUtils::read_progress_array(&leader.1), expected_progress_array);
+			let sac_4 = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x13, 0x00, 0x03, 0x01, 0x03, 0x99, 0xa5, 0x13, 0x91, 0xbd, 0xd1, 0xc3, 0xfa,
+					0x1b, 0x05, 0xbd, 0xd3, 0xd4, 0xe4, 0xab, 0xa3, 0x34, 0x43, 0x34, 0x32, 0x30,
+					0x30, 0x45, 0x32, 0x32, 0x30, 0x32,
+				]),
+				Some(unit_fn),
+			);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
 				leader,
-				sacrifices,
+				vec![sac_1, sac_2, sac_3, sac_4],
 				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
@@ -310,16 +315,14 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(total_soul_points, avatar.souls);
-
-				let expected_progress_array =
-					[0x41, 0x40, 0x45, 0x43, 0x40, 0x53, 0x41, 0x42, 0x42, 0x52, 0x44];
-				assert_eq!(AvatarUtils::read_progress_array(&avatar), expected_progress_array);
+				let progress_array = AvatarUtils::read_progress_array(&avatar);
+				let lowest_count =
+					AvatarUtils::read_lowest_progress_indexes(&progress_array, &ByteType::High)
+						.len();
+				assert_eq!(lowest_count, 7);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
-
-			// MORE
 		});
-	}*/
+	}
 }
