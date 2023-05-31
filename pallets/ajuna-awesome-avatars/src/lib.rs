@@ -87,7 +87,7 @@ use sp_std::prelude::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use sp_std::collections::{vec_deque::VecDeque};
+	use sp_std::collections::vec_deque::VecDeque;
 
 	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;

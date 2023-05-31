@@ -3,10 +3,10 @@ use crate::{
 	types::{Avatar, AvatarVersion, Dna, SeasonId, SoulCount},
 	ByteConvertible, Config, Force, Ranged, RarityTier,
 };
+use core::cmp::Ordering;
 use frame_support::traits::Len;
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
-use core::cmp::Ordering;
 
 #[derive(Copy, Clone)]
 pub enum AvatarAttributes {
