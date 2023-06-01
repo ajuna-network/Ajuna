@@ -55,6 +55,50 @@ impl OldAvatar {
 	}
 }
 
+#[derive(Decode)]
+pub struct OldSeason<BlockNumber> {
+	pub name: BoundedVec<u8, ConstU32<100>>,
+	pub description: BoundedVec<u8, ConstU32<1_000>>,
+	pub early_start: BlockNumber,
+	pub start: BlockNumber,
+	pub end: BlockNumber,
+	pub max_tier_forges: u32,
+	pub max_variations: u8,
+	pub max_components: u8,
+	pub min_sacrifices: SacrificeCount,
+	pub max_sacrifices: SacrificeCount,
+	pub tiers: BoundedVec<RarityTier, ConstU32<6>>,
+	pub single_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub batch_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
+	pub base_prob: RarityPercent,
+	pub per_period: BlockNumber,
+	pub periods: u16,
+}
+
+impl<BlockNumber> OldSeason<BlockNumber> {
+	fn migrate_to_v5(self) -> Season<BlockNumber> {
+		Season {
+			name: self.name,
+			description: self.description,
+			early_start: self.early_start,
+			start: self.start,
+			end: self.end,
+			max_tier_forges: self.max_tier_forges,
+			max_variations: self.max_variations,
+			max_components: self.max_components,
+			min_sacrifices: self.min_sacrifices,
+			max_sacrifices: self.max_sacrifices,
+			tiers: self.tiers,
+			single_mint_probs: self.single_mint_probs,
+			batch_mint_probs: self.batch_mint_probs,
+			base_prob: self.base_prob,
+			per_period: self.per_period,
+			periods: self.periods,
+			trade_filters: Default::default(),
+		}
+	}
+}
+
 #[frame_support::storage_alias]
 pub(crate) type CurrentSeasonId<T: Config> = StorageValue<Pallet<T>, SeasonId, ValueQuery>;
 
@@ -120,11 +164,16 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			);
 			log::info!(target: LOG_TARGET, "Updated {} old avatars", translated_avatars);
 
+			Seasons::<T>::translate::<OldSeason<T::BlockNumber>, _>(|_key, old_value| {
+				log::info!(target: LOG_TARGET, "Migrated seasons");
+				Some(old_value.migrate_to_v5())
+			});
+
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(
-				2 + 2 * translated_owner_account + translated_trades + translated_avatars,
-				2 + 2 * translated_owner_account + translated_trades + translated_avatars,
+				3 + 2 * translated_owner_account + translated_trades + translated_avatars,
+				3 + 2 * translated_owner_account + translated_trades + translated_avatars,
 			)
 		} else {
 			log::info!(
@@ -185,6 +234,8 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		// Check all migrated avatars are of version 1.
 		assert!(Avatars::<T>::iter_values()
 			.all(|(_account, avatar)| avatar.version == AvatarVersion::V1));
+
+		assert!(Seasons::<T>::get(1).unwrap().trade_filters.is_empty());
 
 		Ok(())
 	}

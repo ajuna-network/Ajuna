@@ -571,7 +571,7 @@ pub mod pallet {
 			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
-			Self::ensure_can_be_traded(&avatar)?;
+			Self::ensure_tradable(&avatar)?;
 			Trade::<T>::insert(avatar.season_id, avatar_id, price);
 			Self::deposit_event(Event::AvatarPriceSet { avatar_id, price });
 			Ok(())
@@ -1450,11 +1450,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn ensure_can_be_traded(avatar: &Avatar) -> DispatchResult {
-			let current_season_id = CurrentSeasonStatus::<T>::get().season_id;
-			let season = Seasons::<T>::get(current_season_id).ok_or(Error::<T>::UnknownSeason)?;
-
-			ensure!(season.apply_trade_filters_on(avatar), Error::<T>::AvatarCannotBeTraded);
+		fn ensure_tradable(avatar: &Avatar) -> DispatchResult {
+			let (_, season) = Self::current_season_with_id()?;
+			ensure!(season.is_tradable(avatar), Error::<T>::AvatarCannotBeTraded);
 			Ok(())
 		}
 
