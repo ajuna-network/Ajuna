@@ -88,8 +88,6 @@ impl<T: Config> AvatarCombinator<T> {
 			}
 		}
 
-		println!("{:?}", matching_score);
-
 		if !matching_score.is_empty() {
 			let rolls = matches + no_fit;
 
