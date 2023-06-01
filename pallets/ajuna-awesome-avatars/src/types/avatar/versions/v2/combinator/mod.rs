@@ -27,8 +27,7 @@ impl<T: Config> AvatarCombinator<T> {
 		match forge_type {
 			ForgeType::Stack =>
 				Self::stack_avatars(input_leader, input_sacrifices, season_id, hash_provider),
-			ForgeType::Tinker =>
-				Self::tinker_avatars(input_leader, input_sacrifices, season_id, hash_provider),
+			ForgeType::Tinker => Self::tinker_avatars(input_leader, input_sacrifices, season_id),
 			ForgeType::Build =>
 				Self::build_avatars(input_leader, input_sacrifices, season_id, hash_provider),
 			ForgeType::Assemble =>

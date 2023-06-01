@@ -5,7 +5,6 @@ impl<T: Config> AvatarCombinator<T> {
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
 		season_id: SeasonId,
-		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (leader_id, mut leader) = input_leader;
 
@@ -93,7 +92,7 @@ impl<T: Config> AvatarCombinator<T> {
 			let slot_type =
 				AvatarUtils::read_attribute_as::<SlotType>(&leader, &AvatarAttributes::ClassType1);
 
-			let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, 6)?;
+			let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 			let generated_blueprint = AvatarBuilder::with_dna(season_id, dna)
 				.into_blueprint(
 					&BlueprintItemType::Blueprint,
@@ -132,7 +131,6 @@ mod test {
 	fn test_tinker_success_no_materials_left() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
@@ -170,7 +168,6 @@ mod test {
 				pet_part_input_1,
 				vec![material_input_1, material_input_2, material_input_3, material_input_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
@@ -214,7 +211,6 @@ mod test {
 	fn test_tinker_success_some_materials_left() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
@@ -252,7 +248,6 @@ mod test {
 				pet_part_input_1,
 				vec![material_input_1, material_input_2, material_input_3, material_input_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
@@ -302,7 +297,6 @@ mod test {
 	fn test_tinker_success_all_materials_left() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
@@ -340,7 +334,6 @@ mod test {
 				pet_part_input_1,
 				vec![material_input_1, material_input_2, material_input_3, material_input_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
@@ -380,7 +373,6 @@ mod test {
 	fn test_tinker_failure_wrong_material_order() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
@@ -418,7 +410,6 @@ mod test {
 				pet_part_input_1,
 				vec![material_input_1, material_input_2, material_input_3, material_input_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
@@ -456,7 +447,6 @@ mod test {
 	fn test_tinker_failure_wrong_material() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let pet_type = PetType::FoxishDude;
 			let slot_type = SlotType::Head;
@@ -496,7 +486,6 @@ mod test {
 				pet_part_input_1,
 				vec![material_input_1, material_input_2, material_input_3, material_input_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
@@ -534,7 +523,6 @@ mod test {
 	fn test_tinker_success_on_other_pattern() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let pet_type = PetType::TankyBullwog;
 			let slot_type = SlotType::Breast;
@@ -572,7 +560,6 @@ mod test {
 				pet_part_input_1,
 				vec![material_input_1, material_input_2, material_input_3, material_input_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
@@ -622,7 +609,6 @@ mod test {
 	fn test_tinker_success_on_other_pattern_2() {
 		ExtBuilder::default().build().execute_with(|| {
 			let season_id = 0 as SeasonId;
-			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
@@ -688,7 +674,6 @@ mod test {
 				leader,
 				vec![sac_1, sac_2, sac_3, sac_4],
 				season_id,
-				&mut hash_provider,
 			)
 			.expect("Should succeed in forging");
 
