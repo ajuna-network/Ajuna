@@ -2,14 +2,15 @@ use super::*;
 
 pub(crate) const MIN_SACRIFICE: usize = 1;
 pub(crate) const MAX_SACRIFICE: usize = 4;
-pub(crate) const MAX_QUANTITY: u8 = 8;
+pub(crate) const MAX_QUANTITY: u8 = 10;
 pub(crate) const SCALING_FACTOR_PERC: u32 = 100;
 pub(crate) const MAX_EQUIPPED_SLOTS: usize = 5;
 pub(crate) const PROGRESS_VARIATIONS: u8 = 6;
 pub(crate) const STACK_PROB_PERC: u32 = 10;
 pub(crate) const PROGRESS_PROBABILITY_PERC: u32 = 15;
 pub(crate) const BASE_PROGRESS_PROB_PERC: u32 = 20;
-pub(crate) const COLOR_GLOW_SPARK: u32 = 75;
+pub(crate) const GLIMMER_PROB_PERC: u32 = 15;
+pub(crate) const COLOR_GLOW_SPARK: u32 = 45;
 pub(crate) const SPARK_PROGRESS_PROB_PERC: u32 = 25;
 pub(crate) const GLIMMER_FORGE_GLIMMER_USE: u8 = 1;
 pub(crate) const GLIMMER_FORGE_MATERIAL_USE: u8 = 4;
@@ -17,16 +18,16 @@ pub(crate) const GLIMMER_FORGE_TOOLBOX_USE: u8 = 45;
 pub(crate) const MAX_BYTE: u32 = u8::MAX as u32;
 pub(crate) const MATCH_ALGO_START_RARITY: RarityTier = RarityTier::Rare;
 pub(crate) const MAX_FLASK_PROGRESS: usize = 4;
-pub(crate) const TOOLBOX_PERC: u32 = 50;
+pub(crate) const TOOLBOX_PERC: u32 = 15;
 
 /// Probabilities for all PackType::Material options
 pub(crate) const PACK_TYPE_MATERIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
 	(ItemType::Pet, 200),
-	(ItemType::Material, 700),
+	(ItemType::Material, 690),
 	(ItemType::Essence, 50),
-	(ItemType::Equippable, 1),
+	(ItemType::Equippable, 10),
 	(ItemType::Blueprint, 0),
-	(ItemType::Special, 49),
+	(ItemType::Special, 50),
 ];
 
 pub(crate) const PACK_TYPE_MATERIAL_PET_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<PetItemType, 3> =
@@ -77,16 +78,21 @@ pub(crate) const PACK_TYPE_MATERIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES: Probabili
 
 pub(crate) const PACK_TYPE_MATERIAL_SPECIAL_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
 	SpecialItemType,
-	2,
-> = [(SpecialItemType::Dust, 999), (SpecialItemType::Unidentified, 1)];
+	4,
+> = [
+	(SpecialItemType::Dust, 999),
+	(SpecialItemType::Unidentified, 1),
+	(SpecialItemType::Fragment, 0),
+	(SpecialItemType::ToolBox, 0),
+];
 // -----------------------------------------------
 
 /// Probabilities for all PackType::Equipment options
 pub(crate) const PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
 	(ItemType::Pet, 50),
-	(ItemType::Material, 450),
-	(ItemType::Essence, 200),
-	(ItemType::Equippable, 100),
+	(ItemType::Material, 425),
+	(ItemType::Essence, 250),
+	(ItemType::Equippable, 75),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
@@ -112,9 +118,9 @@ pub(crate) const PACK_TYPE_EQUIPMENT_ESSENCE_ITEM_TYPE_PROBABILITIES: Probabilit
 	EssenceItemType,
 	5,
 > = [
-	(EssenceItemType::Glimmer, 790),
-	(EssenceItemType::ColorSpark, 100),
-	(EssenceItemType::GlowSpark, 100),
+	(EssenceItemType::Glimmer, 740),
+	(EssenceItemType::ColorSpark, 125),
+	(EssenceItemType::GlowSpark, 125),
 	(EssenceItemType::PaintFlask, 5),
 	(EssenceItemType::GlowFlask, 5),
 ];
@@ -123,13 +129,13 @@ pub(crate) const PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES: Probabil
 	EquippableItemType,
 	7,
 > = [
-	(EquippableItemType::ArmorBase, 10),
-	(EquippableItemType::ArmorComponent1, 250),
-	(EquippableItemType::ArmorComponent2, 250),
-	(EquippableItemType::ArmorComponent3, 250),
-	(EquippableItemType::WeaponVersion1, 80),
-	(EquippableItemType::WeaponVersion2, 80),
-	(EquippableItemType::WeaponVersion3, 80),
+	(EquippableItemType::ArmorBase, 700),
+	(EquippableItemType::ArmorComponent1, 0),
+	(EquippableItemType::ArmorComponent2, 0),
+	(EquippableItemType::ArmorComponent3, 0),
+	(EquippableItemType::WeaponVersion1, 100),
+	(EquippableItemType::WeaponVersion2, 100),
+	(EquippableItemType::WeaponVersion3, 100),
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -139,16 +145,21 @@ pub(crate) const PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES: Probabil
 
 pub(crate) const PACK_TYPE_EQUIPMENT_SPECIAL_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
 	SpecialItemType,
-	2,
-> = [(SpecialItemType::Dust, 999), (SpecialItemType::Unidentified, 1)];
+	4,
+> = [
+	(SpecialItemType::Dust, 999),
+	(SpecialItemType::Unidentified, 1),
+	(SpecialItemType::Fragment, 0),
+	(SpecialItemType::ToolBox, 0),
+];
 // -----------------------------------------------
 
 /// Probabilities for all PackType::Special options
 pub(crate) const PACK_TYPE_SPECIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
-	(ItemType::Pet, 500),
+	(ItemType::Pet, 495),
 	(ItemType::Material, 250),
 	(ItemType::Essence, 45),
-	(ItemType::Equippable, 5),
+	(ItemType::Equippable, 10),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
@@ -201,8 +212,13 @@ pub(crate) const PACK_TYPE_SPECIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES: Probabilit
 
 pub(crate) const PACK_TYPE_SPECIAL_SPECIAL_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
 	SpecialItemType,
-	2,
-> = [(SpecialItemType::Dust, 999), (SpecialItemType::Unidentified, 1)];
+	4,
+> = [
+	(SpecialItemType::Dust, 999),
+	(SpecialItemType::Unidentified, 1),
+	(SpecialItemType::Fragment, 0),
+	(SpecialItemType::ToolBox, 0),
+];
 // -----------------------------------------------
 
 /// Probabilities for equipment slots

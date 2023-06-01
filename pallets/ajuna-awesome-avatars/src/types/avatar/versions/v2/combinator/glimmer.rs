@@ -59,11 +59,16 @@ impl<T: Config> AvatarCombinator<T> {
 
 			let mut gen_avatar = AvatarBuilder::with_dna(season_id, dna);
 
-			if rand_0 as u32 * SCALING_FACTOR_PERC < STACK_PROB_PERC * MAX_BYTE {
-				if rand_1 == rand_2 &&
-					AvatarUtils::high_nibble_of(rand_1) == AvatarUtils::low_nibble_of(rand_2)
-				{
-					gen_avatar = gen_avatar.into_egg(&RarityTier::Rare, 0x00, soul_points, None);
+			if rand_0 as u32 * SCALING_FACTOR_PERC < GLIMMER_PROB_PERC * MAX_BYTE {
+				if rand_1 == rand_2 {
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Rare,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+					gen_avatar =
+						gen_avatar.into_egg(&RarityTier::Rare, 0x00, soul_points, progress_array);
 				} else if rand_1 ==
 					(AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
 				{
@@ -79,12 +84,26 @@ impl<T: Config> AvatarCombinator<T> {
 						ColorType::from_byte(rand_2 % (color_types + 1)),
 						ColorType::from_byte(rand_3 % (color_types + 1)),
 					);
-					gen_avatar = gen_avatar.into_color_spark(&color_pair, soul_points, None);
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Rare,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+					gen_avatar =
+						gen_avatar.into_color_spark(&color_pair, soul_points, progress_array);
 				} else {
 					let force = Force::from_byte((rand_2 % forces) + 1);
-					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, None);
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Rare,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, progress_array);
 				}
-			} else if (rand_0 as u32 * SCALING_FACTOR_PERC < TOOLBOX_PERC * MAX_BYTE) &&
+			} else if (rand_0 as u32 * SCALING_FACTOR_PERC <
+				(GLIMMER_PROB_PERC * TOOLBOX_PERC) * MAX_BYTE) &&
 				AvatarUtils::can_use_avatar(&leader, GLIMMER_FORGE_TOOLBOX_USE)
 			{
 				let (_, consumed, out_leader_souls) =
@@ -117,9 +136,9 @@ mod test {
 	fn test_glimmer_simple() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
-				0x32, 0x5e, 0x2e, 0xd2, 0xe0, 0x39, 0x8a, 0x1c, 0x4f, 0x54, 0x23, 0xe4, 0x19, 0x51,
-				0x4a, 0xc5, 0xa8, 0x29, 0x49, 0x5b, 0x54, 0x21, 0x72, 0x94, 0xfd, 0xcf, 0x78, 0xc9,
-				0xde, 0x0a, 0xaf, 0x2d,
+				0x43, 0x5E, 0x2E, 0xD2, 0xE0, 0x39, 0x1A, 0x1C, 0x4F, 0x54, 0x24, 0xE4, 0x19, 0x51,
+				0x4A, 0xC5, 0xA8, 0x29, 0x59, 0x5B, 0x54, 0x21, 0x72, 0x94, 0xFD, 0xCF, 0x78, 0xC9,
+				0xDE, 0x0A, 0xAF, 0x2D,
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
@@ -233,7 +252,7 @@ mod test {
 	fn test_glimmer_multiple() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
-				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x48, 0xD2, 0x2C, 0xCA, 0xEE, 0x3F, 0x81, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
 				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
 				0xCC, 0xFD, 0x01, 0xB4,
 			];
@@ -276,7 +295,7 @@ mod test {
 
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					51
+					6
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(
@@ -328,9 +347,132 @@ mod test {
 				for i in (1..8).step_by(2) {
 					if let ForgeOutput::Minted(avatar) = &sacrifice_output[i] {
 						assert_eq!(
-							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-							if i == 1 { 1 } else { 5 }
+							AvatarUtils::read_attribute_as::<ItemType>(
+								avatar,
+								&AvatarAttributes::ItemType,
+							),
+							ItemType::Special
 						);
+
+						let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+							avatar,
+							&AvatarAttributes::ItemSubType,
+						);
+
+						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
+
+						assert!(
+							(item_sub_type == SpecialItemType::Dust && qty == 5) ||
+								(item_sub_type == SpecialItemType::ToolBox && qty == 1)
+						);
+					} else {
+						panic!("ForgeOutput should have been Minted!")
+					}
+				}
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_glimmer_toolbox() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x55, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
+				0xCC, 0xFD, 0x01, 0xB4,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let leader = create_random_glimmer(&ALICE, 100);
+			let sacrifice_1 = create_random_material(&ALICE, &MaterialItemType::Polymers, 20);
+			let sacrifice_2 =
+				create_random_material(&ALICE, &MaterialItemType::Superconductors, 20);
+			let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
+			let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
+
+			let total_soul_points =
+				leader.1.souls +
+					sacrifice_1.1.souls + sacrifice_2.1.souls +
+					sacrifice_3.1.souls + sacrifice_4.1.souls;
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
+				leader,
+				vec![sacrifice_1, sacrifice_2, sacrifice_3, sacrifice_4],
+				0,
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 8);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 4);
+
+			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				let output_souls = sacrifice_output
+					.iter()
+					.map(|sacrifice| match sacrifice {
+						ForgeOutput::Forged((_, avatar), _) => avatar.souls,
+						ForgeOutput::Minted(avatar) => avatar.souls,
+						_ => 0,
+					})
+					.sum::<SoulCount>() + leader_avatar.souls;
+				assert_eq!(output_souls, total_soul_points);
+
+				assert_eq!(
+					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
+					6
+				);
+				assert_eq!(
+					AvatarUtils::read_attribute_as::<ItemType>(
+						&leader_avatar,
+						&AvatarAttributes::ItemType,
+					),
+					ItemType::Essence
+				);
+				assert_eq!(
+					AvatarUtils::read_attribute_as::<EssenceItemType>(
+						&leader_avatar,
+						&AvatarAttributes::ItemSubType,
+					),
+					EssenceItemType::Glimmer
+				);
+
+				let material_set = [
+					MaterialItemType::Polymers,
+					MaterialItemType::Superconductors,
+					MaterialItemType::Ceramics,
+					MaterialItemType::Metals,
+				];
+
+				for (i, material) in material_set.into_iter().enumerate() {
+					if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[i * 2] {
+						assert_eq!(
+							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
+							16
+						);
+						assert_eq!(
+							AvatarUtils::read_attribute_as::<ItemType>(
+								avatar,
+								&AvatarAttributes::ItemType,
+							),
+							ItemType::Material
+						);
+						assert_eq!(
+							AvatarUtils::read_attribute_as::<MaterialItemType>(
+								avatar,
+								&AvatarAttributes::ItemSubType,
+							),
+							material
+						);
+					} else {
+						panic!("ForgeOutput should have been Forged!")
+					}
+				}
+
+				for i in (1..8).step_by(2) {
+					if let ForgeOutput::Minted(avatar) = &sacrifice_output[i] {
 						assert_eq!(
 							AvatarUtils::read_attribute_as::<ItemType>(
 								avatar,
@@ -338,12 +480,17 @@ mod test {
 							),
 							ItemType::Special
 						);
-						assert_eq!(
-							AvatarUtils::read_attribute_as::<SpecialItemType>(
-								avatar,
-								&AvatarAttributes::ItemSubType,
-							),
-							if i == 1 { SpecialItemType::ToolBox } else { SpecialItemType::Dust }
+
+						let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+							avatar,
+							&AvatarAttributes::ItemSubType,
+						);
+
+						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
+
+						assert!(
+							(item_sub_type == SpecialItemType::Dust && qty == 5) ||
+								(item_sub_type == SpecialItemType::ToolBox && qty == 1)
 						);
 					} else {
 						panic!("ForgeOutput should have been Minted!")
@@ -359,7 +506,7 @@ mod test {
 	fn test_empty_spark() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
-				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x58, 0xD2, 0x1C, 0xCA, 0xEE, 0x4F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
 				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
 				0xCC, 0xFD, 0x01, 0xB4,
 			];
@@ -456,7 +603,7 @@ mod test {
 							avatar,
 							&AvatarAttributes::ItemSubType,
 						),
-						EssenceItemType::ColorSpark
+						EssenceItemType::GlowSpark
 					);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
@@ -669,7 +816,7 @@ mod test {
 			let mut probability_array = [0; 8];
 
 			for i in 0..10_000 {
-				let leader = create_random_glimmer(&ALICE, 20);
+				let leader = create_random_glimmer(&ALICE, 50);
 				let sacrifice_1 = create_random_material(&ALICE, &MaterialItemType::Polymers, 20);
 				let sacrifice_2 =
 					create_random_material(&ALICE, &MaterialItemType::Superconductors, 20);
@@ -719,13 +866,13 @@ mod test {
 			}
 
 			assert_eq!(probability_array[0], 10_000);
-			assert_eq!(probability_array[1], 0);
-			assert_eq!(probability_array[2], 754);
-			assert_eq!(probability_array[3], 250);
-			assert_eq!(probability_array[4], 8994);
-			assert_eq!(probability_array[5], 2);
+			assert_eq!(probability_array[1], 9);
+			assert_eq!(probability_array[2], 697);
+			assert_eq!(probability_array[3], 823);
+			assert_eq!(probability_array[4], 0);
+			assert_eq!(probability_array[5], 6);
 			assert_eq!(probability_array[6], 0);
-			assert_eq!(probability_array[7], 0);
+			assert_eq!(probability_array[7], 8465);
 		});
 	}
 }

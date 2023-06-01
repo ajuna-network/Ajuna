@@ -587,6 +587,7 @@ mod test {
 	fn test_determine_forge_types_assemble() {
 		ExtBuilder::default().build().execute_with(|| {
 			// Assemble with armor and essence
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 			let (_, leader) = create_random_armor_component(
 				[0xA2; 32],
 				&ALICE,
@@ -597,6 +598,7 @@ mod test {
 				&(ColorType::ColorA, ColorType::None),
 				&Force::Thermal,
 				2,
+				&mut hash_provider,
 			);
 			let sacrifices = [&create_random_armor_component(
 				[0x2A; 32],
@@ -608,6 +610,7 @@ mod test {
 				&(ColorType::None, ColorType::ColorD),
 				&Force::Astral,
 				2,
+				&mut hash_provider,
 			)
 			.1];
 			assert_eq!(
@@ -634,6 +637,7 @@ mod test {
 				&(ColorType::None, ColorType::ColorD),
 				&Force::Astral,
 				2,
+				&mut hash_provider,
 			)
 			.1];
 			assert_eq!(
@@ -708,6 +712,7 @@ mod test {
 	fn test_determine_forge_types_equip() {
 		ExtBuilder::default().build().execute_with(|| {
 			ExtBuilder::default().build().execute_with(|| {
+				let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 				// Equip
 				let (_, leader) = create_random_pet(
 					&ALICE,
@@ -727,6 +732,7 @@ mod test {
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,
+					&mut hash_provider,
 				)
 				.1];
 				assert_eq!(
@@ -753,6 +759,7 @@ mod test {
 					&(ColorType::None, ColorType::ColorD),
 					&Force::Astral,
 					2,
+					&mut hash_provider,
 				)
 				.1];
 				assert_eq!(
@@ -803,6 +810,7 @@ mod test {
 	#[test]
 	fn test_determine_forge_types_flask() {
 		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 			// Assemble with armor and essence
 			let (_, leader) = create_random_armor_component(
 				[0xA2; 32],
@@ -814,6 +822,7 @@ mod test {
 				&(ColorType::ColorA, ColorType::None),
 				&Force::Thermal,
 				2,
+				&mut hash_provider,
 			);
 			let sacrifices = [
 				&create_random_glimmer(&ALICE, 1).1,
@@ -821,7 +830,7 @@ mod test {
 					&ALICE,
 					&(ColorType::ColorC, ColorType::ColorD),
 					3,
-					None,
+					[0; 11],
 				)
 				.1,
 			];
@@ -848,6 +857,7 @@ mod test {
 				&(ColorType::None, ColorType::ColorD),
 				&Force::Astral,
 				2,
+				&mut hash_provider,
 			)
 			.1];
 			assert_eq!(
@@ -945,14 +955,14 @@ mod test {
 				&ALICE,
 				&(ColorType::ColorA, ColorType::ColorC),
 				100,
-				None,
+				[0; 11],
 			);
 			let sacrifices_color = [&create_random_color_spark(
 				None,
 				&ALICE,
 				&(ColorType::ColorC, ColorType::ColorD),
 				3,
-				None,
+				[0; 11],
 			)
 			.1];
 			assert_eq!(
@@ -962,9 +972,9 @@ mod test {
 
 			// Spark with GlowSpark
 			let (_, leader_glow) =
-				create_random_glow_spark(None, &ALICE, &Force::Kinetic, 100, None);
+				create_random_glow_spark(None, &ALICE, &Force::Kinetic, 100, [0; 11]);
 			let sacrifices_glow =
-				[&create_random_glow_spark(None, &ALICE, &Force::Thermal, 100, None).1];
+				[&create_random_glow_spark(None, &ALICE, &Force::Thermal, 100, [0; 11]).1];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader_glow, &sacrifices_glow),
 				ForgeType::Spark
@@ -1120,7 +1130,7 @@ mod test {
 				&ALICE,
 				&(ColorType::ColorA, ColorType::ColorC),
 				10,
-				None,
+				[0; 11],
 			)
 			.1];
 			assert_eq!(

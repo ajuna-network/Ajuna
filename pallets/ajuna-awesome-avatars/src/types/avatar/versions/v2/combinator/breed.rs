@@ -18,7 +18,6 @@ impl<T: Config> AvatarCombinator<T> {
 			&ByteType::High,
 		));
 
-		let is_leader_legendary = rarity == RarityTier::Legendary;
 		let is_leader_egg = AvatarUtils::has_attribute_set_with_values(
 			&input_leader.1,
 			&[
@@ -26,10 +25,12 @@ impl<T: Config> AvatarCombinator<T> {
 				(AvatarAttributes::ItemSubType, PetItemType::Egg.as_byte()),
 			],
 		);
+		let is_leader_legendary = rarity == RarityTier::Legendary;
+
 		let pet_variation =
 			AvatarUtils::read_attribute(&input_leader.1, &AvatarAttributes::CustomType2);
 
-		if is_leader_legendary && is_leader_egg && pet_variation > 0 {
+		if is_leader_egg && is_leader_legendary && pet_variation > 0 {
 			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
 			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
 
@@ -322,6 +323,138 @@ mod test {
 				assert_eq!(lowest_count, 7);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_iteration_1() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x9A, 0x6D, 0x5D, 0x62, 0x1B, 0x32, 0xFF, 0x42, 0x32, 0x46, 0x62, 0x15, 0xBB, 0x51,
+				0xE9, 0x37, 0xDB, 0xB0, 0xBC, 0x0F, 0xB0, 0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF, 0x6C,
+				0x23, 0xAF, 0xCF, 0x4E,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let mut leader_1 = create_random_egg(
+				None,
+				&ALICE,
+				&RarityTier::Epic,
+				16,
+				100,
+				[0x50, 0x42, 0x41, 0x43, 0x43, 0x45, 0x44, 0x43, 0x40, 0x44, 0x41],
+			);
+
+			for i in 0..10_000 {
+				let forge_set = vec![
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						hash_provider.get_hash_byte() % 16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							SPARK_PROGRESS_PROB_PERC,
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						hash_provider.get_hash_byte() % 16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							SPARK_PROGRESS_PROB_PERC,
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						hash_provider.get_hash_byte() % 16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							SPARK_PROGRESS_PROB_PERC,
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							SPARK_PROGRESS_PROB_PERC,
+							&mut hash_provider,
+						),
+					),
+				];
+
+				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
+					leader_1,
+					forge_set,
+					&mut hash_provider,
+				)
+				.expect("Should succeed in forging");
+
+				assert_eq!(sacrifice_output.len(), 4);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+				if let LeaderForgeOutput::Forged((avatar_id, avatar), _) = leader_output {
+					let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
+						&avatar,
+						&AvatarAttributes::RarityTier,
+					);
+
+					let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
+					println!("{:?}", &leader_progress_array);
+
+					if leader_rarity == RarityTier::Legendary {
+						assert_eq!(i, 19);
+
+						let expected_progress_array =
+							[0x50, 0x52, 0x51, 0x53, 0x53, 0x55, 0x54, 0x53, 0x50, 0x54, 0x51];
+						let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
+						assert_eq!(leader_progress_array, expected_progress_array);
+
+						let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
+							&avatar,
+							&AvatarAttributes::RarityTier,
+						);
+						assert_eq!(leader_rarity, RarityTier::Legendary);
+
+						let leader_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+							&avatar,
+							&AvatarAttributes::ItemSubType,
+						);
+						assert_eq!(leader_sub_type, PetItemType::Pet);
+
+						let leader_class_type_2 = AvatarUtils::read_attribute_as::<PetType>(
+							&avatar,
+							&AvatarAttributes::ClassType2,
+						);
+						assert_eq!(leader_class_type_2, PetType::BigHybrid);
+
+						break
+					}
+
+					leader_1 = (avatar_id, avatar);
+				} else {
+					panic!("LeaderForgeOutput should have been Forged!")
+				}
 			}
 		});
 	}

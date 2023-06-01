@@ -26,7 +26,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 					&RarityTier::Legendary,
 					SCALING_FACTOR_PERC,
 					SPARK_PROGRESS_PROB_PERC,
-					[0; 11],
+					hash_provider,
 				);
 
 				let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
@@ -35,7 +35,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 					&pet_type,
 					pet_variation,
 					spec_bytes,
-					Some(progress_array),
+					progress_array,
 					soul_count,
 				)
 			},
@@ -51,11 +51,20 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				let pet_variation = (hash_provider.get_hash_byte() % 15) + 1;
 				let soul_points = (hash_provider.get_hash_byte() % 99) + 1;
 
+				let egg_rarity = RarityTier::Rare;
+
+				let progress_array = AvatarUtils::generate_progress_bytes(
+					&egg_rarity,
+					SCALING_FACTOR_PERC,
+					SPARK_PROGRESS_PROB_PERC,
+					hash_provider,
+				);
+
 				AvatarBuilder::with_base_avatar(base_avatar).into_egg(
-					&RarityTier::Rare,
+					&egg_rarity,
 					pet_variation,
 					soul_points as SoulCount,
-					None,
+					progress_array,
 				)
 			},
 		}
@@ -98,16 +107,30 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 				);
 
 				if *self == EssenceItemType::ColorSpark {
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Rare,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+
 					AvatarBuilder::with_base_avatar(base_avatar).into_color_spark(
 						&color_pair,
 						souls as SoulCount,
-						None,
+						progress_array,
 					)
 				} else {
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Epic,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+
 					AvatarBuilder::with_base_avatar(base_avatar).into_paint_flask(
 						&color_pair,
 						souls as SoulCount,
-						None,
+						progress_array,
 					)
 				}
 			},
@@ -116,16 +139,30 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 					Force::from_byte(hash_provider.get_hash_byte() % Force::range().end as u8);
 
 				if *self == EssenceItemType::GlowSpark {
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Rare,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+
 					AvatarBuilder::with_base_avatar(base_avatar).into_glow_spark(
 						&force,
 						souls as SoulCount,
-						None,
+						progress_array,
 					)
 				} else {
+					let progress_array = AvatarUtils::generate_progress_bytes(
+						&RarityTier::Epic,
+						SCALING_FACTOR_PERC,
+						SPARK_PROGRESS_PROB_PERC,
+						hash_provider,
+					);
+
 					AvatarBuilder::with_base_avatar(base_avatar).into_glow_flask(
 						&force,
 						souls as SoulCount,
-						None,
+						progress_array,
 					)
 				}
 			},
@@ -168,6 +205,7 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 					&(ColorType::None, ColorType::None),
 					&Force::None,
 					soul_count,
+					hash_provider,
 				)
 			},
 			EquippableItemType::WeaponVersion1 |
@@ -191,6 +229,7 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 					&color_pair,
 					&force,
 					soul_count,
+					hash_provider,
 				)
 			},
 		}?

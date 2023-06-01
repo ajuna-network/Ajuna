@@ -44,7 +44,7 @@ impl<T: Config> AvatarCombinator<T> {
 			RarityTier::Common.as_byte(),
 		);
 
-		if mirrors < 4 {
+		if mirrors.len() < 4 {
 			leader.souls += partner.souls;
 
 			return Ok((
@@ -65,7 +65,7 @@ impl<T: Config> AvatarCombinator<T> {
 			AvatarUtils::read_attribute(&partner, &AvatarAttributes::CustomType2);
 
 		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F) &&
-			((leader_pet_variation | partner_pet_variation) == 0x7F);
+			((leader_pet_variation + partner_pet_variation) % 42) == 0;
 
 		let random_pet_variation = hash_provider.hash[0] & hash_provider.hash[1] & 0b0111_1111;
 
@@ -109,8 +109,14 @@ impl<T: Config> AvatarCombinator<T> {
 		let additional_output = any_survived
 			.then(|| {
 				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
+				let progress_array = AvatarUtils::generate_progress_bytes(
+					&RarityTier::Rare,
+					SCALING_FACTOR_PERC,
+					SPARK_PROGRESS_PROB_PERC,
+					hash_provider,
+				);
 				let generated_egg = AvatarBuilder::with_dna(season_id, dna)
-					.into_egg(&RarityTier::Rare, pet_variation, soul_points, None)
+					.into_egg(&RarityTier::Rare, pet_variation, soul_points, progress_array)
 					.build();
 				Ok::<_, DispatchError>(ForgeOutput::Minted(generated_egg))
 			})
@@ -124,6 +130,7 @@ impl<T: Config> AvatarCombinator<T> {
 mod test {
 	use super::*;
 	use crate::mock::*;
+	use sp_std::collections::btree_map::BTreeMap;
 
 	#[test]
 	fn test_mate_extra_sacrifices() {
@@ -296,6 +303,329 @@ mod test {
 			} else {
 				panic!("ForgeOutput for second output should have been Minted!")
 			}
+		});
+	}
+
+	#[test]
+	fn test_mate_distribution_1() {
+		ExtBuilder::default().build().execute_with(|| {
+			let hash = Pallet::<Test>::random_hash(b"mate_dist_1", &ALICE);
+			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
+
+			let leader_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x53, 0x55, 0x53];
+			let leader_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+
+			let partner_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+			let partner_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+
+			let loop_count = 100_000_u32;
+			let mut distribution_map = BTreeMap::new();
+
+			for i in 0..loop_count {
+				let leader = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					(hash_provider.get_hash_byte() % 128) + 1,
+					leader_spec_bytes,
+					leader_progress_array,
+					1000,
+				);
+				let partner = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					(hash_provider.get_hash_byte() % 128) + 1,
+					partner_spec_bytes,
+					partner_progress_array,
+					1000,
+				);
+
+				let (_, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+					leader,
+					vec![partner],
+					0,
+					&mut hash_provider,
+				)
+				.expect("Should succeed in forging");
+
+				assert_eq!(sacrifice_output.len(), 2);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+
+				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+					assert_eq!(
+						AvatarUtils::read_attribute_as::<PetItemType>(
+							avatar,
+							&AvatarAttributes::ItemSubType
+						),
+						PetItemType::Egg
+					);
+
+					let custom_type_2 =
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2);
+
+					distribution_map
+						.entry(custom_type_2)
+						.and_modify(|value| *value += 1)
+						.or_insert(1_u32);
+				} else {
+					panic!("ForgeOutput for second output should have been Minted!")
+				}
+
+				if i % 1000 == 999 {
+					let hash_text = format!("loop_{:#07X}", i);
+					let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+					hash_provider = HashProvider::new(&hash);
+				}
+			}
+
+			assert_eq!(distribution_map.get(&0b0000_0000).unwrap(), &94_u32);
+
+			assert_eq!(distribution_map.get(&0b0000_0011).unwrap(), &468_u32);
+			assert_eq!(distribution_map.get(&0b0000_0111).unwrap(), &439_u32);
+			assert_eq!(distribution_map.get(&0b0000_1111).unwrap(), &1495_u32);
+			assert_eq!(distribution_map.get(&0b0001_1111).unwrap(), &2281_u32);
+			assert_eq!(distribution_map.get(&0b0011_1111).unwrap(), &3324_u32);
+			assert_eq!(distribution_map.get(&0b0111_1110).unwrap(), &2816_u32);
+			assert_eq!(distribution_map.get(&0b0111_1111).unwrap(), &4751_u32);
+		});
+	}
+
+	#[test]
+	fn test_mate_distribution_2() {
+		ExtBuilder::default().build().execute_with(|| {
+			let hash = Pallet::<Test>::random_hash(b"mate_dist_2", &ALICE);
+			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
+
+			let leader_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x53, 0x55, 0x53];
+			let leader_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+			let mut leader_pet = 0b0000_1111_u8;
+
+			let partner_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+			let partner_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+			let mut partner_pet = 0b0000_1111_u8;
+
+			let loop_count = 100_000_u32;
+			let mut distribution_map = BTreeMap::new();
+			let mut match_map = BTreeMap::new();
+
+			for i in 0..loop_count {
+				let leader = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					leader_pet,
+					leader_spec_bytes,
+					leader_progress_array,
+					1000,
+				);
+				let partner = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					partner_pet,
+					partner_spec_bytes,
+					partner_progress_array,
+					1000,
+				);
+
+				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+					leader,
+					vec![partner],
+					0,
+					&mut hash_provider,
+				)
+				.expect("Should succeed in forging");
+
+				assert_eq!(sacrifice_output.len(), 2);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+
+				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+					assert_eq!(
+						AvatarUtils::read_attribute_as::<PetItemType>(
+							avatar,
+							&AvatarAttributes::ItemSubType
+						),
+						PetItemType::Egg
+					);
+
+					let custom_type_2 =
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2);
+
+					distribution_map
+						.entry(custom_type_2)
+						.and_modify(|value| *value += 1)
+						.or_insert(1_u32);
+
+					if custom_type_2 == 0b0000_0000 {
+						let leader_custom_type_2 =
+							if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
+								AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType2)
+							} else {
+								panic!("ForgeOutput for leader should have been Minted!")
+							};
+
+						let partner_custom_type_2 =
+							if let ForgeOutput::Forged((_, partner), _) = &sacrifice_output[0] {
+								AvatarUtils::read_attribute(partner, &AvatarAttributes::CustomType2)
+							} else {
+								panic!("ForgeOutput for leader should have been Minted!")
+							};
+
+						match_map
+							.entry((leader_custom_type_2, partner_custom_type_2))
+							.and_modify(|value| *value += 1)
+							.or_insert(1_u32);
+					}
+
+					let keys_no_0 = distribution_map
+						.iter()
+						.filter(|(key, _)| **key > 0)
+						.map(|(key, _)| *key)
+						.collect::<Vec<_>>();
+
+					leader_pet =
+						keys_no_0[hash_provider.get_hash_byte() as usize % keys_no_0.len()];
+					partner_pet =
+						keys_no_0[hash_provider.get_hash_byte() as usize % keys_no_0.len()];
+				} else {
+					panic!("ForgeOutput for second output should have been Minted!")
+				}
+
+				if i % 1000 == 999 {
+					let hash_text = format!("loop_{:#07X}", i);
+					let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+					hash_provider = HashProvider::new(&hash);
+				}
+			}
+
+			assert_eq!(distribution_map.get(&0b0000_0000).unwrap(), &62);
+		});
+	}
+
+	#[test]
+	fn test_mate_distribution_3() {
+		ExtBuilder::default().build().execute_with(|| {
+			let hash = Pallet::<Test>::random_hash(b"mate_dist_3", &ALICE);
+			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
+
+			let leader_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x53, 0x55, 0x53];
+			let leader_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+			let leader_pet = 0b0010_0111_u8;
+
+			let partner_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+			let partner_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+			let partner_pet = 0b0000_0011_u8;
+
+			let loop_count = 100_000_u32;
+			let mut distribution_map = BTreeMap::new();
+			let mut match_map = BTreeMap::new();
+
+			for i in 0..loop_count {
+				let leader = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					leader_pet,
+					leader_spec_bytes,
+					leader_progress_array,
+					1000,
+				);
+				let partner = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					partner_pet,
+					partner_spec_bytes,
+					partner_progress_array,
+					1000,
+				);
+
+				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+					leader,
+					vec![partner],
+					0,
+					&mut hash_provider,
+				)
+				.expect("Should succeed in forging");
+
+				assert_eq!(sacrifice_output.len(), 2);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+
+				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+					assert_eq!(
+						AvatarUtils::read_attribute_as::<PetItemType>(
+							avatar,
+							&AvatarAttributes::ItemSubType
+						),
+						PetItemType::Egg
+					);
+
+					let custom_type_2 =
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2);
+
+					distribution_map
+						.entry(custom_type_2)
+						.and_modify(|value| *value += 1)
+						.or_insert(1_u32);
+
+					if custom_type_2 == 0b0000_0000 {
+						let leader_custom_type_2 =
+							if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
+								AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType2)
+							} else {
+								panic!("ForgeOutput for leader should have been Minted!")
+							};
+
+						let partner_custom_type_2 =
+							if let ForgeOutput::Forged((_, partner), _) = &sacrifice_output[0] {
+								AvatarUtils::read_attribute(partner, &AvatarAttributes::CustomType2)
+							} else {
+								panic!("ForgeOutput for leader should have been Minted!")
+							};
+
+						match_map
+							.entry((leader_custom_type_2, partner_custom_type_2))
+							.and_modify(|value| *value += 1)
+							.or_insert(1_u32);
+					}
+				} else {
+					panic!("ForgeOutput for second output should have been Minted!")
+				}
+
+				if i % 1000 == 999 {
+					let hash_text = format!("loop_{:#07X}", i);
+					let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+					hash_provider = HashProvider::new(&hash);
+				}
+			}
+
+			for entry in distribution_map.iter() {
+				println!("{:b} - {}", entry.0, entry.1);
+			}
+
+			assert_eq!(distribution_map.get(&0b0000_0000).unwrap(), &3000);
 		});
 	}
 }

@@ -66,9 +66,9 @@ impl<T: Config> AvatarCombinator<T> {
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> (ForgeItem<T>, Vec<ForgeItem<T>>) {
 		let (leader_id, mut leader) = input_leader;
+
 		let mut matches: u8 = 0;
 		let mut no_fit: u8 = 0;
-
 		let mut matching_score = Vec::new();
 
 		let mut leader_progress_array = AvatarUtils::read_progress_array(&leader);
@@ -87,6 +87,8 @@ impl<T: Config> AvatarCombinator<T> {
 				no_fit += 1;
 			}
 		}
+
+		println!("{:?}", matching_score);
 
 		if !matching_score.is_empty() {
 			let rolls = matches + no_fit;
