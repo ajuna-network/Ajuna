@@ -51,7 +51,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 
 		let roll_amount = mint_option.pack_size.as_mint_count() as usize;
 		(0..roll_amount)
-			.map(|i| {
+			.map(|_| {
 				let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
 					mint_option.pack_type.clone(),
 					&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
@@ -62,8 +62,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 
 				let avatar_id = Pallet::<T>::random_hash(b"avatar_minter_v2", player);
 
-				let dna_mutation = (i * 13) % 31;
-				let base_dna = Self::generate_base_avatar_dna(&mut hash_provider, dna_mutation)?;
+				let base_dna = Self::generate_empty_dna::<32>()?;
 				let base_avatar = Avatar {
 					season_id: *season_id,
 					version: AvatarVersion::V2,
@@ -89,14 +88,8 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 }
 
 impl<T: Config> MinterV2<T> {
-	pub(super) fn generate_base_avatar_dna(
-		hash_provider: &mut HashProvider<T, 32>,
-		starting_index: usize,
-	) -> Result<Dna, DispatchError> {
-		let base_hash = hash_provider.full_hash(starting_index);
-
-		Dna::try_from(base_hash.as_ref()[0..32].to_vec())
-			.map_err(|_| Error::<T>::IncorrectDna.into())
+	pub(super) fn generate_empty_dna<const N: usize>() -> Result<Dna, DispatchError> {
+		Dna::try_from([0_u8; N].to_vec()).map_err(|_| Error::<T>::IncorrectDna.into())
 	}
 
 	fn mutate_from_item_type(

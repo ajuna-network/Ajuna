@@ -93,7 +93,7 @@ impl<T: Config> AvatarCombinator<T> {
 			)
 		} else {
 			let generated_dust = {
-				let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, 0)?;
+				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 
 				AvatarBuilder::with_dna(season_id, dna)
 					.into_dust(leader.souls + partner.souls)
@@ -108,7 +108,7 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let additional_output = any_survived
 			.then(|| {
-				let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, 10)?;
+				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 				let generated_egg = AvatarBuilder::with_dna(season_id, dna)
 					.into_egg(&RarityTier::Rare, pet_variation, soul_points, None)
 					.build();

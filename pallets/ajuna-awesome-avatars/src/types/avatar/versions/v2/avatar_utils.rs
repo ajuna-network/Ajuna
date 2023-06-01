@@ -5,6 +5,7 @@ use crate::{
 };
 use core::cmp::Ordering;
 use frame_support::traits::Len;
+#[cfg(test)]
 use sp_runtime::traits::Hash;
 use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -1173,6 +1174,7 @@ impl<T: Config, const N: usize> HashProvider<T, N> {
 		Self { hash: bytes, current_index: index, _marker: PhantomData }
 	}
 
+	#[cfg(test)]
 	pub fn full_hash(&self, mutate_seed: usize) -> T::Hash {
 		let mut full_hash = self.hash;
 

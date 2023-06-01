@@ -89,7 +89,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 
 		let avatar = match *self {
 			EssenceItemType::Glimmer =>
-				AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(souls),
+				AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(1),
 			EssenceItemType::ColorSpark | EssenceItemType::PaintFlask => {
 				let hash_byte = hash_provider.get_hash_byte();
 				let color_pair = (

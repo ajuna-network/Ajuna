@@ -61,7 +61,7 @@ impl<T: Config> AvatarCombinator<T> {
 		};
 
 		let glimmer_avatar = if essences > 0 {
-			let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, essences as usize)?;
+			let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 			Some(AvatarBuilder::with_dna(season_id, dna).into_glimmer(essences as u8).build())
 		} else {
 			None

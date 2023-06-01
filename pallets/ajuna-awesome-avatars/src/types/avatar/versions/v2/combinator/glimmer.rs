@@ -55,7 +55,7 @@ impl<T: Config> AvatarCombinator<T> {
 			let rand_2 = hash_provider.hash[index + 2];
 			let rand_3 = hash_provider.hash[index + 3];
 
-			let dna = MinterV2::<T>::generate_base_avatar_dna(hash_provider, index)?;
+			let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 
 			let mut gen_avatar = AvatarBuilder::with_dna(season_id, dna);
 
