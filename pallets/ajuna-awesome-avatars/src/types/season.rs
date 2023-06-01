@@ -99,9 +99,9 @@ impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
 			let bytes = filter.to_le_bytes();
 			let is_matching_class =
 				(0..3).all(|i| Self::is_matching_with_zero_wildcard(dna[i], bytes[i]));
-			let is_quantity_greater_than = dna[3] >= bytes[3];
+			let is_matching_quantity = dna[3] == bytes[3] || bytes[3] == 0;
 
-			is_matching_class && is_quantity_greater_than
+			is_matching_class && is_matching_quantity
 		})
 	}
 
@@ -467,8 +467,13 @@ mod test {
 			u32::from_le_bytes([0x12, 0x36, 0x00, 0x00]), // GiantWoodStick armor front pet part
 			u32::from_le_bytes([0x25, 0x07, 0x00, 0xFF]), // Metals of quantity 255
 			u32::from_le_bytes([0x25, 0x02, 0x00, 0x00]), // Electronics of any quantity
-			u32::from_le_bytes([0x30, 0x00, 0x00, 0x00]), // Any Essence,
+			u32::from_le_bytes([0x30, 0x00, 0x00, 0x00]), // Any Essence
+			u32::from_le_bytes([0x41, 0x00, 0x00, 0xF0]), // ArmorBase of quantity 240
+			u32::from_le_bytes([0x45, 0x00, 0x00, 0x0F]), // WeaponVersion1 of quantity 15
 		]);
+
+		let season_with_no_filters = Season::default();
+		let season_with_wildcard_filter = Season::default().trade_filters(vec![0]);
 
 		for (bytes, expected) in [
 			([0x11, 0x07, 0x01, 0xF0], true),  // Common CrazyDude pet
@@ -486,9 +491,19 @@ mod test {
 			([0x33, 0x00, 0x00, 0x00], true),  // Any Essence (GlowSpark)
 			([0x34, 0x00, 0x00, 0x00], true),  // Any Essence (PaintFlask)
 			([0x35, 0x00, 0x00, 0x00], true),  // Any Essence (GlowFlask)
+			([0x41, 0x00, 0x04, 0xF0], true),  // Epic ArmorBase of quantity 240
+			([0x41, 0x00, 0x04, 0x10], false), // Epic ArmorBase of quantity 16
+			([0x41, 0x00, 0x04, 0x01], false), // Epic ArmorBase of quantity 1
+			([0x45, 0x00, 0x05, 0x0F], true),  // Legendary WeaponVersion1 of quantity 15
+			([0x45, 0x00, 0x05, 0x01], false), // Legendary WeaponVersion1 of quantity 1
+			([0x45, 0x00, 0x05, 0x10], false), // Legendary WeaponVersion1 of quantity 16
 		] {
 			let avatar = Avatar::default().dna(bytes.as_slice());
 			assert_eq!(season.is_tradable(&avatar), expected);
+
+			// Allow everything when there are no filters or a wildcard filter is used.
+			assert!(season_with_no_filters.is_tradable(&avatar));
+			assert!(season_with_wildcard_filter.is_tradable(&avatar));
 		}
 	}
 }
