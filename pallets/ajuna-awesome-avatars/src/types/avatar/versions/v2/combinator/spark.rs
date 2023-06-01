@@ -108,7 +108,7 @@ mod test {
 						&ALICE,
 						&(ColorType::ColorA, ColorType::ColorC),
 						5,
-						Some(progress_array),
+						progress_array,
 					)
 				})
 				.collect::<Vec<_>>();
@@ -191,7 +191,7 @@ mod test {
 				.into_iter()
 				.zip(progress_arrays)
 				.map(|(force, progress_array)| {
-					create_random_glow_spark(None, &ALICE, &force, 5, Some(progress_array))
+					create_random_glow_spark(None, &ALICE, &force, 5, progress_array)
 				})
 				.collect::<Vec<_>>();
 

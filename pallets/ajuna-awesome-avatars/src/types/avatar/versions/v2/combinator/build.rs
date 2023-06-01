@@ -109,6 +109,7 @@ impl<T: Config> AvatarCombinator<T> {
 							&(ColorType::None, ColorType::None),
 							&Force::None,
 							1,
+							hash_provider,
 						)
 						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?
 						.build();

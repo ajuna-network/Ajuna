@@ -70,6 +70,8 @@ mod test {
 	#[test]
 	fn test_equip_success() {
 		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
+
 			let leader =
 				create_random_pet(&ALICE, &PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
 
@@ -121,6 +123,7 @@ mod test {
 						&color_pair,
 						&force,
 						100,
+						&mut hash_provider,
 					)
 				})
 				.collect::<Vec<_>>();
@@ -134,6 +137,7 @@ mod test {
 				&color_pair,
 				&force,
 				100,
+				&mut hash_provider,
 			);
 
 			let total_soul_points = leader.1.souls +
@@ -181,6 +185,7 @@ mod test {
 					&color_pair,
 					&force,
 					100,
+					&mut hash_provider,
 				);
 
 				let (leader_output_2, sacrifice_output_2) =
@@ -216,6 +221,7 @@ mod test {
 	#[test]
 	fn test_equip_failure() {
 		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
 			let leader_spec_bytes = [
 				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
 				0x00, 0x00,
@@ -248,6 +254,7 @@ mod test {
 				&(ColorType::ColorC, ColorType::ColorB),
 				&Force::Astral,
 				100,
+				&mut hash_provider,
 			);
 
 			let total_soul_points = leader.1.souls + sacrifice.1.souls;

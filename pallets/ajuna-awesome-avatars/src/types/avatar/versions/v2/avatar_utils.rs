@@ -100,26 +100,15 @@ impl AvatarBuilder {
 		pet_type: &PetType,
 		pet_variation: u8,
 		spec_bytes: [u8; 16],
-		progress_array: Option<[u8; 11]>,
+		progress_array: [u8; 11],
 		soul_points: SoulCount,
 	) -> Self {
-		let rarity = RarityTier::Legendary;
-
-		let progress_array = progress_array.unwrap_or_else(|| {
-			AvatarUtils::generate_progress_bytes(
-				&rarity,
-				SCALING_FACTOR_PERC,
-				PROGRESS_PROBABILITY_PERC,
-				AvatarUtils::read_progress_array(&self.inner),
-			)
-		});
-
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
 			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::Pet)
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Legendary)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
 			.with_spec_bytes(spec_bytes)
@@ -197,17 +186,8 @@ impl AvatarBuilder {
 		rarity: &RarityTier,
 		pet_variation: u8,
 		soul_points: SoulCount,
-		progress_array: Option<[u8; 11]>,
+		progress_array: [u8; 11],
 	) -> Self {
-		let progress_array = progress_array.unwrap_or_else(|| {
-			AvatarUtils::generate_progress_bytes(
-				rarity,
-				SCALING_FACTOR_PERC,
-				PROGRESS_PROBABILITY_PERC,
-				AvatarUtils::read_progress_array(&self.inner),
-			)
-		});
-
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
 			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::Egg)
 			// Unused
@@ -256,19 +236,8 @@ impl AvatarBuilder {
 		self,
 		color_pair: &(ColorType, ColorType),
 		soul_points: SoulCount,
-		progress_array: Option<[u8; 11]>,
+		progress_array: [u8; 11],
 	) -> Self {
-		let rarity = RarityTier::Rare;
-
-		let progress_array = progress_array.unwrap_or_else(|| {
-			AvatarUtils::generate_progress_bytes(
-				&rarity,
-				SCALING_FACTOR_PERC,
-				SPARK_PROGRESS_PROB_PERC,
-				AvatarUtils::read_progress_array(&self.inner),
-			)
-		});
-
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
 			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::ColorSpark)
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
@@ -276,7 +245,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, color_pair.0.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, color_pair.1.as_byte())
@@ -294,19 +263,8 @@ impl AvatarBuilder {
 		self,
 		force: &Force,
 		soul_points: SoulCount,
-		progress_array: Option<[u8; 11]>,
+		progress_array: [u8; 11],
 	) -> Self {
-		let rarity = RarityTier::Rare;
-
-		let progress_array = progress_array.unwrap_or_else(|| {
-			AvatarUtils::generate_progress_bytes(
-				&rarity,
-				SCALING_FACTOR_PERC,
-				SPARK_PROGRESS_PROB_PERC,
-				AvatarUtils::read_progress_array(&self.inner),
-			)
-		});
-
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
 			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::GlowSpark)
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
@@ -314,7 +272,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
@@ -332,21 +290,10 @@ impl AvatarBuilder {
 		self,
 		color_pair: &(ColorType, ColorType),
 		soul_points: SoulCount,
-		progress_array: Option<[u8; 11]>,
+		progress_array: [u8; 11],
 	) -> Self {
-		let rarity = RarityTier::Epic;
-
 		let color_bytes = ((color_pair.0.as_byte().saturating_sub(1)) << 6) |
 			((color_pair.1.as_byte().saturating_sub(1)) << 4);
-
-		let progress_array = progress_array.unwrap_or_else(|| {
-			AvatarUtils::generate_progress_bytes(
-				&rarity,
-				SCALING_FACTOR_PERC,
-				SPARK_PROGRESS_PROB_PERC,
-				AvatarUtils::read_progress_array(&self.inner),
-			)
-		});
 
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
 			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::PaintFlask)
@@ -355,7 +302,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Epic)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, color_bytes)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0b0000_1000)
@@ -373,19 +320,8 @@ impl AvatarBuilder {
 		self,
 		force: &Force,
 		soul_points: SoulCount,
-		progress_array: Option<[u8; 11]>,
+		progress_array: [u8; 11],
 	) -> Self {
-		let rarity = RarityTier::Epic;
-
-		let progress_array = progress_array.unwrap_or_else(|| {
-			AvatarUtils::generate_progress_bytes(
-				&rarity,
-				SCALING_FACTOR_PERC,
-				SPARK_PROGRESS_PROB_PERC,
-				AvatarUtils::read_progress_array(&self.inner),
-			)
-		});
-
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
 			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::GlowFlask)
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
@@ -393,7 +329,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Epic)
 			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
@@ -407,7 +343,7 @@ impl AvatarBuilder {
 			.with_soul_count(soul_points)
 	}
 
-	pub fn try_into_armor_and_component(
+	pub fn try_into_armor_and_component<T: Config>(
 		self,
 		pet_type: &PetType,
 		slot_type: &SlotType,
@@ -416,6 +352,7 @@ impl AvatarBuilder {
 		color_pair: &(ColorType, ColorType),
 		force: &Force,
 		soul_points: SoulCount,
+		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<Self, ()> {
 		if equippable_type.is_empty() ||
 			equippable_type.iter().any(|equip| !EquippableItemType::is_armor(*equip))
@@ -443,7 +380,7 @@ impl AvatarBuilder {
 			rarity,
 			SCALING_FACTOR_PERC,
 			PROGRESS_PROBABILITY_PERC,
-			AvatarUtils::read_progress_array(&self.inner),
+			hash_provider,
 		);
 
 		Ok(self
@@ -468,7 +405,7 @@ impl AvatarBuilder {
 			.with_soul_count(soul_points))
 	}
 
-	pub fn try_into_weapon(
+	pub fn try_into_weapon<T: Config>(
 		self,
 		pet_type: &PetType,
 		slot_type: &SlotType,
@@ -476,6 +413,7 @@ impl AvatarBuilder {
 		color_pair: &(ColorType, ColorType),
 		force: &Force,
 		soul_points: SoulCount,
+		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<Self, ()> {
 		if !EquippableItemType::is_weapon(*equippable_type) {
 			return Err(())
@@ -500,7 +438,7 @@ impl AvatarBuilder {
 			&rarity,
 			SCALING_FACTOR_PERC,
 			PROGRESS_PROBABILITY_PERC,
-			AvatarUtils::read_progress_array(&self.inner),
+			hash_provider,
 		);
 
 		Ok(self
@@ -901,17 +839,18 @@ impl AvatarUtils {
 	) -> Option<Vec<u32>> {
 		let (mirror, matches) = Self::match_progress_arrays(array_1, array_2, rarity_level);
 		let match_count = matches.len() as u32;
+		let mirror_count = mirror.len() as u32;
 
-		(match_count > 0 && (((match_count * 2) + mirror) >= 6)).then_some(matches)
+		(match_count > 0 && (((match_count * 2) + mirror_count) >= 6)).then_some(matches)
 	}
 
 	pub fn match_progress_arrays(
 		array_1: [u8; 11],
 		array_2: [u8; 11],
 		rarity_level: u8,
-	) -> (u32, Vec<u32>) {
+	) -> (Vec<u32>, Vec<u32>) {
 		let mut matches = Vec::<u32>::new();
-		let mut mirror: u32 = 0;
+		let mut mirrors = Vec::<u32>::new();
 
 		let lowest_1 = Self::read_lowest_progress_byte(&array_1, &ByteType::High);
 
@@ -931,11 +870,11 @@ impl AvatarUtils {
 			{
 				matches.push(i as u32);
 			} else if is_maxed && (variation_1 == variation_2) {
-				mirror = mirror.saturating_add(1);
+				mirrors.push(i as u32);
 			}
 		}
 
-		(mirror, matches)
+		(mirrors, matches)
 	}
 
 	fn match_progress_byte(byte_1: u8, byte_2: u8) -> bool {
@@ -1070,14 +1009,16 @@ impl AvatarUtils {
 		output_enums
 	}
 
-	pub fn generate_progress_bytes(
+	pub fn generate_progress_bytes<T: Config>(
 		rarity: &RarityTier,
 		scale_factor: u32,
 		probability: u32,
-		mut progress_bytes: [u8; 11],
+		hash_provider: &mut HashProvider<T, 32>,
 	) -> [u8; 11] {
+		let mut progress_bytes = [0; 11];
+
 		for i in 0..progress_bytes.len() {
-			let random_value = Self::read_dna_at(&progress_bytes, i, &ByteType::Full);
+			let random_value = hash_provider.get_hash_byte();
 
 			// Upcast random_value
 			let new_rarity =
@@ -1380,7 +1321,7 @@ mod test {
 
 	#[test]
 	fn test_match_progress_array_consistency() {
-		let test_sets: Vec<([u8; 11], [u8; 11], usize, u32)> = vec![
+		let test_sets: Vec<([u8; 11], [u8; 11], usize, usize)> = vec![
 			([0x00; 11], [0x00; 11], 0, 0),
 			([0x10; 11], [0x00; 11], 0, 0),
 			([0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00], [0x00; 11], 0, 10),
@@ -1424,7 +1365,7 @@ mod test {
 		{
 			let (mirror, matches) = AvatarUtils::match_progress_arrays(t_arr_1, t_arr_2, 0);
 			assert_eq!(matches.len(), expected_matches, "Testing test case {}", i);
-			assert_eq!(mirror, expected_mirror);
+			assert_eq!(mirror.len(), expected_mirror);
 		}
 
 		// More complex test
@@ -1433,7 +1374,7 @@ mod test {
 
 		let (mirror, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
 		assert_eq!(matches.len(), 2);
-		assert_eq!(mirror, 3);
+		assert_eq!(mirror.len(), 3);
 
 		assert_eq!(matches[0], 0x00);
 		assert_eq!(matches[1], 0x08);

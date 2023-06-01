@@ -3,7 +3,7 @@ use crate::{
 	pallet::AvatarIdOf,
 	types::{
 		avatar::versions::v2::{
-			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils},
+			avatar_utils::{AvatarAttributes, AvatarBuilder, AvatarUtils, HashProvider},
 			types::{
 				BlueprintItemType, ColorType, EquippableItemType, MaterialItemType, PetType,
 				SlotType,
@@ -90,7 +90,7 @@ pub(crate) fn create_random_pet(
 		None,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_pet(pet_type, pet_variation, spec_bytes, Some(progress_array), soul_points)
+				.into_pet(pet_type, pet_variation, spec_bytes, progress_array, soul_points)
 				.build()
 		}),
 	)
@@ -132,6 +132,7 @@ pub(crate) fn create_random_armor_component(
 	color_pair: &(ColorType, ColorType),
 	force: &Force,
 	soul_points: SoulCount,
+	hash_provider: &mut HashProvider<Test, 32>,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
 		account,
@@ -146,6 +147,7 @@ pub(crate) fn create_random_armor_component(
 					color_pair,
 					force,
 					soul_points,
+					hash_provider,
 				)
 				.unwrap()
 				.build()
@@ -162,6 +164,7 @@ pub(crate) fn create_random_weapon(
 	color_pair: &(ColorType, ColorType),
 	force: &Force,
 	soul_points: SoulCount,
+	hash_provider: &mut HashProvider<Test, 32>,
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
 		account,
@@ -175,6 +178,7 @@ pub(crate) fn create_random_weapon(
 					color_pair,
 					force,
 					soul_points,
+					hash_provider,
 				)
 				.unwrap()
 				.build()
@@ -195,7 +199,7 @@ pub(crate) fn create_random_egg(
 		base_dna,
 		Some(|avatar| {
 			AvatarBuilder::with_base_avatar(avatar)
-				.into_egg(rarity, pet_variation, soul_points, Some(progress_array))
+				.into_egg(rarity, pet_variation, soul_points, progress_array)
 				.build()
 		}),
 	)
@@ -206,7 +210,7 @@ pub(crate) fn create_random_glow_spark(
 	account: &MockAccountId,
 	force: &Force,
 	soul_points: SoulCount,
-	progress_array: Option<[u8; 11]>,
+	progress_array: [u8; 11],
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
 		account,
@@ -234,7 +238,7 @@ pub(crate) fn create_random_paint_flask(
 	account: &MockAccountId,
 	color_pair: &(ColorType, ColorType),
 	soul_points: SoulCount,
-	progress_array: Option<[u8; 11]>,
+	progress_array: [u8; 11],
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
 		account,
@@ -251,7 +255,7 @@ pub(crate) fn create_random_glow_flask(
 	account: &MockAccountId,
 	force_type: &Force,
 	soul_points: SoulCount,
-	progress_array: Option<[u8; 11]>,
+	progress_array: [u8; 11],
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
 		account,
@@ -280,7 +284,7 @@ pub(crate) fn create_random_color_spark(
 	account: &MockAccountId,
 	color_pair: &(ColorType, ColorType),
 	soul_points: SoulCount,
-	progress_array: Option<[u8; 11]>,
+	progress_array: [u8; 11],
 ) -> (AvatarIdOf<Test>, Avatar) {
 	create_random_avatar::<Test, _>(
 		account,
