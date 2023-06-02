@@ -1070,7 +1070,8 @@ impl AvatarUtils {
 			match lowest.cmp(&value) {
 				Ordering::Greater => {
 					lowest = value;
-					result = vec![i];
+					result = Vec::new();
+					result.push(i);
 				},
 				Ordering::Equal => result.push(i),
 				_ => continue,
