@@ -768,10 +768,7 @@ mod config {
 			.organizer(ALICE)
 			.build()
 			.execute_with(|| {
-				let config = GlobalConfigOf::<Test>::default()
-					.trade_min_fee(2)
-					.account_storage_upgrade_fe(2);
-
+				let config = GlobalConfigOf::<Test>::default().account_storage_upgrade_fe(2);
 				assert_ok!(AAvatars::update_global_config(
 					RuntimeOrigin::signed(ALICE),
 					config.clone()
@@ -2678,7 +2675,6 @@ mod trading {
 
 	#[test]
 	fn buy_should_work() {
-		let season = Season::default();
 		let price = 310_984;
 		let min_fee = 54_321;
 		let alice_initial_bal = price + min_fee + 20_849;
@@ -2686,15 +2682,17 @@ mod trading {
 		let charlie_initial_bal = MockExistentialDeposit::get() + min_fee + 1357;
 		let total_supply = alice_initial_bal + bob_initial_bal + charlie_initial_bal;
 
+		let season = Season::default().buy_minimum_fee(min_fee);
+		let season_id = 33;
+
 		ExtBuilder::default()
 			.existential_deposit(0)
-			.seasons(&[(SEASON_ID, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone()), (season_id, season.clone())])
 			.balances(&[
 				(ALICE, alice_initial_bal),
 				(BOB, bob_initial_bal),
 				(CHARLIE, charlie_initial_bal),
 			])
-			.trade_min_fee(min_fee)
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance_season_1 = 0;
@@ -2752,22 +2750,22 @@ mod trading {
 				assert_eq!(Accounts::<Test>::get(BOB).stats.trade.sold, 2);
 
 				// check season id
-				let avatar_on_sale = create_avatars(33, ALICE, 1)[0];
+				let avatar_on_sale = create_avatars(season_id, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_on_sale, 369));
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_on_sale));
-				assert_eq!(Treasury::<Test>::get(33), min_fee);
+				assert_eq!(Treasury::<Test>::get(season_id), min_fee);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
 			});
 	}
 
 	#[test]
 	fn buy_fee_should_be_calculated_correctly() {
-		let season = Season::default();
 		let min_fee = 123;
-		let percent_fee = 30;
+		let percent = 30;
 		let mut alice_balance = 999_999;
 		let mut bob_balance = 999_999;
 		let mut treasury_balance = 0;
+		let season = Season::default().buy_minimum_fee(min_fee).buy_percent(percent);
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
@@ -2777,16 +2775,11 @@ mod trading {
 				run_to_block(season.start);
 				let avatar_ids = create_avatars(SEASON_ID, ALICE, 2);
 
-				GlobalConfigs::<Test>::mutate(|cfg| {
-					cfg.trade.min_fee = min_fee;
-					cfg.trade.percent_fee = percent_fee;
-				});
-
-				// when price is much greater (> 30%) than min_fee, percent_fee should be charged
+				// when price is much greater (> 30%) than min_fee, percent should be charged
 				let price = 9_999;
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_ids[0], price));
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[0]));
-				let expected_fee = price * percent_fee as u64 / 100_u64;
+				let expected_fee = price * percent as u64 / 100_u64;
 				bob_balance -= price + expected_fee;
 				alice_balance += price;
 				treasury_balance += expected_fee;

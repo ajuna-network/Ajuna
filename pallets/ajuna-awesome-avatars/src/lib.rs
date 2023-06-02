@@ -210,11 +210,7 @@ pub mod pallet {
 					free_mint_transfer_fee: 1,
 					min_free_mint_transfer: 1,
 				},
-				trade: TradeConfig {
-					open: true,
-					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
-					percent_fee: 1,                                     // 1% of sales price
-				},
+				trade: TradeConfig { open: true },
 				account: AccountConfig {
 					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				},
@@ -605,13 +601,13 @@ pub mod pallet {
 			ensure!(buyer != seller, Error::<T>::AlreadyOwned);
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
-			let trade_fee = trade.min_fee.max(
-				price.saturating_mul(trade.percent_fee.unique_saturated_into()) /
+			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
+			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			let trade_fee = fee.buy_minimum.max(
+				price.saturating_mul(fee.buy_percent.unique_saturated_into()) /
 					MAX_PERCENTAGE.unique_saturated_into(),
 			);
 			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
-
-			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::deposit_into_treasury(&avatar.season_id, trade_fee);
 
 			Self::do_transfer_avatar(&seller, &buyer, &avatar.season_id, &avatar_id)?;

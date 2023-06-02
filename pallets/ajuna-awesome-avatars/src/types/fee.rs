@@ -39,4 +39,6 @@ impl<Balance> MintFees<Balance> {
 pub struct Fee<Balance> {
 	pub mint: MintFees<Balance>,
 	pub transfer_avatar: Balance,
+	pub buy_minimum: Balance,
+	pub buy_percent: u8,
 }

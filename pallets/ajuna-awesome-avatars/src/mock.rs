@@ -204,7 +204,6 @@ pub struct ExtBuilder {
 	organizer: Option<MockAccountId>,
 	seasons: Vec<(SeasonId, Season<MockBlockNumber, MockBalance>)>,
 	mint_cooldown: MockBlockNumber,
-	trade_min_fee: MockBalance,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 	create_nft_collection: bool,
@@ -219,7 +218,6 @@ impl Default for ExtBuilder {
 			organizer: Default::default(),
 			seasons: Default::default(),
 			mint_cooldown: Default::default(),
-			trade_min_fee: Default::default(),
 			balances: Default::default(),
 			free_mints: Default::default(),
 			create_nft_collection: Default::default(),
@@ -252,10 +250,6 @@ impl ExtBuilder {
 	}
 	pub fn free_mints(mut self, free_mints: &[(MockAccountId, MintCount)]) -> Self {
 		self.free_mints = free_mints.to_vec();
-		self
-	}
-	pub fn trade_min_fee(mut self, trade_min_fee: MockBalance) -> Self {
-		self.trade_min_fee = trade_min_fee;
 		self
 	}
 	pub fn create_nft_collection(mut self, create_nft_collection: bool) -> Self {
@@ -298,7 +292,6 @@ impl ExtBuilder {
 				config.forge.open = true;
 				config.trade.open = true;
 				config.mint.cooldown = self.mint_cooldown;
-				config.trade.min_fee = self.trade_min_fee;
 				config.nft_transfer.prepare_fee = self.nft_prepare_fee;
 			});
 
@@ -333,10 +326,6 @@ pub fn run_to_block(n: u64) {
 }
 
 impl GlobalConfigOf<Test> {
-	pub(crate) fn trade_min_fee(mut self, amount: MockBalance) -> Self {
-		self.trade.min_fee = amount;
-		self
-	}
 	pub(crate) fn account_storage_upgrade_fe(mut self, amount: MockBalance) -> Self {
 		self.account.storage_upgrade_fee = amount;
 		self

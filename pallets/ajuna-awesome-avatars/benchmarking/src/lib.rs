@@ -107,6 +107,8 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
 					},
 					transfer_avatar: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+					buy_minimum: 1_000_000_000_u64.unique_saturated_into(),
+					buy_percent: 1,
 				},
 			},
 		);
@@ -331,7 +333,6 @@ benchmarks! {
 		create_avatars::<T>(buyer_name, n- 1)?;
 		create_avatars::<T>(seller_name, n)?;
 
-		let min_fee = GlobalConfigs::<T>::get().trade.min_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
 		let trade_fee = sell_fee / BalanceOf::<T>::unique_saturated_from(100_u8);
 		CurrencyOf::<T>::make_free_balance_be(&buyer, sell_fee + trade_fee);
@@ -431,6 +432,8 @@ benchmarks! {
 					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 				},
 				transfer_avatar: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				buy_minimum: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				buy_percent: u8::MAX,
 			},
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
@@ -454,11 +457,7 @@ benchmarks! {
 				free_mint_transfer_fee: MintCount::MAX,
 				min_free_mint_transfer: MintCount::MAX,
 			},
-			trade: TradeConfig {
-				open: true,
-				min_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-				percent_fee: u8::MAX,
-			},
+			trade: TradeConfig { open: true },
 			account: AccountConfig {
 				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},

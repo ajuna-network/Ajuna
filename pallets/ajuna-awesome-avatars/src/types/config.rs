@@ -91,10 +91,8 @@ pub struct TransferConfig {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct TradeConfig<Balance> {
+pub struct TradeConfig {
 	pub open: bool,
-	pub min_fee: Balance,
-	pub percent_fee: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
@@ -113,7 +111,7 @@ pub struct GlobalConfig<Balance, BlockNumber> {
 	pub mint: MintConfig<BlockNumber>,
 	pub forge: ForgeConfig,
 	pub transfer: TransferConfig,
-	pub trade: TradeConfig<Balance>,
+	pub trade: TradeConfig,
 	pub account: AccountConfig<Balance>,
 	pub nft_transfer: NftTransferConfig<Balance>,
 }

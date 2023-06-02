@@ -238,7 +238,12 @@ mod test {
 				per_period: 10,
 				periods: 12,
 				trade_filters: BoundedVec::default(),
-				fee: Fee { mint: MintFees { one: 1, three: 2, six: 3 }, transfer_avatar: 0 },
+				fee: Fee {
+					mint: MintFees { one: 1, three: 2, six: 3 },
+					transfer_avatar: Default::default(),
+					buy_minimum: Default::default(),
+					buy_percent: Default::default(),
+				},
 			}
 		}
 	}
@@ -310,6 +315,14 @@ mod test {
 		}
 		pub fn transfer_avatar_fee(mut self, fee: MockBalance) -> Self {
 			self.fee.transfer_avatar = fee;
+			self
+		}
+		pub fn buy_minimum_fee(mut self, fee: MockBalance) -> Self {
+			self.fee.buy_minimum = fee;
+			self
+		}
+		pub fn buy_percent(mut self, percent: u8) -> Self {
+			self.fee.buy_percent = percent;
 			self
 		}
 	}
