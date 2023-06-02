@@ -17,9 +17,11 @@
 mod account;
 mod avatar;
 mod config;
+mod fee;
 mod season;
 
 pub use account::*;
 pub use avatar::*;
 pub use config::*;
+pub use fee::*;
 pub use season::*;

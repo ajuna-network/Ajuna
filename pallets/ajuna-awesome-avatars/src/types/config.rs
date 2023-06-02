@@ -17,6 +17,8 @@
 use crate::types::AvatarVersion;
 use frame_support::pallet_prelude::*;
 
+pub type MintCount = u16;
+
 /// Number of avatars to be minted.
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub enum MintPackSize {
@@ -35,24 +37,6 @@ impl MintPackSize {
 			MintPackSize::One => 1,
 			MintPackSize::Three => 3,
 			MintPackSize::Six => 6,
-		}
-	}
-}
-
-/// Minting fee per pack of avatars.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct MintFees<Balance> {
-	pub one: Balance,
-	pub three: Balance,
-	pub six: Balance,
-}
-
-impl<Balance> MintFees<Balance> {
-	pub fn fee_for(self, mint_count: &MintPackSize) -> Balance {
-		match mint_count {
-			MintPackSize::One => self.one,
-			MintPackSize::Three => self.three,
-			MintPackSize::Six => self.six,
 		}
 	}
 }
@@ -87,12 +71,9 @@ pub struct MintOption {
 	pub pack_size: MintPackSize,
 }
 
-pub type MintCount = u16;
-
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct MintConfig<Balance, BlockNumber> {
+pub struct MintConfig<BlockNumber> {
 	pub open: bool,
-	pub fees: MintFees<Balance>,
 	pub cooldown: BlockNumber,
 	pub free_mint_fee_multiplier: MintCount,
 }
@@ -103,37 +84,27 @@ pub struct ForgeConfig {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct TransferConfig<Balance> {
+pub struct TransferConfig {
 	pub open: bool,
 	pub free_mint_transfer_fee: MintCount,
 	pub min_free_mint_transfer: MintCount,
-	pub avatar_transfer_fee: Balance,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct TradeConfig<Balance> {
+pub struct TradeConfig {
 	pub open: bool,
-	pub min_fee: Balance,
-	pub percent_fee: u8,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct AccountConfig<Balance> {
-	pub storage_upgrade_fee: Balance,
-}
-
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct NftTransferConfig<Balance> {
+pub struct NftTransferConfig {
 	pub open: bool,
-	pub prepare_fee: Balance,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub struct GlobalConfig<Balance, BlockNumber> {
-	pub mint: MintConfig<Balance, BlockNumber>,
+pub struct GlobalConfig<BlockNumber> {
+	pub mint: MintConfig<BlockNumber>,
 	pub forge: ForgeConfig,
-	pub transfer: TransferConfig<Balance>,
-	pub trade: TradeConfig<Balance>,
-	pub account: AccountConfig<Balance>,
-	pub nft_transfer: NftTransferConfig<Balance>,
+	pub transfer: TransferConfig,
+	pub trade: TradeConfig,
+	pub nft_transfer: NftTransferConfig,
 }

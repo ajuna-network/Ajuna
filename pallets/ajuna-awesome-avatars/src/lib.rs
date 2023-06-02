@@ -90,11 +90,11 @@ pub mod pallet {
 	use sp_std::collections::vec_deque::VecDeque;
 
 	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
+	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>, BalanceOf<T>>;
 	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
-	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
+	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BlockNumberFor<T>>;
 	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
 		AccountIdOf<T>,
 		AvatarIdOf<T>,
@@ -203,35 +203,15 @@ pub mod pallet {
 				max_tier_avatars: Default::default(),
 			});
 			GlobalConfigs::<T>::put(GlobalConfig {
-				mint: MintConfig {
-					open: true,
-					fees: MintFees {
-						one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
-						three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
-						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
-					},
-					cooldown: 5_u8.into(),
-					free_mint_fee_multiplier: 1,
-				},
+				mint: MintConfig { open: true, cooldown: 5_u8.into(), free_mint_fee_multiplier: 1 },
 				forge: ForgeConfig { open: true },
 				transfer: TransferConfig {
 					open: true,
 					free_mint_transfer_fee: 1,
 					min_free_mint_transfer: 1,
-					avatar_transfer_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				},
-				trade: TradeConfig {
-					open: true,
-					min_fee: 1_000_000_000_u64.unique_saturated_into(), // 0.01 BAJU
-					percent_fee: 1,                                     // 1% of sales price
-				},
-				account: AccountConfig {
-					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
-				},
-				nft_transfer: NftTransferConfig {
-					open: true,
-					prepare_fee: 5_000_000_000_000_u64.unique_saturated_into(), // 5 BAJU
-				},
+				trade: TradeConfig { open: true },
+				nft_transfer: NftTransferConfig { open: true },
 			});
 		}
 	}
@@ -332,8 +312,6 @@ pub mod pallet {
 		BaseProbTooHigh,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
-		/// Attempt to set fees lower than the existential deposit amount.
-		TooLowFees,
 		/// Minting is not available at the moment.
 		MintClosed,
 		/// Forging is not available at the moment.
@@ -506,9 +484,9 @@ pub mod pallet {
 			Self::ensure_unprepared(&avatar_id)?;
 
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
-			let fee = transfer.avatar_transfer_fee;
-			T::Currency::withdraw(&from, fee, WithdrawReasons::FEE, AllowDeath)?;
-			Self::deposit_into_treasury(&avatar.season_id, fee);
+			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			T::Currency::withdraw(&from, fee.transfer_avatar, WithdrawReasons::FEE, AllowDeath)?;
+			Self::deposit_into_treasury(&avatar.season_id, fee.transfer_avatar);
 
 			Self::do_transfer_avatar(&from, &to, &avatar.season_id, &avatar_id)?;
 			Self::deposit_event(Event::AvatarTransferred { from, to, avatar_id });
@@ -617,13 +595,13 @@ pub mod pallet {
 			ensure!(buyer != seller, Error::<T>::AlreadyOwned);
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
-			let trade_fee = trade.min_fee.max(
-				price.saturating_mul(trade.percent_fee.unique_saturated_into()) /
+			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
+			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			let trade_fee = fee.buy_minimum.max(
+				price.saturating_mul(fee.buy_percent.unique_saturated_into()) /
 					MAX_PERCENTAGE.unique_saturated_into(),
 			);
 			T::Currency::withdraw(&buyer, trade_fee, WithdrawReasons::FEE, AllowDeath)?;
-
-			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
 			Self::deposit_into_treasury(&avatar.season_id, trade_fee);
 
 			Self::do_transfer_avatar(&seller, &buyer, &avatar.season_id, &avatar_id)?;
@@ -648,11 +626,9 @@ pub mod pallet {
 			let storage_tier = Accounts::<T>::get(&player).storage_tier;
 			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
-			let upgrade_fee = GlobalConfigs::<T>::get().account.storage_upgrade_fee;
-			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
-
-			let season_id = CurrentSeasonStatus::<T>::get().season_id;
-			Self::deposit_into_treasury(&season_id, upgrade_fee);
+			let (season_id, Season { fee, .. }) = Self::current_season_with_id()?;
+			T::Currency::withdraw(&player, fee.upgrade_storage, WithdrawReasons::FEE, AllowDeath)?;
+			Self::deposit_into_treasury(&season_id, fee.upgrade_storage);
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
 			Self::deposit_event(Event::StorageTierUpgraded);
@@ -768,19 +744,6 @@ pub mod pallet {
 			new_global_config: GlobalConfigOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			ensure!(
-				[
-					new_global_config.mint.fees.one,
-					new_global_config.mint.fees.three,
-					new_global_config.mint.fees.six,
-					new_global_config.transfer.avatar_transfer_fee,
-					new_global_config.trade.min_fee,
-					new_global_config.account.storage_upgrade_fee
-				]
-				.iter()
-				.all(|x| x > &T::Currency::minimum_balance()),
-				Error::<T>::TooLowFees
-			);
 			GlobalConfigs::<T>::put(&new_global_config);
 			Self::deposit_event(Event::UpdatedGlobalConfig(new_global_config));
 			Ok(())
@@ -945,15 +908,15 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
 
 			let service_account = ServiceAccount::<T>::get().ok_or(Error::<T>::NoServiceAccount)?;
-			let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
-			T::Currency::transfer(&player, &service_account, prepare_fee, AllowDeath)?;
+			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			T::Currency::transfer(&player, &service_account, fee.prepare_avatar, AllowDeath)?;
 
 			Preparation::<T>::insert(avatar_id, IpfsUrl::default());
 			Self::deposit_event(Event::PreparedAvatar { avatar_id });
@@ -1080,9 +1043,10 @@ pub mod pallet {
 			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
+			let (_, Season { fee, .. }) = Self::current_season_with_id()?;
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = mint.fees.fee_for(&mint_option.pack_size);
+					let fee = fee.mint.fee_for(&mint_option.pack_size);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 					Self::deposit_into_treasury(&season_id, fee);
 				},
@@ -1200,7 +1164,7 @@ pub mod pallet {
 					if current_status.season_id > 1 {
 						current_status.season_id.saturating_dec();
 					}
-					Seasons::<T>::get(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
+					Self::seasons(&current_status.season_id)?
 				},
 			};
 			Ok((current_status.season_id, season))
@@ -1236,9 +1200,10 @@ pub mod pallet {
 			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
 
 			let mint_count = mint_option.pack_size.as_mint_count();
+			let (_, Season { fee, .. }) = Self::current_season_with_id()?;
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = mint.fees.fee_for(&mint_option.pack_size);
+					let fee = fee.mint.fee_for(&mint_option.pack_size);
 					T::Currency::free_balance(player)
 						.checked_sub(&fee)
 						.ok_or(Error::<T>::InsufficientBalance)?;
@@ -1500,6 +1465,11 @@ pub mod pallet {
 		fn avatars(avatar_id: &AvatarIdOf<T>) -> Result<(T::AccountId, Avatar), DispatchError> {
 			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
 			Ok((owner, avatar))
+		}
+
+		fn seasons(season_id: &SeasonId) -> Result<SeasonOf<T>, DispatchError> {
+			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			Ok(season)
 		}
 	}
 }

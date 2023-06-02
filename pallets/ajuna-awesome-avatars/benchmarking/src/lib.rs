@@ -100,6 +100,18 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				per_period: T::BlockNumber::from(10_u32),
 				periods: 12,
 				trade_filters: BoundedVec::default(),
+				fee: Fee {
+					mint: MintFees {
+						one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
+						three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
+						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
+					},
+					transfer_avatar: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+					buy_minimum: 1_000_000_000_u64.unique_saturated_into(),
+					buy_percent: 1,
+					upgrade_storage: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+					prepare_avatar: 5_000_000_000_000_u64.unique_saturated_into(),  // 5 BAJU
+				},
 			},
 		);
 	}
@@ -172,8 +184,8 @@ fn create_service_account_and_prepare_avatar<T: Config>(
 	avatar_id: &AvatarIdOf<T>,
 ) -> Result<T::AccountId, DispatchError> {
 	let service_account = create_service_account::<T>();
-	let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
-	CurrencyOf::<T>::make_free_balance_be(player, prepare_fee);
+	let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
+	CurrencyOf::<T>::make_free_balance_be(player, season.fee.prepare_avatar);
 	AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), *avatar_id)?;
 	Ok(service_account)
 }
@@ -208,7 +220,8 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		let mint_fee = GlobalConfigs::<T>::get().mint.fees.fee_for(&MintPackSize::Six);
+		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
+		let mint_fee = season.fee.mint.fee_for(&MintPackSize::Six);
 		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
 		let mint_option = MintOption { payment: MintPayment::Normal, pack_size: MintPackSize::Six,
@@ -256,8 +269,8 @@ benchmarks! {
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&from, season_id)[n as usize - 1];
 
-		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
-		<T as AvatarsConfig>::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
+		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&from, fee.transfer_avatar);
 	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id })
@@ -272,8 +285,8 @@ benchmarks! {
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&organizer, season_id)[n as usize - 1];
 
-		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
-		CurrencyOf::<T>::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
+		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&organizer, fee.transfer_avatar);
 	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id })
@@ -322,7 +335,6 @@ benchmarks! {
 		create_avatars::<T>(buyer_name, n- 1)?;
 		create_avatars::<T>(seller_name, n)?;
 
-		let min_fee = GlobalConfigs::<T>::get().trade.min_fee;
 		let sell_fee = BalanceOf::<T>::unique_saturated_from(u64::MAX / 2);
 		let trade_fee = sell_fee / BalanceOf::<T>::unique_saturated_from(100_u8);
 		CurrencyOf::<T>::make_free_balance_be(&buyer, sell_fee + trade_fee);
@@ -337,9 +349,10 @@ benchmarks! {
 	}
 
 	upgrade_storage {
+		create_seasons::<T>(1)?;
 		let player = account::<T>("player");
-		let upgrade_fee = GlobalConfigs::<T>::get().account.storage_upgrade_fee;
-		CurrencyOf::<T>::make_free_balance_be(&player, upgrade_fee);
+		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&player, season.fee.upgrade_storage);
 	}: _(RawOrigin::Signed(player))
 	verify {
 		assert_last_event::<T>(Event::StorageTierUpgraded)
@@ -415,6 +428,18 @@ benchmarks! {
 			per_period: T::BlockNumber::from(1_u32),
 			periods: u16::MAX,
 			trade_filters: BoundedVec::default(),
+			fee: Fee {
+				mint: MintFees {
+					one: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+					three: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				},
+				transfer_avatar: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				buy_minimum: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				buy_percent: u8::MAX,
+				upgrade_storage: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				prepare_avatar: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+			},
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {
@@ -428,11 +453,6 @@ benchmarks! {
 		let config = GlobalConfig {
 			mint: MintConfig {
 				open: true,
-				fees: MintFees {
-					one: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-					three: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-				},
 				cooldown: T::BlockNumber::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
 			},
@@ -441,20 +461,9 @@ benchmarks! {
 				open:true,
 				free_mint_transfer_fee: MintCount::MAX,
 				min_free_mint_transfer: MintCount::MAX,
-				avatar_transfer_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},
-			trade: TradeConfig {
-				open: true,
-				min_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-				percent_fee: u8::MAX,
-			},
-			account: AccountConfig {
-				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-			},
-			nft_transfer: NftTransferConfig {
-				open: true,
-				prepare_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-			},
+			trade: TradeConfig { open: true },
+			nft_transfer: NftTransferConfig { open: true },
 		};
 	}: _(RawOrigin::Signed(organizer), config.clone())
 	verify {
@@ -552,8 +561,8 @@ benchmarks! {
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let _ = create_service_account::<T>();
-		let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
-		CurrencyOf::<T>::make_free_balance_be(&player, prepare_fee);
+		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&player, fee.prepare_avatar);
 	}: _(RawOrigin::Signed(player), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::<T>::PreparedAvatar { avatar_id })

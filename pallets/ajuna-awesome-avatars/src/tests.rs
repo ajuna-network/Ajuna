@@ -170,13 +170,15 @@ mod treasury {
 
 	#[test]
 	fn claim_treasury_works() {
-		let season_1 = Season::default().early_start(5).start(10).end(15);
-		let mint_fees = MintFees { one: 12, three: 34, six: 56 };
+		let season_1 = Season::default().early_start(5).start(10).end(15).mint_fee(MintFees {
+			one: 12,
+			three: 34,
+			six: 56,
+		});
 		let initial_balance = MockExistentialDeposit::get() + 999_999;
 		let total_supply = initial_balance;
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season_1.clone())])
-			.mint_fees(mint_fees)
 			.balances(&[(BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
@@ -766,14 +768,7 @@ mod config {
 			.organizer(ALICE)
 			.build()
 			.execute_with(|| {
-				let config = GlobalConfigOf::<Test>::default()
-					.mint_fees_one(2)
-					.mint_fees_three(2)
-					.mint_fees_six(2)
-					.transfer_avatar_transfer_fee(2)
-					.trade_min_fee(2)
-					.account_storage_upgrade_fe(2);
-
+				let config = GlobalConfigOf::<Test>::default();
 				assert_ok!(AAvatars::update_global_config(
 					RuntimeOrigin::signed(ALICE),
 					config.clone()
@@ -795,36 +790,6 @@ mod config {
 				DispatchError::BadOrigin
 			);
 		});
-	}
-
-	#[test]
-	fn update_global_config_should_reject_fees_lower_than_existential_deposit() {
-		ExtBuilder::default()
-			.existential_deposit(333)
-			.organizer(CHARLIE)
-			.build()
-			.execute_with(|| {
-				for config in [
-					GlobalConfigOf::<Test>::default().mint_fees_one(12),
-					GlobalConfigOf::<Test>::default().mint_fees_three(34),
-					GlobalConfigOf::<Test>::default().mint_fees_six(56),
-					GlobalConfigOf::<Test>::default().transfer_avatar_transfer_fee(78),
-					GlobalConfigOf::<Test>::default().trade_min_fee(91),
-					GlobalConfigOf::<Test>::default().account_storage_upgrade_fe(99),
-					GlobalConfigOf::<Test>::default()
-						.mint_fees_one(999)
-						.mint_fees_three(999)
-						.mint_fees_six(1)
-						.transfer_avatar_transfer_fee(999)
-						.trade_min_fee(2)
-						.account_storage_upgrade_fe(999),
-				] {
-					assert_noop!(
-						AAvatars::update_global_config(RuntimeOrigin::signed(CHARLIE), config),
-						Error::<Test>::TooLowFees
-					);
-				}
-			});
 	}
 }
 
@@ -851,6 +816,7 @@ mod minting {
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
 			.free_mints(&[(ALICE, 42)])
+			.balances(&[(ALICE, 333), (BOB, 333), (CHARLIE, 333)])
 			.build()
 			.execute_with(|| {
 				// Outside a season, both mints are unavailable.
@@ -959,11 +925,17 @@ mod minting {
 
 	#[test]
 	fn mint_should_work() {
-		let season_1 = Season::default().early_start(3).start(5).end(20).max_components(7);
+		let fees = MintFees { one: 12, three: 34, six: 56 };
+
+		let season_1 = Season::default()
+			.early_start(3)
+			.start(5)
+			.end(20)
+			.max_components(7)
+			.mint_fee(fees.clone());
 		let season_2 = Season::default().early_start(23).start(35).end(40).max_components(17);
 
 		let expected_nonce_increment = 1 as MockIndex;
-		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
 
 		let mut initial_balance = fees.one + fees.three + fees.six + MockExistentialDeposit::get();
@@ -972,7 +944,6 @@ mod minting {
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season_1.clone()), (2, season_2)])
-			.mint_fees(fees.clone())
 			.mint_cooldown(mint_cooldown)
 			.balances(&[(ALICE, initial_balance)])
 			.free_mints(&[(ALICE, initial_free_mints)])
@@ -1394,7 +1365,6 @@ mod minting {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.mint_fees(MintFees { one: 1, three: 2, six: 3 })
 			.seasons(&[(SEASON_ID, season.clone())])
 			.build()
 			.execute_with(|| {
@@ -1550,7 +1520,8 @@ mod forging {
 			.max_components(8)
 			.max_variations(6)
 			.min_sacrifices(1)
-			.max_sacrifices(4);
+			.max_sacrifices(4)
+			.mint_fee(MintFees { one: 1, three: 3, six: 6 });
 
 		let mut forged_count = 0;
 		let mut assert_dna =
@@ -1618,7 +1589,6 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
-			.mint_fees(MintFees { one: 1, three: 3, six: 6 })
 			.balances(&[(BOB, MockBalance::max_value())])
 			.free_mints(&[(BOB, 0)])
 			.build()
@@ -2230,7 +2200,6 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, initial_balance), (BOB, 6 + initial_balance)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -2383,22 +2352,27 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_works() {
-		let avatar_transfer_fee = 888;
-		let initial_balance = MockExistentialDeposit::get() + avatar_transfer_fee;
+		let season_id_1 = 123;
+		let season_id_2 = 456;
+
+		let avatar_transfer_fee_1 = 888;
+		let avatar_transfer_fee_2 = 369;
+
+		let initial_balance = MockExistentialDeposit::get() + avatar_transfer_fee_1;
 		let total_supply = initial_balance;
 
 		ExtBuilder::default()
+			.seasons(&[
+				(season_id_1, Season::default().transfer_avatar_fee(avatar_transfer_fee_1)),
+				(season_id_2, Season::default().transfer_avatar_fee(avatar_transfer_fee_2)),
+			])
 			.balances(&[(ALICE, initial_balance)])
-			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
 				let treasury_account = &AAvatars::treasury_account_id();
 				let treasury_balance = 0;
 				assert_eq!(Balances::free_balance(treasury_account), treasury_balance);
 				assert_eq!(Balances::total_issuance(), total_supply);
-
-				let season_id_1 = 123;
-				let season_id_2 = 456;
 
 				let alice_avatar_ids = create_avatars(season_id_1, ALICE, 3);
 				let bob_avatar_ids = create_avatars(season_id_2, BOB, 6);
@@ -2422,23 +2396,24 @@ mod transferring {
 				assert_eq!(Owners::<Test>::get(BOB, season_id_2), bob_avatar_ids);
 
 				// balance checks
-				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee);
-				assert_eq!(Treasury::<Test>::get(season_id_1), avatar_transfer_fee);
+				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee_1);
+				assert_eq!(Treasury::<Test>::get(season_id_1), avatar_transfer_fee_1);
 				assert_eq!(
 					Balances::free_balance(treasury_account),
-					treasury_balance + avatar_transfer_fee
+					treasury_balance + avatar_transfer_fee_1
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// Organizer can transfer even when trade is closed.
 				GlobalConfigs::<Test>::mutate(|config| config.trade.open = false);
-				Balances::make_free_balance_be(&BOB, avatar_transfer_fee);
+				Balances::make_free_balance_be(&BOB, avatar_transfer_fee_2);
 				assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), BOB));
 				assert_ok!(AAvatars::transfer_avatar(
 					RuntimeOrigin::signed(BOB),
 					CHARLIE,
 					bob_avatar_ids[0]
 				));
+				assert_eq!(Balances::free_balance(BOB), 0);
 				assert_eq!(Owners::<Test>::get(BOB, season_id_2).len(), 6 - 1);
 				assert_eq!(Owners::<Test>::get(CHARLIE, season_id_2).len(), 1);
 			});
@@ -2459,9 +2434,9 @@ mod transferring {
 	fn transfer_avatar_works_on_transfer_closed_with_organizer() {
 		let avatar_transfer_fee = 135;
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default().transfer_avatar_fee(avatar_transfer_fee))])
 			.organizer(BOB)
 			.balances(&[(BOB, MockExistentialDeposit::get() + avatar_transfer_fee)])
-			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|config| config.transfer.open = false);
@@ -2522,8 +2497,8 @@ mod transferring {
 	fn transfer_avatar_rejects_on_max_ownership() {
 		let avatar_transfer_fee = 369;
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default().transfer_avatar_fee(avatar_transfer_fee))])
 			.balances(&[(ALICE, MockExistentialDeposit::get() + avatar_transfer_fee)])
-			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
 				Accounts::<Test>::mutate(BOB, |info| info.storage_tier = StorageTier::Three);
@@ -2700,7 +2675,6 @@ mod trading {
 
 	#[test]
 	fn buy_should_work() {
-		let season = Season::default();
 		let price = 310_984;
 		let min_fee = 54_321;
 		let alice_initial_bal = price + min_fee + 20_849;
@@ -2708,15 +2682,17 @@ mod trading {
 		let charlie_initial_bal = MockExistentialDeposit::get() + min_fee + 1357;
 		let total_supply = alice_initial_bal + bob_initial_bal + charlie_initial_bal;
 
+		let season = Season::default().buy_minimum_fee(min_fee);
+		let season_id = 33;
+
 		ExtBuilder::default()
 			.existential_deposit(0)
-			.seasons(&[(SEASON_ID, season.clone())])
+			.seasons(&[(SEASON_ID, season.clone()), (season_id, season.clone())])
 			.balances(&[
 				(ALICE, alice_initial_bal),
 				(BOB, bob_initial_bal),
 				(CHARLIE, charlie_initial_bal),
 			])
-			.trade_min_fee(min_fee)
 			.build()
 			.execute_with(|| {
 				let mut treasury_balance_season_1 = 0;
@@ -2774,22 +2750,22 @@ mod trading {
 				assert_eq!(Accounts::<Test>::get(BOB).stats.trade.sold, 2);
 
 				// check season id
-				let avatar_on_sale = create_avatars(33, ALICE, 1)[0];
+				let avatar_on_sale = create_avatars(season_id, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_on_sale, 369));
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_on_sale));
-				assert_eq!(Treasury::<Test>::get(33), min_fee);
+				assert_eq!(Treasury::<Test>::get(season_id), min_fee);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
 			});
 	}
 
 	#[test]
 	fn buy_fee_should_be_calculated_correctly() {
-		let season = Season::default();
 		let min_fee = 123;
-		let percent_fee = 30;
+		let percent = 30;
 		let mut alice_balance = 999_999;
 		let mut bob_balance = 999_999;
 		let mut treasury_balance = 0;
+		let season = Season::default().buy_minimum_fee(min_fee).buy_percent(percent);
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
@@ -2799,16 +2775,11 @@ mod trading {
 				run_to_block(season.start);
 				let avatar_ids = create_avatars(SEASON_ID, ALICE, 2);
 
-				GlobalConfigs::<Test>::mutate(|cfg| {
-					cfg.trade.min_fee = min_fee;
-					cfg.trade.percent_fee = percent_fee;
-				});
-
-				// when price is much greater (> 30%) than min_fee, percent_fee should be charged
+				// when price is much greater (> 30%) than min_fee, percent should be charged
 				let price = 9_999;
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(ALICE), avatar_ids[0], price));
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(BOB), avatar_ids[0]));
-				let expected_fee = price * percent_fee as u64 / 100_u64;
+				let expected_fee = price * percent as u64 / 100_u64;
 				bob_balance -= price + expected_fee;
 				alice_balance += price;
 				treasury_balance += expected_fee;
@@ -2914,13 +2885,13 @@ mod account {
 		let alice_balance = num_storage_tiers as MockBalance * upgrade_fee;
 		let mut treasury_balance = 0;
 		let total_supply = treasury_balance + alice_balance;
+		let season = Season::default().upgrade_storage_fee(upgrade_fee);
 
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season)])
 			.balances(&[(ALICE, alice_balance)])
 			.build()
 			.execute_with(|| {
-				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
-
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier, StorageTier::One);
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier as isize, 25);
 				assert_eq!(
@@ -2971,18 +2942,20 @@ mod account {
 
 	#[test]
 	fn upgrade_storage_should_reject_insufficient_balance() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_noop!(
-				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
-				pallet_balances::Error::<Test>::InsufficientBalance
-			);
-		});
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default().upgrade_storage_fee(1))])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
+					pallet_balances::Error::<Test>::InsufficientBalance
+				);
+			});
 	}
 
 	#[test]
 	fn upgrade_storage_should_reject_fully_upgraded_storage() {
 		ExtBuilder::default().build().execute_with(|| {
-			GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = 0);
 			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Max);
 
 			assert_noop!(
@@ -3171,6 +3144,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_lock_already_locked_avatar() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3212,6 +3186,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_lock_prepared_avatar_with_empty_url() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3240,6 +3215,7 @@ mod nft_transfer {
 		let value_limit = 3;
 
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.value_limit(value_limit)
@@ -3260,6 +3236,7 @@ mod nft_transfer {
 	#[test]
 	fn can_unlock_avatar_successfully() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3284,6 +3261,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_unlock_when_nft_transfer_is_closed() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, MockExistentialDeposit::get())])
 			.create_nft_collection(true)
 			.build()
@@ -3308,6 +3286,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_unlock_unowned_avatar() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 5_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3426,7 +3405,7 @@ mod ipfs {
 		let initial_balance = prepare_fee + MockExistentialDeposit::get();
 
 		ExtBuilder::default()
-			.nft_prepare_fee(prepare_fee)
+			.seasons(&[(SEASON_ID, Season::default().prepare_avatar_fee(prepare_fee))])
 			.balances(&[(ALICE, initial_balance)])
 			.build()
 			.execute_with(|| {
@@ -3544,7 +3523,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_insufficient_balance() {
 		ExtBuilder::default()
-			.nft_prepare_fee(333)
+			.seasons(&[(SEASON_ID, Season::default().prepare_avatar_fee(333))])
 			.balances(&[(ALICE, MockExistentialDeposit::get())])
 			.build()
 			.execute_with(|| {
@@ -3559,16 +3538,19 @@ mod ipfs {
 
 	#[test]
 	fn unprepare_avatar_works() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			assert_ok!(AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			assert!(!Preparation::<Test>::contains_key(avatar_id));
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::UnpreparedAvatar { avatar_id },
-			));
-		});
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert!(!Preparation::<Test>::contains_key(avatar_id));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::UnpreparedAvatar { avatar_id },
+				));
+			});
 	}
 
 	#[test]
@@ -3617,50 +3599,60 @@ mod ipfs {
 
 	#[test]
 	fn prepare_ipfs_works() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			ServiceAccount::<Test>::put(BOB);
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				ServiceAccount::<Test>::put(BOB);
 
-			let ipfs_url = b"ipfs://{CID}/{optional path to resource}".to_vec();
-			let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
-			assert_ok!(AAvatars::prepare_ipfs(
-				RuntimeOrigin::signed(BOB),
-				avatar_id,
-				ipfs_url.clone()
-			));
-			assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::PreparedIpfsUrl { url: ipfs_url },
-			));
+				let ipfs_url = b"ipfs://{CID}/{optional path to resource}".to_vec();
+				let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(BOB),
+					avatar_id,
+					ipfs_url.clone()
+				));
+				assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::PreparedIpfsUrl { url: ipfs_url },
+				));
 
-			let ipfs_url = b"ipfs://123".to_vec();
-			let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
-			assert_ok!(AAvatars::prepare_ipfs(
-				RuntimeOrigin::signed(BOB),
-				avatar_id,
-				ipfs_url.clone()
-			));
-			assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::PreparedIpfsUrl { url: ipfs_url },
-			));
-		});
+				let ipfs_url = b"ipfs://123".to_vec();
+				let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(BOB),
+					avatar_id,
+					ipfs_url.clone()
+				));
+				assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::PreparedIpfsUrl { url: ipfs_url },
+				));
+			});
 	}
 
 	#[test]
 	fn prepare_ipfs_rejects_empty_url() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			ServiceAccount::<Test>::put(BOB);
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				ServiceAccount::<Test>::put(BOB);
 
-			assert_noop!(
-				AAvatars::prepare_ipfs(RuntimeOrigin::signed(BOB), avatar_id, IpfsUrl::default()),
-				Error::<Test>::EmptyIpfsUrl
-			);
-		});
+				assert_noop!(
+					AAvatars::prepare_ipfs(
+						RuntimeOrigin::signed(BOB),
+						avatar_id,
+						IpfsUrl::default()
+					),
+					Error::<Test>::EmptyIpfsUrl
+				);
+			});
 	}
 }
