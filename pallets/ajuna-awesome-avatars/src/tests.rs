@@ -768,7 +768,7 @@ mod config {
 			.organizer(ALICE)
 			.build()
 			.execute_with(|| {
-				let config = GlobalConfigOf::<Test>::default().account_storage_upgrade_fe(2);
+				let config = GlobalConfigOf::<Test>::default();
 				assert_ok!(AAvatars::update_global_config(
 					RuntimeOrigin::signed(ALICE),
 					config.clone()
@@ -2885,13 +2885,13 @@ mod account {
 		let alice_balance = num_storage_tiers as MockBalance * upgrade_fee;
 		let mut treasury_balance = 0;
 		let total_supply = treasury_balance + alice_balance;
+		let season = Season::default().upgrade_storage_fee(upgrade_fee);
 
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season)])
 			.balances(&[(ALICE, alice_balance)])
 			.build()
 			.execute_with(|| {
-				GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = upgrade_fee);
-
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier, StorageTier::One);
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier as isize, 25);
 				assert_eq!(
@@ -2942,18 +2942,20 @@ mod account {
 
 	#[test]
 	fn upgrade_storage_should_reject_insufficient_balance() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_noop!(
-				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
-				pallet_balances::Error::<Test>::InsufficientBalance
-			);
-		});
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default().upgrade_storage_fee(1))])
+			.build()
+			.execute_with(|| {
+				assert_noop!(
+					AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
+					pallet_balances::Error::<Test>::InsufficientBalance
+				);
+			});
 	}
 
 	#[test]
 	fn upgrade_storage_should_reject_fully_upgraded_storage() {
 		ExtBuilder::default().build().execute_with(|| {
-			GlobalConfigs::<Test>::mutate(|cfg| cfg.account.storage_upgrade_fee = 0);
 			Accounts::<Test>::mutate(ALICE, |account| account.storage_tier = StorageTier::Max);
 
 			assert_noop!(

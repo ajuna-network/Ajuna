@@ -41,4 +41,5 @@ pub struct Fee<Balance> {
 	pub transfer_avatar: Balance,
 	pub buy_minimum: Balance,
 	pub buy_percent: u8,
+	pub upgrade_storage: Balance,
 }

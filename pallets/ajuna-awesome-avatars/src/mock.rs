@@ -324,10 +324,3 @@ pub fn run_to_block(n: u64) {
 		AAvatars::on_initialize(System::block_number());
 	}
 }
-
-impl GlobalConfigOf<Test> {
-	pub(crate) fn account_storage_upgrade_fe(mut self, amount: MockBalance) -> Self {
-		self.account.storage_upgrade_fee = amount;
-		self
-	}
-}

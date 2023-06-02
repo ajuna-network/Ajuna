@@ -211,9 +211,6 @@ pub mod pallet {
 					min_free_mint_transfer: 1,
 				},
 				trade: TradeConfig { open: true },
-				account: AccountConfig {
-					storage_upgrade_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
-				},
 				nft_transfer: NftTransferConfig {
 					open: true,
 					prepare_fee: 5_000_000_000_000_u64.unique_saturated_into(), // 5 BAJU
@@ -632,11 +629,9 @@ pub mod pallet {
 			let storage_tier = Accounts::<T>::get(&player).storage_tier;
 			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
-			let upgrade_fee = GlobalConfigs::<T>::get().account.storage_upgrade_fee;
-			T::Currency::withdraw(&player, upgrade_fee, WithdrawReasons::FEE, AllowDeath)?;
-
-			let season_id = CurrentSeasonStatus::<T>::get().season_id;
-			Self::deposit_into_treasury(&season_id, upgrade_fee);
+			let (season_id, Season { fee, .. }) = Self::current_season_with_id()?;
+			T::Currency::withdraw(&player, fee.upgrade_storage, WithdrawReasons::FEE, AllowDeath)?;
+			Self::deposit_into_treasury(&season_id, fee.upgrade_storage);
 
 			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
 			Self::deposit_event(Event::StorageTierUpgraded);

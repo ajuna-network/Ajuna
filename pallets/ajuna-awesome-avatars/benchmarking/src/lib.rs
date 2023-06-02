@@ -109,6 +109,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 					transfer_avatar: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 					buy_minimum: 1_000_000_000_u64.unique_saturated_into(),
 					buy_percent: 1,
+					upgrade_storage: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				},
 			},
 		);
@@ -347,9 +348,10 @@ benchmarks! {
 	}
 
 	upgrade_storage {
+		create_seasons::<T>(1)?;
 		let player = account::<T>("player");
-		let upgrade_fee = GlobalConfigs::<T>::get().account.storage_upgrade_fee;
-		CurrencyOf::<T>::make_free_balance_be(&player, upgrade_fee);
+		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&player, season.fee.upgrade_storage);
 	}: _(RawOrigin::Signed(player))
 	verify {
 		assert_last_event::<T>(Event::StorageTierUpgraded)
@@ -434,6 +436,7 @@ benchmarks! {
 				transfer_avatar: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 				buy_minimum: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 				buy_percent: u8::MAX,
+				upgrade_storage: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
@@ -458,9 +461,6 @@ benchmarks! {
 				min_free_mint_transfer: MintCount::MAX,
 			},
 			trade: TradeConfig { open: true },
-			account: AccountConfig {
-				storage_upgrade_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-			},
 			nft_transfer: NftTransferConfig {
 				open: true,
 				prepare_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
