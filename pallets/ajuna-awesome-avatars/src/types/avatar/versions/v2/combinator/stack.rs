@@ -431,15 +431,12 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[4] {
 					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						&avatar,
+						avatar,
 						&AvatarAttributes::ItemType,
 					);
 					assert_eq!(item_type, ItemType::Essence);
 
-					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
-						4
-					);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 4);
 
 					assert_eq!(avatar.souls + leader_avatar.souls, total_souls);
 				} else {
@@ -488,13 +485,13 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						&avatar,
+						avatar,
 						&AvatarAttributes::ItemType,
 					);
 					assert_eq!(item_type, ItemType::Special);
 
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 
@@ -545,13 +542,13 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						&avatar,
+						avatar,
 						&AvatarAttributes::ItemType,
 					);
 					assert_eq!(item_type, ItemType::Special);
 
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 
@@ -600,13 +597,13 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						&avatar,
+						avatar,
 						&AvatarAttributes::ItemType,
 					);
 					assert_eq!(item_type, ItemType::Special);
 
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 
@@ -656,7 +653,7 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[4] {
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						34
 					);
 				} else {
@@ -665,7 +662,7 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[5] {
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 				} else {
@@ -674,7 +671,7 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[6] {
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 				} else {
@@ -683,7 +680,7 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[7] {
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 				} else {
@@ -692,7 +689,7 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[8] {
 					assert_eq!(
-						AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity),
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
 						u8::MAX
 					);
 				} else {
