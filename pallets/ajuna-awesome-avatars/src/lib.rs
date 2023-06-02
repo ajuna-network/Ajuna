@@ -90,7 +90,7 @@ pub mod pallet {
 	use sp_std::collections::vec_deque::VecDeque;
 
 	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>>;
+	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>, BalanceOf<T>>;
 	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
@@ -203,16 +203,7 @@ pub mod pallet {
 				max_tier_avatars: Default::default(),
 			});
 			GlobalConfigs::<T>::put(GlobalConfig {
-				mint: MintConfig {
-					open: true,
-					fees: MintFees {
-						one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
-						three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
-						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
-					},
-					cooldown: 5_u8.into(),
-					free_mint_fee_multiplier: 1,
-				},
+				mint: MintConfig { open: true, cooldown: 5_u8.into(), free_mint_fee_multiplier: 1 },
 				forge: ForgeConfig { open: true },
 				transfer: TransferConfig {
 					open: true,
@@ -332,8 +323,6 @@ pub mod pallet {
 		BaseProbTooHigh,
 		/// Some rarity tier are duplicated.
 		DuplicatedRarityTier,
-		/// Attempt to set fees lower than the existential deposit amount.
-		TooLowFees,
 		/// Minting is not available at the moment.
 		MintClosed,
 		/// Forging is not available at the moment.
@@ -768,19 +757,6 @@ pub mod pallet {
 			new_global_config: GlobalConfigOf<T>,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			ensure!(
-				[
-					new_global_config.mint.fees.one,
-					new_global_config.mint.fees.three,
-					new_global_config.mint.fees.six,
-					new_global_config.transfer.avatar_transfer_fee,
-					new_global_config.trade.min_fee,
-					new_global_config.account.storage_upgrade_fee
-				]
-				.iter()
-				.all(|x| x > &T::Currency::minimum_balance()),
-				Error::<T>::TooLowFees
-			);
 			GlobalConfigs::<T>::put(&new_global_config);
 			Self::deposit_event(Event::UpdatedGlobalConfig(new_global_config));
 			Ok(())
@@ -1080,9 +1056,10 @@ pub mod pallet {
 			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
+			let (_, Season { fee, .. }) = Self::current_season_with_id()?;
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = mint.fees.fee_for(&mint_option.pack_size);
+					let fee = fee.mint.fee_for(&mint_option.pack_size);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 					Self::deposit_into_treasury(&season_id, fee);
 				},
@@ -1236,9 +1213,10 @@ pub mod pallet {
 			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
 
 			let mint_count = mint_option.pack_size.as_mint_count();
+			let (_, Season { fee, .. }) = Self::current_season_with_id()?;
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = mint.fees.fee_for(&mint_option.pack_size);
+					let fee = fee.mint.fee_for(&mint_option.pack_size);
 					T::Currency::free_balance(player)
 						.checked_sub(&fee)
 						.ok_or(Error::<T>::InsufficientBalance)?;

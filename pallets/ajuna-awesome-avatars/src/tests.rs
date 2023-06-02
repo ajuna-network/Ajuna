@@ -170,13 +170,15 @@ mod treasury {
 
 	#[test]
 	fn claim_treasury_works() {
-		let season_1 = Season::default().early_start(5).start(10).end(15);
-		let mint_fees = MintFees { one: 12, three: 34, six: 56 };
+		let season_1 = Season::default().early_start(5).start(10).end(15).mint_fee(MintFees {
+			one: 12,
+			three: 34,
+			six: 56,
+		});
 		let initial_balance = MockExistentialDeposit::get() + 999_999;
 		let total_supply = initial_balance;
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season_1.clone())])
-			.mint_fees(mint_fees)
 			.balances(&[(BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
@@ -767,9 +769,6 @@ mod config {
 			.build()
 			.execute_with(|| {
 				let config = GlobalConfigOf::<Test>::default()
-					.mint_fees_one(2)
-					.mint_fees_three(2)
-					.mint_fees_six(2)
 					.transfer_avatar_transfer_fee(2)
 					.trade_min_fee(2)
 					.account_storage_upgrade_fe(2);
@@ -796,36 +795,6 @@ mod config {
 			);
 		});
 	}
-
-	#[test]
-	fn update_global_config_should_reject_fees_lower_than_existential_deposit() {
-		ExtBuilder::default()
-			.existential_deposit(333)
-			.organizer(CHARLIE)
-			.build()
-			.execute_with(|| {
-				for config in [
-					GlobalConfigOf::<Test>::default().mint_fees_one(12),
-					GlobalConfigOf::<Test>::default().mint_fees_three(34),
-					GlobalConfigOf::<Test>::default().mint_fees_six(56),
-					GlobalConfigOf::<Test>::default().transfer_avatar_transfer_fee(78),
-					GlobalConfigOf::<Test>::default().trade_min_fee(91),
-					GlobalConfigOf::<Test>::default().account_storage_upgrade_fe(99),
-					GlobalConfigOf::<Test>::default()
-						.mint_fees_one(999)
-						.mint_fees_three(999)
-						.mint_fees_six(1)
-						.transfer_avatar_transfer_fee(999)
-						.trade_min_fee(2)
-						.account_storage_upgrade_fe(999),
-				] {
-					assert_noop!(
-						AAvatars::update_global_config(RuntimeOrigin::signed(CHARLIE), config),
-						Error::<Test>::TooLowFees
-					);
-				}
-			});
-	}
 }
 
 mod minting {
@@ -851,6 +820,7 @@ mod minting {
 		ExtBuilder::default()
 			.seasons(&[(1, season.clone())])
 			.free_mints(&[(ALICE, 42)])
+			.balances(&[(ALICE, 333), (BOB, 333), (CHARLIE, 333)])
 			.build()
 			.execute_with(|| {
 				// Outside a season, both mints are unavailable.
@@ -959,11 +929,17 @@ mod minting {
 
 	#[test]
 	fn mint_should_work() {
-		let season_1 = Season::default().early_start(3).start(5).end(20).max_components(7);
+		let fees = MintFees { one: 12, three: 34, six: 56 };
+
+		let season_1 = Season::default()
+			.early_start(3)
+			.start(5)
+			.end(20)
+			.max_components(7)
+			.mint_fee(fees.clone());
 		let season_2 = Season::default().early_start(23).start(35).end(40).max_components(17);
 
 		let expected_nonce_increment = 1 as MockIndex;
-		let fees = MintFees { one: 12, three: 34, six: 56 };
 		let mint_cooldown = 1;
 
 		let mut initial_balance = fees.one + fees.three + fees.six + MockExistentialDeposit::get();
@@ -972,7 +948,6 @@ mod minting {
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season_1.clone()), (2, season_2)])
-			.mint_fees(fees.clone())
 			.mint_cooldown(mint_cooldown)
 			.balances(&[(ALICE, initial_balance)])
 			.free_mints(&[(ALICE, initial_free_mints)])
@@ -1394,7 +1369,6 @@ mod minting {
 		let season = Season::default();
 
 		ExtBuilder::default()
-			.mint_fees(MintFees { one: 1, three: 2, six: 3 })
 			.seasons(&[(SEASON_ID, season.clone())])
 			.build()
 			.execute_with(|| {
@@ -1550,7 +1524,8 @@ mod forging {
 			.max_components(8)
 			.max_variations(6)
 			.min_sacrifices(1)
-			.max_sacrifices(4);
+			.max_sacrifices(4)
+			.mint_fee(MintFees { one: 1, three: 3, six: 6 });
 
 		let mut forged_count = 0;
 		let mut assert_dna =
@@ -1618,7 +1593,6 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
 			.mint_cooldown(0)
-			.mint_fees(MintFees { one: 1, three: 3, six: 6 })
 			.balances(&[(BOB, MockBalance::max_value())])
 			.free_mints(&[(BOB, 0)])
 			.build()
@@ -2230,7 +2204,6 @@ mod forging {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
 			.balances(&[(ALICE, initial_balance), (BOB, 6 + initial_balance)])
-			.mint_fees(MintFees { one: 1, three: 1, six: 1 })
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);

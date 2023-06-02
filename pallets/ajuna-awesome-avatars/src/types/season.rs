@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::*;
+use crate::{
+	types::{fee::Fee, Avatar, RarityTier, SeasonId},
+	Config, Error, MAX_PERCENTAGE,
+};
 use frame_support::pallet_prelude::*;
 use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto, Zero};
+use sp_std::borrow::ToOwned;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Debug, Default, PartialEq)]
 pub struct SeasonStatus {
@@ -37,7 +41,7 @@ pub type SacrificeCount = u8;
 pub type TradeFilter = u32;
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, PartialEq)]
-pub struct Season<BlockNumber> {
+pub struct Season<BlockNumber, Balance> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1_000>>,
 	pub early_start: BlockNumber,
@@ -55,9 +59,10 @@ pub struct Season<BlockNumber> {
 	pub per_period: BlockNumber,
 	pub periods: u16,
 	pub trade_filters: BoundedVec<TradeFilter, ConstU32<100>>,
+	pub fee: Fee<Balance>,
 }
 
-impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
+impl<BlockNumber: AtLeast32Bit, Balance> Season<BlockNumber, Balance> {
 	pub(crate) fn is_active(&self, now: BlockNumber) -> bool {
 		now >= self.start && now <= self.end
 	}
@@ -201,10 +206,10 @@ impl<BlockNumber: AtLeast32Bit> Season<BlockNumber> {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{mock::*, types::RarityTier::*};
+	use crate::{mock::*, types::*};
 	use frame_support::{assert_err, assert_ok};
 
-	impl Default for Season<MockBlockNumber> {
+	impl Default for Season<MockBlockNumber, MockBalance> {
 		fn default() -> Self {
 			Self {
 				name: b"cool season".to_vec().try_into().unwrap(),
@@ -233,11 +238,12 @@ mod test {
 				per_period: 10,
 				periods: 12,
 				trade_filters: BoundedVec::default(),
+				fee: Fee { mint: MintFees { one: 1, three: 2, six: 3 } },
 			}
 		}
 	}
 
-	impl Season<MockBlockNumber> {
+	impl Season<MockBlockNumber, MockBalance> {
 		pub fn early_start(mut self, early_start: MockBlockNumber) -> Self {
 			self.early_start = early_start;
 			self
@@ -298,6 +304,10 @@ mod test {
 			self.trade_filters = trade_filters.try_into().unwrap();
 			self
 		}
+		pub fn mint_fee(mut self, mint_fee: MintFees<MockBalance>) -> Self {
+			self.fee.mint = mint_fee;
+			self
+		}
 	}
 
 	impl SeasonStatus {
@@ -342,7 +352,7 @@ mod test {
 	#[test]
 	fn validate_works() {
 		let mut season = Season::default()
-			.tiers(&[Common, Rare, Legendary])
+			.tiers(&[RarityTier::Common, RarityTier::Rare, RarityTier::Legendary])
 			.single_mint_probs(&[10, 90])
 			.batch_mint_probs(&[20, 80])
 			.max_variations(5)
@@ -360,7 +370,10 @@ mod test {
 			(season.clone().max_components(0), Error::<Test>::MaxComponentsTooLow),
 			(season.clone().max_components(17), Error::<Test>::MaxComponentsTooHigh),
 			// tiers
-			(season.clone().tiers(&[Common, Common]), Error::<Test>::DuplicatedRarityTier),
+			(
+				season.clone().tiers(&[RarityTier::Common, RarityTier::Common]),
+				Error::<Test>::DuplicatedRarityTier,
+			),
 			// percentages
 			(
 				season.clone().single_mint_probs(&[1, 100]),
@@ -454,7 +467,9 @@ mod test {
 			(0b0111_1001, 0b0000_0001, false),
 			(0b0111_1001, 0b0001_0000, false),
 		] {
-			let output = Season::<MockBlockNumber>::is_matching_with_zero_wildcard(byte_1, byte_2);
+			let output = Season::<MockBlockNumber, MockBalance>::is_matching_with_zero_wildcard(
+				byte_1, byte_2,
+			);
 
 			assert_eq!(output, expected);
 		}

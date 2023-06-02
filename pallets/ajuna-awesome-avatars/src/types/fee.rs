@@ -14,14 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod account;
-mod avatar;
-mod config;
-mod fee;
-mod season;
+use crate::types::MintPackSize;
+use frame_support::pallet_prelude::*;
 
-pub use account::*;
-pub use avatar::*;
-pub use config::*;
-pub use fee::*;
-pub use season::*;
+/// Minting fee per pack of avatars.
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct MintFees<Balance> {
+	pub one: Balance,
+	pub three: Balance,
+	pub six: Balance,
+}
+
+impl<Balance> MintFees<Balance> {
+	pub fn fee_for(self, mint_count: &MintPackSize) -> Balance {
+		match mint_count {
+			MintPackSize::One => self.one,
+			MintPackSize::Three => self.three,
+			MintPackSize::Six => self.six,
+		}
+	}
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct Fee<Balance> {
+	pub mint: MintFees<Balance>,
+}

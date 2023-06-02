@@ -100,6 +100,13 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				per_period: T::BlockNumber::from(10_u32),
 				periods: 12,
 				trade_filters: BoundedVec::default(),
+				fee: Fee {
+					mint: MintFees {
+						one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
+						three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
+						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
+					},
+				},
 			},
 		);
 	}
@@ -208,7 +215,8 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		let mint_fee = GlobalConfigs::<T>::get().mint.fees.fee_for(&MintPackSize::Six);
+		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
+		let mint_fee = season.fee.mint.fee_for(&MintPackSize::Six);
 		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
 		let mint_option = MintOption { payment: MintPayment::Normal, pack_size: MintPackSize::Six,
@@ -415,6 +423,13 @@ benchmarks! {
 			per_period: T::BlockNumber::from(1_u32),
 			periods: u16::MAX,
 			trade_filters: BoundedVec::default(),
+			fee: Fee {
+				mint: MintFees {
+					one: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+					three: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
+				},
+			},
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {
@@ -428,11 +443,6 @@ benchmarks! {
 		let config = GlobalConfig {
 			mint: MintConfig {
 				open: true,
-				fees: MintFees {
-					one: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-					three: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
-				},
 				cooldown: T::BlockNumber::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
 			},

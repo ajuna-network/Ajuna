@@ -202,9 +202,8 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 pub struct ExtBuilder {
 	existential_deposit: MockBalance,
 	organizer: Option<MockAccountId>,
-	seasons: Vec<(SeasonId, Season<MockBlockNumber>)>,
+	seasons: Vec<(SeasonId, Season<MockBlockNumber, MockBalance>)>,
 	mint_cooldown: MockBlockNumber,
-	mint_fees: MintFees<MockBalance>,
 	trade_min_fee: MockBalance,
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
@@ -221,7 +220,6 @@ impl Default for ExtBuilder {
 			organizer: Default::default(),
 			seasons: Default::default(),
 			mint_cooldown: Default::default(),
-			mint_fees: Default::default(),
 			trade_min_fee: Default::default(),
 			balances: Default::default(),
 			free_mints: Default::default(),
@@ -242,7 +240,7 @@ impl ExtBuilder {
 		self.organizer = Some(organizer);
 		self
 	}
-	pub fn seasons(mut self, seasons: &[(SeasonId, Season<MockBlockNumber>)]) -> Self {
+	pub fn seasons(mut self, seasons: &[(SeasonId, Season<MockBlockNumber, MockBalance>)]) -> Self {
 		self.seasons = seasons.to_vec();
 		self
 	}
@@ -252,10 +250,6 @@ impl ExtBuilder {
 	}
 	pub fn balances(mut self, balances: &[(MockAccountId, MockBalance)]) -> Self {
 		self.balances = balances.to_vec();
-		self
-	}
-	pub fn mint_fees(mut self, mint_fees: MintFees<MockBalance>) -> Self {
-		self.mint_fees = mint_fees;
 		self
 	}
 	pub fn free_mints(mut self, free_mints: &[(MockAccountId, MintCount)]) -> Self {
@@ -310,7 +304,6 @@ impl ExtBuilder {
 				config.forge.open = true;
 				config.trade.open = true;
 				config.mint.cooldown = self.mint_cooldown;
-				config.mint.fees = self.mint_fees;
 				config.trade.min_fee = self.trade_min_fee;
 				config.transfer.avatar_transfer_fee = self.avatar_transfer_fee;
 				config.nft_transfer.prepare_fee = self.nft_prepare_fee;
@@ -347,18 +340,6 @@ pub fn run_to_block(n: u64) {
 }
 
 impl GlobalConfigOf<Test> {
-	pub(crate) fn mint_fees_one(mut self, amount: MockBalance) -> Self {
-		self.mint.fees.one = amount;
-		self
-	}
-	pub(crate) fn mint_fees_three(mut self, amount: MockBalance) -> Self {
-		self.mint.fees.three = amount;
-		self
-	}
-	pub(crate) fn mint_fees_six(mut self, amount: MockBalance) -> Self {
-		self.mint.fees.six = amount;
-		self
-	}
 	pub(crate) fn transfer_avatar_transfer_fee(mut self, amount: MockBalance) -> Self {
 		self.transfer.avatar_transfer_fee = amount;
 		self

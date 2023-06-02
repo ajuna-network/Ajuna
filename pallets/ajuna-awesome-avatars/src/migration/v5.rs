@@ -56,12 +56,12 @@ impl OldAvatar {
 }
 
 #[derive(Decode)]
-pub struct OldSeason<BlockNumber> {
+pub struct OldSeason<T: Config> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1_000>>,
-	pub early_start: BlockNumber,
-	pub start: BlockNumber,
-	pub end: BlockNumber,
+	pub early_start: T::BlockNumber,
+	pub start: T::BlockNumber,
+	pub end: T::BlockNumber,
 	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
@@ -71,12 +71,12 @@ pub struct OldSeason<BlockNumber> {
 	pub single_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub batch_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub base_prob: RarityPercent,
-	pub per_period: BlockNumber,
+	pub per_period: T::BlockNumber,
 	pub periods: u16,
 }
 
-impl<BlockNumber> OldSeason<BlockNumber> {
-	fn migrate_to_v5(self) -> Season<BlockNumber> {
+impl<T: Config> OldSeason<T> {
+	fn migrate_to_v5(self) -> Season<T::BlockNumber, BalanceOf<T>> {
 		Season {
 			name: self.name,
 			description: self.description,
@@ -95,6 +95,7 @@ impl<BlockNumber> OldSeason<BlockNumber> {
 			per_period: self.per_period,
 			periods: self.periods,
 			trade_filters: Default::default(),
+			fee: Default::default(),
 		}
 	}
 }
@@ -164,7 +165,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			);
 			log::info!(target: LOG_TARGET, "Updated {} old avatars", translated_avatars);
 
-			Seasons::<T>::translate::<OldSeason<T::BlockNumber>, _>(|_key, old_value| {
+			Seasons::<T>::translate::<OldSeason<T>, _>(|_key, old_value| {
 				log::info!(target: LOG_TARGET, "Migrated seasons");
 				Some(old_value.migrate_to_v5())
 			});
