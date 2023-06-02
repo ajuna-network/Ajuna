@@ -186,6 +186,18 @@ pub(crate) fn create_random_weapon(
 	)
 }
 
+pub(crate) fn create_random_toolbox(
+	base_dna: [u8; 32],
+	account: &MockAccountId,
+	soul_points: SoulCount,
+) -> (AvatarIdOf<Test>, Avatar) {
+	create_random_avatar::<Test, _>(
+		account,
+		Some(base_dna),
+		Some(|avatar| AvatarBuilder::with_base_avatar(avatar).into_toolbox(soul_points).build()),
+	)
+}
+
 pub(crate) fn create_random_egg(
 	base_dna: Option<[u8; 32]>,
 	account: &MockAccountId,

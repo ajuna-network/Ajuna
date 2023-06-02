@@ -1463,5 +1463,12 @@ mod test {
 		let expected_mirrors: Vec<u32> = vec![7, 10];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, expected_mirrors);
+
+		let arr_1 = [0x31, 0x30, 0x35, 0x33, 0x30, 0x33, 0x31, 0x32, 0x32, 0x32, 0x34];
+		let arr_2 = [0x21, 0x21, 0x35, 0x34, 0x24, 0x33, 0x23, 0x22, 0x22, 0x22, 0x22];
+		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let expected_matches: Vec<u32> = vec![3];
+		assert_eq!(matches, expected_matches);
+		assert_eq!(mirrors, empty_vec);
 	}
 }
