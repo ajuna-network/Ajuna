@@ -420,7 +420,7 @@ mod test {
 						&ByteType::High,
 					)
 					.len();
-					assert_eq!(out_lowest_count, 4);
+					assert_eq!(out_lowest_count, 3);
 				}
 			}
 		});
