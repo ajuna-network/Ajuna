@@ -137,7 +137,7 @@ mod test {
 	use crate::mock::*;
 
 	#[test]
-	fn test_flask_single() {
+	fn test_flask_paint() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
 				0x3F, 0x83, 0x25, 0x3B, 0xA9, 0x24, 0xF2, 0xF6, 0xB5, 0xA9, 0x37, 0x15, 0x25, 0x2C,
@@ -167,7 +167,7 @@ mod test {
 				&[EquippableItemType::ArmorBase, EquippableItemType::ArmorComponent3],
 				&(ColorType::None, ColorType::None),
 				&Force::None,
-				30,
+				80,
 				&mut progress_array_generator,
 			);
 
@@ -185,8 +185,15 @@ mod test {
 			];
 			assert_eq!(armor_component.1.dna.as_slice(), &expected_dna);
 
+			let expected_leader_progress_array =
+				[0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
 			let leader_progress_array = AvatarUtils::read_progress_array(&armor_component.1);
+			assert_eq!(leader_progress_array, expected_leader_progress_array);
+
+			let expected_sacrifice_progress_array =
+				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x41];
 			let sacrifice_progress_array = AvatarUtils::read_progress_array(&paint_flask.1);
+			assert_eq!(sacrifice_progress_array, expected_sacrifice_progress_array);
 
 			assert!(AvatarUtils::is_array_match(
 				leader_progress_array,
@@ -207,7 +214,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(avatar.souls, 94);
+				assert_eq!(avatar.souls, 144);
 
 				let expected_dna = [
 					0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -222,7 +229,7 @@ mod test {
 	}
 
 	#[test]
-	fn test_flask_single_glimmer_1() {
+	fn test_flask_glow_1() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
 				0x3F, 0x83, 0x25, 0x3B, 0xA9, 0x24, 0xF2, 0xF6, 0xB5, 0xA9, 0x37, 0x15, 0x25, 0x2C,
@@ -239,7 +246,7 @@ mod test {
 
 			let unit_closure = |avatar: Avatar| {
 				let mut avatar = avatar;
-				avatar.souls = 30;
+				avatar.souls = 623;
 				avatar
 			};
 
@@ -262,19 +269,17 @@ mod test {
 			];
 			assert_eq!(avatar.1.dna.as_slice(), &expected_dna);
 
+			let leader_progress_array = AvatarUtils::read_progress_array(&avatar.1);
+			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
+
 			let expected_progress_array_leader =
 				[0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
-			assert_eq!(AvatarUtils::read_progress_array(&avatar.1), expected_progress_array_leader);
+			assert_eq!(leader_progress_array, expected_progress_array_leader);
 
 			let expected_progress_array_other =
 				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x42];
-			assert_eq!(
-				AvatarUtils::read_progress_array(&glow_flask.1),
-				expected_progress_array_other
-			);
+			assert_eq!(sacrifice_progress_array, expected_progress_array_other);
 
-			let leader_progress_array = AvatarUtils::read_progress_array(&avatar.1);
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
 			assert!(AvatarUtils::is_array_match(
 				leader_progress_array,
 				sacrifice_progress_array,
@@ -294,11 +299,191 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(avatar.souls, 108);
+				assert_eq!(avatar.souls, 701);
 
 				let expected_dna = [
 					0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x52, 0x40, 0x41, 0x50,
+					0x51, 0x40, 0x45, 0x41, 0x55, 0x43,
+				];
+				assert_eq!(avatar.dna.as_slice(), &expected_dna);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_flask_glow_2() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x3F, 0x83, 0x25, 0x3B, 0xA9, 0x24, 0xF2, 0xF6, 0xB5, 0xA9, 0x37, 0x15, 0x25, 0x2C,
+				0x04, 0xFC, 0xEC, 0x45, 0xC1, 0x4D, 0x86, 0xE7, 0x96, 0xE5, 0x20, 0x5D, 0x8B, 0x39,
+				0xB0, 0x54, 0xFB, 0x62,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let mut progress_array_generator = HashProvider::new_with_bytes([
+				0x40, 0xBC, 0xC6, 0x97, 0x12, 0x25, 0x48, 0xC5, 0xD9, 0x05, 0xC3, 0x40, 0xBC, 0xC6,
+				0x97, 0x12, 0x25, 0x48, 0xC5, 0xD9, 0x05, 0xC3, 0x40, 0xBC, 0xC6, 0x97, 0x12, 0x25,
+				0x48, 0xC5, 0xD9, 0x05,
+			]);
+
+			let armor_component = create_random_armor_component(
+				[0; 32],
+				&ALICE,
+				&PetType::FoxishDude,
+				&SlotType::LegBack,
+				&RarityTier::Epic,
+				&[
+					EquippableItemType::ArmorBase,
+					EquippableItemType::ArmorComponent1,
+					EquippableItemType::ArmorComponent2,
+					EquippableItemType::ArmorComponent3,
+				],
+				&(ColorType::ColorD, ColorType::ColorD),
+				&Force::None,
+				100,
+				&mut progress_array_generator,
+			);
+
+			let glow_flask = create_random_glow_flask(
+				&ALICE,
+				&Force::Empathy,
+				64,
+				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x42],
+			);
+
+			let expected_dna = [
+				0x41, 0x62, 0x04, 0x01, 0x00, 0xFF, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
+				0x45, 0x41, 0x55, 0x43,
+			];
+			assert_eq!(armor_component.1.dna.as_slice(), &expected_dna);
+
+			let leader_progress_array = AvatarUtils::read_progress_array(&armor_component.1);
+			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
+
+			let expected_progress_array_leader =
+				[0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
+			assert_eq!(leader_progress_array, expected_progress_array_leader);
+
+			let expected_progress_array_other =
+				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x42];
+			assert_eq!(sacrifice_progress_array, expected_progress_array_other);
+
+			assert!(AvatarUtils::is_array_match(
+				leader_progress_array,
+				sacrifice_progress_array,
+				MATCH_ALGO_START_RARITY.as_byte()
+			)
+			.is_some());
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::flask_avatars(
+				armor_component,
+				vec![glow_flask],
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert_eq!(avatar.souls, 164);
+
+				let expected_dna = [
+					0x41, 0x62, 0x04, 0x01, 0x00, 0xFF, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x52, 0x40, 0x41, 0x50,
+					0x51, 0x40, 0x45, 0x41, 0x55, 0x43,
+				];
+				assert_eq!(avatar.dna.as_slice(), &expected_dna);
+
+				let spec_byte_2 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte2);
+				assert_eq!(spec_byte_2, 0b0000_1110_u8);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_flask_fail() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x3F, 0x83, 0x25, 0x3B, 0xA9, 0x24, 0xF2, 0xF6, 0xB5, 0xA9, 0x37, 0x15, 0x25, 0x2C,
+				0x04, 0xFC, 0xEC, 0x45, 0xC1, 0x4D, 0x86, 0xE7, 0x96, 0xE5, 0x20, 0x5D, 0x8B, 0x39,
+				0xB0, 0x54, 0xFB, 0x62,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let hash_base = [
+				0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
+				0x45, 0x41, 0x55, 0x43,
+			];
+
+			let unit_closure = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 623;
+				avatar
+			};
+
+			let avatar =
+				create_random_avatar::<Test, _>(&ALICE, Some(hash_base), Some(unit_closure));
+
+			let glow_flask = create_random_glow_flask(
+				&ALICE,
+				&Force::Empathy,
+				64,
+				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x41],
+			);
+
+			let glimmer = create_random_glimmer(&ALICE, 14);
+
+			let expected_dna = [
+				0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
+				0x45, 0x41, 0x55, 0x43,
+			];
+			assert_eq!(avatar.1.dna.as_slice(), &expected_dna);
+
+			let leader_progress_array = AvatarUtils::read_progress_array(&avatar.1);
+			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
+
+			let expected_progress_array_leader =
+				[0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
+			assert_eq!(leader_progress_array, expected_progress_array_leader);
+
+			let expected_progress_array_other =
+				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x41];
+			assert_eq!(sacrifice_progress_array, expected_progress_array_other);
+
+			assert!(AvatarUtils::is_array_match(
+				leader_progress_array,
+				sacrifice_progress_array,
+				MATCH_ALGO_START_RARITY.as_byte()
+			)
+			.is_none());
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::flask_avatars(
+				avatar,
+				vec![glow_flask, glimmer],
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert_eq!(avatar.souls, 701);
+
+				let expected_dna = [
+					0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x42, 0x40, 0x41, 0x50,
 					0x51, 0x40, 0x45, 0x41, 0x55, 0x43,
 				];
 				assert_eq!(avatar.dna.as_slice(), &expected_dna);

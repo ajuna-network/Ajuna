@@ -219,6 +219,73 @@ mod test {
 	}
 
 	#[test]
+	fn test_equip_leg_back() {
+		ExtBuilder::default().build().execute_with(|| {
+			let leader =
+				create_random_pet(&ALICE, &PetType::FoxishDude, 0x0F, [0; 16], [0; 11], 100);
+
+			let armor_progress = vec![
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorComponent1,
+				EquippableItemType::ArmorComponent2,
+				EquippableItemType::ArmorComponent3,
+			];
+
+			let mut armor_hash = HashProvider::new_with_bytes([
+				0x9C, 0xB3, 0x42, 0xB4, 0xC6, 0xAB, 0xE7, 0x37, 0x71, 0xB8, 0x92, 0x9C, 0xB3, 0x42,
+				0xB4, 0xC6, 0xAB, 0xE7, 0x37, 0x71, 0xB8, 0x92, 0x9C, 0xB3, 0x42, 0xB4, 0xC6, 0xAB,
+				0xE7, 0x37, 0x71, 0xB8,
+			]);
+
+			let sac_1 = create_random_armor_component(
+				[0; 32],
+				&ALICE,
+				&PetType::FoxishDude,
+				&SlotType::LegBack,
+				&RarityTier::Legendary,
+				&armor_progress,
+				&(ColorType::ColorD, ColorType::ColorD),
+				&Force::Astral,
+				100,
+				&mut armor_hash,
+			);
+
+			let expected_leader_dna = [
+				0x11, 0x02, 0x05, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00,
+			];
+			assert_eq!(leader.1.dna.as_slice(), &expected_leader_dna);
+
+			let expected_sacrifice_dna = [
+				0x41, 0x62, 0x05, 0x01, 0x00, 0xFF, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x55, 0x50, 0x50, 0x50, 0x53, 0x53,
+				0x51, 0x55, 0x54, 0x52,
+			];
+			assert_eq!(sac_1.1.dna.as_slice(), &expected_sacrifice_dna);
+
+			let (leader_output, sacrifice_output) =
+				AvatarCombinator::<Test>::equip_avatars(leader, vec![sac_1])
+					.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				let expected_dna = [
+					0x11, 0x02, 0x05, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F,
+					0xFD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				];
+				assert_eq!(avatar.dna.as_slice(), &expected_dna);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
 	fn test_equip_failure() {
 		ExtBuilder::default().build().execute_with(|| {
 			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
