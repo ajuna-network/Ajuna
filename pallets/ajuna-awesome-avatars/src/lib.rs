@@ -94,7 +94,7 @@ pub mod pallet {
 	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
-	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BalanceOf<T>, BlockNumberFor<T>>;
+	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BlockNumberFor<T>>;
 	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
 		AccountIdOf<T>,
 		AvatarIdOf<T>,
@@ -211,10 +211,7 @@ pub mod pallet {
 					min_free_mint_transfer: 1,
 				},
 				trade: TradeConfig { open: true },
-				nft_transfer: NftTransferConfig {
-					open: true,
-					prepare_fee: 5_000_000_000_000_u64.unique_saturated_into(), // 5 BAJU
-				},
+				nft_transfer: NftTransferConfig { open: true },
 			});
 		}
 	}
@@ -911,15 +908,15 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			let avatar = Self::ensure_ownership(&player, &avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 			ensure!(GlobalConfigs::<T>::get().nft_transfer.open, Error::<T>::NftTransferClosed);
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
 
 			let service_account = ServiceAccount::<T>::get().ok_or(Error::<T>::NoServiceAccount)?;
-			let prepare_fee = GlobalConfigs::<T>::get().nft_transfer.prepare_fee;
-			T::Currency::transfer(&player, &service_account, prepare_fee, AllowDeath)?;
+			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			T::Currency::transfer(&player, &service_account, fee.prepare_avatar, AllowDeath)?;
 
 			Preparation::<T>::insert(avatar_id, IpfsUrl::default());
 			Self::deposit_event(Event::PreparedAvatar { avatar_id });

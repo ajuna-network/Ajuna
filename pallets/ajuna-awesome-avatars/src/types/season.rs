@@ -244,6 +244,7 @@ mod test {
 					buy_minimum: Default::default(),
 					buy_percent: Default::default(),
 					upgrade_storage: Default::default(),
+					prepare_avatar: Default::default(),
 				},
 			}
 		}
@@ -328,6 +329,10 @@ mod test {
 		}
 		pub fn upgrade_storage_fee(mut self, fee: MockBalance) -> Self {
 			self.fee.upgrade_storage = fee;
+			self
+		}
+		pub fn prepare_avatar_fee(mut self, fee: MockBalance) -> Self {
+			self.fee.prepare_avatar = fee;
 			self
 		}
 	}

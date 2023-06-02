@@ -3144,6 +3144,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_lock_already_locked_avatar() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3185,6 +3186,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_lock_prepared_avatar_with_empty_url() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3213,6 +3215,7 @@ mod nft_transfer {
 		let value_limit = 3;
 
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.value_limit(value_limit)
@@ -3233,6 +3236,7 @@ mod nft_transfer {
 	#[test]
 	fn can_unlock_avatar_successfully() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3257,6 +3261,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_unlock_when_nft_transfer_is_closed() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, MockExistentialDeposit::get())])
 			.create_nft_collection(true)
 			.build()
@@ -3281,6 +3286,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_unlock_unowned_avatar() {
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
 			.balances(&[(ALICE, 1_000_000_000_000), (BOB, 5_000_000_000_000)])
 			.create_nft_collection(true)
 			.build()
@@ -3399,7 +3405,7 @@ mod ipfs {
 		let initial_balance = prepare_fee + MockExistentialDeposit::get();
 
 		ExtBuilder::default()
-			.nft_prepare_fee(prepare_fee)
+			.seasons(&[(SEASON_ID, Season::default().prepare_avatar_fee(prepare_fee))])
 			.balances(&[(ALICE, initial_balance)])
 			.build()
 			.execute_with(|| {
@@ -3517,7 +3523,7 @@ mod ipfs {
 	#[test]
 	fn prepare_avatar_rejects_insufficient_balance() {
 		ExtBuilder::default()
-			.nft_prepare_fee(333)
+			.seasons(&[(SEASON_ID, Season::default().prepare_avatar_fee(333))])
 			.balances(&[(ALICE, MockExistentialDeposit::get())])
 			.build()
 			.execute_with(|| {
@@ -3532,16 +3538,19 @@ mod ipfs {
 
 	#[test]
 	fn unprepare_avatar_works() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			assert_ok!(AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			assert!(!Preparation::<Test>::contains_key(avatar_id));
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::UnpreparedAvatar { avatar_id },
-			));
-		});
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert_ok!(AAvatars::unprepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				assert!(!Preparation::<Test>::contains_key(avatar_id));
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::UnpreparedAvatar { avatar_id },
+				));
+			});
 	}
 
 	#[test]
@@ -3590,50 +3599,60 @@ mod ipfs {
 
 	#[test]
 	fn prepare_ipfs_works() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			ServiceAccount::<Test>::put(BOB);
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				ServiceAccount::<Test>::put(BOB);
 
-			let ipfs_url = b"ipfs://{CID}/{optional path to resource}".to_vec();
-			let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
-			assert_ok!(AAvatars::prepare_ipfs(
-				RuntimeOrigin::signed(BOB),
-				avatar_id,
-				ipfs_url.clone()
-			));
-			assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::PreparedIpfsUrl { url: ipfs_url },
-			));
+				let ipfs_url = b"ipfs://{CID}/{optional path to resource}".to_vec();
+				let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(BOB),
+					avatar_id,
+					ipfs_url.clone()
+				));
+				assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::PreparedIpfsUrl { url: ipfs_url },
+				));
 
-			let ipfs_url = b"ipfs://123".to_vec();
-			let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
-			assert_ok!(AAvatars::prepare_ipfs(
-				RuntimeOrigin::signed(BOB),
-				avatar_id,
-				ipfs_url.clone()
-			));
-			assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
-			System::assert_last_event(mock::RuntimeEvent::AAvatars(
-				crate::Event::PreparedIpfsUrl { url: ipfs_url },
-			));
-		});
+				let ipfs_url = b"ipfs://123".to_vec();
+				let ipfs_url = IpfsUrl::try_from(ipfs_url).unwrap();
+				assert_ok!(AAvatars::prepare_ipfs(
+					RuntimeOrigin::signed(BOB),
+					avatar_id,
+					ipfs_url.clone()
+				));
+				assert_eq!(Preparation::<Test>::get(avatar_id).unwrap(), ipfs_url);
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::PreparedIpfsUrl { url: ipfs_url },
+				));
+			});
 	}
 
 	#[test]
 	fn prepare_ipfs_rejects_empty_url() {
-		ExtBuilder::default().build().execute_with(|| {
-			let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-			assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-			assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-			ServiceAccount::<Test>::put(BOB);
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default())])
+			.build()
+			.execute_with(|| {
+				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
+				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
+				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+				ServiceAccount::<Test>::put(BOB);
 
-			assert_noop!(
-				AAvatars::prepare_ipfs(RuntimeOrigin::signed(BOB), avatar_id, IpfsUrl::default()),
-				Error::<Test>::EmptyIpfsUrl
-			);
-		});
+				assert_noop!(
+					AAvatars::prepare_ipfs(
+						RuntimeOrigin::signed(BOB),
+						avatar_id,
+						IpfsUrl::default()
+					),
+					Error::<Test>::EmptyIpfsUrl
+				);
+			});
 	}
 }

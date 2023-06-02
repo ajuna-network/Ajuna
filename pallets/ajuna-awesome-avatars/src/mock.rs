@@ -207,7 +207,6 @@ pub struct ExtBuilder {
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 	create_nft_collection: bool,
-	nft_prepare_fee: MockBalance,
 	value_limit: u32,
 }
 
@@ -221,7 +220,6 @@ impl Default for ExtBuilder {
 			balances: Default::default(),
 			free_mints: Default::default(),
 			create_nft_collection: Default::default(),
-			nft_prepare_fee: Default::default(),
 			value_limit: MockValueLimit::get(),
 		}
 	}
@@ -256,10 +254,6 @@ impl ExtBuilder {
 		self.create_nft_collection = create_nft_collection;
 		self
 	}
-	pub fn nft_prepare_fee(mut self, nft_prepare_fee: MockBalance) -> Self {
-		self.nft_prepare_fee = nft_prepare_fee;
-		self
-	}
 	pub fn value_limit(mut self, value_limit: u32) -> Self {
 		self.value_limit = value_limit;
 		self
@@ -292,7 +286,6 @@ impl ExtBuilder {
 				config.forge.open = true;
 				config.trade.open = true;
 				config.mint.cooldown = self.mint_cooldown;
-				config.nft_transfer.prepare_fee = self.nft_prepare_fee;
 			});
 
 			for (account_id, mint_amount) in self.free_mints {
