@@ -769,7 +769,6 @@ mod config {
 			.build()
 			.execute_with(|| {
 				let config = GlobalConfigOf::<Test>::default()
-					.transfer_avatar_transfer_fee(2)
 					.trade_min_fee(2)
 					.account_storage_upgrade_fe(2);
 
@@ -2356,22 +2355,27 @@ mod transferring {
 
 	#[test]
 	fn transfer_avatar_works() {
-		let avatar_transfer_fee = 888;
-		let initial_balance = MockExistentialDeposit::get() + avatar_transfer_fee;
+		let season_id_1 = 123;
+		let season_id_2 = 456;
+
+		let avatar_transfer_fee_1 = 888;
+		let avatar_transfer_fee_2 = 369;
+
+		let initial_balance = MockExistentialDeposit::get() + avatar_transfer_fee_1;
 		let total_supply = initial_balance;
 
 		ExtBuilder::default()
+			.seasons(&[
+				(season_id_1, Season::default().transfer_avatar_fee(avatar_transfer_fee_1)),
+				(season_id_2, Season::default().transfer_avatar_fee(avatar_transfer_fee_2)),
+			])
 			.balances(&[(ALICE, initial_balance)])
-			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
 				let treasury_account = &AAvatars::treasury_account_id();
 				let treasury_balance = 0;
 				assert_eq!(Balances::free_balance(treasury_account), treasury_balance);
 				assert_eq!(Balances::total_issuance(), total_supply);
-
-				let season_id_1 = 123;
-				let season_id_2 = 456;
 
 				let alice_avatar_ids = create_avatars(season_id_1, ALICE, 3);
 				let bob_avatar_ids = create_avatars(season_id_2, BOB, 6);
@@ -2395,23 +2399,24 @@ mod transferring {
 				assert_eq!(Owners::<Test>::get(BOB, season_id_2), bob_avatar_ids);
 
 				// balance checks
-				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee);
-				assert_eq!(Treasury::<Test>::get(season_id_1), avatar_transfer_fee);
+				assert_eq!(Balances::free_balance(ALICE), initial_balance - avatar_transfer_fee_1);
+				assert_eq!(Treasury::<Test>::get(season_id_1), avatar_transfer_fee_1);
 				assert_eq!(
 					Balances::free_balance(treasury_account),
-					treasury_balance + avatar_transfer_fee
+					treasury_balance + avatar_transfer_fee_1
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// Organizer can transfer even when trade is closed.
 				GlobalConfigs::<Test>::mutate(|config| config.trade.open = false);
-				Balances::make_free_balance_be(&BOB, avatar_transfer_fee);
+				Balances::make_free_balance_be(&BOB, avatar_transfer_fee_2);
 				assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), BOB));
 				assert_ok!(AAvatars::transfer_avatar(
 					RuntimeOrigin::signed(BOB),
 					CHARLIE,
 					bob_avatar_ids[0]
 				));
+				assert_eq!(Balances::free_balance(BOB), 0);
 				assert_eq!(Owners::<Test>::get(BOB, season_id_2).len(), 6 - 1);
 				assert_eq!(Owners::<Test>::get(CHARLIE, season_id_2).len(), 1);
 			});
@@ -2432,9 +2437,9 @@ mod transferring {
 	fn transfer_avatar_works_on_transfer_closed_with_organizer() {
 		let avatar_transfer_fee = 135;
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default().transfer_avatar_fee(avatar_transfer_fee))])
 			.organizer(BOB)
 			.balances(&[(BOB, MockExistentialDeposit::get() + avatar_transfer_fee)])
-			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
 				GlobalConfigs::<Test>::mutate(|config| config.transfer.open = false);
@@ -2495,8 +2500,8 @@ mod transferring {
 	fn transfer_avatar_rejects_on_max_ownership() {
 		let avatar_transfer_fee = 369;
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, Season::default().transfer_avatar_fee(avatar_transfer_fee))])
 			.balances(&[(ALICE, MockExistentialDeposit::get() + avatar_transfer_fee)])
-			.avatar_transfer_fee(avatar_transfer_fee)
 			.build()
 			.execute_with(|| {
 				Accounts::<Test>::mutate(BOB, |info| info.storage_tier = StorageTier::Three);

@@ -106,6 +106,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 						three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
 						six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
 					},
+					transfer_avatar: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				},
 			},
 		);
@@ -264,8 +265,8 @@ benchmarks! {
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&from, season_id)[n as usize - 1];
 
-		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
-		<T as AvatarsConfig>::Currency::make_free_balance_be(&from, transfer.avatar_transfer_fee);
+		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&from, fee.transfer_avatar);
 	}: transfer_avatar(RawOrigin::Signed(from.clone()), to.clone(), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTransferred { from, to, avatar_id })
@@ -280,8 +281,8 @@ benchmarks! {
 		let season_id = CurrentSeasonStatus::<T>::get().season_id;
 		let avatar_id = Owners::<T>::get(&organizer, season_id)[n as usize - 1];
 
-		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
-		CurrencyOf::<T>::make_free_balance_be(&organizer, transfer.avatar_transfer_fee);
+		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
+		CurrencyOf::<T>::make_free_balance_be(&organizer, fee.transfer_avatar);
 	}: transfer_avatar(RawOrigin::Signed(organizer.clone()), to.clone(), avatar_id)
 	verify {
 		assert_last_event::<T>(Event::AvatarTransferred { from: organizer, to, avatar_id })
@@ -429,6 +430,7 @@ benchmarks! {
 					three: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 					six: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 				},
+				transfer_avatar: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
@@ -451,7 +453,6 @@ benchmarks! {
 				open:true,
 				free_mint_transfer_fee: MintCount::MAX,
 				min_free_mint_transfer: MintCount::MAX,
-				avatar_transfer_fee: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},
 			trade: TradeConfig {
 				open: true,

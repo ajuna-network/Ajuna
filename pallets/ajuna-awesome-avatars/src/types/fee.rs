@@ -38,4 +38,5 @@ impl<Balance> MintFees<Balance> {
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct Fee<Balance> {
 	pub mint: MintFees<Balance>,
+	pub transfer_avatar: Balance,
 }

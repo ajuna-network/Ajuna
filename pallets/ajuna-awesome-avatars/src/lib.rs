@@ -209,7 +209,6 @@ pub mod pallet {
 					open: true,
 					free_mint_transfer_fee: 1,
 					min_free_mint_transfer: 1,
-					avatar_transfer_fee: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				},
 				trade: TradeConfig {
 					open: true,
@@ -495,9 +494,9 @@ pub mod pallet {
 			Self::ensure_unprepared(&avatar_id)?;
 
 			let avatar = Self::ensure_ownership(&from, &avatar_id)?;
-			let fee = transfer.avatar_transfer_fee;
-			T::Currency::withdraw(&from, fee, WithdrawReasons::FEE, AllowDeath)?;
-			Self::deposit_into_treasury(&avatar.season_id, fee);
+			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			T::Currency::withdraw(&from, fee.transfer_avatar, WithdrawReasons::FEE, AllowDeath)?;
+			Self::deposit_into_treasury(&avatar.season_id, fee.transfer_avatar);
 
 			Self::do_transfer_avatar(&from, &to, &avatar.season_id, &avatar_id)?;
 			Self::deposit_event(Event::AvatarTransferred { from, to, avatar_id });
@@ -1177,7 +1176,7 @@ pub mod pallet {
 					if current_status.season_id > 1 {
 						current_status.season_id.saturating_dec();
 					}
-					Seasons::<T>::get(current_status.season_id).ok_or(Error::<T>::UnknownSeason)?
+					Self::seasons(&current_status.season_id)?
 				},
 			};
 			Ok((current_status.season_id, season))
@@ -1478,6 +1477,11 @@ pub mod pallet {
 		fn avatars(avatar_id: &AvatarIdOf<T>) -> Result<(T::AccountId, Avatar), DispatchError> {
 			let (owner, avatar) = Avatars::<T>::get(avatar_id).ok_or(Error::<T>::UnknownAvatar)?;
 			Ok((owner, avatar))
+		}
+
+		fn seasons(season_id: &SeasonId) -> Result<SeasonOf<T>, DispatchError> {
+			let season = Seasons::<T>::get(season_id).ok_or(Error::<T>::UnknownSeason)?;
+			Ok(season)
 		}
 	}
 }

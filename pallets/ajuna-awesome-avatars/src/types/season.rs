@@ -238,7 +238,7 @@ mod test {
 				per_period: 10,
 				periods: 12,
 				trade_filters: BoundedVec::default(),
-				fee: Fee { mint: MintFees { one: 1, three: 2, six: 3 } },
+				fee: Fee { mint: MintFees { one: 1, three: 2, six: 3 }, transfer_avatar: 0 },
 			}
 		}
 	}
@@ -304,8 +304,12 @@ mod test {
 			self.trade_filters = trade_filters.try_into().unwrap();
 			self
 		}
-		pub fn mint_fee(mut self, mint_fee: MintFees<MockBalance>) -> Self {
-			self.fee.mint = mint_fee;
+		pub fn mint_fee(mut self, fee: MintFees<MockBalance>) -> Self {
+			self.fee.mint = fee;
+			self
+		}
+		pub fn transfer_avatar_fee(mut self, fee: MockBalance) -> Self {
+			self.fee.transfer_avatar = fee;
 			self
 		}
 	}
