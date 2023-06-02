@@ -307,7 +307,7 @@ mod test {
 	}
 
 	#[test]
-	fn test_mate_distribution_1() {
+	fn test_mate_egg_distribution_1() {
 		ExtBuilder::default().build().execute_with(|| {
 			let hash = Pallet::<Test>::random_hash(b"mate_dist_1", &ALICE);
 			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
@@ -399,7 +399,7 @@ mod test {
 	}
 
 	#[test]
-	fn test_mate_distribution_2() {
+	fn test_mate_egg_distribution_2() {
 		ExtBuilder::default().build().execute_with(|| {
 			let hash = Pallet::<Test>::random_hash(b"mate_dist_2", &ALICE);
 			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
@@ -518,7 +518,7 @@ mod test {
 	}
 
 	#[test]
-	fn test_mate_distribution_3() {
+	fn test_mate_egg_distribution_3() {
 		ExtBuilder::default().build().execute_with(|| {
 			let hash = Pallet::<Test>::random_hash(b"mate_dist_3", &ALICE);
 			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
@@ -619,10 +619,6 @@ mod test {
 					let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
 					hash_provider = HashProvider::new(&hash);
 				}
-			}
-
-			for entry in distribution_map.iter() {
-				println!("{:b} - {}", entry.0, entry.1);
 			}
 
 			assert_eq!(distribution_map.get(&0b0000_0000).unwrap(), &3000);

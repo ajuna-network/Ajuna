@@ -137,11 +137,8 @@ mod test {
 
 				let expected_progress_array =
 					[0x44, 0x45, 0x43, 0x40, 0x40, 0x41, 0x41, 0x44, 0x44, 0x43, 0x42];
-				let _leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
-				assert_eq!(
-					AvatarUtils::read_progress_array(&leader_avatar),
-					expected_progress_array
-				);
+				let leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
+				assert_eq!(leader_progress_array, expected_progress_array);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<RarityTier>(
 						&leader_avatar,
@@ -212,11 +209,8 @@ mod test {
 
 				let expected_progress_array =
 					[0x44, 0x45, 0x43, 0x40, 0x40, 0x41, 0x41, 0x44, 0x44, 0x43, 0x42];
-				let _leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
-				assert_eq!(
-					AvatarUtils::read_progress_array(&leader_avatar),
-					expected_progress_array
-				);
+				let leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
+				assert_eq!(leader_progress_array, expected_progress_array);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<RarityTier>(
 						&leader_avatar,

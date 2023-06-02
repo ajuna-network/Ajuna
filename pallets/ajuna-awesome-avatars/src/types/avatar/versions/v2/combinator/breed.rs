@@ -518,9 +518,6 @@ mod test {
 						&AvatarAttributes::RarityTier,
 					);
 
-					let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
-					println!("{:?}", &leader_progress_array);
-
 					if leader_rarity == RarityTier::Legendary {
 						assert_eq!(i, 19);
 
