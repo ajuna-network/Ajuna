@@ -95,7 +95,18 @@ impl<T: Config> OldSeason<T> {
 			per_period: self.per_period,
 			periods: self.periods,
 			trade_filters: Default::default(),
-			fee: Default::default(),
+			fee: Fee {
+				mint: MintFees {
+					one: 550_000_000_000_u64.unique_saturated_into(), // 0.55 BAJU
+					three: 500_000_000_000_u64.unique_saturated_into(), // 0.5 BAJU
+					six: 450_000_000_000_u64.unique_saturated_into(), // 0.45 BAJU
+				},
+				transfer_avatar: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+				buy_minimum: 1_000_000_000_u64.unique_saturated_into(),         // 0.01 BAJU
+				buy_percent: 1,                                                 // 1% of sales price
+				upgrade_storage: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
+				prepare_avatar: 5_000_000_000_000_u64.unique_saturated_into(),  // 5 BAJU
+			},
 		}
 	}
 }
@@ -237,6 +248,17 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			.all(|(_account, avatar)| avatar.version == AvatarVersion::V1));
 
 		assert!(Seasons::<T>::get(1).unwrap().trade_filters.is_empty());
+
+		// Check migrated season fees.
+		let Season { fee, .. } = Seasons::<T>::get(1).unwrap();
+		assert_eq!(fee.mint.one, 550_000_000_000_u64.unique_saturated_into());
+		assert_eq!(fee.mint.three, 500_000_000_000_u64.unique_saturated_into());
+		assert_eq!(fee.mint.six, 450_000_000_000_u64.unique_saturated_into());
+		assert_eq!(fee.transfer_avatar, 1_000_000_000_000_u64.unique_saturated_into());
+		assert_eq!(fee.buy_minimum, 1_000_000_000_u64.unique_saturated_into());
+		assert_eq!(fee.buy_percent, 1);
+		assert_eq!(fee.upgrade_storage, 1_000_000_000_000_u64.unique_saturated_into());
+		assert_eq!(fee.prepare_avatar, 5_000_000_000_000_u64.unique_saturated_into());
 
 		Ok(())
 	}
