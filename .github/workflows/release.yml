@@ -83,7 +83,7 @@ jobs:
       matrix:
         runtime: [bajun, ajuna]
     env:
-      SUBWASM_VERSION: v0.18.0
+      SUBWASM_VERSION: v0.19.1
     steps:
       - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
