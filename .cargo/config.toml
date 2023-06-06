@@ -17,5 +17,6 @@ rustflags = [
     "-Aclippy::derive_partial_eq_without_eq",
     "-Aclippy::too_many_arguments",
     "-Aclippy::type_complexity",
+    "-Aclippy::uninlined-format-args",
     "-Aclippy::unnecessary_cast",
 ]
