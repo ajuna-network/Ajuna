@@ -925,7 +925,7 @@ impl AvatarUtils {
 			0xED, 0xCD, 0x03, 0x47,
 		];
 
-		let mut all_enum = T::range().into_iter().map(|variant| variant as u8).collect::<Vec<_>>();
+		let mut all_enum = T::range().map(|variant| variant as u8).collect::<Vec<_>>();
 		let mut pattern = Vec::with_capacity(4);
 
 		for _ in 0..4 {

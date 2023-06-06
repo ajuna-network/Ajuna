@@ -83,14 +83,15 @@ jobs:
       matrix:
         runtime: [bajun, ajuna]
     env:
-      SUBWASM_VERSION: v0.18.0
+      SUBWASM_VERSION: v0.19.1
     steps:
-      - run: sudo apt-get install -y protobuf-compiler
       - uses: actions/checkout@v3
       - id: srtool_build
-        uses: chevdor/srtool-actions@v0.6.0
+        uses: chevdor/srtool-actions@v0.7.0
         with:
+          image: paritytech/srtool
           chain: ${{ matrix.runtime }}
+          tag: 1.66.1
       - name: Install subwasm {{ env.SUBWASM_VERSION }}
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_${{ env.SUBWASM_VERSION }}.deb -O subwasm.deb

@@ -20,7 +20,6 @@ use sp_runtime::{testing::H256, ArithmeticError, DispatchError};
 
 fn create_avatars(season_id: SeasonId, account: MockAccountId, n: u8) -> Vec<AvatarIdOf<Test>> {
 	(0..n)
-		.into_iter()
 		.map(|i| {
 			let avatar = Avatar::default().season_id(season_id).dna(&[i; 32]);
 			let avatar_id = H256::random();
@@ -186,12 +185,12 @@ mod treasury {
 				Treasurer::<Test>::insert(SEASON_ID, BOB);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), 0);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance);
-				assert_eq!(Balances::free_balance(&treasury_account), 0);
+				assert_eq!(Balances::free_balance(treasury_account), 0);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				deposit_into_treasury(SEASON_ID, 333);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), 333);
-				assert_eq!(Balances::free_balance(&treasury_account), 333);
+				assert_eq!(Balances::free_balance(treasury_account), 333);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), SEASON_ID),
 					Error::<Test>::CannotClaimDuringSeason
@@ -201,7 +200,7 @@ mod treasury {
 				assert_ok!(AAvatars::claim_treasury(RuntimeOrigin::signed(BOB), SEASON_ID));
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), 0);
 				assert_eq!(Balances::total_balance(&BOB), initial_balance + 333);
-				assert_eq!(Balances::free_balance(&treasury_account), 0);
+				assert_eq!(Balances::free_balance(treasury_account), 0);
 				assert_eq!(Balances::total_issuance(), total_supply + 333); // total supply increases from injection
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::TreasuryClaimed {
@@ -371,7 +370,7 @@ mod treasury {
 				run_to_block(season_1.end + 1);
 				Treasurer::<Test>::insert(1, CHARLIE);
 				Treasury::<Test>::insert(1, 999);
-				assert!(Balances::free_balance(&AAvatars::treasury_account_id()) < 999);
+				assert!(Balances::free_balance(AAvatars::treasury_account_id()) < 999);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), SEASON_ID),
 					pallet_balances::Error::<Test>::InsufficientBalance
@@ -2699,13 +2698,13 @@ mod trading {
 				let treasury_account = AAvatars::treasury_account_id();
 
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
-				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
+				assert_eq!(Balances::free_balance(treasury_account), treasury_balance_season_1);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				run_to_block(season.start);
 				let avatar_ids = create_avatars(SEASON_ID, BOB, 3);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
-				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
+				assert_eq!(Balances::free_balance(treasury_account), treasury_balance_season_1);
 
 				let owned_by_alice = Owners::<Test>::get(ALICE, SEASON_ID);
 				let owned_by_bob = Owners::<Test>::get(BOB, SEASON_ID);
@@ -2719,7 +2718,7 @@ mod trading {
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - min_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
-				assert_eq!(Balances::free_balance(&treasury_account), treasury_balance_season_1);
+				assert_eq!(Balances::free_balance(treasury_account), treasury_balance_season_1);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// check for ownership transfer
@@ -2895,7 +2894,7 @@ mod account {
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier, StorageTier::One);
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier as isize, 25);
 				assert_eq!(
-					Balances::free_balance(&AAvatars::treasury_account_id()),
+					Balances::free_balance(AAvatars::treasury_account_id()),
 					treasury_balance
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
@@ -2905,7 +2904,7 @@ mod account {
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier as isize, 50);
 				treasury_balance += upgrade_fee;
 				assert_eq!(
-					Balances::free_balance(&AAvatars::treasury_account_id()),
+					Balances::free_balance(AAvatars::treasury_account_id()),
 					treasury_balance
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
@@ -2915,7 +2914,7 @@ mod account {
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier as isize, 75);
 				treasury_balance += upgrade_fee;
 				assert_eq!(
-					Balances::free_balance(&AAvatars::treasury_account_id()),
+					Balances::free_balance(AAvatars::treasury_account_id()),
 					treasury_balance
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
@@ -2925,7 +2924,7 @@ mod account {
 				assert_eq!(Accounts::<Test>::get(ALICE).storage_tier as isize, 100);
 				treasury_balance += upgrade_fee;
 				assert_eq!(
-					Balances::free_balance(&AAvatars::treasury_account_id()),
+					Balances::free_balance(AAvatars::treasury_account_id()),
 					treasury_balance
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);

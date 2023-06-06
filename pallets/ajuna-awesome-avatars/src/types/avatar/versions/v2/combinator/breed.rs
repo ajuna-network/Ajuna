@@ -108,7 +108,6 @@ mod test {
 			let unit_closure = |avatar| avatar;
 
 			let mut avatar_set = (0..5)
-				.into_iter()
 				.map(|i| {
 					create_random_avatar::<Test, _>(&ALICE, Some(hash_base[i]), Some(unit_closure))
 				})
@@ -157,7 +156,6 @@ mod test {
 			];
 
 			let mut egg_set = (0..5)
-				.into_iter()
 				.map(|i| {
 					let soul_points = ((progress_arrays[i][2] | progress_arrays[i][6]) % 99) + 1;
 
@@ -207,7 +205,6 @@ mod test {
 			];
 
 			let mut egg_set = (0..5)
-				.into_iter()
 				.map(|i| {
 					let soul_points = ((progress_arrays[i][2] | progress_arrays[i][6]) % 99) + 1;
 
