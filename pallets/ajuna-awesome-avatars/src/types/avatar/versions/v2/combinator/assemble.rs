@@ -20,6 +20,8 @@ impl<T: Config> AvatarCombinator<T> {
 					))
 			});
 
+		let leader_progress_array = AvatarUtils::read_progress_array(&input_leader.1);
+
 		let ((leader_id, mut input_leader), matching_sacrifices) = Self::match_avatars(
 			input_leader,
 			matching_sacrifices,
@@ -30,7 +32,6 @@ impl<T: Config> AvatarCombinator<T> {
 		let (additionals, non_additionals): (Vec<_>, Vec<_>) =
 			matching_sacrifices.into_iter().chain(non_matching).partition(|(_, sacrifice)| {
 				if !AvatarUtils::same_item_type_and_class_types(sacrifice, &input_leader) {
-					let leader_progress_array = AvatarUtils::read_progress_array(&input_leader);
 					let sacrifice_progress_array = AvatarUtils::read_progress_array(sacrifice);
 
 					AvatarUtils::is_array_match(
@@ -1053,6 +1054,89 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			assert!(is_leader_forged(&leader_output));
+		});
+	}
+
+	#[test]
+	fn test_assemble_1() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes(HASH_BYTES);
+
+			let hash_base = [
+				[
+					0x41, 0x61, 0x03, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x43, 0x43, 0x42, 0x40,
+					0x34, 0x31, 0x41, 0x40, 0x43, 0x45,
+				],
+				[
+					0x41, 0x61, 0x03, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0x32, 0x33, 0x33, 0x41,
+					0x35, 0x30, 0x35, 0x34, 0x45, 0x31,
+				],
+				[
+					0x41, 0x61, 0x03, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x35, 0x34, 0x35, 0x31, 0x35,
+					0x33, 0x33, 0x31, 0x31, 0x33, 0x34,
+				],
+				[
+					0x41, 0x61, 0x03, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x32, 0x30, 0x31, 0x30, 0x33,
+					0x32, 0x35, 0x31, 0x30, 0x32, 0x35,
+				],
+				[
+					0x43, 0x61, 0x03, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x31, 0x31, 0x33, 0x42, 0x31,
+					0x35, 0x32, 0x33, 0x33, 0x34, 0x32,
+				],
+			];
+
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 100;
+				avatar
+			};
+
+			let leader = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[0]), Some(unit_fn));
+			let sac_1 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[1]), Some(unit_fn));
+			let sac_2 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[2]), Some(unit_fn));
+			let sac_3 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[3]), Some(unit_fn));
+			let sac_4 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[4]), Some(unit_fn));
+
+			let leader_progress_array = AvatarUtils::read_progress_array(&leader.1);
+			let lowest_count =
+				AvatarUtils::read_lowest_progress_indexes(&leader_progress_array, &ByteType::High)
+					.len();
+			assert_eq!(lowest_count, 3);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::assemble_avatars(
+				leader,
+				vec![sac_1, sac_2, sac_3, sac_4],
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				let out_leader_progress_array = AvatarUtils::read_progress_array(&avatar);
+				let out_lowest_count = AvatarUtils::read_lowest_progress_indexes(
+					&out_leader_progress_array,
+					&ByteType::High,
+				)
+				.len();
+				assert_eq!(out_lowest_count, 11);
+
+				let expected_dna = [
+					0x41, 0x61, 0x04, 0x01, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x43, 0x43, 0x42, 0x40,
+					0x44, 0x41, 0x41, 0x40, 0x43, 0x45,
+				];
+				assert_eq!(avatar.dna.as_slice(), &expected_dna);
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 }
