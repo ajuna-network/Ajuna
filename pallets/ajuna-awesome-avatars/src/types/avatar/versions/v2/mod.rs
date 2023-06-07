@@ -205,65 +205,38 @@ impl<T: Config> Forger<T> for ForgerV2<T> {
 }
 
 impl<T: Config> ForgerV2<T> {
-	fn determine_forge_type(input_leader: &Avatar, input_sacrifices: &[&Avatar]) -> ForgeType {
-		let input_leader_item_type =
-			AvatarUtils::read_attribute_as::<ItemType>(input_leader, &AvatarAttributes::ItemType);
+	fn determine_forge_type(leader: &Avatar, sacrifices: &[&Avatar]) -> ForgeType {
+		let leader_item_type = AvatarUtils::read_item_type::<ItemType>(leader);
 
-		match input_leader_item_type {
-
-			/// ItemType Pet, including the sub types Pet, PetPart & Egg
+		match leader_item_type {
 			ItemType::Pet => {
-
-				let leader_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
-					input_leader,
-					&AvatarAttributes::ItemSubType,
-				);
+				let leader_sub_type = AvatarUtils::read_sub_type::<PetItemType>(leader);
 
 				match leader_sub_type {
 					PetItemType::Pet => {
-						if input_sacrifices.iter().all(|sacrifice| {
+						if sacrifices.iter().all(|sacrifice| {
 							let equippable_item = AvatarUtils::read_attribute_as(
 								sacrifice,
 								&AvatarAttributes::ItemSubType,
 							);
-
-								AvatarUtils::has_attribute_set_with_same_values_as(
-								input_leader,
-								sacrifice,
-								&[AvatarAttributes::RarityTier, AvatarAttributes::ClassType2],
-							) && AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemType,
-								ItemType::Equippable,
-							) && (equippable_item == EquippableItemType::ArmorBase ||
-								EquippableItemType::is_weapon(equippable_item))
+							AvatarUtils::has_item_type(&sacrifice, ItemType::Equippable) &&
+								AvatarUtils::same_rarity_tier(leader, sacrifice) &&
+								AvatarUtils::same_class_type2(leader, sacrifice) &&
+								(equippable_item == EquippableItemType::ArmorBase ||
+									EquippableItemType::is_weapon(equippable_item))
 						}) {
 							ForgeType::Equip
-						} else if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_set_with_same_values_as(
-								input_leader,
-								sacrifice,
-								&[
-									AvatarAttributes::ItemType,
-									AvatarAttributes::ItemSubType,
-									AvatarAttributes::RarityTier,
-								],
-							)
+						} else if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::same_item_sub_type(sacrifice, leader) &&
+								AvatarUtils::same_rarity_tier(sacrifice, leader)
 						}) {
 							ForgeType::Mate
-						} else if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_with_same_value_as(
-								input_leader,
-								sacrifice,
-								&AvatarAttributes::ItemType,
-							) && AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemSubType,
-								PetItemType::Egg,
-							) && AvatarUtils::read_attribute_as::<RarityTier>(
-								sacrifice,
-								&AvatarAttributes::RarityTier,
-							) < RarityTier::Legendary
+						} else if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::has_item_sub_type(sacrifice, PetItemType::Egg) &&
+								AvatarUtils::read_rarity::<RarityTier>(sacrifice) <
+									RarityTier::Legendary
 						}) {
 							ForgeType::Feed
 						} else {
@@ -271,24 +244,14 @@ impl<T: Config> ForgerV2<T> {
 						}
 					},
 					PetItemType::PetPart => {
-						if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemSubType,
-								PetItemType::PetPart,
-							) && AvatarUtils::has_attribute_with_same_value_as(
-								sacrifice,
-								input_leader,
-								&AvatarAttributes::ClassType2,
-							)
+						if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::same_item_sub_type(sacrifice, leader) &&
+								AvatarUtils::same_class_type2(sacrifice, leader)
 						}) {
 							ForgeType::Stack
-						} else if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemType,
-								ItemType::Material,
-							)
+						} else if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::has_item_type(sacrifice, ItemType::Material)
 						}) {
 							ForgeType::Tinker
 						} else {
@@ -296,23 +259,13 @@ impl<T: Config> ForgerV2<T> {
 						}
 					},
 					PetItemType::Egg => {
+						let leader_rarity = AvatarUtils::read_rarity::<RarityTier>(leader);
 
-						let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
-							input_leader,
-							&AvatarAttributes::RarityTier,
-						);
-	
-						if leader_rarity <= RarityTier::Epic && input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemType,
-								ItemType::Pet,
-							) && AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemSubType,
-								PetItemType::Egg,
-							)
-						}) {
+						if leader_rarity <= RarityTier::Epic &&
+							sacrifices.iter().all(|sacrifice| {
+								AvatarUtils::same_item_type(sacrifice, leader) &&
+									AvatarUtils::same_item_sub_type(sacrifice, leader)
+							}) {
 							ForgeType::Breed
 						} else {
 							ForgeType::None
@@ -321,12 +274,9 @@ impl<T: Config> ForgerV2<T> {
 				}
 			},
 			ItemType::Material => {
-				if input_sacrifices.iter().all(|sacrifice| {
-					AvatarUtils::has_attribute_with_same_value_as(
-						input_leader,
-						sacrifice,
-						&AvatarAttributes::ItemSubType,
-					)
+				if sacrifices.iter().all(|sacrifice| {
+					AvatarUtils::same_item_type(sacrifice, leader) &&
+						AvatarUtils::same_item_sub_type(sacrifice, leader)
 				}) {
 					ForgeType::Stack
 				} else {
@@ -334,32 +284,19 @@ impl<T: Config> ForgerV2<T> {
 				}
 			},
 			ItemType::Essence => {
-				let leader_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
-					input_leader,
-					&AvatarAttributes::ItemSubType,
-				);
+				let leader_sub_type = AvatarUtils::read_sub_type::<EssenceItemType>(leader);
 
 				match leader_sub_type {
 					EssenceItemType::Glimmer => {
-						if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemType,
-								ItemType::Material,
-							) && AvatarUtils::read_attribute(sacrifice, &AvatarAttributes::Quantity) >=
-								4
-						}) && AvatarUtils::read_attribute(
-							input_leader,
-							&AvatarAttributes::Quantity,
-						) as usize >= input_sacrifices.len()
+						if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::has_item_type(sacrifice, ItemType::Material) &&
+								AvatarUtils::read_quantity(sacrifice) >= 4
+						}) && AvatarUtils::read_quantity(leader) as usize >= sacrifices.len()
 						{
 							ForgeType::Glimmer
-						} else if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_set_with_same_values_as(
-								sacrifice,
-								input_leader,
-								&[AvatarAttributes::ItemType, AvatarAttributes::ItemSubType],
-							)
+						} else if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::same_item_sub_type(sacrifice, leader)
 						}) {
 							ForgeType::Stack
 						} else {
@@ -367,12 +304,9 @@ impl<T: Config> ForgerV2<T> {
 						}
 					},
 					EssenceItemType::ColorSpark | EssenceItemType::GlowSpark => {
-						if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_set_with_same_values_as(
-								input_leader,
-								sacrifice,
-								&[AvatarAttributes::ItemType, AvatarAttributes::ItemSubType],
-							)
+						if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::same_item_sub_type(sacrifice, leader)
 						}) {
 							ForgeType::Spark
 						} else {
@@ -383,27 +317,21 @@ impl<T: Config> ForgerV2<T> {
 				}
 			},
 			ItemType::Equippable => {
-				let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
-					input_leader,
-					&AvatarAttributes::RarityTier,
-				);
+				let leader_sub_type = AvatarUtils::read_sub_type::<EquippableItemType>(leader);
 
-				let leader_equipable_item_type = AvatarUtils::read_attribute_as::<EquippableItemType>(
-					input_leader,
-					&AvatarAttributes::ItemSubType,
-				);
+				let leader_rarity = AvatarUtils::read_rarity::<RarityTier>(leader);
 
-				let any_same_assemble_version = input_sacrifices
+				let any_same_assemble_version = sacrifices
 					.iter()
-					.any(|sacrifice| AvatarUtils::same_assemble_version(input_leader, sacrifice));
+					.any(|sacrifice| AvatarUtils::same_assemble_version(leader, sacrifice));
 
-				let all_sacrifice_are_armor_or_toolbox = input_sacrifices.iter().all(|sacrifice| {
+				let all_sacrifice_are_armor_or_toolbox = sacrifices.iter().all(|sacrifice| {
 					let same_assemble_version =
-						AvatarUtils::same_assemble_version(input_leader, sacrifice);
+						AvatarUtils::same_assemble_version(leader, sacrifice);
 
 					let equipable_sacrifice_item = AvatarUtils::read_attribute_as::<
 						EquippableItemType,
-					>(input_leader, &AvatarAttributes::ItemSubType);
+					>(leader, &AvatarAttributes::ItemSubType);
 
 					let is_toolbox = AvatarUtils::has_attribute_set_with_values(
 						sacrifice,
@@ -417,22 +345,19 @@ impl<T: Config> ForgerV2<T> {
 						(EquippableItemType::is_armor(equipable_sacrifice_item) || is_toolbox)
 				});
 
-				if EquippableItemType::is_armor(leader_equipable_item_type) &&
+				if EquippableItemType::is_armor(leader_sub_type) &&
 					any_same_assemble_version &&
 					all_sacrifice_are_armor_or_toolbox
 				{
 					ForgeType::Assemble
 				} else if leader_rarity == RarityTier::Epic &&
-					leader_equipable_item_type == EquippableItemType::ArmorBase
+					leader_sub_type == EquippableItemType::ArmorBase
 				{
-					let has_one_paint_flask_or_glow = input_sacrifices
+					let has_one_paint_flask_or_glow = sacrifices
 						.iter()
 						.filter(|sacrifice| {
-							let is_essence = AvatarUtils::has_attribute_with_value(
-								sacrifice,
-								&AvatarAttributes::ItemType,
-								ItemType::Essence,
-							);
+							let is_essence =
+								AvatarUtils::has_item_type(sacrifice, ItemType::Essence);
 
 							let is_flask_or_glow = {
 								let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
@@ -448,7 +373,7 @@ impl<T: Config> ForgerV2<T> {
 						})
 						.count() == 1;
 
-					let all_are_glimmer_paint_or_force = input_sacrifices.iter().all(|sacrifice| {
+					let all_are_glimmer_paint_or_force = sacrifices.iter().all(|sacrifice| {
 						let is_essence = AvatarUtils::has_attribute_with_value(
 							sacrifice,
 							&AvatarAttributes::ItemType,
@@ -479,49 +404,35 @@ impl<T: Config> ForgerV2<T> {
 				}
 			},
 			ItemType::Blueprint => {
-				if input_sacrifices.iter().all(|sacrifice| {
-					AvatarUtils::has_attribute_set_with_same_values_as(
-						sacrifice,
-						input_leader,
-						&[
-							AvatarAttributes::ItemType,
-							AvatarAttributes::ItemSubType,
-							AvatarAttributes::ClassType1,
-							AvatarAttributes::ClassType2,
-						],
-					) && AvatarUtils::has_same_spec_byte_as(
-						sacrifice,
-						input_leader,
-						&AvatarSpecBytes::SpecByte3,
-					)
+				if sacrifices.iter().all(|sacrifice| {
+					AvatarUtils::same_item_type(leader, sacrifice) &&
+						AvatarUtils::same_item_sub_type(leader, sacrifice) &&
+						AvatarUtils::same_class_type1(leader, sacrifice) &&
+						AvatarUtils::same_class_type2(leader, sacrifice) &&
+						AvatarUtils::has_same_spec_byte_as(
+							sacrifice,
+							leader,
+							&AvatarSpecBytes::SpecByte3,
+						)
 				}) {
 					ForgeType::Stack
-				} else if input_sacrifices.iter().all(|sacrifice| {
-					AvatarUtils::has_attribute_with_value(
-						sacrifice,
-						&AvatarAttributes::ItemType,
-						ItemType::Material,
-					)
-				}) {
+				} else if sacrifices
+					.iter()
+					.all(|sacrifice| AvatarUtils::has_item_type(sacrifice, ItemType::Material))
+				{
 					ForgeType::Build
 				} else {
 					ForgeType::None
 				}
 			},
 			ItemType::Special => {
-				let leader_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
-					input_leader,
-					&AvatarAttributes::ItemSubType,
-				);
+				let leader_sub_type = AvatarUtils::read_sub_type::<SpecialItemType>(leader);
 
 				match leader_sub_type {
 					SpecialItemType::Dust =>
-						if input_sacrifices.iter().all(|sacrifice| {
-							AvatarUtils::has_attribute_set_with_same_values_as(
-								sacrifice,
-								input_leader,
-								&[AvatarAttributes::ItemType, AvatarAttributes::ItemSubType],
-							)
+						if sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::same_item_sub_type(sacrifice, leader)
 						}) {
 							ForgeType::Stack
 						} else {
