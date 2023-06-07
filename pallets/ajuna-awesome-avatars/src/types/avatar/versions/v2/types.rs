@@ -137,7 +137,7 @@ impl ByteConvertible for ItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
