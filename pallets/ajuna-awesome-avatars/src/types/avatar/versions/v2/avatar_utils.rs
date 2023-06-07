@@ -572,6 +572,26 @@ impl AvatarUtils {
 		Self::read_attribute(avatar, attribute) == Self::read_attribute(other, attribute)
 	}
 
+	pub fn same_item_type(avatar: &Avatar, other: &Avatar) -> bool {
+		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ItemType)
+	}
+
+	pub fn same_item_sub_type(avatar: &Avatar, other: &Avatar) -> bool {
+		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ItemSubType)
+	}
+
+	pub fn same_rarity_tier(avatar: &Avatar, other: &Avatar) -> bool {
+		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::RarityTier)
+	}
+
+	pub fn same_class_type1(avatar: &Avatar, other: &Avatar) -> bool {
+		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ClassType1)
+	}
+
+	pub fn same_class_type2(avatar: &Avatar, other: &Avatar) -> bool {
+		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ClassType2)
+	}
+
 	pub fn has_attribute_set_with_same_values_as(
 		avatar: &Avatar,
 		other: &Avatar,
@@ -645,6 +665,14 @@ impl AvatarUtils {
 		Self::has_attribute_with_value_raw(avatar, attribute, value.as_byte())
 	}
 
+	pub fn has_item_type<T: ByteConvertible>(avatar: &Avatar, value: T) -> bool {
+		Self::has_attribute_with_value(avatar, &AvatarAttributes::ItemType, value)
+	}
+
+	pub fn has_item_sub_type<T: ByteConvertible>(avatar: &Avatar, value: T) -> bool {
+		Self::has_attribute_with_value(avatar, &AvatarAttributes::ItemSubType, value)
+	}
+
 	pub fn has_attribute_with_value_different_than<T>(
 		avatar: &Avatar,
 		attribute: &AvatarAttributes,
@@ -669,6 +697,22 @@ impl AvatarUtils {
 		T: ByteConvertible,
 	{
 		T::from_byte(Self::read_attribute(avatar, attribute))
+	}
+
+	pub fn read_item_type<T: ByteConvertible>(avatar: &Avatar) -> T {
+		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::ItemType)
+	}
+
+	pub fn read_sub_type<T: ByteConvertible>(avatar: &Avatar) -> T {
+		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::ItemSubType)
+	}
+
+	pub fn read_rarity<T: ByteConvertible>(avatar: &Avatar) -> T {
+		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::RarityTier)
+	}
+
+	pub fn read_quantity(avatar: &Avatar) -> u8 {
+		Self::read_attribute(avatar, &AvatarAttributes::Quantity)
 	}
 
 	pub fn read_attribute(avatar: &Avatar, attribute: &AvatarAttributes) -> u8 {
