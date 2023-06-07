@@ -219,7 +219,7 @@ impl<T: Config> ForgerV2<T> {
 								sacrifice,
 								&AvatarAttributes::ItemSubType,
 							);
-							AvatarUtils::has_item_type(&sacrifice, ItemType::Equippable) &&
+							AvatarUtils::has_item_type(sacrifice, ItemType::Equippable) &&
 								AvatarUtils::same_rarity_tier(leader, sacrifice) &&
 								AvatarUtils::same_class_type2(leader, sacrifice) &&
 								(equippable_item == EquippableItemType::ArmorBase ||
