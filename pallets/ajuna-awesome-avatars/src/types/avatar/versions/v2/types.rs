@@ -112,7 +112,7 @@ impl Ranged for NibbleType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub(crate) enum ItemType {
 	#[default]
 	Pet = 1,
