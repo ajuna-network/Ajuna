@@ -152,7 +152,7 @@ impl<T: Config> MinterV2<T> {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq)]
 pub(crate) enum ForgeType {
 	None,
 	Stack,
@@ -449,6 +449,7 @@ impl<T: Config> ForgerV2<T> {
 mod test {
 	use super::*;
 	use crate::mock::*;
+	use sp_std::collections::btree_map::BTreeMap;
 
 	#[test]
 	fn test_can_be_forged() {
@@ -1016,6 +1017,60 @@ mod test {
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
 				ForgeType::None
 			);
+
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 100;
+				avatar
+			};
+
+			let leader = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x12, 0x12, 0x12, 0x01, 0x00, 0x6C, 0x78, 0xD8, 0x72, 0x55, 0x78, 0x66, 0x6C,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				]),
+				Some(unit_fn),
+			);
+			let sac_1 = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x42, 0x12, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x12, 0x13, 0x14, 0x13, 0x14,
+					0x11, 0x22, 0x10, 0x14, 0x22, 0x11,
+				]),
+				Some(unit_fn),
+			);
+
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader.1, &[&sac_1.1]),
+				ForgeType::None
+			);
+
+			let leader = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x22, 0x00, 0x11, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				]),
+				Some(unit_fn),
+			);
+			let sac_1 = create_random_avatar::<Test, _>(
+				&ALICE,
+				Some([
+					0x42, 0x12, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x12, 0x13, 0x14, 0x13, 0x14,
+					0x11, 0x22, 0x10, 0x14, 0x22, 0x11,
+				]),
+				Some(unit_fn),
+			);
+
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader.1, &[&sac_1.1]),
+				ForgeType::None
+			);
 		});
 	}
 
@@ -1044,6 +1099,182 @@ mod test {
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
 				ForgeType::None
 			);
+		});
+	}
+
+	#[test]
+	fn test_forge_type_distribution() {
+		ExtBuilder::default().build().execute_with(|| {
+			let hash = Pallet::<Test>::random_hash(b"forge_type_distribution", &ALICE);
+			let mut hash_provider = HashProvider::<Test, 32>::new(&hash);
+
+			let leader_possible_item_types = vec![
+				ItemType::Pet,
+				ItemType::Material,
+				ItemType::Essence,
+				ItemType::Equippable,
+				ItemType::Blueprint,
+			];
+
+			let item_type_selection_fn = |item_type: ItemType| match item_type {
+				ItemType::Pet => vec![ItemType::Pet, ItemType::Equippable, ItemType::Material],
+				ItemType::Material => vec![ItemType::Material],
+				ItemType::Essence => vec![ItemType::Essence],
+				ItemType::Equippable => vec![ItemType::Equippable, ItemType::Essence],
+				ItemType::Blueprint => vec![ItemType::Material],
+				ItemType::Special => vec![],
+			};
+
+			let avatar_creation_fn = |allowed_item_types: &Vec<ItemType>,
+			                          hash_provider: &HashProvider<Test, 32>,
+			                          i: usize| {
+				let mut random_hash = HashProvider::<Test, 32>::new(&hash_provider.full_hash(i));
+
+				let item_type = allowed_item_types
+					[random_hash.get_hash_byte() as usize % allowed_item_types.len()];
+
+				move |avatar: Avatar| {
+					let mut avatar = avatar;
+
+					let class_type_1 = SlotType::from_byte(
+						(random_hash.get_hash_byte() % SlotType::range().end as u8) +
+							SlotType::range().start as u8,
+					);
+					let class_type_2 = PetType::from_byte(
+						(random_hash.get_hash_byte() % PetType::range().end as u8) +
+							PetType::range().start as u8,
+					);
+					let rarity_type = RarityTier::from_byte(
+						(random_hash.get_hash_byte() % RarityTier::Mythical.as_byte()) + 1,
+					);
+
+					let item_sub_type = match item_type {
+						ItemType::Pet => HexType::from_byte(
+							(random_hash.get_hash_byte() % PetItemType::Egg.as_byte()) + 1,
+						),
+						ItemType::Material => HexType::from_byte(
+							(random_hash.get_hash_byte() %
+								MaterialItemType::Nanomaterials.as_byte()) +
+								1,
+						),
+						ItemType::Essence => HexType::from_byte(
+							(random_hash.get_hash_byte() % EssenceItemType::GlowFlask.as_byte()) +
+								1,
+						),
+						ItemType::Equippable => HexType::from_byte(
+							(random_hash.get_hash_byte() %
+								EquippableItemType::WeaponVersion3.as_byte()) +
+								1,
+						),
+						ItemType::Blueprint | ItemType::Special => HexType::X0,
+					};
+
+					AvatarUtils::write_typed_attribute(
+						&mut avatar,
+						&AvatarAttributes::ItemType,
+						&item_type,
+					);
+					AvatarUtils::write_typed_attribute(
+						&mut avatar,
+						&AvatarAttributes::ItemSubType,
+						&item_sub_type,
+					);
+					AvatarUtils::write_typed_attribute(
+						&mut avatar,
+						&AvatarAttributes::ClassType1,
+						&class_type_1,
+					);
+					AvatarUtils::write_typed_attribute(
+						&mut avatar,
+						&AvatarAttributes::ClassType2,
+						&class_type_2,
+					);
+					AvatarUtils::write_typed_attribute(
+						&mut avatar,
+						&AvatarAttributes::RarityTier,
+						&rarity_type,
+					);
+
+					avatar
+				}
+			};
+
+			let max_iterations = 100_000_usize;
+
+			let mut forge_type_map = BTreeMap::new();
+
+			forge_type_map.insert(ForgeType::None, 0);
+			forge_type_map.insert(ForgeType::Stack, 0);
+			forge_type_map.insert(ForgeType::Tinker, 0);
+			forge_type_map.insert(ForgeType::Build, 0);
+			forge_type_map.insert(ForgeType::Assemble, 0);
+			forge_type_map.insert(ForgeType::Breed, 0);
+			forge_type_map.insert(ForgeType::Equip, 0);
+			forge_type_map.insert(ForgeType::Mate, 0);
+			forge_type_map.insert(ForgeType::Feed, 0);
+			forge_type_map.insert(ForgeType::Glimmer, 0);
+			forge_type_map.insert(ForgeType::Spark, 0);
+			forge_type_map.insert(ForgeType::Special, 0);
+			forge_type_map.insert(ForgeType::Flask, 0);
+
+			for i in 0..max_iterations {
+				let leader = create_random_avatar::<Test, _>(
+					&ALICE,
+					None,
+					Some(avatar_creation_fn(&leader_possible_item_types, &hash_provider, i)),
+				)
+				.1;
+
+				let leader_item_type = AvatarUtils::read_attribute_as::<ItemType>(
+					&leader,
+					&AvatarAttributes::ItemType,
+				);
+
+				let sacrifice_count = (hash_provider.get_hash_byte() % 4) as usize + 1;
+				let mut sacrifice_list = Vec::with_capacity(sacrifice_count);
+				for _ in 0..sacrifice_count {
+					let sacrifice = create_random_avatar::<Test, _>(
+						&ALICE,
+						None,
+						Some(avatar_creation_fn(
+							&item_type_selection_fn(leader_item_type),
+							&hash_provider,
+							i,
+						)),
+					);
+					sacrifice_list.push(sacrifice.1);
+				}
+
+				let forge_type = ForgerV2::<Test>::determine_forge_type(
+					&leader,
+					sacrifice_list.iter().collect::<Vec<_>>().as_slice(),
+				);
+
+				forge_type_map
+					.entry(forge_type)
+					.and_modify(|value| *value += 1)
+					.or_insert(1_u32);
+
+				if i % 1000 == 999 {
+					let hash_text = format!("hash_loop_{:#07X}", i);
+					let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+					hash_provider = HashProvider::new(&hash);
+				}
+			}
+
+			assert_eq!(forge_type_map.get(&ForgeType::None).unwrap(), &32755);
+			assert_eq!(forge_type_map.get(&ForgeType::Stack).unwrap(), &26687);
+			assert_eq!(forge_type_map.get(&ForgeType::Tinker).unwrap(), &2407);
+			assert_eq!(forge_type_map.get(&ForgeType::Build).unwrap(), &20171);
+			assert_eq!(forge_type_map.get(&ForgeType::Assemble).unwrap(), &5620);
+			assert_eq!(forge_type_map.get(&ForgeType::Breed).unwrap(), &1558);
+			assert_eq!(forge_type_map.get(&ForgeType::Equip).unwrap(), &848);
+			assert_eq!(forge_type_map.get(&ForgeType::Mate).unwrap(), &2122);
+			assert_eq!(forge_type_map.get(&ForgeType::Feed).unwrap(), &0);
+			assert_eq!(forge_type_map.get(&ForgeType::Glimmer).unwrap(), &0);
+			assert_eq!(forge_type_map.get(&ForgeType::Spark).unwrap(), &7832);
+			assert_eq!(forge_type_map.get(&ForgeType::Special).unwrap(), &0);
+			assert_eq!(forge_type_map.get(&ForgeType::Flask).unwrap(), &0);
 		});
 	}
 }

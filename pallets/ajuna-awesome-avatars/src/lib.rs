@@ -55,6 +55,8 @@
 #![feature(variant_count)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate core;
+
 pub use pallet::*;
 
 #[cfg(test)]

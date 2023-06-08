@@ -112,7 +112,7 @@ impl Ranged for NibbleType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub(crate) enum ItemType {
 	#[default]
 	Pet = 1,
@@ -137,7 +137,7 @@ impl ByteConvertible for ItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 

@@ -29,6 +29,7 @@ pallet-balances                            = { git = "https://github.com/parityt
 pallet-insecure-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
 pallet-nfts                                = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
 sp-core                                    = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+hex = "0.4.3"
 
 [features]
 default = [ "std" ]
