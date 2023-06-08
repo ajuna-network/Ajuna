@@ -1044,7 +1044,7 @@ mod test {
 			);
 
 			assert_eq!(
-				ForgerV2::<Test>::determine_forge_type(&leader.1, &vec![&sac_1.1]),
+				ForgerV2::<Test>::determine_forge_type(&leader.1, &[&sac_1.1]),
 				ForgeType::None
 			);
 
@@ -1068,7 +1068,7 @@ mod test {
 			);
 
 			assert_eq!(
-				ForgerV2::<Test>::determine_forge_type(&leader.1, &vec![&sac_1.1]),
+				ForgerV2::<Test>::determine_forge_type(&leader.1, &[&sac_1.1]),
 				ForgeType::None
 			);
 		});
@@ -1133,7 +1133,7 @@ mod test {
 				let item_type = allowed_item_types
 					[random_hash.get_hash_byte() as usize % allowed_item_types.len()];
 
-				let creation_fn = move |avatar: Avatar| {
+				move |avatar: Avatar| {
 					let mut avatar = avatar;
 
 					let class_type_1 = SlotType::from_byte(
@@ -1196,9 +1196,7 @@ mod test {
 					);
 
 					avatar
-				};
-
-				creation_fn
+				}
 			};
 
 			let max_iterations = 100_000_usize;

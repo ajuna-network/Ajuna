@@ -5642,6 +5642,7 @@ version = "0.1.18"
 dependencies = [
  "frame-support",
  "frame-system",
+ "hex",
  "log",
  "pallet-ajuna-nft-transfer",
  "pallet-balances",

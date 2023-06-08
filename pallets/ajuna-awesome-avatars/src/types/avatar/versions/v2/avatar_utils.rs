@@ -1189,6 +1189,7 @@ impl<T: Config, const N: usize> Iterator for HashProvider<T, N> {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use hex;
 
 	#[test]
 	fn test_bits_to_enums_consistency_1() {
@@ -1366,7 +1367,7 @@ mod test {
 
 	#[test]
 	fn test_match_progress_array_consistency() {
-		let empty_vec = Vec::<u32>::new();
+		let empty_vec = Vec::<u32>::with_capacity(0);
 
 		let arr_1 = [0x00; 11];
 		let arr_2 = [0x00; 11];
@@ -1449,7 +1450,7 @@ mod test {
 
 	#[test]
 	fn test_match_progress_array_consistency_multiple() {
-		let empty_vec = Vec::<u32>::new();
+		let empty_vec = Vec::<u32>::with_capacity(0);
 
 		let arr_1 = [0x14, 0x12, 0x10, 0x11, 0x20, 0x21, 0x10, 0x15, 0x11, 0x25, 0x13];
 		let arr_2 = [0x12, 0x13, 0x14, 0x13, 0x14, 0x11, 0x22, 0x10, 0x14, 0x22, 0x11];
@@ -1484,7 +1485,7 @@ mod test {
 
 	#[test]
 	fn test_match_progress_consistency_on_level() {
-		let empty_vec = Vec::<u32>::new();
+		let empty_vec = Vec::<u32>::with_capacity(0);
 
 		let arr_1 = [0x42, 0x40, 0x40, 0x44, 0x43, 0x42, 0x41, 0x44, 0x44, 0x42, 0x45];
 		let arr_2 = [0x41, 0x51, 0x52, 0x53, 0x44, 0x52, 0x45, 0x41, 0x40, 0x41, 0x43];
@@ -1518,6 +1519,20 @@ mod test {
 
 		let arr_1 = [0x31, 0x30, 0x35, 0x33, 0x30, 0x33, 0x31, 0x32, 0x32, 0x32, 0x34];
 		let arr_2 = [0x21, 0x21, 0x35, 0x34, 0x24, 0x33, 0x23, 0x22, 0x22, 0x22, 0x22];
+		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let expected_matches: Vec<u32> = vec![3];
+		assert_eq!(matches, expected_matches);
+		assert_eq!(mirrors, empty_vec);
+	}
+
+	#[test]
+	fn test_match_progress_consistency_hex() {
+		let empty_vec = Vec::<u32>::with_capacity(0);
+
+		let arr_1: [u8; 11] =
+			hex::decode("3130353330333132323234").expect("Decode").try_into().unwrap();
+		let arr_2: [u8; 11] =
+			hex::decode("2121353424332322222222").expect("Decode").try_into().unwrap();
 		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![3];
 		assert_eq!(matches, expected_matches);
