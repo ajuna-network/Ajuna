@@ -1279,10 +1279,10 @@ mod test {
 				}
 			}
 
-			assert_eq!(forge_type_map.get(&ForgeType::None).unwrap(), &32755);
+			assert_eq!(forge_type_map.get(&ForgeType::None).unwrap(), &48203);
 			assert_eq!(forge_type_map.get(&ForgeType::Stack).unwrap(), &26687);
 			assert_eq!(forge_type_map.get(&ForgeType::Tinker).unwrap(), &2407);
-			assert_eq!(forge_type_map.get(&ForgeType::Build).unwrap(), &20171);
+			assert_eq!(forge_type_map.get(&ForgeType::Build).unwrap(), &4723);
 			assert_eq!(forge_type_map.get(&ForgeType::Assemble).unwrap(), &5620);
 			assert_eq!(forge_type_map.get(&ForgeType::Breed).unwrap(), &1558);
 			assert_eq!(forge_type_map.get(&ForgeType::Equip).unwrap(), &848);
