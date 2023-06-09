@@ -621,10 +621,10 @@ pub mod pallet {
 
 			let current_season_id = CurrentSeasonStatus::<T>::get().season_id;
 
-			PlayerSeasons::<T>::mutate(&buyer, &current_season_id, |config| {
+			PlayerSeasons::<T>::mutate(&buyer, current_season_id, |config| {
 				config.stats.trade.bought.saturating_inc()
 			});
-			PlayerSeasons::<T>::mutate(&seller, &current_season_id, |account| {
+			PlayerSeasons::<T>::mutate(&seller, current_season_id, |account| {
 				account.stats.trade.sold.saturating_inc()
 			});
 
@@ -643,13 +643,13 @@ pub mod pallet {
 			let player = ensure_signed(origin)?;
 			let (season_id, Season { fee, .. }) = Self::current_season_with_id()?;
 
-			let storage_tier = PlayerSeasons::<T>::get(&player, &season_id).storage_tier;
+			let storage_tier = PlayerSeasons::<T>::get(&player, season_id).storage_tier;
 			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
 			T::Currency::withdraw(&player, fee.upgrade_storage, WithdrawReasons::FEE, AllowDeath)?;
 			Self::deposit_into_treasury(&season_id, fee.upgrade_storage);
 
-			PlayerSeasons::<T>::mutate(&player, &season_id, |account| {
+			PlayerSeasons::<T>::mutate(&player, season_id, |account| {
 				account.storage_tier = storage_tier.upgrade()
 			});
 			Self::deposit_event(Event::StorageTierUpgraded);
@@ -1087,7 +1087,7 @@ pub mod pallet {
 
 			PlayerSeasons::<T>::try_mutate(
 				player,
-				&season_id,
+				season_id,
 				|PlayerSeasonConfig { stats, .. }| -> DispatchResult {
 					let current_block = <frame_system::Pallet<T>>::block_number();
 					if stats.mint.first.is_zero() {
@@ -1384,7 +1384,7 @@ pub mod pallet {
 
 			PlayerSeasons::<T>::try_mutate(
 				player,
-				&season_id,
+				season_id,
 				|PlayerSeasonConfig { stats, .. }| -> DispatchResult {
 					if stats.forge.first.is_zero() {
 						stats.forge.first = current_block;
