@@ -416,10 +416,10 @@ impl<T: Config> ForgerV2<T> {
 						)
 				}) {
 					ForgeType::Stack
-				} else if sacrifices
-					.iter()
-					.all(|sacrifice| AvatarUtils::has_item_type(sacrifice, ItemType::Material))
-				{
+				} else if sacrifices.len() == 4 &&
+					sacrifices.iter().all(|sacrifice| {
+						AvatarUtils::has_item_type(sacrifice, ItemType::Material)
+					}) {
 					ForgeType::Build
 				} else {
 					ForgeType::None
@@ -600,10 +600,27 @@ mod test {
 			// Build
 			let (_, leader) =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 2);
-			let sacrifices = [&create_random_material(&ALICE, &MaterialItemType::Ceramics, 10).1];
+			let sacrifices = [
+				&create_random_material(&ALICE, &MaterialItemType::Ceramics, 10).1,
+				&create_random_material(&ALICE, &MaterialItemType::Nanomaterials, 10).1,
+				&create_random_material(&ALICE, &MaterialItemType::Polymers, 10).1,
+				&create_random_material(&ALICE, &MaterialItemType::Optics, 10).1,
+			];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
 				ForgeType::Build
+			);
+
+			// Build without enough materials fails
+			let (_, leader) =
+				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 2);
+			let sacrifices = [
+				&create_random_material(&ALICE, &MaterialItemType::Electronics, 10).1,
+				&create_random_material(&ALICE, &MaterialItemType::Metals, 10).1,
+			];
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+				ForgeType::None
 			);
 
 			// Build with non-materials fails
