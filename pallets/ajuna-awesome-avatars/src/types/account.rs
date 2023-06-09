@@ -78,7 +78,6 @@ pub struct Stats<BlockNumber> {
 	pub trade: TradeStats,
 }
 
-// Create storage migration in v5.rs
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Default)]
 pub struct PlayerConfig {
 	pub free_mints: MintCount,

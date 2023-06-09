@@ -833,8 +833,8 @@ mod minting {
 					);
 					for account in [ALICE, BOB, CHARLIE] {
 						for ext in [
-							AAvatars::ensure_for_mint(&account, SEASON_ID, &normal_mint),
-							AAvatars::ensure_for_mint(&account, SEASON_ID, &free_mint),
+							AAvatars::ensure_for_mint(&account, &SEASON_ID, &normal_mint),
+							AAvatars::ensure_for_mint(&account, &SEASON_ID, &free_mint),
 						] {
 							assert_noop!(ext, Error::<Test>::SeasonClosed);
 						}
@@ -847,17 +847,17 @@ mod minting {
 					assert!(CurrentSeasonStatus::<Test>::get().early);
 
 					// For whitelisted accounts, both mints are available for whitelisted accounts.
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, SEASON_ID, &normal_mint));
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, SEASON_ID, &free_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &free_mint));
 
 					// For non-whitelisted accounts, only free mint is available (but will fail due
 					// to insufficient free mint balance).
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, SEASON_ID, &normal_mint),
+						AAvatars::ensure_for_mint(&BOB, &SEASON_ID, &normal_mint),
 						Error::<Test>::SeasonClosed
 					);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, SEASON_ID, &free_mint),
+						AAvatars::ensure_for_mint(&BOB, &SEASON_ID, &free_mint),
 						Error::<Test>::InsufficientFreeMints
 					);
 				}
@@ -866,11 +866,11 @@ mod minting {
 				for n in season.start..=season.end {
 					run_to_block(n);
 					assert!(CurrentSeasonStatus::<Test>::get().active);
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, SEASON_ID, &normal_mint));
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, SEASON_ID, &free_mint));
-					assert_ok!(AAvatars::ensure_for_mint(&BOB, SEASON_ID, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &normal_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &free_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&BOB, &SEASON_ID, &normal_mint));
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, SEASON_ID, &free_mint),
+						AAvatars::ensure_for_mint(&BOB, &SEASON_ID, &free_mint),
 						Error::<Test>::InsufficientFreeMints
 					);
 				}
@@ -880,17 +880,17 @@ mod minting {
 					run_to_block(n);
 					CurrentSeasonStatus::<Test>::mutate(|status| status.early_ended = true);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&ALICE, SEASON_ID, &normal_mint),
+						AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &normal_mint),
 						Error::<Test>::PrematureSeasonEnd
 					);
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, SEASON_ID, &normal_mint),
+						AAvatars::ensure_for_mint(&BOB, &SEASON_ID, &normal_mint),
 						Error::<Test>::PrematureSeasonEnd
 					);
 
-					assert_ok!(AAvatars::ensure_for_mint(&ALICE, SEASON_ID, &free_mint));
+					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &free_mint));
 					assert_noop!(
-						AAvatars::ensure_for_mint(&BOB, SEASON_ID, &free_mint),
+						AAvatars::ensure_for_mint(&BOB, &SEASON_ID, &free_mint),
 						Error::<Test>::InsufficientFreeMints
 					);
 
@@ -912,8 +912,8 @@ mod minting {
 					);
 					for account in [ALICE, BOB, CHARLIE] {
 						for ext in [
-							AAvatars::ensure_for_mint(&account, SEASON_ID, &normal_mint),
-							AAvatars::ensure_for_mint(&account, SEASON_ID, &free_mint),
+							AAvatars::ensure_for_mint(&account, &SEASON_ID, &normal_mint),
+							AAvatars::ensure_for_mint(&account, &SEASON_ID, &free_mint),
 						] {
 							assert_noop!(ext, Error::<Test>::SeasonClosed);
 						}

@@ -111,6 +111,13 @@ impl<T: Config> OldSeason<T> {
 	}
 }
 
+#[derive(Decode)]
+pub struct OldAccountInfo<T: Config> {
+	pub free_mints: MintCount,
+	pub storage_tier: StorageTier,
+	pub stats: Stats<T::BlockNumber>,
+}
+
 #[frame_support::storage_alias]
 pub(crate) type CurrentSeasonId<T: Config> = StorageValue<Pallet<T>, SeasonId, ValueQuery>;
 
@@ -120,11 +127,13 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		let current_version = Pallet::<T>::current_storage_version();
 		let onchain_version = Pallet::<T>::on_chain_storage_version();
 		if onchain_version == 4 && current_version == 5 {
+			let current_season_id = CurrentSeasonId::<T>::get();
+
 			let _ = CurrentSeasonStatus::<T>::translate::<OldSeasonStatus, _>(|maybe_old_value| {
 				maybe_old_value.map(|old_value| {
 					log::info!(target: LOG_TARGET, "Migrated current season status");
 					let mut new_value = old_value.migrate_to_v5();
-					new_value.season_id = CurrentSeasonId::<T>::get();
+					new_value.season_id = current_season_id;
 					new_value
 				})
 			});
@@ -176,6 +185,34 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			);
 			log::info!(target: LOG_TARGET, "Updated {} old avatars", translated_avatars);
 
+			let mut translated_account_info = 0_u64;
+			let account_info = migration::storage_iter::<OldAccountInfo<T>>(
+				<Pallet<T>>::name().as_bytes(),
+				b"Accounts",
+			)
+			.drain()
+			.map(|(account_id, OldAccountInfo::<T> { free_mints, storage_tier, stats })| {
+				let account_id = T::AccountId::decode(&mut &account_id[..]).unwrap();
+
+				(
+					(account_id, PlayerConfig { free_mints }),
+					(season_id, PlayerSeasonConfig::<T::BlockNumber> { storage_tier, stats }),
+				)
+			})
+			.collect::<Vec<_>>();
+			account_info
+				.iter()
+				.for_each(|((account_id, config), (season_id, season_config))| {
+					Players::<T>::insert(account_id, config);
+					PlayerSeasons::<T>::insert(account_id, season_id, season_config);
+					translated_account_info.saturating_inc();
+				});
+			log::info!(
+				target: LOG_TARGET,
+				"Updated {} player account info entries",
+				translated_account_info
+			);
+
 			Seasons::<T>::translate::<OldSeason<T>, _>(|_key, old_value| {
 				log::info!(target: LOG_TARGET, "Migrated seasons");
 				Some(old_value.migrate_to_v5())
@@ -184,8 +221,12 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(
-				3 + 2 * translated_owner_account + translated_trades + translated_avatars,
-				3 + 2 * translated_owner_account + translated_trades + translated_avatars,
+				3 + 2 * translated_owner_account +
+					translated_trades + translated_avatars +
+					translated_account_info,
+				3 + 2 * translated_owner_account +
+					translated_trades + translated_avatars +
+					2 * translated_account_info,
 			)
 		} else {
 			log::info!(
