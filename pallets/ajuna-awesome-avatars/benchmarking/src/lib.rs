@@ -138,7 +138,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	});
 
 	let season_id = CurrentSeasonStatus::<T>::get().season_id;
-	PlayerSeasons::<T>::mutate(&player, &season_id, |config| {
+	PlayerSeasons::<T>::mutate(&player, season_id, |config| {
 		config.stats.mint.last = Zero::zero();
 		config.storage_tier = StorageTier::Max;
 	});
