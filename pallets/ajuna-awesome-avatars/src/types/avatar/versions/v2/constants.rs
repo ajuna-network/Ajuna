@@ -229,13 +229,14 @@ pub(crate) const PACK_TYPE_SPECIAL_SPECIAL_ITEM_TYPE_PROBABILITIES: ProbabilityS
 // -----------------------------------------------
 
 /// Probabilities for equipment slots
-pub(crate) const ARMOR_SLOT_PROBABILITIES: ProbabilitySlots<SlotType, 6> = [
-	(SlotType::Head, 170),
-	(SlotType::Breast, 170),
-	(SlotType::ArmFront, 165),
-	(SlotType::ArmBack, 165),
-	(SlotType::LegFront, 165),
-	(SlotType::LegBack, 165),
+pub(crate) const ARMOR_SLOT_PROBABILITIES: ProbabilitySlots<SlotType, 7> = [
+	(SlotType::Head, 140),
+	(SlotType::Breast, 145),
+	(SlotType::ArmFront, 140),
+	(SlotType::ArmBack, 145),
+	(SlotType::LegFront, 140),
+	(SlotType::LegBack, 145),
+	(SlotType::Tail, 145),
 ];
 
 pub(crate) const WEAPON_SLOT_PROBABILITIES: ProbabilitySlots<SlotType, 2> =
