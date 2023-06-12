@@ -1321,6 +1321,49 @@ mod minting {
 	}
 
 	#[test]
+	fn mint_should_work_when_changing_to_season_with_higher_storage_tier() {
+		let season_1 = Season::default().end(9);
+		let season_2 = Season::default().early_start(11).start(15).end(20);
+		let avatar_ids = BoundedAvatarIdsOf::<Test>::try_from(
+			(0..StorageTier::One as usize)
+				.map(|_| sp_core::H256::default())
+				.collect::<Vec<_>>(),
+		)
+		.unwrap();
+		assert_eq!(avatar_ids.len(), StorageTier::One as usize);
+
+		let season_2_id: SeasonId = 2;
+
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season_1.clone()), (season_2_id, season_2.clone())])
+			.balances(&[(ALICE, 1_234_567_890_123_456)])
+			.free_mints(&[(ALICE, 10)])
+			.build()
+			.execute_with(|| {
+				PlayerSeasonConfigs::<Test>::mutate(ALICE, SEASON_ID, |config| {
+					config.storage_tier = StorageTier::One;
+				});
+				PlayerSeasonConfigs::<Test>::mutate(ALICE, season_2_id, |config| {
+					config.storage_tier = StorageTier::Two;
+				});
+
+				// In season 1 ALICE cannot mint any more avatars because her StorageTier is only
+				// One
+				run_to_block(season_1.start);
+				Owners::<Test>::insert(ALICE, SEASON_ID, avatar_ids.clone());
+				assert_noop!(
+					AAvatars::mint(RuntimeOrigin::signed(ALICE), MintOption::default()),
+					Error::<Test>::MaxOwnershipReached
+				);
+
+				// But in season 2 ALICE StorageTier is Two, so her storage has enough space for
+				// more
+				run_to_block(season_2.start);
+				assert_ok!(AAvatars::mint(RuntimeOrigin::signed(ALICE), MintOption::default()));
+			});
+	}
+
+	#[test]
 	fn mint_should_wait_for_cooldown() {
 		let season = Season::default().early_start(1).start(3).end(20);
 		let mint_cooldown = 7;
