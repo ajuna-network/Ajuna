@@ -269,6 +269,21 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		assert_eq!(owners_season_ids.len(), 1);
 		assert_eq!(owners_season_ids, vec![1]);
 
+		// Check owner configs
+		let player_configs_account_ids = PlayerConfigs::<T>::iter_keys().collect::<Vec<_>>();
+		let mut player_season_configs_season_ids = PlayerSeasonConfigs::<T>::iter_keys()
+			.map(|(_, season_id)| season_id)
+			.collect::<Vec<_>>();
+		assert!(player_configs_account_ids.len() > 800 && player_configs_account_ids.len() < 1_000);
+		assert!(
+			player_season_configs_season_ids.len() > 800 &&
+				player_season_configs_season_ids.len() < 1_000
+		);
+		player_season_configs_season_ids.sort();
+		player_season_configs_season_ids.dedup();
+		assert_eq!(player_season_configs_season_ids.len(), 1);
+		assert_eq!(player_season_configs_season_ids, vec![1]);
+
 		// There are 871 avatars in trade as of 26/05/2023. But the exact number could change. we
 		// estimate between 800 and 1,000 avatars to be in trade.
 		let mut trade_season_ids = Trade::<T>::iter_keys()
