@@ -77,6 +77,22 @@ pub(crate) fn create_random_pet_part(
 	)
 }
 
+pub(crate) fn create_random_generic_part(
+	account: &MockAccountId,
+	slot_types: &[SlotType],
+	quantity: u8,
+) -> (AvatarIdOf<Test>, Avatar) {
+	create_random_avatar::<Test, _>(
+		account,
+		None,
+		Some(|avatar| {
+			AvatarBuilder::with_base_avatar(avatar)
+				.into_generic_pet_part(slot_types, quantity)
+				.build()
+		}),
+	)
+}
+
 pub(crate) fn create_random_pet(
 	account: &MockAccountId,
 	pet_type: &PetType,

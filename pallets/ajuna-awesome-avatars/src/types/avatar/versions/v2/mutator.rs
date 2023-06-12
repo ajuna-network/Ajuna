@@ -41,11 +41,15 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 			},
 			PetItemType::PetPart => {
 				let quantity = (hash_provider.get_hash_byte() % MAX_QUANTITY) + 1;
-				let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
-				let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
+				let slot_types = vec![
+					SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider),
+					SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider),
+					SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider),
+					SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider),
+				];
 
 				AvatarBuilder::with_base_avatar(base_avatar)
-					.into_pet_part(&pet_type, &slot_type, quantity)
+					.into_generic_pet_part(slot_types.as_slice(), quantity)
 			},
 			PetItemType::Egg => {
 				let pet_variation = (hash_provider.get_hash_byte() % 15) + 1;
@@ -380,9 +384,9 @@ mod test {
 			assert_eq!(item_sub_type, PetItemType::PetPart);
 
 			let class_type_1 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType1);
-			assert!(class_type_1 > 0 && class_type_1 < 10);
+			assert_eq!(class_type_1, 0);
 			let class_type_2 = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::ClassType2);
-			assert!(class_type_2 > 0 && class_type_2 < 8);
+			assert_eq!(class_type_2, 0);
 
 			let custom_type_1 =
 				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);

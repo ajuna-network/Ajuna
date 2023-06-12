@@ -24,10 +24,13 @@ pub(crate) const GLIMMER_FORGE_GLIMMER_USE: u8 = 1;
 pub(crate) const GLIMMER_FORGE_MATERIAL_USE: u8 = 4;
 pub(crate) const GLIMMER_FORGE_TOOLBOX_USE: u8 = 45;
 
+pub(crate) const PET_MOON_PHASE_SIZE: u32 = 10;
+pub(crate) const PET_MOON_PHASE_AMOUNT: u32 = 14;
+
 /// Probabilities for all PackType::Material options
 pub(crate) const PACK_TYPE_MATERIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
-	(ItemType::Pet, 200),
-	(ItemType::Material, 690),
+	(ItemType::Pet, 140),
+	(ItemType::Material, 750),
 	(ItemType::Essence, 50),
 	(ItemType::Equippable, 10),
 	(ItemType::Blueprint, 0),
@@ -102,7 +105,7 @@ pub(crate) const PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES: ProbabilitySlots<ItemTy
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_PET_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<PetItemType, 3> =
-	[(PetItemType::Pet, 0), (PetItemType::PetPart, 1000), (PetItemType::Egg, 0)];
+	[(PetItemType::Pet, 0), (PetItemType::PetPart, 780), (PetItemType::Egg, 220)];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_MATERIAL_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
 	MaterialItemType,
@@ -169,7 +172,7 @@ pub(crate) const PACK_TYPE_SPECIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemType
 ];
 
 pub(crate) const PACK_TYPE_SPECIAL_PET_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<PetItemType, 3> =
-	[(PetItemType::Pet, 1), (PetItemType::PetPart, 49), (PetItemType::Egg, 950)];
+	[(PetItemType::Pet, 1), (PetItemType::PetPart, 29), (PetItemType::Egg, 979)];
 
 pub(crate) const PACK_TYPE_SPECIAL_MATERIAL_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
 	MaterialItemType,

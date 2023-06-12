@@ -7,7 +7,12 @@ use core::cmp::Ordering;
 use frame_support::traits::Len;
 #[cfg(test)]
 use sp_runtime::traits::Hash;
-use sp_std::{marker::PhantomData, vec::Vec};
+use sp_runtime::SaturatedConversion;
+use sp_std::{
+	marker::PhantomData,
+	ops::{Div, Rem},
+	vec::Vec,
+};
 
 #[derive(Copy, Clone)]
 pub enum AvatarAttributes {
@@ -116,6 +121,32 @@ impl AvatarBuilder {
 			.with_soul_count(soul_points)
 	}
 
+	pub fn into_generic_pet_part(self, slot_types: &[SlotType], quantity: u8) -> Self {
+		let custom_type_1 = HexType::X1;
+
+		let spec_bytes = {
+			let mut spec_bytes = AvatarUtils::read_full_spec_bytes(&self.inner);
+
+			for slot_index in slot_types.iter().map(|slot_type| slot_type.as_byte() as usize) {
+				spec_bytes[slot_index] = spec_bytes[slot_index].saturating_add(1);
+			}
+
+			spec_bytes
+		};
+
+		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
+			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::PetPart)
+			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
+			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
+			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
+			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
+			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
+			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
+			.with_spec_bytes(spec_bytes)
+			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
+	}
+
+	#[cfg(test)]
 	pub fn into_pet_part(self, pet_type: &PetType, slot_type: &SlotType, quantity: u8) -> Self {
 		let custom_type_1 = HexType::X1;
 
@@ -707,8 +738,8 @@ impl AvatarUtils {
 		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::ItemSubType)
 	}
 
-	pub fn read_rarity<T: ByteConvertible>(avatar: &Avatar) -> T {
-		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::RarityTier)
+	pub fn read_rarity(avatar: &Avatar) -> RarityTier {
+		Self::read_attribute_as::<RarityTier>(avatar, &AvatarAttributes::RarityTier)
 	}
 
 	pub fn read_quantity(avatar: &Avatar) -> u8 {
@@ -1124,6 +1155,37 @@ impl AvatarUtils {
 
 		result
 	}
+
+	pub fn indexes_of_max(byte_array: &[u8]) -> Vec<usize> {
+		let mut max_value = u8::MIN;
+		let mut max_indexes = Vec::new();
+
+		for (i, byte) in byte_array.iter().enumerate() {
+			match byte.cmp(&max_value) {
+				Ordering::Greater => {
+					max_value = *byte;
+					max_indexes = vec![i];
+				},
+				Ordering::Equal => {
+					max_indexes.push(i);
+				},
+				Ordering::Less => continue,
+			}
+		}
+
+		max_indexes
+	}
+
+	pub fn current_period<T: Config>(
+		current_phase: u32,
+		total_phases: u32,
+		block_number: T::BlockNumber,
+	) -> u32 {
+		block_number
+			.div(current_phase.into())
+			.rem(total_phases.into())
+			.saturated_into::<u32>()
+	}
 }
 
 pub(crate) struct HashProvider<T: Config, const N: usize> {
@@ -1189,6 +1251,7 @@ impl<T: Config, const N: usize> Iterator for HashProvider<T, N> {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::mock::*;
 	use hex;
 
 	#[test]
@@ -1537,5 +1600,18 @@ mod test {
 		let expected_matches: Vec<u32> = vec![3];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
+	}
+
+	#[test]
+	fn test_current_period() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 0), 0);
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 9), 0);
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 10), 1);
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 19), 1);
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 130), 13);
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 139), 13);
+			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 140), 0);
+		});
 	}
 }

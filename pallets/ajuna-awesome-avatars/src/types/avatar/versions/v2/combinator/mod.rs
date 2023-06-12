@@ -8,6 +8,7 @@ mod glimmer;
 mod mate;
 mod spark;
 mod stack;
+mod statue;
 mod tinker;
 
 use super::*;
@@ -34,15 +35,26 @@ impl<T: Config> AvatarCombinator<T> {
 				Self::assemble_avatars(input_leader, input_sacrifices, hash_provider),
 			ForgeType::Breed => Self::breed_avatars(input_leader, input_sacrifices, hash_provider),
 			ForgeType::Equip => Self::equip_avatars(input_leader, input_sacrifices),
-			ForgeType::Mate =>
-				Self::mate_avatars(input_leader, input_sacrifices, season_id, hash_provider),
+			ForgeType::Mate => Self::mate_avatars(
+				input_leader,
+				input_sacrifices,
+				season_id,
+				hash_provider,
+				<frame_system::Pallet<T>>::block_number(),
+			),
 			ForgeType::Feed => Self::feed_avatars(input_leader, input_sacrifices),
 			ForgeType::Glimmer =>
 				Self::glimmer_avatars(input_leader, input_sacrifices, season_id, hash_provider),
 			ForgeType::Spark => Self::spark_avatars(input_leader, input_sacrifices, hash_provider),
 			ForgeType::Flask => Self::flask_avatars(input_leader, input_sacrifices, hash_provider),
-			ForgeType::Special | ForgeType::None =>
-				Self::forge_none(input_leader, input_sacrifices),
+			ForgeType::Statue => Self::statue_avatars(
+				input_leader,
+				input_sacrifices,
+				season_id,
+				hash_provider,
+				<frame_system::Pallet<T>>::block_number(),
+			),
+			ForgeType::None => Self::forge_none(input_leader, input_sacrifices),
 		}
 	}
 
