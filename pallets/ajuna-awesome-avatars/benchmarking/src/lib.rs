@@ -125,7 +125,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	create_seasons::<T>(3)?;
 
 	let player = account::<T>(name);
-	Players::<T>::mutate(&player, |config| {
+	PlayerConfigs::<T>::mutate(&player, |config| {
 		config.free_mints = n as MintCount;
 	});
 
@@ -138,7 +138,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	});
 
 	let season_id = CurrentSeasonStatus::<T>::get().season_id;
-	PlayerSeasons::<T>::mutate(&player, season_id, |config| {
+	PlayerSeasonConfigs::<T>::mutate(&player, season_id, |config| {
 		config.stats.mint.last = Zero::zero();
 		config.storage_tier = StorageTier::Max;
 	});
@@ -207,7 +207,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		Players::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
+		PlayerConfigs::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
 
 		let mint_option = MintOption { payment: MintPayment::Free, pack_size: MintPackSize::Six,
 			pack_type: PackType::Material, version: AvatarVersion::V1 };
@@ -303,7 +303,7 @@ benchmarks! {
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
-		Players::<T>::mutate(&from, |account| account.free_mints = MintCount::MAX);
+		PlayerConfigs::<T>::mutate(&from, |account| account.free_mints = MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many })

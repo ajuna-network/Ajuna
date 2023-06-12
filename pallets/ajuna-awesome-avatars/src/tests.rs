@@ -961,7 +961,7 @@ mod minting {
 					SeasonStats::<Test>::mutate(1, ALICE, |info| info.minted = 0);
 					SeasonStats::<Test>::mutate(2, ALICE, |info| info.minted = 0);
 					Owners::<Test>::remove(ALICE, SEASON_ID);
-					PlayerSeasons::<Test>::mutate(ALICE, season_id, |config| {
+					PlayerSeasonConfigs::<Test>::mutate(ALICE, season_id, |config| {
 						config.stats.mint.first = 0;
 						config.stats.mint.last = 0;
 					});
@@ -970,8 +970,10 @@ mod minting {
 					match payment {
 						MintPayment::Normal =>
 							assert_eq!(Balances::total_balance(&ALICE), initial_balance),
-						MintPayment::Free =>
-							assert_eq!(Players::<Test>::get(ALICE).free_mints, initial_free_mints),
+						MintPayment::Free => assert_eq!(
+							PlayerConfigs::<Test>::get(ALICE).free_mints,
+							initial_free_mints
+						),
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
@@ -998,7 +1000,10 @@ mod minting {
 						},
 						MintPayment::Free => {
 							initial_free_mints -= MintPackSize::One.as_mint_count();
-							assert_eq!(Players::<Test>::get(ALICE).free_mints, initial_free_mints);
+							assert_eq!(
+								PlayerConfigs::<Test>::get(ALICE).free_mints,
+								initial_free_mints
+							);
 						},
 					}
 					expected_nonce += expected_nonce_increment;
@@ -1010,7 +1015,7 @@ mod minting {
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
 					assert!(CurrentSeasonStatus::<Test>::get().active);
 					assert_eq!(
-						PlayerSeasons::<Test>::get(ALICE, season_id).stats.mint.first,
+						PlayerSeasonConfigs::<Test>::get(ALICE, season_id).stats.mint.first,
 						season_1.start
 					);
 					System::assert_has_event(mock::RuntimeEvent::AAvatars(
@@ -1043,7 +1048,10 @@ mod minting {
 						},
 						MintPayment::Free => {
 							initial_free_mints -= MintPackSize::Three.as_mint_count();
-							assert_eq!(Players::<Test>::get(ALICE).free_mints, initial_free_mints);
+							assert_eq!(
+								PlayerConfigs::<Test>::get(ALICE).free_mints,
+								initial_free_mints
+							);
 						},
 					}
 					expected_nonce += expected_nonce_increment * 3;
@@ -1082,7 +1090,10 @@ mod minting {
 						},
 						MintPayment::Free => {
 							initial_free_mints -= MintPackSize::Six.as_mint_count();
-							assert_eq!(Players::<Test>::get(ALICE).free_mints, initial_free_mints);
+							assert_eq!(
+								PlayerConfigs::<Test>::get(ALICE).free_mints,
+								initial_free_mints
+							);
 						},
 					}
 					expected_nonce += expected_nonce_increment * 6;
@@ -1143,7 +1154,7 @@ mod minting {
 					);
 
 					// total minted count updates
-					let seasons_participated = PlayerSeasons::<Test>::get(ALICE, season_id)
+					let seasons_participated = PlayerSeasonConfigs::<Test>::get(ALICE, season_id)
 						.stats
 						.mint
 						.seasons_participated;
@@ -1288,10 +1299,10 @@ mod minting {
 					}
 				}
 
-				Players::<Test>::mutate(BOB, |config| {
+				PlayerConfigs::<Test>::mutate(BOB, |config| {
 					config.free_mints = 999;
 				});
-				PlayerSeasons::<Test>::mutate(BOB, SEASON_ID, |config| {
+				PlayerSeasonConfigs::<Test>::mutate(BOB, SEASON_ID, |config| {
 					config.storage_tier = StorageTier::One;
 				});
 				let mut storage_limit = StorageTier::One as usize;
@@ -1363,7 +1374,7 @@ mod minting {
 
 					// reset for next iteration
 					System::set_block_number(0);
-					PlayerSeasons::<Test>::mutate(ALICE, SEASON_ID, |account| {
+					PlayerSeasonConfigs::<Test>::mutate(ALICE, SEASON_ID, |account| {
 						account.stats.mint.last = 0
 					});
 				}
@@ -1420,10 +1431,10 @@ mod minting {
 			.build()
 			.execute_with(|| {
 				assert_ok!(AAvatars::set_free_mints(RuntimeOrigin::signed(ALICE), BOB, 999));
-				assert_eq!(Players::<Test>::get(BOB).free_mints, 999);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 999);
 
 				assert_ok!(AAvatars::set_free_mints(RuntimeOrigin::signed(ALICE), BOB, 0));
-				assert_eq!(Players::<Test>::get(BOB).free_mints, 0);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 0);
 			})
 	}
 
@@ -1534,71 +1545,73 @@ mod forging {
 			.mint_fee(MintFees { one: 1, three: 3, six: 6 });
 
 		let mut forged_count = 0;
-		let mut assert_dna = |leader_id: &AvatarIdOf<Test>,
-		                      expected_dna: &[u8],
-		                      insert_dna: Option<&[u8]>| {
-			assert_ok!(AAvatars::mint(
-				RuntimeOrigin::signed(BOB),
-				MintOption {
-					pack_size: MintPackSize::Three,
-					payment: MintPayment::Normal,
-					pack_type: PackType::Material,
-					version: AvatarVersion::V1
+		let mut assert_dna =
+			|leader_id: &AvatarIdOf<Test>, expected_dna: &[u8], insert_dna: Option<&[u8]>| {
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(BOB),
+					MintOption {
+						pack_size: MintPackSize::Three,
+						payment: MintPayment::Normal,
+						pack_type: PackType::Material,
+						version: AvatarVersion::V1
+					}
+				));
+				assert_ok!(AAvatars::mint(
+					RuntimeOrigin::signed(BOB),
+					MintOption {
+						pack_size: MintPackSize::One,
+						payment: MintPayment::Normal,
+						pack_type: PackType::Material,
+						version: AvatarVersion::V1
+					}
+				));
+
+				if let Some(dna) = insert_dna {
+					Owners::<Test>::get(BOB, SEASON_ID)[1..=4].iter().for_each(|id| {
+						Avatars::<Test>::mutate(id, |maybe_avatar| {
+							if let Some((_, avatar)) = maybe_avatar {
+								avatar.dna = dna.to_vec().try_into().unwrap();
+							}
+						});
+					})
 				}
-			));
-			assert_ok!(AAvatars::mint(
-				RuntimeOrigin::signed(BOB),
-				MintOption {
-					pack_size: MintPackSize::One,
-					payment: MintPayment::Normal,
-					pack_type: PackType::Material,
-					version: AvatarVersion::V1
-				}
-			));
 
-			if let Some(dna) = insert_dna {
-				Owners::<Test>::get(BOB, SEASON_ID)[1..=4].iter().for_each(|id| {
-					Avatars::<Test>::mutate(id, |maybe_avatar| {
-						if let Some((_, avatar)) = maybe_avatar {
-							avatar.dna = dna.to_vec().try_into().unwrap();
-						}
-					});
-				})
-			}
-
-			let original_leader_souls = Avatars::<Test>::get(leader_id).unwrap().1.souls;
-			let sacrifice_ids = Owners::<Test>::get(BOB, SEASON_ID)[1..=4].to_vec();
-			let sacrifice_souls = sacrifice_ids
-				.iter()
-				.map(|id| Avatars::<Test>::get(id).unwrap().1.souls)
-				.sum::<SoulCount>();
-			assert_ne!(sacrifice_souls, 0);
-
-			assert_ok!(AAvatars::forge(RuntimeOrigin::signed(BOB), *leader_id, sacrifice_ids));
-			assert_eq!(
-				Avatars::<Test>::get(leader_id).unwrap().1.souls,
-				original_leader_souls + sacrifice_souls
-			);
-			assert_eq!(Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(), expected_dna);
-
-			forged_count += 1;
-			assert_eq!(
-				PlayerSeasons::<Test>::get(BOB, SEASON_ID)
-					.stats
-					.forge
-					.seasons_participated
+				let original_leader_souls = Avatars::<Test>::get(leader_id).unwrap().1.souls;
+				let sacrifice_ids = Owners::<Test>::get(BOB, SEASON_ID)[1..=4].to_vec();
+				let sacrifice_souls = sacrifice_ids
 					.iter()
-					.map(|season_id| SeasonStats::<Test>::get(season_id, BOB).forged)
-					.sum::<u32>(),
-				forged_count as u32
-			);
-			assert_eq!(SeasonStats::<Test>::get(1, BOB).forged, forged_count);
-			assert_eq!(PlayerSeasons::<Test>::get(BOB, SEASON_ID).stats.forge.first, season.start);
-			assert_eq!(
-				PlayerSeasons::<Test>::get(BOB, SEASON_ID).stats.forge.last,
-				System::block_number()
-			);
-		};
+					.map(|id| Avatars::<Test>::get(id).unwrap().1.souls)
+					.sum::<SoulCount>();
+				assert_ne!(sacrifice_souls, 0);
+
+				assert_ok!(AAvatars::forge(RuntimeOrigin::signed(BOB), *leader_id, sacrifice_ids));
+				assert_eq!(
+					Avatars::<Test>::get(leader_id).unwrap().1.souls,
+					original_leader_souls + sacrifice_souls
+				);
+				assert_eq!(Avatars::<Test>::get(leader_id).unwrap().1.dna.to_vec(), expected_dna);
+
+				forged_count += 1;
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID)
+						.stats
+						.forge
+						.seasons_participated
+						.iter()
+						.map(|season_id| SeasonStats::<Test>::get(season_id, BOB).forged)
+						.sum::<u32>(),
+					forged_count as u32
+				);
+				assert_eq!(SeasonStats::<Test>::get(1, BOB).forged, forged_count);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID).stats.forge.first,
+					season.start
+				);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID).stats.forge.last,
+					System::block_number()
+				);
+			};
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
@@ -1741,7 +1754,7 @@ mod forging {
 				assert_eq!(CurrentSeasonStatus::<Test>::get().max_tier_avatars, max_tier_avatars);
 				assert_eq!(Owners::<Test>::get(BOB, SEASON_ID).len(), (4 - 3) + (4 - 3));
 				assert_eq!(
-					PlayerSeasons::<Test>::get(BOB, SEASON_ID)
+					PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID)
 						.stats
 						.forge
 						.seasons_participated
@@ -2026,7 +2039,7 @@ mod forging {
 			.free_mints(&[(ALICE, 100)])
 			.build()
 			.execute_with(|| {
-				PlayerSeasons::<Test>::mutate(ALICE, SEASON_ID, |config| {
+				PlayerSeasonConfigs::<Test>::mutate(ALICE, SEASON_ID, |config| {
 					config.storage_tier = StorageTier::Four
 				});
 
@@ -2321,16 +2334,16 @@ mod transferring {
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: BOB, how_many: 10 },
 				));
-				assert_eq!(Players::<Test>::get(ALICE).free_mints, 6);
-				assert_eq!(Players::<Test>::get(BOB).free_mints, 14);
+				assert_eq!(PlayerConfigs::<Test>::get(ALICE).free_mints, 6);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 14);
 
 				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), CHARLIE, 2));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: CHARLIE, how_many: 2 },
 				));
 
-				assert_eq!(Players::<Test>::get(ALICE).free_mints, 3);
-				assert_eq!(Players::<Test>::get(CHARLIE).free_mints, 2);
+				assert_eq!(PlayerConfigs::<Test>::get(ALICE).free_mints, 3);
+				assert_eq!(PlayerConfigs::<Test>::get(CHARLIE).free_mints, 2);
 			});
 	}
 
@@ -2517,7 +2530,7 @@ mod transferring {
 			.balances(&[(ALICE, MockExistentialDeposit::get() + avatar_transfer_fee)])
 			.build()
 			.execute_with(|| {
-				PlayerSeasons::<Test>::mutate(BOB, SEASON_ID, |config| {
+				PlayerSeasonConfigs::<Test>::mutate(BOB, SEASON_ID, |config| {
 					config.storage_tier = StorageTier::Three
 				});
 
@@ -2751,8 +2764,11 @@ mod trading {
 				assert_eq!(Trade::<Test>::get(SEASON_ID, avatar_for_sale), None);
 
 				// check for account stats
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).stats.trade.bought, 1);
-				assert_eq!(PlayerSeasons::<Test>::get(BOB, SEASON_ID).stats.trade.sold, 1);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).stats.trade.bought,
+					1
+				);
+				assert_eq!(PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID).stats.trade.sold, 1);
 
 				// check events
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
@@ -2764,8 +2780,11 @@ mod trading {
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, 1357));
 				assert_ok!(AAvatars::buy(RuntimeOrigin::signed(CHARLIE), avatar_for_sale));
 				treasury_balance_season_1 += min_fee;
-				assert_eq!(PlayerSeasons::<Test>::get(CHARLIE, SEASON_ID).stats.trade.bought, 1);
-				assert_eq!(PlayerSeasons::<Test>::get(BOB, SEASON_ID).stats.trade.sold, 2);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(CHARLIE, SEASON_ID).stats.trade.bought,
+					1
+				);
+				assert_eq!(PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID).stats.trade.sold, 2);
 
 				// check season id
 				let avatar_on_sale = create_avatars(season_id, ALICE, 1)[0];
@@ -2911,10 +2930,13 @@ mod account {
 			.build()
 			.execute_with(|| {
 				assert_eq!(
-					PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier,
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::One
 				);
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier as isize, 25);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier as isize,
+					25
+				);
 				assert_eq!(
 					Balances::free_balance(AAvatars::treasury_account_id()),
 					treasury_balance
@@ -2923,10 +2945,13 @@ mod account {
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(
-					PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier,
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Two
 				);
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier as isize, 50);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier as isize,
+					50
+				);
 				treasury_balance += upgrade_fee;
 				assert_eq!(
 					Balances::free_balance(AAvatars::treasury_account_id()),
@@ -2936,10 +2961,13 @@ mod account {
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(
-					PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier,
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Three
 				);
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier as isize, 75);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier as isize,
+					75
+				);
 				treasury_balance += upgrade_fee;
 				assert_eq!(
 					Balances::free_balance(AAvatars::treasury_account_id()),
@@ -2949,10 +2977,13 @@ mod account {
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(
-					PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier,
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Four
 				);
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier as isize, 100);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier as isize,
+					100
+				);
 				treasury_balance += upgrade_fee;
 				assert_eq!(
 					Balances::free_balance(AAvatars::treasury_account_id()),
@@ -2962,17 +2993,23 @@ mod account {
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(
-					PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier,
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Five
 				);
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier as isize, 150);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier as isize,
+					150
+				);
 
 				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
 				assert_eq!(
-					PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier,
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Max
 				);
-				assert_eq!(PlayerSeasons::<Test>::get(ALICE, SEASON_ID).storage_tier as isize, 200);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier as isize,
+					200
+				);
 			});
 	}
 
@@ -2994,7 +3031,7 @@ mod account {
 		let season = Season::default().early_start(10).start(20).end(30);
 
 		ExtBuilder::default().seasons(&[(SEASON_ID, season)]).build().execute_with(|| {
-			PlayerSeasons::<Test>::mutate(ALICE, SEASON_ID, |config| {
+			PlayerSeasonConfigs::<Test>::mutate(ALICE, SEASON_ID, |config| {
 				config.storage_tier = StorageTier::Max
 			});
 

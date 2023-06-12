@@ -127,13 +127,11 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		let current_version = Pallet::<T>::current_storage_version();
 		let onchain_version = Pallet::<T>::on_chain_storage_version();
 		if onchain_version == 4 && current_version == 5 {
-			let current_season_id = CurrentSeasonId::<T>::get();
-
 			let _ = CurrentSeasonStatus::<T>::translate::<OldSeasonStatus, _>(|maybe_old_value| {
 				maybe_old_value.map(|old_value| {
 					log::info!(target: LOG_TARGET, "Migrated current season status");
 					let mut new_value = old_value.migrate_to_v5();
-					new_value.season_id = current_season_id;
+					new_value.season_id = CurrentSeasonId::<T>::get();
 					new_value
 				})
 			});
@@ -203,8 +201,8 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			account_info
 				.iter()
 				.for_each(|((account_id, config), (season_id, season_config))| {
-					Players::<T>::insert(account_id, config);
-					PlayerSeasons::<T>::insert(account_id, season_id, season_config);
+					PlayerConfigs::<T>::insert(account_id, config);
+					PlayerSeasonConfigs::<T>::insert(account_id, season_id, season_config);
 					translated_account_info.saturating_inc();
 				});
 			log::info!(

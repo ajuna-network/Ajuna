@@ -289,7 +289,9 @@ impl ExtBuilder {
 			});
 
 			for (account_id, mint_amount) in self.free_mints {
-				Players::<Test>::mutate(account_id, |account| account.free_mints = mint_amount);
+				PlayerConfigs::<Test>::mutate(account_id, |account| {
+					account.free_mints = mint_amount
+				});
 			}
 
 			if self.create_nft_collection {
