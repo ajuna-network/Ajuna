@@ -239,23 +239,12 @@ impl<T: Config> ForgerV2<T> {
 					}
 				},
 				PetItemType::PetPart => {
-					if AvatarUtils::has_attribute_set_with_values(
-						leader,
-						&[
-							(AvatarAttributes::ClassType1, HexType::X0.as_byte()),
-							(AvatarAttributes::ClassType2, HexType::X0.as_byte()),
-						],
-					) && sacrifices.iter().all(|sacrifice| {
-						AvatarUtils::same_item_type(sacrifice, leader) &&
-							AvatarUtils::same_item_sub_type(sacrifice, leader) &&
-							AvatarUtils::has_attribute_set_with_values(
-								sacrifice,
-								&[
-									(AvatarAttributes::ClassType1, HexType::X0.as_byte()),
-									(AvatarAttributes::ClassType2, HexType::X0.as_byte()),
-								],
-							)
-					}) {
+					if AvatarUtils::has_zeroed_class_types(leader) &&
+						sacrifices.iter().all(|sacrifice| {
+							AvatarUtils::same_item_type(sacrifice, leader) &&
+								AvatarUtils::same_item_sub_type(sacrifice, leader) &&
+								AvatarUtils::has_zeroed_class_types(sacrifice)
+						}) {
 						ForgeType::Statue
 					} else if sacrifices.iter().all(|sacrifice| {
 						AvatarUtils::same_item_type(sacrifice, leader) &&

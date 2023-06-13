@@ -623,6 +623,13 @@ impl AvatarUtils {
 		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ClassType2)
 	}
 
+	pub fn has_zeroed_class_types(avatar: &Avatar) -> bool {
+		Self::has_attribute_set_with_values(
+			avatar,
+			&[(AvatarAttributes::ClassType1, 0), (AvatarAttributes::ClassType2, 0)],
+		)
+	}
+
 	pub fn has_attribute_set_with_same_values_as(
 		avatar: &Avatar,
 		other: &Avatar,
@@ -1157,14 +1164,15 @@ impl AvatarUtils {
 	}
 
 	pub fn indexes_of_max(byte_array: &[u8]) -> Vec<usize> {
-		let mut max_value = u8::MIN;
+		let mut max_value = 0;
 		let mut max_indexes = Vec::new();
 
 		for (i, byte) in byte_array.iter().enumerate() {
 			match byte.cmp(&max_value) {
 				Ordering::Greater => {
 					max_value = *byte;
-					max_indexes = vec![i];
+					max_indexes.clear();
+					max_indexes.push(i);
 				},
 				Ordering::Equal => {
 					max_indexes.push(i);
@@ -1600,6 +1608,16 @@ mod test {
 		let expected_matches: Vec<u32> = vec![3];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
+	}
+
+	#[test]
+	fn test_indexes_of_max() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_eq!(AvatarUtils::indexes_of_max(&[0, 2, 1, 1]), vec![1]);
+			assert_eq!(AvatarUtils::indexes_of_max(&[9, 5, 3, 9, 7, 2, 1]), vec![0, 3]);
+			assert_eq!(AvatarUtils::indexes_of_max(&[0, 0, 0, 0, 0]), vec![0, 1, 2, 3, 4]);
+			assert_eq!(AvatarUtils::indexes_of_max(&[1, 4, 9, 2, 3, 11, 10, 11, 0, 1]), vec![5, 7]);
+		});
 	}
 
 	#[test]

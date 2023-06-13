@@ -21,40 +21,37 @@ impl<T: Config> AvatarCombinator<T> {
 		forge_type: ForgeType,
 		season_id: SeasonId,
 		_season: &SeasonOf<T>,
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		leader: ForgeItem<T>,
+		sacrifices: Vec<ForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		match forge_type {
-			ForgeType::Stack =>
-				Self::stack_avatars(input_leader, input_sacrifices, season_id, hash_provider),
-			ForgeType::Tinker => Self::tinker_avatars(input_leader, input_sacrifices, season_id),
-			ForgeType::Build =>
-				Self::build_avatars(input_leader, input_sacrifices, season_id, hash_provider),
-			ForgeType::Assemble =>
-				Self::assemble_avatars(input_leader, input_sacrifices, hash_provider),
-			ForgeType::Breed => Self::breed_avatars(input_leader, input_sacrifices, hash_provider),
-			ForgeType::Equip => Self::equip_avatars(input_leader, input_sacrifices),
+			ForgeType::Stack => Self::stack_avatars(leader, sacrifices, season_id, hash_provider),
+			ForgeType::Tinker => Self::tinker_avatars(leader, sacrifices, season_id),
+			ForgeType::Build => Self::build_avatars(leader, sacrifices, season_id, hash_provider),
+			ForgeType::Assemble => Self::assemble_avatars(leader, sacrifices, hash_provider),
+			ForgeType::Breed => Self::breed_avatars(leader, sacrifices, hash_provider),
+			ForgeType::Equip => Self::equip_avatars(leader, sacrifices),
 			ForgeType::Mate => Self::mate_avatars(
-				input_leader,
-				input_sacrifices,
+				leader,
+				sacrifices,
 				season_id,
 				hash_provider,
 				<frame_system::Pallet<T>>::block_number(),
 			),
-			ForgeType::Feed => Self::feed_avatars(input_leader, input_sacrifices),
+			ForgeType::Feed => Self::feed_avatars(leader, sacrifices),
 			ForgeType::Glimmer =>
-				Self::glimmer_avatars(input_leader, input_sacrifices, season_id, hash_provider),
-			ForgeType::Spark => Self::spark_avatars(input_leader, input_sacrifices, hash_provider),
-			ForgeType::Flask => Self::flask_avatars(input_leader, input_sacrifices, hash_provider),
+				Self::glimmer_avatars(leader, sacrifices, season_id, hash_provider),
+			ForgeType::Spark => Self::spark_avatars(leader, sacrifices, hash_provider),
+			ForgeType::Flask => Self::flask_avatars(leader, sacrifices, hash_provider),
 			ForgeType::Statue => Self::statue_avatars(
-				input_leader,
-				input_sacrifices,
+				leader,
+				sacrifices,
 				season_id,
 				hash_provider,
 				<frame_system::Pallet<T>>::block_number(),
 			),
-			ForgeType::None => Self::forge_none(input_leader, input_sacrifices),
+			ForgeType::None => Self::forge_none(leader, sacrifices),
 		}
 	}
 
