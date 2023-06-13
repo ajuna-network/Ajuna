@@ -49,48 +49,12 @@ pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
 	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn transfer() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `3593`
-		// Minimum execution time: 78_626_000 picoseconds.
-		Weight::from_parts(226_150_000, 0)
-			.saturating_add(Weight::from_parts(0, 3593))
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn transfer_keep_alive() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `3593`
 		// Minimum execution time: 56_800_000 picoseconds.
 		Weight::from_parts(57_505_000, 0)
-			.saturating_add(Weight::from_parts(0, 3593))
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn set_balance_creating() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `174`
-		//  Estimated: `3593`
-		// Minimum execution time: 34_451_000 picoseconds.
-		Weight::from_parts(35_516_000, 0)
-			.saturating_add(Weight::from_parts(0, 3593))
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn set_balance_killing() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `174`
-		//  Estimated: `3593`
-		// Minimum execution time: 41_754_000 picoseconds.
-		Weight::from_parts(46_581_000, 0)
 			.saturating_add(Weight::from_parts(0, 3593))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -131,4 +95,8 @@ impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
+	fn transfer_allow_death() -> Weight { todo!() }
+	fn force_set_balance_creating() -> Weight { todo!() }
+	fn force_set_balance_killing() -> Weight { todo!() }
+	fn upgrade_accounts(_: u32) -> Weight { todo!() }
 }
