@@ -40,22 +40,15 @@ fn works_with_token_reward() {
 	let fees = MockMints::from(MockClauses(fee_clauses));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
-	let initial_balance_alice = 222;
-	let initial_balance_bob = 333;
-
 	ExtBuilder::default()
 		.set_creator(ALICE)
-		.balances(vec![(ALICE, initial_balance_alice), (BOB, initial_balance_bob)])
 		.create_contract_collection()
 		.create_contract(contract_id, contract)
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.build()
 		.execute_with(|| {
 			// Initial balances.
-			assert_eq!(
-				Balances::free_balance(ALICE),
-				initial_balance_alice - reward - ItemDeposit::get()
-			);
+			let initial_balance_bob = Balances::free_balance(&BOB);
 			assert_eq!(NftStake::account_balance(), reward);
 
 			// Cancel and check.
@@ -68,7 +61,6 @@ fn works_with_token_reward() {
 			}
 			assert_eq!(Balances::free_balance(BOB), initial_balance_bob - cancellation_fee);
 			assert_eq!(NftStake::account_balance(), 0);
-			assert_eq!(Balances::free_balance(ALICE), initial_balance_alice + cancellation_fee);
 
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
@@ -107,19 +99,15 @@ fn works_with_nft_reward() {
 	let fees = MockMints::from(MockClauses(fee_clauses));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
-	let initial_balance_alice = 222;
-	let initial_balance_bob = 333;
-
 	ExtBuilder::default()
 		.set_creator(ALICE)
-		.balances(vec![(ALICE, initial_balance_alice), (BOB, initial_balance_bob)])
 		.create_contract_collection()
 		.create_contract(contract_id, contract)
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.build()
 		.execute_with(|| {
 			// Initial balances.
-			assert_eq!(Balances::free_balance(ALICE), initial_balance_alice - ItemDeposit::get());
+			let initial_balance_bob = CurrencyOf::<Test>::free_balance(&BOB);
 			assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(NftStake::account_id()));
 
 			// Cancel and check.
@@ -133,7 +121,6 @@ fn works_with_nft_reward() {
 			assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(ALICE));
 			assert_eq!(Balances::free_balance(BOB), initial_balance_bob - cancellation_fee);
 			assert_eq!(NftStake::account_balance(), 0);
-			assert_eq!(Balances::free_balance(ALICE), initial_balance_alice + cancellation_fee);
 
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);

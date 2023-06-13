@@ -103,6 +103,10 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 pub type MockCollectionId = u32;
@@ -277,7 +281,6 @@ impl From<MockClauses> for MockMints {
 	}
 }
 
-#[derive(Default)]
 pub struct ExtBuilder {
 	creator: Option<MockAccountId>,
 	balances: Vec<(MockAccountId, MockBalance)>,
@@ -287,6 +290,21 @@ pub struct ExtBuilder {
 	fees: Vec<(MockAccountId, MockMints)>,
 	accept_contract: Option<(MockItemId, MockAccountId)>,
 	create_sniper: Option<(MockAccountId, ContractOf<Test>)>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			creator: Default::default(),
+			balances: vec![(ALICE, 999_999_999), (BOB, 999_999_999), (CHARLIE, 999_999_999)],
+			create_contract_collection: Default::default(),
+			contract: Default::default(),
+			stakes: Default::default(),
+			fees: Default::default(),
+			accept_contract: Default::default(),
+			create_sniper: Default::default(),
+		}
+	}
 }
 
 impl ExtBuilder {
@@ -416,7 +434,7 @@ impl ExtBuilder {
 }
 
 pub fn create_collection(account: MockAccountId) -> MockCollectionId {
-	let _ = CurrencyOf::<Test>::deposit_creating(&account, CollectionDeposit::get());
+	let _ = CurrencyOf::<Test>::deposit_creating(&account, CollectionDeposit::get() + 999);
 	let config = CollectionConfig::default();
 	NftHelperOf::<Test>::create_collection(&account, &account, &config).unwrap()
 }
@@ -443,7 +461,7 @@ pub fn mint_item(
 	collection_id: &MockCollectionId,
 	item_id: &MockItemId,
 ) -> NftIdOf<Test> {
-	let _ = CurrencyOf::<Test>::deposit_creating(owner, ItemDeposit::get());
+	let _ = CurrencyOf::<Test>::deposit_creating(owner, ItemDeposit::get() + 999);
 	let config = pallet_nfts::ItemConfig::default();
 	NftHelperOf::<Test>::mint_into(collection_id, item_id, owner, &config, false).unwrap();
 	NftId(*collection_id, *item_id)

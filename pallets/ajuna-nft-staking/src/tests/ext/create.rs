@@ -18,13 +18,12 @@ use super::*;
 
 #[test]
 fn works_with_token_reward() {
-	let initial_balance = 1_000_000;
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.balances(vec![(ALICE, initial_balance)])
 		.build()
 		.execute_with(|| {
+			let initial_balance = CurrencyOf::<Test>::free_balance(ALICE);
 			let reward_amount = 1_000;
 			let mut contract = Contract::default().reward(Reward::Tokens(reward_amount));
 			let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
@@ -60,7 +59,6 @@ fn works_with_nft_reward() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.balances(vec![(ALICE, ItemDeposit::get())])
 		.build()
 		.execute_with(|| {
 			let collection_id = create_collection(ALICE);
@@ -94,7 +92,6 @@ fn rejects_non_creator_calls() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.balances(vec![(ALICE, ItemDeposit::get())])
 		.build()
 		.execute_with(|| {
 			assert_noop!(
@@ -197,7 +194,6 @@ fn rejects_incorrect_activation() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.balances(vec![(ALICE, ItemDeposit::get())])
 		.build()
 		.execute_with(|| {
 			let (now, activation) = (5, 2);
@@ -219,7 +215,6 @@ fn rejects_incorrect_active_duration() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.balances(vec![(ALICE, ItemDeposit::get())])
 		.build()
 		.execute_with(|| {
 			assert_noop!(
@@ -238,7 +233,6 @@ fn rejects_incorrect_claim_duration() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.balances(vec![(ALICE, ItemDeposit::get())])
 		.build()
 		.execute_with(|| {
 			assert_noop!(
