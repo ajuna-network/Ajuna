@@ -125,9 +125,8 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 	create_seasons::<T>(3)?;
 
 	let player = account::<T>(name);
-	Accounts::<T>::mutate(&player, |account| {
-		account.free_mints = n as MintCount;
-		account.storage_tier = StorageTier::Max;
+	PlayerConfigs::<T>::mutate(&player, |config| {
+		config.free_mints = n as MintCount;
 	});
 
 	GlobalConfigs::<T>::mutate(|config| {
@@ -137,6 +136,13 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 		config.trade.open = true;
 		config.nft_transfer.open = true;
 	});
+
+	let season_id = CurrentSeasonStatus::<T>::get().season_id;
+	PlayerSeasonConfigs::<T>::mutate(&player, season_id, |config| {
+		config.stats.mint.last = Zero::zero();
+		config.storage_tier = StorageTier::Max;
+	});
+
 	for _ in 0..n {
 		AAvatars::<T>::mint(
 			RawOrigin::Signed(player.clone()).into(),
@@ -147,7 +153,6 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 				version: AvatarVersion::V1,
 			},
 		)?;
-		Accounts::<T>::mutate(&player, |account| account.stats.mint.last = Zero::zero());
 	}
 	Ok(())
 }
@@ -202,7 +207,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		Accounts::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
+		PlayerConfigs::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
 
 		let mint_option = MintOption { payment: MintPayment::Free, pack_size: MintPackSize::Six,
 			pack_type: PackType::Material, version: AvatarVersion::V1 };
@@ -298,7 +303,7 @@ benchmarks! {
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
-		Accounts::<T>::mutate(&from, |account| account.free_mints = MintCount::MAX);
+		PlayerConfigs::<T>::mutate(&from, |account| account.free_mints = MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
 		assert_last_event::<T>(Event::FreeMintsTransferred { from, to, how_many })

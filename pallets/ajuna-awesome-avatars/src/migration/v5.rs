@@ -111,6 +111,13 @@ impl<T: Config> OldSeason<T> {
 	}
 }
 
+#[derive(Decode)]
+pub struct OldAccountInfo<T: Config> {
+	pub free_mints: MintCount,
+	pub storage_tier: StorageTier,
+	pub stats: Stats<T::BlockNumber>,
+}
+
 #[frame_support::storage_alias]
 pub(crate) type CurrentSeasonId<T: Config> = StorageValue<Pallet<T>, SeasonId, ValueQuery>;
 
@@ -176,6 +183,34 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			);
 			log::info!(target: LOG_TARGET, "Updated {} old avatars", translated_avatars);
 
+			let mut translated_account_info = 0_u64;
+			let account_info = migration::storage_iter::<OldAccountInfo<T>>(
+				<Pallet<T>>::name().as_bytes(),
+				b"Accounts",
+			)
+			.drain()
+			.map(|(account_id, OldAccountInfo::<T> { free_mints, storage_tier, stats })| {
+				let account_id = T::AccountId::decode(&mut &account_id[..]).unwrap();
+
+				(
+					(account_id, PlayerConfig { free_mints }),
+					(season_id, PlayerSeasonConfig::<T::BlockNumber> { storage_tier, stats }),
+				)
+			})
+			.collect::<Vec<_>>();
+			account_info
+				.iter()
+				.for_each(|((account_id, config), (season_id, season_config))| {
+					PlayerConfigs::<T>::insert(account_id, config);
+					PlayerSeasonConfigs::<T>::insert(account_id, season_id, season_config);
+					translated_account_info.saturating_inc();
+				});
+			log::info!(
+				target: LOG_TARGET,
+				"Updated {} player account info entries",
+				translated_account_info
+			);
+
 			Seasons::<T>::translate::<OldSeason<T>, _>(|_key, old_value| {
 				log::info!(target: LOG_TARGET, "Migrated seasons");
 				Some(old_value.migrate_to_v5())
@@ -184,8 +219,12 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
 			T::DbWeight::get().reads_writes(
-				3 + 2 * translated_owner_account + translated_trades + translated_avatars,
-				3 + 2 * translated_owner_account + translated_trades + translated_avatars,
+				3 + 2 * translated_owner_account +
+					translated_trades + translated_avatars +
+					translated_account_info,
+				3 + 2 * translated_owner_account +
+					translated_trades + translated_avatars +
+					2 * translated_account_info,
 			)
 		} else {
 			log::info!(
@@ -229,6 +268,21 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		owners_season_ids.dedup();
 		assert_eq!(owners_season_ids.len(), 1);
 		assert_eq!(owners_season_ids, vec![1]);
+
+		// Check owner configs
+		let player_configs_account_ids = PlayerConfigs::<T>::iter_keys().collect::<Vec<_>>();
+		let mut player_season_configs_season_ids = PlayerSeasonConfigs::<T>::iter_keys()
+			.map(|(_, season_id)| season_id)
+			.collect::<Vec<_>>();
+		assert!(player_configs_account_ids.len() > 800 && player_configs_account_ids.len() < 1_000);
+		assert!(
+			player_season_configs_season_ids.len() > 800 &&
+				player_season_configs_season_ids.len() < 1_000
+		);
+		player_season_configs_season_ids.sort();
+		player_season_configs_season_ids.dedup();
+		assert_eq!(player_season_configs_season_ids.len(), 1);
+		assert_eq!(player_season_configs_season_ids, vec![1]);
 
 		// There are 871 avatars in trade as of 26/05/2023. But the exact number could change. we
 		// estimate between 800 and 1,000 avatars to be in trade.
