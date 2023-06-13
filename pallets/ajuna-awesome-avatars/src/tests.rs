@@ -1298,25 +1298,6 @@ mod minting {
 						);
 					}
 				}
-
-				PlayerConfigs::<Test>::mutate(BOB, |config| {
-					config.free_mints = 999;
-				});
-				PlayerSeasonConfigs::<Test>::mutate(BOB, SEASON_ID, |config| {
-					config.storage_tier = StorageTier::One;
-				});
-				let mut storage_limit = StorageTier::One as usize;
-				for i in 0..10 {
-					create_avatars(i, BOB, 5);
-					storage_limit -= 5;
-					if storage_limit == 0 {
-						break
-					}
-				}
-				assert_noop!(
-					AAvatars::mint(RuntimeOrigin::signed(BOB), MintOption::default()),
-					Error::<Test>::MaxOwnershipReached
-				);
 			});
 	}
 

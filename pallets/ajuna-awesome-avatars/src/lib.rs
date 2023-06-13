@@ -1243,7 +1243,7 @@ pub mod pallet {
 				},
 			};
 
-			let current_count = Owners::<T>::iter_prefix_values(player).flatten().count() as u16;
+			let current_count = Owners::<T>::get(player, season_id).len() as u16;
 			let max_count = player_season_config.storage_tier as u16;
 			ensure!(current_count + mint_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())
