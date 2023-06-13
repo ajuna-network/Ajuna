@@ -6,6 +6,7 @@ impl<T: Config> AvatarCombinator<T> {
 		input_sacrifices: Vec<ForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
+		_block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		if input_sacrifices.len() != 1 {
 			return Ok((
@@ -149,6 +150,7 @@ mod test {
 				vec![partner, extra_partner],
 				0,
 				&mut hash_provider,
+				1,
 			)
 			.expect("Should succeed in forging");
 
@@ -174,6 +176,7 @@ mod test {
 				vec![partner],
 				0,
 				&mut hash_provider,
+				1,
 			)
 			.expect("Should succeed in forging");
 
@@ -205,6 +208,7 @@ mod test {
 				vec![partner],
 				0,
 				&mut hash_provider,
+				1,
 			)
 			.expect("Should succeed in forging");
 
@@ -268,6 +272,7 @@ mod test {
 				vec![partner],
 				0,
 				&mut hash_provider,
+				1,
 			)
 			.expect("Should succeed in forging");
 
@@ -352,6 +357,7 @@ mod test {
 					vec![partner],
 					0,
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 
@@ -447,6 +453,7 @@ mod test {
 					vec![partner],
 					0,
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 
@@ -566,6 +573,7 @@ mod test {
 					vec![partner],
 					0,
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 

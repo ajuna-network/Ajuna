@@ -293,6 +293,7 @@ pub(crate) enum SlotType {
 	ArmBack = 4,
 	LegFront = 5,
 	LegBack = 6,
+	Tail = 7,
 	WeaponFront = 8,
 	WeaponBack = 9,
 }
@@ -306,6 +307,7 @@ impl ByteConvertible for SlotType {
 			4 => Self::ArmBack,
 			5 => Self::LegFront,
 			6 => Self::LegBack,
+			7 => Self::Tail,
 			8 => Self::WeaponFront,
 			9 => Self::WeaponBack,
 			_ => Self::default(),
