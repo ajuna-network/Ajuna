@@ -165,8 +165,19 @@ pub mod pallet {
 	pub type CollectionId<T: Config> = StorageValue<_, CollectionIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	pub type Accounts<T: Config> =
-		StorageMap<_, Identity, T::AccountId, AccountInfo<T::BlockNumber>, ValueQuery>;
+	pub type PlayerConfigs<T: Config> =
+		StorageMap<_, Identity, T::AccountId, PlayerConfig, ValueQuery>;
+
+	#[pallet::storage]
+	pub type PlayerSeasonConfigs<T: Config> = StorageDoubleMap<
+		_,
+		Identity,
+		T::AccountId,
+		Identity,
+		SeasonId,
+		PlayerSeasonConfig<T::BlockNumber>,
+		ValueQuery,
+	>;
 
 	#[pallet::storage]
 	pub type SeasonStats<T: Config> =
@@ -512,7 +523,7 @@ pub mod pallet {
 
 			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 			ensure!(how_many >= transfer.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
-			let sender_free_mints = Accounts::<T>::get(&from)
+			let sender_free_mints = PlayerConfigs::<T>::get(&from)
 				.free_mints
 				.checked_sub(
 					how_many
@@ -520,13 +531,13 @@ pub mod pallet {
 						.ok_or(ArithmeticError::Overflow)?,
 				)
 				.ok_or(Error::<T>::InsufficientFreeMints)?;
-			let dest_free_mints = Accounts::<T>::get(&to)
+			let dest_free_mints = PlayerConfigs::<T>::get(&to)
 				.free_mints
 				.checked_add(how_many)
 				.ok_or(ArithmeticError::Overflow)?;
 
-			Accounts::<T>::mutate(&from, |account| account.free_mints = sender_free_mints);
-			Accounts::<T>::mutate(&to, |account| account.free_mints = dest_free_mints);
+			PlayerConfigs::<T>::mutate(&from, |config| config.free_mints = sender_free_mints);
+			PlayerConfigs::<T>::mutate(&to, |config| config.free_mints = dest_free_mints);
 
 			Self::deposit_event(Event::FreeMintsTransferred { from, to, how_many });
 			Ok(())
@@ -598,7 +609,7 @@ pub mod pallet {
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
 			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
-			let Season { fee, .. } = Self::seasons(&avatar.season_id)?;
+			let (current_season_id, Season { fee, .. }) = Self::current_season_with_id()?;
 			let trade_fee = fee.buy_minimum.max(
 				price.saturating_mul(fee.buy_percent.unique_saturated_into()) /
 					MAX_PERCENTAGE.unique_saturated_into(),
@@ -609,8 +620,12 @@ pub mod pallet {
 			Self::do_transfer_avatar(&seller, &buyer, &avatar.season_id, &avatar_id)?;
 			Trade::<T>::remove(avatar.season_id, avatar_id);
 
-			Accounts::<T>::mutate(&buyer, |account| account.stats.trade.bought.saturating_inc());
-			Accounts::<T>::mutate(&seller, |account| account.stats.trade.sold.saturating_inc());
+			PlayerSeasonConfigs::<T>::mutate(&buyer, current_season_id, |config| {
+				config.stats.trade.bought.saturating_inc()
+			});
+			PlayerSeasonConfigs::<T>::mutate(&seller, current_season_id, |config| {
+				config.stats.trade.sold.saturating_inc()
+			});
 
 			Self::deposit_event(Event::AvatarTraded { avatar_id, from: seller, to: buyer });
 			Ok(())
@@ -625,14 +640,17 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let storage_tier = Accounts::<T>::get(&player).storage_tier;
+			let (season_id, Season { fee, .. }) = Self::current_season_with_id()?;
+
+			let storage_tier = PlayerSeasonConfigs::<T>::get(&player, season_id).storage_tier;
 			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
-			let (season_id, Season { fee, .. }) = Self::current_season_with_id()?;
 			T::Currency::withdraw(&player, fee.upgrade_storage, WithdrawReasons::FEE, AllowDeath)?;
 			Self::deposit_into_treasury(&season_id, fee.upgrade_storage);
 
-			Accounts::<T>::mutate(&player, |account| account.storage_tier = storage_tier.upgrade());
+			PlayerSeasonConfigs::<T>::mutate(&player, season_id, |account| {
+				account.storage_tier = storage_tier.upgrade()
+			});
 			Self::deposit_event(Event::StorageTierUpgraded);
 			Ok(())
 		}
@@ -766,7 +784,7 @@ pub mod pallet {
 			how_many: MintCount,
 		) -> DispatchResult {
 			Self::ensure_organizer(origin)?;
-			Accounts::<T>::mutate(&target, |account| account.free_mints = how_many);
+			PlayerConfigs::<T>::mutate(&target, |config| config.free_mints = how_many);
 			Self::deposit_event(Event::FreeMintsSet { target, how_many });
 			Ok(())
 		}
@@ -1036,9 +1054,10 @@ pub mod pallet {
 
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			Self::ensure_for_mint(player, mint_option)?;
-
 			let season_id = CurrentSeasonStatus::<T>::get().season_id;
+
+			Self::ensure_for_mint(player, &season_id, mint_option)?;
+
 			let generated_avatar_ids = match mint_option.version {
 				AvatarVersion::V1 => MinterV1::<T>::mint(player, &season_id, mint_option),
 				AvatarVersion::V2 => MinterV2::<T>::mint(player, &season_id, mint_option),
@@ -1055,8 +1074,8 @@ pub mod pallet {
 				MintPayment::Free => {
 					let fee = (mint_option.pack_size.as_mint_count())
 						.saturating_mul(mint.free_mint_fee_multiplier);
-					Accounts::<T>::try_mutate(player, |account| -> DispatchResult {
-						account.free_mints = account
+					PlayerConfigs::<T>::try_mutate(player, |config| -> DispatchResult {
+						config.free_mints = config
 							.free_mints
 							.checked_sub(fee)
 							.ok_or(Error::<T>::InsufficientFreeMints)?;
@@ -1065,19 +1084,23 @@ pub mod pallet {
 				},
 			};
 
-			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
-				let current_block = <frame_system::Pallet<T>>::block_number();
-				if stats.mint.first.is_zero() {
-					stats.mint.first = current_block;
-				}
-				stats.mint.last = current_block;
-				stats
-					.mint
-					.seasons_participated
-					.try_insert(season_id)
-					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
-				Ok(())
-			})?;
+			PlayerSeasonConfigs::<T>::try_mutate(
+				player,
+				season_id,
+				|PlayerSeasonConfig { stats, .. }| -> DispatchResult {
+					let current_block = <frame_system::Pallet<T>>::block_number();
+					if stats.mint.first.is_zero() {
+						stats.mint.first = current_block;
+					}
+					stats.mint.last = current_block;
+					stats
+						.mint
+						.seasons_participated
+						.try_insert(season_id)
+						.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+					Ok(())
+				},
+			)?;
 			SeasonStats::<T>::mutate(season_id, player, |info| {
 				info.minted.saturating_accrue(generated_avatar_ids.len() as Stat);
 			});
@@ -1145,7 +1168,8 @@ pub mod pallet {
 				.try_push(*avatar_id)
 				.map_err(|_| Error::<T>::MaxOwnershipReached)?;
 			ensure!(
-				to_avatar_ids.len() <= Accounts::<T>::get(to).storage_tier as usize,
+				to_avatar_ids.len() <=
+					PlayerSeasonConfigs::<T>::get(to, season_id).storage_tier as usize,
 				Error::<T>::MaxOwnershipReached
 			);
 
@@ -1183,19 +1207,22 @@ pub mod pallet {
 
 		pub(crate) fn ensure_for_mint(
 			player: &T::AccountId,
+			season_id: &SeasonId,
 			mint_option: &MintOption,
 		) -> DispatchResult {
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
 			ensure!(mint.open, Error::<T>::MintClosed);
 
+			let player_season_config = PlayerSeasonConfigs::<T>::get(player, season_id);
+
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			let last_block = Accounts::<T>::get(player).stats.mint.last;
+			let last_block = player_season_config.stats.mint.last;
 			if !last_block.is_zero() {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
 			let SeasonStatus { active, early, early_ended, .. } = CurrentSeasonStatus::<T>::get();
-			let free_mints = Accounts::<T>::get(player).free_mints;
+			let free_mints = PlayerConfigs::<T>::get(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
 			let is_free_mint = mint_option.payment == MintPayment::Free;
 			ensure!(!early_ended || is_free_mint, Error::<T>::PrematureSeasonEnd);
@@ -1216,8 +1243,8 @@ pub mod pallet {
 				},
 			};
 
-			let current_count = Owners::<T>::iter_prefix_values(player).flatten().count() as u16;
-			let max_count = Accounts::<T>::get(player).storage_tier as u16;
+			let current_count = Owners::<T>::get(player, season_id).len() as u16;
+			let max_count = player_season_config.storage_tier as u16;
 			ensure!(current_count + mint_count <= max_count, Error::<T>::MaxOwnershipReached);
 			Ok(())
 		}
@@ -1355,18 +1382,22 @@ pub mod pallet {
 		) -> DispatchResult {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 
-			Accounts::<T>::try_mutate(player, |AccountInfo { stats, .. }| -> DispatchResult {
-				if stats.forge.first.is_zero() {
-					stats.forge.first = current_block;
-				}
-				stats.forge.last = current_block;
-				stats
-					.forge
-					.seasons_participated
-					.try_insert(season_id)
-					.map_err(|_| Error::<T>::IncorrectSeasonId)?;
-				Ok(())
-			})?;
+			PlayerSeasonConfigs::<T>::try_mutate(
+				player,
+				season_id,
+				|PlayerSeasonConfig { stats, .. }| -> DispatchResult {
+					if stats.forge.first.is_zero() {
+						stats.forge.first = current_block;
+					}
+					stats.forge.last = current_block;
+					stats
+						.forge
+						.seasons_participated
+						.try_insert(season_id)
+						.map_err(|_| Error::<T>::IncorrectSeasonId)?;
+					Ok(())
+				},
+			)?;
 
 			SeasonStats::<T>::mutate(season_id, player, |info| {
 				info.forged.saturating_inc();
