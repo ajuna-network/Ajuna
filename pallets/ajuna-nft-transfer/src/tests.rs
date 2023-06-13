@@ -70,7 +70,7 @@ mod store_as_nft {
 	#[test]
 	fn can_store_item_successfully() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, ItemDeposit::get() + 999)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
@@ -111,7 +111,7 @@ mod store_as_nft {
 				);
 
 				// check players pay for the item deposit
-				assert_eq!(Balances::free_balance(BOB), 0);
+				assert_eq!(Balances::free_balance(BOB), 999);
 
 				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
 					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
@@ -122,7 +122,7 @@ mod store_as_nft {
 	#[test]
 	fn cannot_store_empty_ipfs_url() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get())])
+			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get() + 999)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
@@ -140,7 +140,7 @@ mod store_as_nft {
 	#[test]
 	fn cannot_store_duplicates_under_same_collection() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get())])
+			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get() + 999)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
@@ -165,7 +165,7 @@ mod store_as_nft {
 	#[test]
 	fn cannot_store_item_above_encoding_limit() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, ItemDeposit::get() + 999)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
@@ -192,9 +192,9 @@ mod recover_from_nft {
 
 	#[test]
 	fn can_recover_item_successfully() {
-		let initial_balance = ItemDeposit::get();
+		let initial_balance = ItemDeposit::get() + 999;
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, initial_balance)])
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, initial_balance)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
@@ -209,7 +209,7 @@ mod recover_from_nft {
 					item.clone(),
 					url
 				));
-				assert_eq!(Balances::free_balance(BOB), 0);
+				assert_eq!(Balances::free_balance(BOB), 999);
 
 				assert_eq!(NftTransfer::recover_from_nft(BOB, collection_id, item_id), Ok(item));
 				assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
@@ -242,7 +242,7 @@ mod recover_from_nft {
 	#[test]
 	fn cannot_restore_uploaded_item() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, ItemDeposit::get() + 999)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
@@ -264,7 +264,7 @@ mod recover_from_nft {
 	#[test]
 	fn cannot_restore_if_not_owned() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, CollectionDeposit::get()), (BOB, ItemDeposit::get())])
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, ItemDeposit::get() + 999)])
 			.build()
 			.execute_with(|| {
 				let collection_id = create_collection(ALICE);
