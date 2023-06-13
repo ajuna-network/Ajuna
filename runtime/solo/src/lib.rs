@@ -66,7 +66,7 @@ use ajuna_primitives::{
 };
 pub use consts::currency;
 use consts::{currency::*, time::*};
-use impls::{CreditToTreasury, NegativeImbalanceToTreasury, OneToOneConversion};
+use impls::{CreditToTreasury, OneToOneConversion};
 use pallet_nfts::Call as NftsCall;
 use types::governance::*;
 
@@ -215,7 +215,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type DustRemoval = NegativeImbalanceToTreasury;
+	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
@@ -223,11 +223,15 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = ArbitraryUpperBound;
 	type MaxReserves = ArbitraryUpperBound;
 	type ReserveIdentifier = [u8; 8];
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
+	type OnChargeTransaction = CurrencyAdapter<Balances, Treasury>;
 	type OperationalFeeMultiplier = frame_support::traits::ConstU8<5>;
 	type WeightToFee = IdentityFee<Balance>;
 	type LengthToFee = IdentityFee<Balance>;
@@ -295,6 +299,7 @@ parameter_types! {
 	pub const Weekly: BlockNumber = 7 * DAYS;
 	pub const Daily: BlockNumber = DAYS;
 	pub const CouncilMaxMembers: u32 = 100;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
 }
 
 type CouncilCollective = pallet_collective::Instance2;
@@ -308,6 +313,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
@@ -769,6 +775,14 @@ impl_runtime_apis! {
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
+		}
+
+		fn metadata_at_version(version: u32) -> Option<OpaqueMetadata> {
+			Runtime::metadata_at_version(version)
+		}
+
+		fn metadata_versions() -> sp_std::vec::Vec<u32> {
+			Runtime::metadata_versions()
 		}
 	}
 
