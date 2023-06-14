@@ -131,6 +131,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 
 	GlobalConfigs::<T>::mutate(|config| {
 		config.mint.open = true;
+		config.mint.cooldown = Zero::zero();
 		config.forge.open = true;
 		config.transfer.open = true;
 		config.trade.open = true;
