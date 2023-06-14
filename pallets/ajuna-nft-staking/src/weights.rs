@@ -54,6 +54,12 @@ pub trait WeightInfo {
 	fn accept() -> Weight;
 	fn claim_token_reward() -> Weight;
 	fn claim_nft_reward() -> Weight;
+	fn remove_token_reward() -> Weight;
+	fn remove_nft_reward() -> Weight;
+	fn cancel_token_reward() -> Weight;
+	fn cancel_nft_reward() -> Weight;
+	fn snipe_token_reward() -> Weight;
+	fn snipe_nft_reward() -> Weight;
 }
 
 /// Weights for pallet_ajuna_nft_staking using the Substrate node and recommended hardware.
@@ -190,6 +196,24 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(37 as u64))
 			.saturating_add(T::DbWeight::get().writes(67 as u64))
 	}
+	fn remove_token_reward() -> Weight {
+		Default::default()
+	}
+	fn remove_nft_reward() -> Weight {
+		Default::default()
+	}
+	fn cancel_token_reward() -> Weight {
+		Default::default()
+	}
+	fn cancel_nft_reward() -> Weight {
+		Default::default()
+	}
+	fn snipe_token_reward() -> Weight {
+		Default::default()
+	}
+	fn snipe_nft_reward() -> Weight {
+		Default::default()
+	}
 }
 
 // For backwards compatibility and tests
@@ -324,5 +348,23 @@ impl WeightInfo for () {
 		Weight::from_parts(0, 0)
 			.saturating_add(RocksDbWeight::get().reads(37 as u64))
 			.saturating_add(RocksDbWeight::get().writes(67 as u64))
+	}
+	fn remove_token_reward() -> Weight {
+		Default::default()
+	}
+	fn remove_nft_reward() -> Weight {
+		Default::default()
+	}
+	fn cancel_token_reward() -> Weight {
+		Default::default()
+	}
+	fn cancel_nft_reward() -> Weight {
+		Default::default()
+	}
+	fn snipe_token_reward() -> Weight {
+		Default::default()
+	}
+	fn snipe_nft_reward() -> Weight {
+		Default::default()
 	}
 }

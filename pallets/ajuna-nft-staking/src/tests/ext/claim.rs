@@ -38,16 +38,16 @@ fn works_with_token_reward() {
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 	let fees = MockMints::from(MockClauses(fee_clauses));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let initial_balance = 333;
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
-		.balances(vec![(BOB, initial_balance)])
 		.create_contract_collection()
 		.create_contract_with_funds(contract_id, contract.clone())
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.build()
 		.execute_with(|| {
+			let initial_balance = CurrencyOf::<Test>::free_balance(&BOB);
+
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
 			run_to_block(accepted_at + stake_duration);
 

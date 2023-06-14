@@ -45,7 +45,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{Contains, Currency, EitherOfDiverse, Imbalance, OnUnbalanced},
+	traits::{Contains, EitherOfDiverse},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -140,20 +140,6 @@ impl WeightToFeePolynomial for WeightToFee {
 			coeff_frac: Perbill::from_rational(p % q, q),
 			coeff_integer: p / q,
 		}]
-	}
-}
-
-pub struct NegativeImbalanceToTreasury;
-type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-impl OnUnbalanced<NegativeImbalance> for NegativeImbalanceToTreasury {
-	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
-		if let Some(fees) = fees_then_tips.next() {
-			let mut amount = fees;
-			if let Some(tips) = fees_then_tips.next() {
-				amount.subsume(tips);
-			}
-			Treasury::on_unbalanced(amount);
-		}
 	}
 }
 
@@ -370,12 +356,16 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type Balance = Balance;
 	type RuntimeEvent = RuntimeEvent;
-	type DustRemoval = NegativeImbalanceToTreasury;
+	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = weights::pallet_balances::WeightInfo<Runtime>;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -386,7 +376,7 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type OnChargeTransaction = CurrencyAdapter<Balances, NegativeImbalanceToTreasury>;
+	type OnChargeTransaction = CurrencyAdapter<Balances, Treasury>;
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
@@ -403,6 +393,7 @@ parameter_types! {
 	pub const Weekly: BlockNumber = 7 * DAYS;
 	pub const Daily: BlockNumber = DAYS;
 	pub const CouncilMaxMembers: u32 = 100;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
 }
 
 type CouncilCollective = pallet_collective::Instance2;
@@ -416,6 +407,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
@@ -776,6 +768,14 @@ impl_runtime_apis! {
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
+		}
+
+		fn metadata_at_version(version: u32) -> Option<OpaqueMetadata> {
+			Runtime::metadata_at_version(version)
+		}
+
+		fn metadata_versions() -> sp_std::vec::Vec<u32> {
+			Runtime::metadata_versions()
 		}
 	}
 

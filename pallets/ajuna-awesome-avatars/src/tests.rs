@@ -365,15 +365,16 @@ mod treasury {
 		let season_1 = Season::default();
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season_1.clone())])
+			.balances(&[(CHARLIE, 999_999)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season_1.end + 1);
-				Treasurer::<Test>::insert(1, CHARLIE);
-				Treasury::<Test>::insert(1, 999);
+				Treasurer::<Test>::insert(SEASON_ID, CHARLIE);
+				Treasury::<Test>::insert(SEASON_ID, 999);
 				assert!(Balances::free_balance(AAvatars::treasury_account_id()) < 999);
 				assert_noop!(
 					AAvatars::claim_treasury(RuntimeOrigin::signed(CHARLIE), SEASON_ID),
-					pallet_balances::Error::<Test>::InsufficientBalance
+					sp_runtime::TokenError::FundsUnavailable
 				);
 			})
 	}
@@ -2770,7 +2771,6 @@ mod trading {
 				assert_eq!(Balances::free_balance(ALICE), alice_initial_bal - price - min_fee);
 				assert_eq!(Balances::free_balance(BOB), bob_initial_bal + price);
 				assert_eq!(Treasury::<Test>::get(SEASON_ID), treasury_balance_season_1);
-				assert_eq!(Balances::free_balance(treasury_account), treasury_balance_season_1);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
 				// check for ownership transfer
@@ -2896,7 +2896,7 @@ mod trading {
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
-			.balances(&[(ALICE, price - 1)])
+			.balances(&[(ALICE, price - 1), (BOB, 999_999)])
 			.build()
 			.execute_with(|| {
 				run_to_block(season.start);
@@ -2906,7 +2906,7 @@ mod trading {
 				assert_ok!(AAvatars::set_price(RuntimeOrigin::signed(BOB), avatar_for_sale, price));
 				assert_noop!(
 					AAvatars::buy(RuntimeOrigin::signed(ALICE), avatar_for_sale),
-					pallet_balances::Error::<Test>::InsufficientBalance
+					sp_runtime::TokenError::FundsUnavailable
 				);
 			});
 	}
@@ -3193,7 +3193,7 @@ mod nft_transfer {
 	#[test]
 	fn cannot_lock_when_nft_transfer_is_closed() {
 		ExtBuilder::default()
-			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.balances(&[(ALICE, MockExistentialDeposit::get() + 1)])
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
@@ -3359,7 +3359,7 @@ mod nft_transfer {
 	fn cannot_unlock_when_nft_transfer_is_closed() {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, Season::default())])
-			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.balances(&[(ALICE, 999_999)])
 			.create_nft_collection(true)
 			.build()
 			.execute_with(|| {
@@ -3621,14 +3621,14 @@ mod ipfs {
 	fn prepare_avatar_rejects_insufficient_balance() {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, Season::default().prepare_avatar_fee(333))])
-			.balances(&[(ALICE, MockExistentialDeposit::get())])
+			.balances(&[(ALICE, MockExistentialDeposit::get()), (BOB, 999_999)])
 			.build()
 			.execute_with(|| {
 				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
 				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), BOB));
 				assert_noop!(
 					AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
-					pallet_balances::Error::<Test>::InsufficientBalance
+					sp_runtime::TokenError::FundsUnavailable
 				);
 			});
 	}

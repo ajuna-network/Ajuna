@@ -40,18 +40,17 @@ fn works_with_token_reward() {
 	let fees = MockMints::from(MockClauses(fee_clauses));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
-	let initial_balance_bob = 333;
-	let initial_balance_charlie = 111;
-
 	ExtBuilder::default()
 		.set_creator(ALICE)
-		.balances(vec![(BOB, initial_balance_bob), (CHARLIE, initial_balance_charlie)])
 		.create_contract_collection()
 		.create_contract_with_funds(contract_id, contract.clone())
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.create_sniper(CHARLIE, Contract::default().stake_duration(10).claim_duration(20))
 		.build()
 		.execute_with(|| {
+			let initial_balance_bob = Balances::free_balance(BOB);
+			let initial_balance_charlie = Balances::free_balance(CHARLIE);
+
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
 			run_to_block(accepted_at + stake_duration + claim_duration + 1);
 

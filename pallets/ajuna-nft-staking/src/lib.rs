@@ -340,7 +340,10 @@ pub mod pallet {
 		/// This call enables the creator to remove inactive staking contracts that haven't been
 		/// accepted by any staker. This can be done to clean up the available staking contracts or
 		/// to adjust the parameters before re-creating the contract.
-		#[pallet::weight(12_345)]
+		#[pallet::weight(
+			T::WeightInfo::remove_token_reward()
+				.max(T::WeightInfo::remove_nft_reward())
+		)]
 		#[pallet::call_index(4)]
 		pub fn remove(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let _ = Self::ensure_creator(origin)?;
@@ -375,7 +378,10 @@ pub mod pallet {
 		/// prematurely. Doing so will return the stake NFT, but an additional cancellation fee will
 		/// be charged. The staker will not receive any rewards associated with the canceled
 		/// contract.
-		#[pallet::weight(12_345)]
+		#[pallet::weight(
+			T::WeightInfo::cancel_token_reward()
+				.max(T::WeightInfo::cancel_nft_reward())
+		)]
 		#[pallet::call_index(6)]
 		pub fn cancel(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let staker = ensure_signed(origin)?;
@@ -408,7 +414,10 @@ pub mod pallet {
 		/// claim them. When this occurs, the stake NFT is returned to the original contract NFT
 		/// holder, but the rewards are transferred to the sniper. This feature encourages the
 		/// timely claiming of contracts and ensures the contract's completion.
-		#[pallet::weight(12_345)]
+		#[pallet::weight(
+			T::WeightInfo::snipe_token_reward()
+				.max(T::WeightInfo::snipe_nft_reward())
+		)]
 		#[pallet::call_index(8)]
 		pub fn snipe(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
 			let sniper = ensure_signed(origin)?;

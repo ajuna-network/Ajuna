@@ -17,26 +17,13 @@
 use crate::{Assets, Balances, Treasury};
 use ajuna_primitives::{AccountId, Balance};
 use frame_support::traits::{
-	fungibles::{CreditOf, Inspect},
-	Currency, Imbalance, OnUnbalanced,
+	fungibles::{Credit, Inspect},
+	Currency, OnUnbalanced,
 };
 use pallet_asset_tx_payment::HandleCredit;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-
-pub struct NegativeImbalanceToTreasury;
-impl OnUnbalanced<NegativeImbalance> for NegativeImbalanceToTreasury {
-	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
-		if let Some(fees) = fees_then_tips.next() {
-			let mut amount = fees;
-			if let Some(tips) = fees_then_tips.next() {
-				amount.subsume(tips);
-			}
-			Treasury::on_unbalanced(amount);
-		}
-	}
-}
 
 pub struct OneToOneConversion;
 impl<Balance, AssetBalance: From<Balance>> Convert<Balance, AssetBalance> for OneToOneConversion {
@@ -50,7 +37,7 @@ impl HandleCredit<AccountId, Assets> for CreditToTreasury {
 	// Converts asset balance to balance by reversing BalanceToAssetBalance::to_asset_balance()
 	//   (to balance) asset_balance = balance * asset_min_balance / min_balance
 	//   (to asset balance) balance = asset_balance * min_balance / asset_min_balance
-	fn handle_credit(credit: CreditOf<AccountId, Assets>) {
+	fn handle_credit(credit: Credit<AccountId, Assets>) {
 		let asset_id = credit.asset();
 		let minimum_asset_balance: Balance =
 			OneToOneConversion::convert(Assets::minimum_balance(asset_id));
