@@ -41,7 +41,15 @@ pub type SoulCount = u32;
 
 /// Used to indicate which version of the forging and/or mint logic should be used.
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
-pub enum AvatarVersion {
+pub enum LogicGeneration {
+	#[default]
+	First,
+	Second,
+}
+
+/// Used to indicate the layout of an avatars DNA byte sequence.
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub enum DnaEncoding {
 	#[default]
 	V1,
 	V2,
@@ -50,23 +58,23 @@ pub enum AvatarVersion {
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct Avatar {
 	pub season_id: SeasonId,
-	pub version: AvatarVersion,
+	pub encoding: DnaEncoding,
 	pub dna: Dna,
 	pub souls: SoulCount,
 }
 
 impl Avatar {
 	pub(crate) fn rarity(&self) -> u8 {
-		match self.version {
-			AvatarVersion::V1 => AttributeMapperV1::rarity(self),
-			AvatarVersion::V2 => AttributeMapperV2::rarity(self),
+		match self.encoding {
+			DnaEncoding::V1 => AttributeMapperV1::rarity(self),
+			DnaEncoding::V2 => AttributeMapperV2::rarity(self),
 		}
 	}
 
 	pub(crate) fn force(&self) -> u8 {
-		match self.version {
-			AvatarVersion::V1 => AttributeMapperV1::force(self),
-			AvatarVersion::V2 => AttributeMapperV2::force(self),
+		match self.encoding {
+			DnaEncoding::V1 => AttributeMapperV1::force(self),
+			DnaEncoding::V2 => AttributeMapperV2::force(self),
 		}
 	}
 }

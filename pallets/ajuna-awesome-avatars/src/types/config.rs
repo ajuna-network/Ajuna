@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::AvatarVersion;
 use frame_support::pallet_prelude::*;
 
 pub type MintCount = u16;
@@ -65,8 +64,6 @@ pub struct MintOption {
 	pub payment: MintPayment,
 	/// The choice of pack to mint.
 	pub pack_type: PackType,
-	/// The version of avatar to mint.
-	pub version: AvatarVersion,
 	/// The number of avatars to mint.
 	pub pack_size: MintPackSize,
 }

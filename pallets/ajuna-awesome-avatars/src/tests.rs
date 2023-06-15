@@ -804,13 +804,11 @@ mod minting {
 			payment: MintPayment::Normal,
 			pack_size: MintPackSize::One,
 			pack_type: PackType::Material,
-			version: AvatarVersion::V1,
 		};
 		let free_mint = MintOption {
 			payment: MintPayment::Free,
 			pack_size: MintPackSize::One,
 			pack_type: PackType::Material,
-			version: AvatarVersion::V1,
 		};
 
 		ExtBuilder::default()
@@ -988,7 +986,6 @@ mod minting {
 							pack_size: MintPackSize::One,
 							payment: payment.clone(),
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 					match payment {
@@ -1036,7 +1033,6 @@ mod minting {
 							pack_size: MintPackSize::Three,
 							payment: payment.clone(),
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 					match payment {
@@ -1078,7 +1074,6 @@ mod minting {
 							pack_size: MintPackSize::Six,
 							payment: payment.clone(),
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 					match payment {
@@ -1125,7 +1120,6 @@ mod minting {
 									pack_size: MintPackSize::One,
 									payment: payment.clone(),
 									pack_type: PackType::Material,
-									version: AvatarVersion::V1,
 								}
 							));
 							minted_count += 1;
@@ -1148,7 +1142,6 @@ mod minting {
 								pack_size: MintPackSize::One,
 								payment: payment.clone(),
 								pack_type: PackType::Material,
-								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::SeasonClosed
@@ -1204,7 +1197,6 @@ mod minting {
 								pack_size: count.clone(),
 								payment,
 								pack_type: PackType::Material,
-								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::MintClosed
@@ -1226,7 +1218,6 @@ mod minting {
 								pack_size: count.clone(),
 								payment,
 								pack_type: PackType::Material,
-								version: AvatarVersion::V1
 							}
 						),
 						DispatchError::BadOrigin
@@ -1238,7 +1229,10 @@ mod minting {
 
 	#[test]
 	fn mint_should_reject_non_whitelisted_accounts_when_season_is_inactive() {
+		let season = Season::default();
+
 		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season)])
 			.balances(&[(ALICE, 1_234_567_890_123_456)])
 			.free_mints(&[(ALICE, 0)])
 			.build()
@@ -1252,7 +1246,6 @@ mod minting {
 									pack_size: count.clone(),
 									payment,
 									pack_type: PackType::Material,
-									version: AvatarVersion::V1
 								}
 							),
 							Error::<Test>::SeasonClosed
@@ -1292,7 +1285,6 @@ mod minting {
 									pack_size: count.clone(),
 									payment,
 									pack_type: PackType::Material,
-									version: AvatarVersion::V1
 								}
 							),
 							Error::<Test>::MaxOwnershipReached
@@ -1361,7 +1353,6 @@ mod minting {
 							pack_size: MintPackSize::One,
 							payment: payment.clone(),
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 
@@ -1374,7 +1365,6 @@ mod minting {
 									pack_size: MintPackSize::One,
 									payment: payment.clone(),
 									pack_type: PackType::Material,
-									version: AvatarVersion::V1,
 								}
 							),
 							Error::<Test>::MintCooldown
@@ -1389,7 +1379,6 @@ mod minting {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Normal,
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 
@@ -1420,7 +1409,6 @@ mod minting {
 								pack_size: mint_count,
 								payment: MintPayment::Normal,
 								pack_type: PackType::Material,
-								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::InsufficientBalance
@@ -1435,7 +1423,6 @@ mod minting {
 								pack_size: mint_count,
 								payment: MintPayment::Free,
 								pack_type: PackType::Material,
-								version: AvatarVersion::V1
 							}
 						),
 						Error::<Test>::InsufficientFreeMints
@@ -1574,7 +1561,6 @@ mod forging {
 						pack_size: MintPackSize::Three,
 						payment: MintPayment::Normal,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 				assert_ok!(AAvatars::mint(
@@ -1583,7 +1569,6 @@ mod forging {
 						pack_size: MintPackSize::One,
 						payment: MintPayment::Normal,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 
@@ -1648,7 +1633,6 @@ mod forging {
 						pack_size: MintPackSize::One,
 						payment: MintPayment::Normal,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 				let leader_id = Owners::<Test>::get(BOB, SEASON_ID)[0];
@@ -1700,7 +1684,6 @@ mod forging {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Normal,
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					),
 					Error::<Test>::PrematureSeasonEnd
@@ -1815,7 +1798,6 @@ mod forging {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 
@@ -1895,7 +1877,6 @@ mod forging {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 
@@ -1953,7 +1934,6 @@ mod forging {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 				let leader_id = Owners::<Test>::get(ALICE, SEASON_ID)[0];
@@ -2072,7 +2052,6 @@ mod forging {
 							pack_size: MintPackSize::Three,
 							payment: MintPayment::Free,
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 				}
@@ -2129,7 +2108,6 @@ mod forging {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 				}
@@ -2167,7 +2145,6 @@ mod forging {
 								pack_size: MintPackSize::One,
 								payment: MintPayment::Free,
 								pack_type: PackType::Material,
-								version: AvatarVersion::V1
 							}
 						));
 					}
@@ -2216,7 +2193,6 @@ mod forging {
 							pack_size: MintPackSize::One,
 							payment: MintPayment::Free,
 							pack_type: PackType::Material,
-							version: AvatarVersion::V1
 						}
 					));
 				}
@@ -2259,7 +2235,6 @@ mod forging {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Normal,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 				assert_ok!(AAvatars::mint(
@@ -2268,7 +2243,6 @@ mod forging {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Normal,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 
@@ -3104,7 +3078,6 @@ mod nft_transfer {
 						pack_size: MintPackSize::Three,
 						payment: MintPayment::Normal,
 						pack_type: PackType::Material,
-						version: AvatarVersion::V1
 					}
 				));
 				let avatar_ids = Owners::<Test>::get(ALICE, SEASON_ID);
@@ -3131,7 +3104,7 @@ mod nft_transfer {
 						season_id: 1,
 						dna: bounded_vec![0x20, 0x20, 0x23, 0x22, 0x10, 0x32, 0x12, 0x10],
 						souls: 34,
-						version: AvatarVersion::V1,
+						encoding: DnaEncoding::V1,
 					}
 				);
 

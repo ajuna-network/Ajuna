@@ -30,7 +30,7 @@ impl<T: Config> Minter<T> for MinterV1<T> {
 				let dna = Self::random_dna(&avatar_id, &season, is_batched)?;
 				let souls = (dna.iter().map(|x| *x as SoulCount).sum::<SoulCount>() % 100) + 1;
 				let avatar =
-					Avatar { season_id: *season_id, version: AvatarVersion::V1, dna, souls };
+					Avatar { season_id: *season_id, encoding: DnaEncoding::V1, dna, souls };
 				Avatars::<T>::insert(avatar_id, (player, avatar));
 				Owners::<T>::try_append(&player, &season_id, avatar_id)
 					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
@@ -454,7 +454,6 @@ mod test {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
-						version: AvatarVersion::V1,
 						pack_type: PackType::default(),
 					}
 				));
@@ -556,7 +555,6 @@ mod test {
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
-						version: AvatarVersion::V1,
 						pack_type: PackType::default(),
 					}
 				));

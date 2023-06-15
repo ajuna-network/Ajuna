@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{
-	types::{fee::Fee, Avatar, RarityTier, SeasonId},
+	types::{fee::Fee, Avatar, LogicGeneration, RarityTier, SeasonId},
 	Config, Error, MAX_PERCENTAGE,
 };
 use frame_support::pallet_prelude::*;
@@ -60,6 +60,8 @@ pub struct Season<BlockNumber, Balance> {
 	pub periods: u16,
 	pub trade_filters: BoundedVec<TradeFilter, ConstU32<100>>,
 	pub fee: Fee<Balance>,
+	pub mint_logic: LogicGeneration,
+	pub forge_logic: LogicGeneration,
 }
 
 impl<BlockNumber: AtLeast32Bit, Balance> Season<BlockNumber, Balance> {
@@ -246,6 +248,8 @@ mod test {
 					upgrade_storage: Default::default(),
 					prepare_avatar: Default::default(),
 				},
+				mint_logic: LogicGeneration::First,
+				forge_logic: LogicGeneration::First,
 			}
 		}
 	}
