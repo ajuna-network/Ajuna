@@ -1121,7 +1121,7 @@ pub mod pallet {
 			let (leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
 
-			let input_leader = (*leader_id, leader.clone());
+			let input_leader = (*leader_id, leader);
 			let input_sacrifices =
 				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
 			let (output_leader, output_other) = match season.forge_logic {
