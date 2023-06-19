@@ -51,7 +51,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 
 		let roll_amount = mint_option.pack_size.as_mint_count() as usize;
 		(0..roll_amount)
-			.map(|_| {
+			.map(|i| {
 				let rolled_item_type = SlotRoller::<T>::roll_on_pack_type(
 					mint_option.pack_type.clone(),
 					&PACK_TYPE_MATERIAL_ITEM_PROBABILITIES,
@@ -60,7 +60,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 					&mut hash_provider,
 				);
 
-				let avatar_id = Pallet::<T>::random_hash(b"avatar_minter_v2", player);
+				let avatar_id = hash_provider.full_hash(i);
 
 				let base_dna = Self::generate_empty_dna::<32>()?;
 				let base_avatar = Avatar {
@@ -80,6 +80,11 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 				Avatars::<T>::insert(avatar_id, (player, avatar));
 				Owners::<T>::try_append(&player, &season_id, avatar_id)
 					.map_err(|_| Error::<T>::MaxOwnershipReached)?;
+
+				hash_provider = HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(
+					b"avatar_minter_v2",
+					player,
+				));
 
 				Ok(avatar_id)
 			})
@@ -352,8 +357,9 @@ impl<T: Config> ForgerV2<T> {
 						],
 					);
 
-					same_assemble_version &&
-						(EquippableItemType::is_armor(equipable_sacrifice_item) || is_toolbox)
+					let is_armor = EquippableItemType::is_armor(equipable_sacrifice_item);
+
+					(same_assemble_version && is_armor) || is_toolbox
 				});
 
 				if EquippableItemType::is_armor(leader_sub_type) &&

@@ -813,7 +813,7 @@ mod test {
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
-			let mut probability_array = [0; 8];
+			let mut probability_array = [0_u32; 8];
 
 			for i in 0..10_000 {
 				let leader = create_random_glimmer(&ALICE, 50);
@@ -873,6 +873,121 @@ mod test {
 			assert_eq!(probability_array[5], 6);
 			assert_eq!(probability_array[6], 0);
 			assert_eq!(probability_array[7], 8465);
+		});
+	}
+
+	#[test]
+	fn test_glimmer_gamble_prep_1() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
+				0xCC, 0xFD, 0x01, 0xB4,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let hash_base = [
+				[
+					0x31, 0x00, 0x12, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x24, 0x00, 0x11, 0xf3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x27, 0x00, 0x11, 0xf3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x21, 0x00, 0x11, 0xf3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x25, 0x00, 0x11, 0xf3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+			];
+
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 100;
+				avatar
+			};
+
+			let mut probability_array = [0_u32; 8];
+
+			for i in 0..10_000 {
+				let leader =
+					create_random_avatar::<Test, _>(&ALICE, Some(hash_base[0]), Some(unit_fn));
+				let sac_1 =
+					create_random_avatar::<Test, _>(&ALICE, Some(hash_base[1]), Some(unit_fn));
+				let sac_2 =
+					create_random_avatar::<Test, _>(&ALICE, Some(hash_base[2]), Some(unit_fn));
+				let sac_3 =
+					create_random_avatar::<Test, _>(&ALICE, Some(hash_base[3]), Some(unit_fn));
+				let sac_4 =
+					create_random_avatar::<Test, _>(&ALICE, Some(hash_base[4]), Some(unit_fn));
+
+				let (_leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
+					leader,
+					vec![sac_1, sac_2, sac_3, sac_4],
+					0,
+					&mut hash_provider,
+				)
+				.expect("Should succeed in forging");
+
+				probability_array[0] += 1;
+				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+					match AvatarUtils::read_attribute_as::<ItemType>(
+						avatar,
+						&AvatarAttributes::ItemType,
+					) {
+						ItemType::Pet => probability_array[1] += 1,
+						ItemType::Essence =>
+							match AvatarUtils::read_attribute_as::<EssenceItemType>(
+								avatar,
+								&AvatarAttributes::ItemSubType,
+							) {
+								EssenceItemType::ColorSpark => probability_array[2] += 1,
+								EssenceItemType::GlowSpark => probability_array[3] += 1,
+								_ => panic!("Generated avatar EssenceItemType not valid!"),
+							},
+						ItemType::Special =>
+							match AvatarUtils::read_attribute_as::<SpecialItemType>(
+								avatar,
+								&AvatarAttributes::ItemSubType,
+							) {
+								SpecialItemType::Dust => probability_array[4] += 1,
+								SpecialItemType::Unidentified => probability_array[5] += 1,
+								SpecialItemType::Fragment => probability_array[6] += 1,
+								SpecialItemType::ToolBox => probability_array[7] += 1,
+							},
+						_ => panic!("Generated avatar ItemType not valid!"),
+					}
+				} else {
+					panic!("ForgeOutput should have been Minted!")
+				}
+
+				let hash_text = format!("hash_loop_{:#07X}", i);
+				let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+				hash_provider = HashProvider::new(&hash);
+			}
+
+			assert_eq!(probability_array[0], 10_000);
+			// Total = 0.09 + 6.72 + 8.31 + 84.82 + 0.06 --> ~100%
+			assert_eq!(probability_array[1], 9); // Egg ~0.09%
+			assert_eq!(probability_array[2], 672); // ColorSpark ~6.72%
+			assert_eq!(probability_array[3], 831); // GlowSpark ~8.31%
+			assert_eq!(probability_array[4], 8482); // Dust ~84.82%
+			assert_eq!(probability_array[5], 6); // Unidentified ~0.06%
+			assert_eq!(probability_array[6], 0); // Fragment ~0%
+			assert_eq!(probability_array[7], 0); // Toolbox ~0%
 		});
 	}
 }

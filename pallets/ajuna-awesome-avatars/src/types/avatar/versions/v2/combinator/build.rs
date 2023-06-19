@@ -7,9 +7,10 @@ impl<T: Config> AvatarCombinator<T> {
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
+		let (leader_id, mut leader) = input_leader;
 		let mut output_sacrifices = Vec::with_capacity(input_sacrifices.len());
 
-		let leader_spec_bytes = AvatarUtils::read_full_spec_bytes(&input_leader.1);
+		let leader_spec_bytes = AvatarUtils::read_full_spec_bytes(&leader);
 
 		let unord_1 = AvatarUtils::bits_to_enums::<MaterialItemType>(leader_spec_bytes[0] as u32);
 		let pat_1 = AvatarUtils::bits_order_to_enum(leader_spec_bytes[1] as u32, 4, unord_1);
@@ -45,9 +46,15 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let mut soul_points = 0 as SoulCount;
 
-		let can_use_leader = AvatarUtils::can_use_avatar(&input_leader.1, 1);
+		let can_use_leader = AvatarUtils::can_use_avatar(&leader, 1);
+
+		let mut leader_consumed = false;
 
 		if sacrifice_pattern == pat_1 && can_use_leader && level > 0 {
+			let (_, consumed, out_souls) = AvatarUtils::use_avatar(&mut leader, 1);
+			soul_points += out_souls;
+			leader_consumed = consumed;
+
 			for (i, (sacrifice_id, mut sacrifice)) in input_sacrifices.into_iter().enumerate() {
 				let (_, avatar_consumed, out_soul_points) =
 					AvatarUtils::use_avatar(&mut sacrifice, quantities[i] * level);
@@ -67,22 +74,22 @@ impl<T: Config> AvatarCombinator<T> {
 
 			let mut generated_equippables = Vec::with_capacity(3);
 
-			for i in 0..=max_build {
+			for i in 0..max_build {
 				if soul_points > 0 &&
 					(build_prop * MAX_BYTE >= hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC)
 				{
 					let pet_type = AvatarUtils::read_attribute_as::<PetType>(
-						&input_leader.1,
+						&leader,
 						&AvatarAttributes::ClassType2,
 					);
 
 					let slot_type = AvatarUtils::read_attribute_as::<SlotType>(
-						&input_leader.1,
+						&leader,
 						&AvatarAttributes::ClassType1,
 					);
 
 					let equippable_item_type = AvatarUtils::read_spec_byte_as::<EquippableItemType>(
-						&input_leader.1,
+						&leader,
 						&AvatarSpecBytes::SpecByte3,
 					);
 
@@ -137,7 +144,13 @@ impl<T: Config> AvatarCombinator<T> {
 			);
 		}
 
-		Ok((LeaderForgeOutput::Forged(input_leader, 0), output_sacrifices))
+		let leader_output = if leader_consumed {
+			LeaderForgeOutput::Consumed(leader_id)
+		} else {
+			LeaderForgeOutput::Forged((leader_id, leader), 0)
+		};
+
+		Ok((leader_output, output_sacrifices))
 	}
 }
 
@@ -391,13 +404,13 @@ mod test {
 			)
 			.expect("Should succeed in forging");
 
-			assert_eq!(sacrifice_output.len(), 11);
+			assert_eq!(sacrifice_output.len(), 10);
 			// All materials that had only 1 item have been consumed
 			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 0);
 			// All materials that had more than 1 item have been forged
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 4);
 			// We minted equipment pieces for each material
-			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 7);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 6);
 			// All minted items are ArmorBase equippables
 			assert_eq!(
 				sacrifice_output
@@ -415,7 +428,7 @@ mod test {
 						)
 					})
 					.count(),
-				7
+				6
 			);
 
 			for material in pattern {
@@ -704,6 +717,115 @@ mod test {
 				&leader_output,
 				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
 			));
+		});
+	}
+
+	#[test]
+	fn test_build_prep_1() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes([
+				0x4C, 0x0B, 0xF6, 0x8A, 0xFF, 0x3D, 0xAD, 0xB0, 0x01, 0x15, 0xE1, 0x7B, 0x90, 0x36,
+				0x38, 0x60, 0x55, 0x91, 0x25, 0x4D, 0x57, 0xFA, 0x57, 0x1D, 0x38, 0xB9, 0xC9, 0x99,
+				0x42, 0xEA, 0x20, 0x37,
+			]);
+
+			let hash_base = [
+				[
+					0x51, 0x24, 0x13, 0x05, 0x00, 0x59, 0x4e, 0x03, 0x01, 0x01, 0x01, 0x01, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x24, 0x00, 0x11, 0xe5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x21, 0x00, 0x11, 0xe6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x27, 0x00, 0x11, 0xfa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+				[
+					0x25, 0x00, 0x11, 0xef, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				],
+			];
+
+			let avatar_fn = |souls: SoulCount| {
+				let mutate_fn = move |avatar: Avatar| {
+					let mut avatar = avatar;
+					avatar.souls = souls;
+					avatar
+				};
+
+				Some(mutate_fn)
+			};
+
+			let leader = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[0]), avatar_fn(5));
+			let sac_1 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[1]), avatar_fn(229));
+			let sac_2 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[2]), avatar_fn(230));
+			let sac_3 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[3]), avatar_fn(250));
+			let sac_4 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[4]), avatar_fn(239));
+
+			let total_souls =
+				leader.1.souls + sac_1.1.souls + sac_2.1.souls + sac_3.1.souls + sac_4.1.souls;
+			assert_eq!(total_souls, 953);
+
+			assert_eq!(AvatarUtils::read_attribute(&leader.1, &AvatarAttributes::Quantity), 5);
+			assert_eq!(leader.1.souls, 5);
+
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(
+					&leader.1,
+					&[&sac_1.1, &sac_2.1, &sac_3.1, &sac_4.1]
+				),
+				ForgeType::Build
+			);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
+				leader,
+				vec![sac_1, sac_2, sac_3, sac_4],
+				1,
+				&mut hash_provider,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 10);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 6);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 4);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				let item_type = AvatarUtils::read_attribute_as::<ItemType>(
+					&avatar,
+					&AvatarAttributes::ItemType,
+				);
+				assert_eq!(item_type, ItemType::Blueprint);
+
+				assert_eq!(avatar.souls, 4);
+
+				let leader_quantity =
+					AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+				assert_eq!(leader_quantity, 4);
+
+				let soul_points = sacrifice_output
+					.into_iter()
+					.map(|sacrifice| match sacrifice {
+						ForgeOutput::Minted(avatar) => avatar.souls,
+						ForgeOutput::Forged((_, avatar), _) => avatar.souls,
+						_ => 0,
+					})
+					.sum::<SoulCount>();
+
+				assert_eq!(avatar.souls + soul_points, total_souls);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
 		});
 	}
 }
