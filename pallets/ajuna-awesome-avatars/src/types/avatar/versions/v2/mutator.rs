@@ -25,7 +25,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				let progress_array = AvatarUtils::generate_progress_bytes(
 					&RarityTier::Legendary,
 					SCALING_FACTOR_PERC,
-					SPARK_PROGRESS_PROB_PERC,
+					None,
 					hash_provider,
 				);
 
@@ -60,7 +60,7 @@ impl<T: Config> AvatarMutator<T> for PetItemType {
 				let progress_array = AvatarUtils::generate_progress_bytes(
 					&egg_rarity,
 					SCALING_FACTOR_PERC,
-					SPARK_PROGRESS_PROB_PERC,
+					Some(PROGRESS_PROBABILITY_PERC),
 					hash_provider,
 				);
 
@@ -114,7 +114,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 
@@ -127,7 +127,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Epic,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 
@@ -146,7 +146,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 
@@ -159,7 +159,7 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Epic,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 

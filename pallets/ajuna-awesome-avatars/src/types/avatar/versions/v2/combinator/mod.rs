@@ -30,7 +30,12 @@ impl<T: Config> AvatarCombinator<T> {
 			ForgeType::Tinker => Self::tinker_avatars(leader, sacrifices, season_id),
 			ForgeType::Build => Self::build_avatars(leader, sacrifices, season_id, hash_provider),
 			ForgeType::Assemble => Self::assemble_avatars(leader, sacrifices, hash_provider),
-			ForgeType::Breed => Self::breed_avatars(leader, sacrifices, hash_provider),
+			ForgeType::Breed => Self::breed_avatars(
+				leader,
+				sacrifices,
+				hash_provider,
+				<frame_system::Pallet<T>>::block_number(),
+			),
 			ForgeType::Equip => Self::equip_avatars(leader, sacrifices),
 			ForgeType::Mate => Self::mate_avatars(
 				leader,
