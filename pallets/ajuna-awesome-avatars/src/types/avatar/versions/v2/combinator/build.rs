@@ -146,7 +146,7 @@ impl<T: Config> AvatarCombinator<T> {
 
 		Ok((
 			leader_consumed
-				.then(|| LeaderForgeOutput::Consumed(leader_id))
+				.then_some(LeaderForgeOutput::Consumed(leader_id))
 				.unwrap_or(LeaderForgeOutput::Forged((leader_id, leader), 0)),
 			output_sacrifices,
 		))
