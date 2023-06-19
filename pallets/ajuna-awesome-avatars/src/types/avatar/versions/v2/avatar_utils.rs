@@ -408,7 +408,7 @@ impl AvatarBuilder {
 		let progress_array = AvatarUtils::generate_progress_bytes(
 			rarity,
 			SCALING_FACTOR_PERC,
-			PROGRESS_PROBABILITY_PERC,
+			Some(PROGRESS_PROBABILITY_PERC),
 			hash_provider,
 		);
 
@@ -463,12 +463,8 @@ impl AvatarBuilder {
 
 		let rarity = RarityTier::Legendary;
 
-		let progress_array = AvatarUtils::generate_progress_bytes(
-			&rarity,
-			SCALING_FACTOR_PERC,
-			PROGRESS_PROBABILITY_PERC,
-			hash_provider,
-		);
+		let progress_array =
+			AvatarUtils::generate_progress_bytes(&rarity, SCALING_FACTOR_PERC, None, hash_provider);
 
 		Ok(self
 			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equippable)
@@ -1092,17 +1088,19 @@ impl AvatarUtils {
 	pub fn generate_progress_bytes<T: Config>(
 		rarity: &RarityTier,
 		scale_factor: u32,
-		probability: u32,
+		probability: Option<u32>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> [u8; 11] {
 		let mut progress_bytes = [0; 11];
+
+		let prob_value = probability.unwrap_or_default();
 
 		for i in 0..progress_bytes.len() {
 			let random_value = hash_provider.get_hash_byte();
 
 			// Upcast random_value
 			let new_rarity =
-				if (random_value as u32).saturating_mul(scale_factor) < (probability * MAX_BYTE) {
+				if (random_value as u32).saturating_mul(scale_factor) < (prob_value * MAX_BYTE) {
 					rarity.upgrade().as_byte()
 				} else {
 					rarity.as_byte()

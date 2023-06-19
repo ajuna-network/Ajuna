@@ -64,7 +64,7 @@ impl<T: Config> AvatarCombinator<T> {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 					gen_avatar =
@@ -87,7 +87,7 @@ impl<T: Config> AvatarCombinator<T> {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 					gen_avatar =
@@ -97,7 +97,7 @@ impl<T: Config> AvatarCombinator<T> {
 					let progress_array = AvatarUtils::generate_progress_bytes(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
-						SPARK_PROGRESS_PROB_PERC,
+						Some(SPARK_PROGRESS_PROB_PERC),
 						hash_provider,
 					);
 					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, progress_array);

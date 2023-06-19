@@ -817,9 +817,9 @@ mod test {
 	fn test_iteration_1() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
-				0x9A, 0x6D, 0x5D, 0x62, 0x1B, 0x32, 0xFF, 0x42, 0x32, 0x46, 0x62, 0x15, 0xBB, 0x51,
-				0xE9, 0x37, 0xDB, 0xB0, 0xBC, 0x0F, 0xB0, 0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF, 0x6C,
-				0x23, 0xAF, 0xCF, 0x4E,
+				0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF, 0x6C, 0x23, 0xAF, 0xCF, 0x4E, 0x4C, 0xFF, 0x14,
+				0x40, 0x99, 0xEF, 0x6C, 0x23, 0xAF, 0xCF, 0x4E, 0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF,
+				0x6C, 0x23, 0xAF, 0xCF,
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
@@ -838,38 +838,12 @@ mod test {
 						None,
 						&ALICE,
 						&RarityTier::Epic,
-						hash_provider.get_hash_byte() % 16,
+						16,
 						100,
 						AvatarUtils::generate_progress_bytes(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
-							SPARK_PROGRESS_PROB_PERC,
-							&mut hash_provider,
-						),
-					),
-					create_random_egg(
-						None,
-						&ALICE,
-						&RarityTier::Epic,
-						hash_provider.get_hash_byte() % 16,
-						100,
-						AvatarUtils::generate_progress_bytes(
-							&RarityTier::Epic,
-							SCALING_FACTOR_PERC,
-							SPARK_PROGRESS_PROB_PERC,
-							&mut hash_provider,
-						),
-					),
-					create_random_egg(
-						None,
-						&ALICE,
-						&RarityTier::Epic,
-						hash_provider.get_hash_byte() % 16,
-						100,
-						AvatarUtils::generate_progress_bytes(
-							&RarityTier::Epic,
-							SCALING_FACTOR_PERC,
-							SPARK_PROGRESS_PROB_PERC,
+							Some(PROGRESS_PROBABILITY_PERC),
 							&mut hash_provider,
 						),
 					),
@@ -882,7 +856,33 @@ mod test {
 						AvatarUtils::generate_progress_bytes(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
-							SPARK_PROGRESS_PROB_PERC,
+							Some(PROGRESS_PROBABILITY_PERC),
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							Some(PROGRESS_PROBABILITY_PERC),
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							Some(SPARK_PROGRESS_PROB_PERC),
 							&mut hash_provider,
 						),
 					),
