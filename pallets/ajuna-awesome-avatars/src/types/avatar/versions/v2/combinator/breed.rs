@@ -5,6 +5,7 @@ impl<T: Config> AvatarCombinator<T> {
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
+		block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (mut input_leader, sacrifices) = Self::match_avatars(
 			input_leader,
@@ -31,7 +32,24 @@ impl<T: Config> AvatarCombinator<T> {
 			AvatarUtils::read_attribute(&input_leader.1, &AvatarAttributes::CustomType2);
 
 		if is_leader_egg && is_leader_legendary && pet_variation > 0 {
-			let pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
+			let pet_type_list = {
+				let mut pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
+
+				let pet_type_add = PetType::from_byte(
+					(AvatarUtils::current_period::<T>(
+						PET_MOON_PHASE_SIZE,
+						PET_MOON_PHASE_AMOUNT,
+						block_number,
+					) % 7) as u8 + 1,
+				);
+
+				if pet_type_list.contains(&pet_type_add) {
+					pet_type_list.push(pet_type_add);
+				}
+
+				pet_type_list
+			};
+
 			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
 
 			AvatarUtils::write_typed_attribute(
@@ -66,6 +84,7 @@ impl<T: Config> AvatarCombinator<T> {
 mod test {
 	use super::*;
 	use crate::mock::*;
+	use sp_std::collections::btree_map::BTreeMap;
 
 	#[test]
 	fn test_breed_egg_prep_1() {
@@ -117,7 +136,7 @@ mod test {
 			let leader = avatar_set.pop().unwrap();
 
 			let (leader_output, sacrifice_output) =
-				AvatarCombinator::<Test>::breed_avatars(leader, sacrifices, &mut hash_provider)
+				AvatarCombinator::<Test>::breed_avatars(leader, sacrifices, &mut hash_provider, 1)
 					.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
@@ -174,7 +193,7 @@ mod test {
 			let leader = egg_set.pop().unwrap();
 
 			let (leader_output, sacrifice_output) =
-				AvatarCombinator::<Test>::breed_avatars(leader, sacrifices, &mut hash_provider)
+				AvatarCombinator::<Test>::breed_avatars(leader, sacrifices, &mut hash_provider, 1)
 					.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
@@ -223,7 +242,7 @@ mod test {
 			let leader = egg_set.pop().unwrap();
 
 			let (leader_output, sacrifice_output) =
-				AvatarCombinator::<Test>::breed_avatars(leader, sacrifices, &mut hash_provider)
+				AvatarCombinator::<Test>::breed_avatars(leader, sacrifices, &mut hash_provider, 1)
 					.expect("Should succeed in forging");
 
 			assert_eq!(sacrifice_output.len(), 4);
@@ -305,6 +324,7 @@ mod test {
 				leader,
 				vec![sac_1, sac_2, sac_3, sac_4],
 				&mut hash_provider,
+				1,
 			)
 			.expect("Should succeed in forging");
 
@@ -403,6 +423,7 @@ mod test {
 					leader,
 					vec![sac_1, sac_2, sac_3, sac_4],
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 
@@ -597,6 +618,7 @@ mod test {
 					leader,
 					vec![sac_1, sac_2, sac_3, sac_4],
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 
@@ -791,6 +813,7 @@ mod test {
 					leader,
 					vec![sac_1, sac_2, sac_3, sac_4],
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 
@@ -892,6 +915,7 @@ mod test {
 					leader_1,
 					forge_set,
 					&mut hash_provider,
+					1,
 				)
 				.expect("Should succeed in forging");
 
@@ -939,6 +963,243 @@ mod test {
 					panic!("LeaderForgeOutput should have been Forged!")
 				}
 			}
+		});
+	}
+
+	#[test]
+	fn test_iteration_2() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF, 0x6C, 0x23, 0xAF, 0xCF, 0x4E, 0x4C, 0xFF, 0x14,
+				0x40, 0x99, 0xEF, 0x6C, 0x23, 0xAF, 0xCF, 0x4E, 0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF,
+				0x6C, 0x23, 0xAF, 0xCF,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let mut leader_1 = create_random_egg(
+				None,
+				&ALICE,
+				&RarityTier::Epic,
+				7,
+				100,
+				[0x45, 0x43, 0x45, 0x45, 0x41, 0x50, 0x41, 0x43, 0x44, 0x45, 0x41],
+			);
+
+			for i in 0..10_000 {
+				let forge_set = vec![
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							Some(PROGRESS_PROBABILITY_PERC),
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							Some(PROGRESS_PROBABILITY_PERC),
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							Some(PROGRESS_PROBABILITY_PERC),
+							&mut hash_provider,
+						),
+					),
+					create_random_egg(
+						None,
+						&ALICE,
+						&RarityTier::Epic,
+						16,
+						100,
+						AvatarUtils::generate_progress_bytes(
+							&RarityTier::Epic,
+							SCALING_FACTOR_PERC,
+							Some(SPARK_PROGRESS_PROB_PERC),
+							&mut hash_provider,
+						),
+					),
+				];
+
+				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
+					leader_1,
+					forge_set,
+					&mut hash_provider,
+					1,
+				)
+				.expect("Should succeed in forging");
+
+				assert_eq!(sacrifice_output.len(), 4);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+				if let LeaderForgeOutput::Forged((avatar_id, avatar), _) = leader_output {
+					let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
+						&avatar,
+						&AvatarAttributes::RarityTier,
+					);
+
+					if leader_rarity == RarityTier::Legendary {
+						assert_eq!(i, 19);
+
+						let expected_progress_array =
+							[0x55, 0x53, 0x55, 0x55, 0x51, 0x50, 0x51, 0x53, 0x54, 0x55, 0x51];
+						let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
+						assert_eq!(leader_progress_array, expected_progress_array);
+
+						let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
+							&avatar,
+							&AvatarAttributes::RarityTier,
+						);
+						assert_eq!(leader_rarity, RarityTier::Legendary);
+
+						let leader_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+							&avatar,
+							&AvatarAttributes::ItemSubType,
+						);
+						assert_eq!(leader_sub_type, PetItemType::Pet);
+
+						let leader_class_type_2 = AvatarUtils::read_attribute_as::<PetType>(
+							&avatar,
+							&AvatarAttributes::ClassType2,
+						);
+						assert_eq!(leader_class_type_2, PetType::TankyBullwog);
+
+						break
+					}
+
+					leader_1 = (avatar_id, avatar);
+				} else {
+					panic!("LeaderForgeOutput should have been Forged!")
+				}
+			}
+		});
+	}
+
+	#[test]
+	fn test_breed_egg_prep_iteration() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF, 0x6C, 0x23, 0xAF, 0xCF, 0x4E, 0x4C, 0xFF, 0x14,
+				0x40, 0x99, 0xEF, 0x6C, 0x23, 0xAF, 0xCF, 0x4E, 0x4C, 0xFF, 0x14, 0x40, 0x99, 0xEF,
+				0x6C, 0x23, 0xAF, 0xCF,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 100;
+				avatar
+			};
+
+			let mut distribution_map = BTreeMap::new();
+
+			for i in 0..1_000 {
+				let leader = create_random_avatar::<Test, _>(
+					&ALICE,
+					Some([
+						0x13, 0x00, 0x04, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x43, 0x45,
+						0x55, 0x51, 0x50, 0x51, 0x53, 0x54, 0x55, 0x51,
+					]),
+					Some(unit_fn),
+				);
+
+				let sac_1 = create_random_avatar::<Test, _>(
+					&ALICE,
+					Some([
+						0x13, 0x00, 0x04, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40,
+						0x45, 0x41, 0x50, 0x41, 0x43, 0x44, 0x45, 0x41,
+					]),
+					Some(unit_fn),
+				);
+
+				let sac_2 = create_random_avatar::<Test, _>(
+					&ALICE,
+					Some([
+						0x13, 0x00, 0x04, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40,
+						0x45, 0x41, 0x50, 0x41, 0x43, 0x44, 0x45, 0x41,
+					]),
+					Some(unit_fn),
+				);
+
+				let sac_3 = create_random_avatar::<Test, _>(
+					&ALICE,
+					Some([
+						0x13, 0x00, 0x04, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40,
+						0x45, 0x41, 0x50, 0x41, 0x43, 0x44, 0x45, 0x41,
+					]),
+					Some(unit_fn),
+				);
+
+				let sac_4 = create_random_avatar::<Test, _>(
+					&ALICE,
+					Some([
+						0x13, 0x00, 0x04, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40,
+						0x45, 0x41, 0x50, 0x41, 0x43, 0x44, 0x45, 0x41,
+					]),
+					Some(unit_fn),
+				);
+
+				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
+					leader,
+					vec![sac_1, sac_2, sac_3, sac_4],
+					&mut hash_provider,
+					1,
+				)
+				.expect("Should succeed in forging");
+
+				assert_eq!(sacrifice_output.len(), 4);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
+				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+				if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+					let class_type_2 = AvatarUtils::read_attribute_as::<PetType>(
+						&avatar,
+						&AvatarAttributes::ClassType2,
+					);
+
+					distribution_map
+						.entry(class_type_2)
+						.and_modify(|value| *value += 1)
+						.or_insert(1_u32);
+				} else {
+					panic!("LeaderForgeOutput should have been Forged!")
+				}
+
+				let hash_text = format!("loop_{:#07X}", i);
+				let hash = Pallet::<Test>::random_hash(hash_text.as_bytes(), &ALICE);
+				hash_provider = HashProvider::new(&hash);
+			}
+
+			assert_eq!(distribution_map.get(&PetType::TankyBullwog).unwrap(), &409_u32);
+			assert_eq!(distribution_map.get(&PetType::FoxishDude).unwrap(), &181_u32);
+			assert_eq!(distribution_map.get(&PetType::WierdFerry).unwrap(), &202_u32);
+			assert_eq!(distribution_map.get(&PetType::FireDino).unwrap(), &208_u32);
 		});
 	}
 }
