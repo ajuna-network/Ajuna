@@ -9,7 +9,7 @@ use crate::{
 				SlotType,
 			},
 		},
-		Avatar, AvatarVersion, ForgeOutput, LeaderForgeOutput, RarityTier, SoulCount,
+		Avatar, DnaEncoding, ForgeOutput, LeaderForgeOutput, RarityTier, SoulCount,
 	},
 	Config, Force, Pallet,
 };
@@ -31,7 +31,7 @@ where
 {
 	let base_avatar = Avatar {
 		season_id: 0,
-		version: AvatarVersion::V2,
+		encoding: DnaEncoding::V2,
 		dna: BoundedVec::try_from(initial_dna.unwrap_or([0_u8; 32]).to_vec())
 			.expect("Should create DNA!"),
 		souls: 0,

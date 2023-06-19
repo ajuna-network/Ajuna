@@ -112,6 +112,8 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 					upgrade_storage: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 					prepare_avatar: 5_000_000_000_000_u64.unique_saturated_into(),  // 5 BAJU
 				},
+				mint_logic: LogicGeneration::First,
+				forge_logic: LogicGeneration::First,
 			},
 		);
 	}
@@ -151,7 +153,6 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 				payment: MintPayment::Free,
 				pack_size: MintPackSize::One,
 				pack_type: PackType::Material,
-				version: AvatarVersion::V1,
 			},
 		)?;
 	}
@@ -211,7 +212,7 @@ benchmarks! {
 		PlayerConfigs::<T>::mutate(&caller, |account| account.free_mints = MintCount::MAX);
 
 		let mint_option = MintOption { payment: MintPayment::Free, pack_size: MintPackSize::Six,
-			pack_type: PackType::Material, version: AvatarVersion::V1 };
+			pack_type: PackType::Material, };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
@@ -231,7 +232,7 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
 		let mint_option = MintOption { payment: MintPayment::Normal, pack_size: MintPackSize::Six,
-			pack_type: PackType::Material, version: AvatarVersion::V1 };
+			pack_type: PackType::Material };
 	}: mint(RawOrigin::Signed(caller.clone()), mint_option)
 	verify {
 		let n = n as usize;
@@ -446,6 +447,8 @@ benchmarks! {
 				upgrade_storage: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 				prepare_avatar: BalanceOf::<T>::unique_saturated_from(u128::MAX),
 			},
+			mint_logic: LogicGeneration::First,
+			forge_logic: LogicGeneration::First,
 		};
 	}: _(RawOrigin::Signed(organizer), season_id, season.clone())
 	verify {

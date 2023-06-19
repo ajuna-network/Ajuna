@@ -65,7 +65,7 @@ impl<T: Config> Minter<T> for MinterV2<T> {
 				let base_dna = Self::generate_empty_dna::<32>()?;
 				let base_avatar = Avatar {
 					season_id: *season_id,
-					version: AvatarVersion::V2,
+					encoding: DnaEncoding::V2,
 					dna: base_dna,
 					souls: SoulCount::zero(),
 				};

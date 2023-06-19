@@ -1,6 +1,6 @@
 use super::{constants::*, types::*, ByteType};
 use crate::{
-	types::{Avatar, AvatarVersion, Dna, SeasonId, SoulCount},
+	types::{Avatar, Dna, DnaEncoding, SeasonId, SoulCount},
 	ByteConvertible, Config, Force, Ranged, RarityTier,
 };
 use core::cmp::Ordering;
@@ -61,7 +61,7 @@ pub(crate) struct AvatarBuilder {
 
 impl AvatarBuilder {
 	pub fn with_dna(season_id: SeasonId, dna: Dna) -> Self {
-		Self { inner: Avatar { season_id, version: AvatarVersion::V2, dna, souls: 0 } }
+		Self { inner: Avatar { season_id, encoding: DnaEncoding::V2, dna, souls: 0 } }
 	}
 
 	pub fn with_base_avatar(avatar: Avatar) -> Self {

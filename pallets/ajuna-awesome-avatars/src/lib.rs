@@ -1054,20 +1054,19 @@ pub mod pallet {
 
 		/// Mint a new avatar.
 		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			let season_id = CurrentSeasonStatus::<T>::get().season_id;
+			let (season_id, season) = Self::current_season_with_id()?;
 
 			Self::ensure_for_mint(player, &season_id, mint_option)?;
 
-			let generated_avatar_ids = match mint_option.version {
-				AvatarVersion::V1 => MinterV1::<T>::mint(player, &season_id, mint_option),
-				AvatarVersion::V2 => MinterV2::<T>::mint(player, &season_id, mint_option),
+			let generated_avatar_ids = match season.mint_logic {
+				LogicGeneration::First => MinterV1::<T>::mint(player, &season_id, mint_option),
+				LogicGeneration::Second => MinterV2::<T>::mint(player, &season_id, mint_option),
 			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
-			let (_, Season { fee, .. }) = Self::current_season_with_id()?;
 			match mint_option.payment {
 				MintPayment::Normal => {
-					let fee = fee.mint.fee_for(&mint_option.pack_size);
+					let fee = season.fee.mint.fee_for(&mint_option.pack_size);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
 					Self::deposit_into_treasury(&season_id, fee);
 				},
@@ -1122,18 +1121,18 @@ pub mod pallet {
 			let (leader, sacrifice_ids, sacrifices) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
 
-			let input_leader = (*leader_id, leader.clone());
+			let input_leader = (*leader_id, leader);
 			let input_sacrifices =
 				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
-			let (output_leader, output_other) = match leader.version {
-				AvatarVersion::V1 => ForgerV1::<T>::forge(
+			let (output_leader, output_other) = match season.forge_logic {
+				LogicGeneration::First => ForgerV1::<T>::forge(
 					player,
 					season_id,
 					&season,
 					input_leader.clone(),
 					input_sacrifices,
 				),
-				AvatarVersion::V2 => ForgerV2::<T>::forge(
+				LogicGeneration::Second => ForgerV2::<T>::forge(
 					player,
 					season_id,
 					&season,
@@ -1290,7 +1289,7 @@ pub mod pallet {
 					let avatar = Self::ensure_ownership(player, id)?;
 					ensure!(avatar.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
 					ensure!(
-						avatar.version == leader.version,
+						avatar.encoding == leader.encoding,
 						Error::<T>::IncompatibleAvatarVersions
 					);
 					Self::ensure_unlocked(id)?;

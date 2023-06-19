@@ -48,7 +48,7 @@ impl OldAvatar {
 	fn migrate_to_v5(self) -> Avatar {
 		Avatar {
 			season_id: self.season_id,
-			version: AvatarVersion::V1,
+			encoding: DnaEncoding::V1,
 			dna: self.dna,
 			souls: self.souls,
 		}
@@ -107,6 +107,8 @@ impl<T: Config> OldSeason<T> {
 				upgrade_storage: 1_000_000_000_000_u64.unique_saturated_into(), // 1 BAJU
 				prepare_avatar: 5_000_000_000_000_u64.unique_saturated_into(),  // 5 BAJU
 			},
+			mint_logic: LogicGeneration::First,
+			forge_logic: LogicGeneration::First,
 		}
 	}
 }
@@ -299,7 +301,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 
 		// Check all migrated avatars are of version 1.
 		assert!(Avatars::<T>::iter_values()
-			.all(|(_account, avatar)| avatar.version == AvatarVersion::V1));
+			.all(|(_account, avatar)| avatar.encoding == DnaEncoding::V1));
 
 		assert!(Seasons::<T>::get(1).unwrap().trade_filters.is_empty());
 
