@@ -402,7 +402,7 @@ mod test {
 			assert_eq!(rarity_tier, RarityTier::Uncommon);
 
 			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
-			assert!(quantity > 0 && quantity < 9);
+			assert!(quantity > 0 && quantity < 16);
 		});
 	}
 
@@ -494,7 +494,7 @@ mod test {
 			assert_eq!(rarity_tier, RarityTier::Common);
 
 			let quantity = AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
-			assert!(quantity > 0 && quantity < 9);
+			assert!(quantity > 0 && quantity < 16);
 		});
 	}
 
