@@ -3,7 +3,7 @@ use super::*;
 pub(crate) const MIN_SACRIFICE: usize = 1;
 pub(crate) const MAX_SACRIFICE: usize = 4;
 
-pub(crate) const MAX_QUANTITY: u8 = 10;
+pub(crate) const MAX_QUANTITY: u8 = 16;
 
 pub(crate) const SCALING_FACTOR_PERC: u32 = 100;
 pub(crate) const STACK_PROB_PERC: u32 = 10;
@@ -97,9 +97,9 @@ pub(crate) const PACK_TYPE_MATERIAL_SPECIAL_ITEM_TYPE_PROBABILITIES: Probability
 /// Probabilities for all PackType::Equipment options
 pub(crate) const PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
 	(ItemType::Pet, 50),
-	(ItemType::Material, 425),
+	(ItemType::Material, 450),
 	(ItemType::Essence, 250),
-	(ItemType::Equippable, 75),
+	(ItemType::Equippable, 50),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
@@ -136,13 +136,13 @@ pub(crate) const PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES: Probabil
 	EquippableItemType,
 	7,
 > = [
-	(EquippableItemType::ArmorBase, 700),
+	(EquippableItemType::ArmorBase, 760),
 	(EquippableItemType::ArmorComponent1, 0),
 	(EquippableItemType::ArmorComponent2, 0),
 	(EquippableItemType::ArmorComponent3, 0),
-	(EquippableItemType::WeaponVersion1, 100),
-	(EquippableItemType::WeaponVersion2, 100),
-	(EquippableItemType::WeaponVersion3, 100),
+	(EquippableItemType::WeaponVersion1, 80),
+	(EquippableItemType::WeaponVersion2, 80),
+	(EquippableItemType::WeaponVersion3, 80),
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
