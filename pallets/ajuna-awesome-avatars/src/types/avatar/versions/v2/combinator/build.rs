@@ -106,6 +106,15 @@ impl<T: Config> AvatarCombinator<T> {
 						}
 					};
 
+					let item_sp = {
+						let item_sp = level + rarity_value.as_byte();
+						if item_sp as u32 > soul_points {
+							soul_points
+						} else {
+							item_sp as SoulCount
+						}
+					};
+
 					let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 					let generated_equippable = AvatarBuilder::with_dna(season_id, dna)
 						.try_into_armor_and_component(
@@ -115,7 +124,7 @@ impl<T: Config> AvatarCombinator<T> {
 							&rarity_value,
 							&(ColorType::None, ColorType::None),
 							&Force::None,
-							1,
+							item_sp,
 							hash_provider,
 						)
 						.map_err(|_| Error::<T>::IncompatibleForgeComponents)?
@@ -132,7 +141,7 @@ impl<T: Config> AvatarCombinator<T> {
 			for _ in 0..soul_points as usize {
 				let sacrifice_index =
 					hash_provider.get_hash_byte() as usize % generated_equippables.len();
-				generated_equippables[sacrifice_index].souls.saturating_inc();
+				generated_equippables[sacrifice_index % 32].souls.saturating_inc();
 			}
 
 			output_sacrifices
@@ -203,7 +212,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 9);
+			assert_eq!(total_soul_points, 15);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
 				blueprint_input_1,
@@ -290,7 +299,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 11);
+			assert_eq!(total_soul_points, 20);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
 				blueprint_input_1,
@@ -394,7 +403,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 45);
+			assert_eq!(total_soul_points, 105);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
 				blueprint_input_1,
@@ -498,7 +507,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 9);
+			assert_eq!(total_soul_points, 15);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
 				blueprint_input_1,
@@ -592,7 +601,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 9);
+			assert_eq!(total_soul_points, 17);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
 				blueprint_input_1,
@@ -677,7 +686,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 9);
+			assert_eq!(total_soul_points, 15);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
 				blueprint_input_1,
@@ -822,7 +831,7 @@ mod test {
 					})
 					.sum::<SoulCount>();
 
-				assert_eq!(avatar.souls + soul_points, total_souls);
+				assert_eq!(avatar.souls + soul_points, 987);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}

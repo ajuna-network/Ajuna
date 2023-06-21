@@ -26,7 +26,7 @@ impl<T: Config> AvatarCombinator<T> {
 
 		new_quantity = new_quantity.saturating_add(leader_quantity as u32);
 
-		let dust_quantity = if new_quantity > MAX_BYTE {
+		let mut dust_quantity = if new_quantity > MAX_BYTE {
 			let leader_custom_type_1 =
 				AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType1);
 			let dust_qty = (new_quantity - MAX_BYTE) * leader_custom_type_1 as u32;
@@ -43,7 +43,7 @@ impl<T: Config> AvatarCombinator<T> {
 		AvatarUtils::write_attribute(&mut leader, &AvatarAttributes::Quantity, new_quantity as u8);
 		leader.souls = (leader.souls + new_souls).saturating_sub(dust_quantity);
 
-		let mut essences = 0;
+		let mut total_soul_points = 0;
 
 		for i in 0..input_sacrifices.len() {
 			if hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC <
@@ -52,7 +52,7 @@ impl<T: Config> AvatarCombinator<T> {
 			{
 				let (_, _, out_soul_points) =
 					AvatarUtils::use_avatar(&mut leader, transform_per_cycle);
-				essences += out_soul_points;
+				total_soul_points += out_soul_points;
 			}
 		}
 
@@ -62,9 +62,20 @@ impl<T: Config> AvatarCombinator<T> {
 			LeaderForgeOutput::Consumed(leader_id)
 		};
 
-		let glimmer_avatar = if essences > 0 {
-			let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
-			Some(AvatarBuilder::with_dna(season_id, dna).into_glimmer(essences as u8).build())
+		let glimmer_avatar = if total_soul_points > 0 {
+			let glimmer_quantity = total_soul_points / GLIMMER_SP as SoulCount;
+			dust_quantity += total_soul_points % GLIMMER_SP as SoulCount;
+
+			if glimmer_quantity > 0 {
+				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
+				Some(
+					AvatarBuilder::with_dna(season_id, dna)
+						.into_glimmer(glimmer_quantity as u8)
+						.build(),
+				)
+			} else {
+				None
+			}
 		} else {
 			None
 		};
@@ -133,7 +144,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(leader_avatar.souls, 8);
+				assert_eq!(leader_avatar.souls, 16);
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
 					8
@@ -168,7 +179,7 @@ mod test {
 			.expect("Should succeed in forging");
 
 			assert!(sacrifice_output.iter().all(|output| !is_forged(output)));
-			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 2);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 14);
@@ -268,7 +279,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(leader_avatar.souls, 100);
+				assert_eq!(leader_avatar.souls, 200);
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
 					100
@@ -294,7 +305,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 2);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(leader_avatar.souls, 100);
+				assert_eq!(leader_avatar.souls, 200);
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
 					100
@@ -436,7 +447,7 @@ mod test {
 					);
 					assert_eq!(item_type, ItemType::Essence);
 
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 4);
+					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 2);
 
 					assert_eq!(avatar.souls + leader_avatar.souls, total_souls);
 				} else {
@@ -458,10 +469,8 @@ mod test {
 				0xCC, 0xFD, 0x01, 0xB4,
 			]);
 
-			let dust_input_1 =
-				create_random_material(&ALICE, &MaterialItemType::Nanomaterials, u8::MAX);
-			let dust_input_2 =
-				create_random_material(&ALICE, &MaterialItemType::Nanomaterials, u8::MAX);
+			let dust_input_1 = create_random_material(&ALICE, &MaterialItemType::Ceramics, u8::MAX);
+			let dust_input_2 = create_random_material(&ALICE, &MaterialItemType::Ceramics, u8::MAX);
 
 			let total_souls = dust_input_1.1.souls + dust_input_2.1.souls;
 
@@ -575,8 +584,6 @@ mod test {
 			let glimmer_input_1 = create_random_glimmer(&ALICE, u8::MAX);
 			let glimmer_input_2 = create_random_glimmer(&ALICE, u8::MAX);
 
-			let total_souls = glimmer_input_1.1.souls + glimmer_input_2.1.souls;
-
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				glimmer_input_1,
 				vec![glimmer_input_2],
@@ -585,17 +592,18 @@ mod test {
 			)
 			.expect("Should succeed in forging");
 
-			assert_eq!(sacrifice_output.len(), 2);
+			assert_eq!(sacrifice_output.len(), 4);
 			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 3);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					u8::MAX
+					250
 				);
+				assert_eq!(leader_avatar.souls, 500);
 
-				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+				if let ForgeOutput::Minted(avatar) = &sacrifice_output[2] {
 					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
 						avatar,
 						&AvatarAttributes::ItemType,
@@ -607,7 +615,7 @@ mod test {
 						u8::MAX
 					);
 
-					assert_eq!(avatar.souls + leader_avatar.souls, total_souls);
+					assert_eq!(avatar.souls, MAX_BYTE);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
@@ -654,7 +662,7 @@ mod test {
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[4] {
 					assert_eq!(
 						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						34
+						17
 					);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
@@ -695,11 +703,6 @@ mod test {
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
-
-			// TODO: Add https://github.com/ajuna-network/Ajuna.AAA.Season2/blob/master/Ajuna.AAA.Season2.Test/ForgeTests/ForgeStackTest.cs#L398
-
-			/*let count = 1_000_usize;
-			let mut glimmer = 0;*/
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}

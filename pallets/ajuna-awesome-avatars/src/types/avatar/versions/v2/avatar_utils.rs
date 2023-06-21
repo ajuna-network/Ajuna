@@ -232,22 +232,27 @@ impl AvatarBuilder {
 	}
 
 	pub fn into_material(self, material_type: &MaterialItemType, quantity: u8) -> Self {
-		let custom_type_1 = HexType::X1;
+		let sp_ratio = match *material_type {
+			MaterialItemType::Ceramics | MaterialItemType::Electronics => HexType::X1,
+			MaterialItemType::PowerCells | MaterialItemType::Polymers => HexType::X2,
+			MaterialItemType::Superconductors | MaterialItemType::Metals => HexType::X3,
+			MaterialItemType::Optics | MaterialItemType::Nanomaterials => HexType::X4,
+		};
 
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Material)
 			.with_attribute(&AvatarAttributes::ItemSubType, material_type)
 			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
 			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
+			.with_attribute(&AvatarAttributes::CustomType1, &sp_ratio)
 			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Common)
 			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
+			.with_soul_count(quantity as SoulCount * sp_ratio as SoulCount)
 	}
 
 	pub fn into_glimmer(self, quantity: u8) -> Self {
-		let custom_type_1 = HexType::X1;
+		let custom_type_1 = HexType::from_byte(GLIMMER_SP);
 
 		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
 			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::Glimmer)
@@ -495,7 +500,7 @@ impl AvatarBuilder {
 		slot_type: &SlotType,
 		equippable_item_type: &EquippableItemType,
 		pattern: &[MaterialItemType],
-		soul_points: SoulCount,
+		quantity: u8,
 	) -> Self {
 		// TODO: add a quantity algorithm
 		// - base 8 - 16 and
@@ -511,7 +516,7 @@ impl AvatarBuilder {
 			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
 			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
 			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
-			.with_attribute_raw(&AvatarAttributes::Quantity, soul_points as u8)
+			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
 			// Unused
 			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
 			.with_spec_byte_raw(
@@ -527,7 +532,7 @@ impl AvatarBuilder {
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, mat_req2)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, mat_req3)
 			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, mat_req4)
-			.with_soul_count(soul_points)
+			.with_soul_count(quantity as SoulCount)
 	}
 
 	pub fn into_unidentified(
@@ -950,7 +955,7 @@ impl AvatarUtils {
 				!is_maxed && (rarity_1 < rarity_level || variation_2 == 0x0B || byte_match)
 			{
 				matches.push(i as u32);
-			} else if is_maxed && (variation_1 == variation_2) {
+			} else if is_maxed && ((variation_1 == variation_2) || variation_2 == 0x0B) {
 				mirrors.push(i as u32);
 			}
 		}

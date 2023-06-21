@@ -146,7 +146,7 @@ mod test {
 			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
 			let expected_dna = [
-				0x31, 0x00, 0x12, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x31, 0x00, 0x22, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
 			];
@@ -217,7 +217,10 @@ mod test {
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 5);
+					assert_eq!(
+						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
+						10
+					);
 					assert_eq!(
 						AvatarUtils::read_attribute_as::<ItemType>(
 							avatar,
@@ -233,7 +236,7 @@ mod test {
 						SpecialItemType::Dust
 					);
 
-					let expected_dna_head = [0x61, 0x00, 0x11, 0x05, 0x00];
+					let expected_dna_head = [0x61, 0x00, 0x11, 0x0A, 0x00];
 					let avatar_dna_slice = &avatar.dna[0..5];
 
 					// We only need to check the 5 first bytes since the rest are not relevant for
@@ -295,7 +298,7 @@ mod test {
 
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					6
+					96
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(
@@ -361,10 +364,11 @@ mod test {
 
 						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
 
-						assert!(
-							(item_sub_type == SpecialItemType::Dust && qty == 5) ||
-								(item_sub_type == SpecialItemType::ToolBox && qty == 1)
-						);
+						match item_sub_type {
+							SpecialItemType::Dust => assert!(qty == 6 || qty == 10 || qty == 14),
+							SpecialItemType::ToolBox => assert_eq!(qty, 1),
+							_ => panic!("Item sub type should be Dust or Toolbox"),
+						}
 					} else {
 						panic!("ForgeOutput should have been Minted!")
 					}
@@ -422,7 +426,7 @@ mod test {
 
 				assert_eq!(
 					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					6
+					96
 				);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(
@@ -488,10 +492,11 @@ mod test {
 
 						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
 
-						assert!(
-							(item_sub_type == SpecialItemType::Dust && qty == 5) ||
-								(item_sub_type == SpecialItemType::ToolBox && qty == 1)
-						);
+						match item_sub_type {
+							SpecialItemType::Dust => assert!(qty == 6 || qty == 10 || qty == 14),
+							SpecialItemType::ToolBox => assert_eq!(qty, 1),
+							_ => panic!("Item sub type should be Dust or Toolbox"),
+						}
 					} else {
 						panic!("ForgeOutput should have been Minted!")
 					}
@@ -533,7 +538,7 @@ mod test {
 
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 				assert_eq!(avatar.souls, total_soul_points);
-				assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 5);
+				assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 10);
 				assert_eq!(
 					AvatarUtils::read_attribute_as::<ItemType>(avatar, &AvatarAttributes::ItemType),
 					ItemType::Special
@@ -816,12 +821,13 @@ mod test {
 			let mut probability_array = [0_u32; 8];
 
 			for i in 0..10_000 {
-				let leader = create_random_glimmer(&ALICE, 50);
+				let leader = create_random_glimmer(&ALICE, 150);
 				let sacrifice_1 = create_random_material(&ALICE, &MaterialItemType::Polymers, 20);
 				let sacrifice_2 =
 					create_random_material(&ALICE, &MaterialItemType::Superconductors, 20);
-				let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
-				let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
+				let sacrifice_3 =
+					create_random_material(&ALICE, &MaterialItemType::Superconductors, 20);
+				let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
 
 				let (_leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 					leader,

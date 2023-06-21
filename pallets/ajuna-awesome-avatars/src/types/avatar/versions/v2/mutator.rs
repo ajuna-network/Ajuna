@@ -249,7 +249,7 @@ impl<T: Config> AvatarMutator<T> for BlueprintItemType {
 		base_avatar: Avatar,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<Avatar, ()> {
-		let soul_count = (hash_provider.get_hash_byte() as SoulCount % 25) + 1;
+		let soul_count = (hash_provider.get_hash_byte() % 25) + 1;
 
 		let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 		let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
@@ -482,7 +482,7 @@ mod test {
 
 			let custom_type_1 =
 				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType1);
-			assert_eq!(custom_type_1, HexType::X1);
+			assert_eq!(custom_type_1, HexType::X2);
 			let custom_type_2 =
 				AvatarUtils::read_attribute_as::<HexType>(&avatar, &AvatarAttributes::CustomType2);
 			assert_eq!(custom_type_2, HexType::X0);
