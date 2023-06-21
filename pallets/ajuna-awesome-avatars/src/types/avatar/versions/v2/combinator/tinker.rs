@@ -100,7 +100,7 @@ impl<T: Config> AvatarCombinator<T> {
 					&slot_type,
 					&equippable_item_type,
 					&sacrifice_pattern,
-					soul_points as SoulCount,
+					soul_points as u8,
 				)
 				.build();
 
@@ -162,7 +162,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 5);
+			assert_eq!(total_soul_points, 11);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
 				pet_part_input_1,
@@ -242,7 +242,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 7);
+			assert_eq!(total_soul_points, 16);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
 				pet_part_input_1,
@@ -328,7 +328,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 10);
+			assert_eq!(total_soul_points, 22);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
 				pet_part_input_1,
@@ -362,7 +362,7 @@ mod test {
 					ItemType::Blueprint
 				));
 
-				assert_eq!(AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity), 5);
+				assert_eq!(AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity), 11);
 			} else {
 				panic!("ForgeOutput of blueprint should have been Minted!");
 			}
@@ -404,7 +404,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 5);
+			assert_eq!(total_soul_points, 11);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
 				pet_part_input_1,
@@ -435,7 +435,7 @@ mod test {
 							}
 						})
 						.sum::<u32>(),
-					(total_soul_points - leader_quantity)
+					4
 				);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!");
@@ -480,7 +480,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 5);
+			assert_eq!(total_soul_points, 9);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
 				pet_part_input_1,
@@ -511,7 +511,7 @@ mod test {
 							}
 						})
 						.sum::<u32>(),
-					(total_soul_points - leader_quantity)
+					4
 				);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!");
@@ -554,7 +554,7 @@ mod test {
 				material_input_2.1.souls +
 				material_input_3.1.souls +
 				material_input_4.1.souls;
-			assert_eq!(total_soul_points, 5);
+			assert_eq!(total_soul_points, 8);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
 				pet_part_input_1,
@@ -593,7 +593,7 @@ mod test {
 
 					let avatar_dna = avatar.dna.as_slice();
 					let expected_dna =
-						[0x51, 0x21, 0x13, 0x05, 0x00, 0x66, 0x6C, 0x04, 0x01, 0x01, 0x01, 0x01];
+						[0x51, 0x21, 0x13, 0x08, 0x00, 0x66, 0x6C, 0x04, 0x01, 0x01, 0x01, 0x01];
 
 					assert_eq!(&avatar_dna[0..12], &expected_dna);
 				} else {

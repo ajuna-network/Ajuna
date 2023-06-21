@@ -131,7 +131,7 @@ pub(crate) fn create_random_blueprint(
 					slot_type,
 					equippable_type,
 					material_pattern,
-					soul_points,
+					soul_points as u8,
 				)
 				.build()
 		}),

@@ -337,10 +337,6 @@ impl<T: Config> ForgerV2<T> {
 
 				let leader_rarity = AvatarUtils::read_rarity(leader);
 
-				let any_same_assemble_version = sacrifices
-					.iter()
-					.any(|sacrifice| AvatarUtils::same_assemble_version(leader, sacrifice));
-
 				let all_sacrifice_are_armor_or_toolbox = sacrifices.iter().all(|sacrifice| {
 					let same_assemble_version =
 						AvatarUtils::same_assemble_version(leader, sacrifice);
@@ -363,7 +359,6 @@ impl<T: Config> ForgerV2<T> {
 				});
 
 				if EquippableItemType::is_armor(leader_sub_type) &&
-					any_same_assemble_version &&
 					all_sacrifice_are_armor_or_toolbox
 				{
 					ForgeType::Assemble

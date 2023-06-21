@@ -22,7 +22,9 @@ pub(crate) const MAX_BYTE: u32 = u8::MAX as u32;
 
 pub(crate) const GLIMMER_FORGE_GLIMMER_USE: u8 = 1;
 pub(crate) const GLIMMER_FORGE_MATERIAL_USE: u8 = 4;
-pub(crate) const GLIMMER_FORGE_TOOLBOX_USE: u8 = 45;
+pub(crate) const GLIMMER_FORGE_TOOLBOX_USE: u8 = 100;
+
+pub(crate) const GLIMMER_SP: u8 = 2;
 
 pub(crate) const PET_MOON_PHASE_SIZE: u32 = 10;
 pub(crate) const PET_MOON_PHASE_AMOUNT: u32 = 14;

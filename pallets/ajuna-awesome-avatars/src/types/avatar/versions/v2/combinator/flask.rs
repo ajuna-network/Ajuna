@@ -299,7 +299,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(avatar.souls, 701);
+				assert_eq!(avatar.souls, 715);
 
 				let expected_dna = [
 					0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -479,7 +479,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert_eq!(avatar.souls, 701);
+				assert_eq!(avatar.souls, 715);
 
 				let expected_dna = [
 					0x41, 0x12, 0x04, 0x01, 0x00, 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
