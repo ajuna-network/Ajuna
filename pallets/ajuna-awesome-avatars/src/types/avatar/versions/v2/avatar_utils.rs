@@ -929,6 +929,11 @@ impl AvatarUtils {
 		let mut mirrors = Vec::<u32>::new();
 
 		let lowest_1 = Self::read_lowest_progress_byte(&array_1, &ByteType::High);
+		let lowest_2 = Self::read_lowest_progress_byte(&array_2, &ByteType::High);
+
+		if lowest_1 > lowest_2 {
+			return (mirrors, matches)
+		}
 
 		for i in 0..array_1.len() {
 			let rarity_1 = Self::read_dna_at(&array_1, i, &ByteType::High);
@@ -1586,8 +1591,7 @@ mod test {
 		let arr_1 = [0x31, 0x30, 0x35, 0x33, 0x30, 0x33, 0x31, 0x32, 0x32, 0x32, 0x34];
 		let arr_2 = [0x21, 0x21, 0x35, 0x34, 0x24, 0x33, 0x23, 0x22, 0x22, 0x22, 0x22];
 		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
-		let expected_matches: Vec<u32> = vec![3];
-		assert_eq!(matches, expected_matches);
+		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 	}
 
@@ -1600,8 +1604,7 @@ mod test {
 		let arr_2: [u8; 11] =
 			hex::decode("2121353424332322222222").expect("Decode").try_into().unwrap();
 		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
-		let expected_matches: Vec<u32> = vec![3];
-		assert_eq!(matches, expected_matches);
+		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 	}
 
