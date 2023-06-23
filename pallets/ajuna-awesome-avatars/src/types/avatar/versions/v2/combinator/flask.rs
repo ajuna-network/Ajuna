@@ -165,8 +165,8 @@ mod test {
 				&SlotType::Head,
 				&RarityTier::Epic,
 				&[EquippableItemType::ArmorBase, EquippableItemType::ArmorComponent3],
-				&(ColorType::None, ColorType::None),
-				&Force::None,
+				&(ColorType::Null, ColorType::Null),
+				&Force::Null,
 				80,
 				&mut progress_array_generator,
 			);
@@ -342,7 +342,7 @@ mod test {
 					EquippableItemType::ArmorComponent3,
 				],
 				&(ColorType::ColorD, ColorType::ColorD),
-				&Force::None,
+				&Force::Null,
 				100,
 				&mut progress_array_generator,
 			);

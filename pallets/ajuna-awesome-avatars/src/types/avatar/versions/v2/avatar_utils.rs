@@ -398,7 +398,7 @@ impl AvatarBuilder {
 			let mut color_flag = 0b0000_0000;
 			let mut progress = AvatarUtils::enums_to_bits(equippable_type) as u8;
 
-			if color_pair.0 != ColorType::None && color_pair.1 != ColorType::None {
+			if color_pair.0 != ColorType::Null && color_pair.1 != ColorType::Null {
 				color_flag = 0b0000_1000;
 				progress |= ((color_pair.0.as_byte().saturating_sub(1)) << 6) |
 					((color_pair.1.as_byte().saturating_sub(1)) << 4)
@@ -457,7 +457,7 @@ impl AvatarBuilder {
 			let mut color_flag = 0b0000_0000;
 			let mut info = AvatarUtils::enums_to_bits(&[*equippable_type]) as u8 >> 4;
 
-			if color_pair.0 != ColorType::None && color_pair.1 != ColorType::None {
+			if color_pair.0 != ColorType::Null && color_pair.1 != ColorType::Null {
 				color_flag = 0b0000_1000;
 				info |= ((color_pair.0.as_byte().saturating_sub(1)) << 6) |
 					((color_pair.1.as_byte().saturating_sub(1)) << 4)

@@ -122,8 +122,8 @@ impl<T: Config> AvatarCombinator<T> {
 							&slot_type,
 							&[equippable_item_type],
 							&rarity_value,
-							&(ColorType::None, ColorType::None),
-							&Force::None,
+							&(ColorType::Null, ColorType::Null),
+							&Force::Null,
 							item_sp,
 							hash_provider,
 						)
