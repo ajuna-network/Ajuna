@@ -206,8 +206,8 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 					&slot_type,
 					&[*self],
 					&rarity,
-					&(ColorType::None, ColorType::None),
-					&Force::None,
+					&(ColorType::Null, ColorType::Null),
+					&Force::Null,
 					soul_count,
 					hash_provider,
 				)

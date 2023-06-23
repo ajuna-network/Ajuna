@@ -20,8 +20,8 @@ use sp_std::{fmt, ops::Range, prelude::*};
 
 #[derive(Encode, Clone, Debug, Default, PartialEq)]
 pub enum Force {
+	Null,
 	#[default]
-	None,
 	Kinetic,
 	Dream,
 	Solar,
@@ -33,7 +33,7 @@ pub enum Force {
 impl fmt::Display for Force {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			Force::None => write!(f, ""),
+			Force::Null => write!(f, ""),
 			Force::Kinetic => write!(f, "Kinetic"),
 			Force::Dream => write!(f, "Dream"),
 			Force::Solar => write!(f, "Solar"),
@@ -47,7 +47,6 @@ impl fmt::Display for Force {
 impl ByteConvertible for Force {
 	fn from_byte(byte: u8) -> Self {
 		match byte {
-			0 => Self::None,
 			1 => Self::Kinetic,
 			2 => Self::Dream,
 			3 => Self::Solar,
@@ -65,7 +64,7 @@ impl ByteConvertible for Force {
 
 impl Ranged for Force {
 	fn range() -> Range<usize> {
-		0..7
+		1..7
 	}
 }
 

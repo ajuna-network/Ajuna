@@ -873,8 +873,8 @@ mod test {
 
 			assert_eq!(probability_array[0], 10_000);
 			assert_eq!(probability_array[1], 9);
-			assert_eq!(probability_array[2], 697);
-			assert_eq!(probability_array[3], 823);
+			assert_eq!(probability_array[2], 797);
+			assert_eq!(probability_array[3], 723);
 			assert_eq!(probability_array[4], 0);
 			assert_eq!(probability_array[5], 6);
 			assert_eq!(probability_array[6], 0);
@@ -986,10 +986,10 @@ mod test {
 			}
 
 			assert_eq!(probability_array[0], 10_000);
-			// Total = 0.09 + 6.72 + 8.31 + 84.82 + 0.06 --> ~100%
+			// Total = 0.09 + 7.86 + 7.17 + 84.82 + 0.06 --> ~100%
 			assert_eq!(probability_array[1], 9); // Egg ~0.09%
-			assert_eq!(probability_array[2], 672); // ColorSpark ~6.72%
-			assert_eq!(probability_array[3], 831); // GlowSpark ~8.31%
+			assert_eq!(probability_array[2], 786); // ColorSpark ~7.86%
+			assert_eq!(probability_array[3], 717); // GlowSpark ~7.17%
 			assert_eq!(probability_array[4], 8482); // Dust ~84.82%
 			assert_eq!(probability_array[5], 6); // Unidentified ~0.06%
 			assert_eq!(probability_array[6], 0); // Fragment ~0%

@@ -412,8 +412,8 @@ impl ByteConvertible for BlueprintItemType {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) enum ColorType {
+	Null = 0,
 	#[default]
-	None = 0,
 	ColorA = 1,
 	ColorB = 2,
 	ColorC = 3,
@@ -423,7 +423,6 @@ pub(crate) enum ColorType {
 impl ByteConvertible for ColorType {
 	fn from_byte(byte: u8) -> Self {
 		match byte {
-			0 => Self::None,
 			1 => Self::ColorA,
 			2 => Self::ColorB,
 			3 => Self::ColorC,
@@ -439,7 +438,7 @@ impl ByteConvertible for ColorType {
 
 impl Ranged for ColorType {
 	fn range() -> Range<usize> {
-		0..5
+		1..5
 	}
 }
 
