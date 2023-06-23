@@ -326,8 +326,8 @@ pub fn run() -> Result<()> {
 					.map_err(|e| format!("Error: {:?}", e))?;
 
 			#[cfg(feature = "ajuna")]
-			if cfg!(feature = "ajuna") {
-				return runner.async_run(|_| {
+			{
+				runner.async_run(|_| {
 					Ok((
 						cmd.run::<AjunaBlock, HostFunctionsOf<AjunaRuntimeExecutor>, _>(Some(
 							timestamp_with_aura_info::<AjunaBlock>(6000),
@@ -337,14 +337,16 @@ pub fn run() -> Result<()> {
 				})
 			}
 			#[cfg(feature = "bajun")]
-			runner.async_run(|_| {
-				Ok((
-					cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>, _>(Some(
-						timestamp_with_aura_info::<BajunBlock>(6000),
-					)),
-					task_manager,
-				))
-			})
+			{
+				runner.async_run(|_| {
+					Ok((
+						cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>, _>(Some(
+							timestamp_with_aura_info::<BajunBlock>(6000),
+						)),
+						task_manager,
+					))
+				})
+			}
 		},
 		#[cfg(not(feature = "try-runtime"))]
 		Some(Subcommand::TryRuntime) => Err("Try-runtime was not enabled when building the node. \
