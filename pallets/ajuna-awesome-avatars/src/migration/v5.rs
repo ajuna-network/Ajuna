@@ -250,20 +250,20 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		avatar_ids_from_owners.sort();
 		avatar_ids_from_owners.dedup();
 
-		// There are 13,107 avatars as of 26/05/2023. But the exact number could be smaller as
+		// There are 12,976 avatars as of 27/06/2023. But the exact number could be smaller as
 		// avatars are forged away. We estimate there should be at least 10,000.
-		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_avatars.len() <= 13_107);
-		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_owners.len() <= 13_107);
+		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_avatars.len() <= 12_976);
+		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_owners.len() <= 12_976);
 		assert_eq!(avatar_ids_from_avatars, avatar_ids_from_owners);
 
-		// There are 892 owners of avatars in storage as of 26/05/2023. But the exact number could
-		// change as avatars are traded between accounts. We estimate there should be between 850
-		// and 1,000 accounts.
+		// There are 1,245 owners of avatars in storage as of 27/06/2023. But the exact number could
+		// change as avatars are traded between accounts.
+		// We estimate there should be between 1,200 and 2,000 accounts.
 		let mut owners_season_ids = Owners::<T>::iter_keys()
 			.filter(|(owner, season_id)| !Owners::<T>::get(owner, season_id).is_empty())
 			.map(|(_owner, season_id)| season_id)
 			.collect::<Vec<SeasonId>>();
-		assert!(owners_season_ids.len() > 850 && owners_season_ids.len() < 1_000);
+		assert!(owners_season_ids.len() > 1_200 && owners_season_ids.len() < 2_000);
 
 		// Check all owners are migrated with season ID of 1.
 		owners_season_ids.sort();
@@ -276,17 +276,19 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		let mut player_season_configs_season_ids = PlayerSeasonConfigs::<T>::iter_keys()
 			.map(|(_, season_id)| season_id)
 			.collect::<Vec<_>>();
-		assert!(player_configs_account_ids.len() > 800 && player_configs_account_ids.len() < 1_000);
 		assert!(
-			player_season_configs_season_ids.len() > 800 &&
-				player_season_configs_season_ids.len() < 1_000
+			player_configs_account_ids.len() > 1_200 && player_configs_account_ids.len() < 2_000
+		);
+		assert!(
+			player_season_configs_season_ids.len() > 1_200 &&
+				player_season_configs_season_ids.len() < 2_000
 		);
 		player_season_configs_season_ids.sort();
 		player_season_configs_season_ids.dedup();
 		assert_eq!(player_season_configs_season_ids.len(), 1);
 		assert_eq!(player_season_configs_season_ids, vec![1]);
 
-		// There are 871 avatars in trade as of 26/05/2023. But the exact number could change. we
+		// There are 869 avatars in trade as of 27/06/2023. But the exact number could change. we
 		// estimate between 800 and 1,000 avatars to be in trade.
 		let mut trade_season_ids = Trade::<T>::iter_keys()
 			.map(|(season_id, _avatar_id)| season_id)
