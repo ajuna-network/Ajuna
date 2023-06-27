@@ -326,8 +326,8 @@ pub fn run() -> Result<()> {
 					.map_err(|e| format!("Error: {:?}", e))?;
 
 			#[cfg(feature = "ajuna")]
-			{
-				runner.async_run(|_| {
+			if cfg!(feature = "ajuna") {
+				return runner.async_run(|_| {
 					Ok((
 						cmd.run::<AjunaBlock, HostFunctionsOf<AjunaRuntimeExecutor>, _>(Some(
 							timestamp_with_aura_info::<AjunaBlock>(6000),
@@ -338,7 +338,8 @@ pub fn run() -> Result<()> {
 			}
 			#[cfg(feature = "bajun")]
 			{
-				runner.async_run(|_| {
+				#[allow(clippy::needless_return)]
+				return runner.async_run(|_| {
 					Ok((
 						cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>, _>(Some(
 							timestamp_with_aura_info::<BajunBlock>(6000),
@@ -347,6 +348,8 @@ pub fn run() -> Result<()> {
 					))
 				})
 			}
+			#[cfg(not(feature = "bajun"))]
+			panic!("No runtime feature (bajun, ajuna) is enabled")
 		},
 		#[cfg(not(feature = "try-runtime"))]
 		Some(Subcommand::TryRuntime) => Err("Try-runtime was not enabled when building the node. \
