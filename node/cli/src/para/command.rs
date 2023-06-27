@@ -337,14 +337,19 @@ pub fn run() -> Result<()> {
 				})
 			}
 			#[cfg(feature = "bajun")]
-			runner.async_run(|_| {
-				Ok((
-					cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>, _>(Some(
-						timestamp_with_aura_info::<BajunBlock>(6000),
-					)),
-					task_manager,
-				))
-			})
+			{
+				#[allow(clippy::needless_return)]
+				return runner.async_run(|_| {
+					Ok((
+						cmd.run::<BajunBlock, HostFunctionsOf<BajunRuntimeExecutor>, _>(Some(
+							timestamp_with_aura_info::<BajunBlock>(6000),
+						)),
+						task_manager,
+					))
+				})
+			}
+			#[cfg(not(feature = "bajun"))]
+			panic!("No runtime feature (bajun, ajuna) is enabled")
 		},
 		#[cfg(not(feature = "try-runtime"))]
 		Some(Subcommand::TryRuntime) => Err("Try-runtime was not enabled when building the node. \
