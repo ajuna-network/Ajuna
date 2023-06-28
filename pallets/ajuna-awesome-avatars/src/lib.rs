@@ -1117,9 +1117,8 @@ pub mod pallet {
 			let GlobalConfig { forge, .. } = GlobalConfigs::<T>::get();
 			ensure!(forge.open, Error::<T>::ForgeClosed);
 
-			let (season_id, season) = Self::current_season_with_id()?;
-			let (leader, sacrifice_ids, sacrifices) =
-				Self::ensure_for_forge(player, leader_id, sacrifice_ids, &season_id, &season)?;
+			let (leader, sacrifice_ids, sacrifices, season_id, season) =
+				Self::ensure_for_forge(player, leader_id, sacrifice_ids)?;
 
 			let input_leader = (*leader_id, leader);
 			let input_sacrifices =
@@ -1195,6 +1194,13 @@ pub mod pallet {
 			Ok((current_status.season_id, season))
 		}
 
+		fn season_with_id_for(avatar: &Avatar) -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
+			let season_id = avatar.season_id;
+			let season = Self::seasons(&season_id)?;
+
+			Ok((season_id, season))
+		}
+
 		fn ensure_ownership(
 			player: &T::AccountId,
 			avatar_id: &AvatarIdOf<T>,
@@ -1252,10 +1258,13 @@ pub mod pallet {
 			player: &T::AccountId,
 			leader_id: &AvatarIdOf<T>,
 			sacrifice_ids: Vec<AvatarIdOf<T>>,
-			season_id: &SeasonId,
-			season: &SeasonOf<T>,
-		) -> Result<(Avatar, Vec<AvatarIdOf<T>>, Vec<Avatar>), DispatchError> {
+		) -> Result<(Avatar, Vec<AvatarIdOf<T>>, Vec<Avatar>, SeasonId, SeasonOf<T>), DispatchError>
+		{
 			let sacrifice_count = sacrifice_ids.len() as u8;
+
+			let leader = Self::ensure_ownership(player, leader_id)?;
+			let (season_id, season) = Self::season_with_id_for(&leader)?;
+
 			ensure!(sacrifice_count >= season.min_sacrifices, Error::<T>::TooFewSacrifices);
 			ensure!(sacrifice_count <= season.max_sacrifices, Error::<T>::TooManySacrifices);
 			ensure!(!sacrifice_ids.contains(leader_id), Error::<T>::LeaderSacrificed);
@@ -1266,9 +1275,6 @@ pub mod pallet {
 			ensure!(Self::ensure_for_trade(leader_id).is_err(), Error::<T>::AvatarInTrade);
 			Self::ensure_unlocked(leader_id)?;
 			Self::ensure_unprepared(leader_id)?;
-
-			let leader = Self::ensure_ownership(player, leader_id)?;
-			ensure!(leader.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
 
 			let deduplicated_sacrifice_ids = {
 				let mut id_queue = sacrifice_ids.into_iter().collect::<VecDeque<_>>();
@@ -1287,7 +1293,7 @@ pub mod pallet {
 				.iter()
 				.map(|id| {
 					let avatar = Self::ensure_ownership(player, id)?;
-					ensure!(avatar.season_id == *season_id, Error::<T>::IncorrectAvatarSeason);
+					ensure!(avatar.season_id == season_id, Error::<T>::IncorrectAvatarSeason);
 					ensure!(
 						avatar.encoding == leader.encoding,
 						Error::<T>::IncompatibleAvatarVersions
@@ -1298,7 +1304,7 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<Avatar>, DispatchError>>()?;
 
-			Ok((leader, deduplicated_sacrifice_ids, sacrifices))
+			Ok((leader, deduplicated_sacrifice_ids, sacrifices, season_id, season))
 		}
 
 		fn process_leader_forge_output(
