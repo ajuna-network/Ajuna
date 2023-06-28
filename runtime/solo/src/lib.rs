@@ -725,7 +725,10 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	Migrations,
 >;
+
+type Migrations = (pallet_ajuna_awesome_avatars::migration::v5::MigrateToV5<Runtime>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
