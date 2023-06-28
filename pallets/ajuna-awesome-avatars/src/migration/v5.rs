@@ -18,6 +18,109 @@ use super::*;
 use frame_support::storage::migration;
 
 #[derive(Decode)]
+pub struct OldMintConfig<T: Config> {
+	pub open: bool,
+	pub fees: MintFees<BalanceOf<T>>,
+	pub cooldown: BlockNumberFor<T>,
+	pub free_mint_fee_multiplier: MintCount,
+}
+
+impl<T> OldMintConfig<T>
+where
+	T: Config,
+{
+	fn migrate_to_v5(self) -> MintConfig<BlockNumberFor<T>> {
+		MintConfig {
+			open: self.open,
+			cooldown: self.cooldown,
+			free_mint_fee_multiplier: self.free_mint_fee_multiplier,
+		}
+	}
+}
+
+#[derive(Decode)]
+pub struct OldTransferConfig<T: Config> {
+	pub open: bool,
+	pub free_mint_transfer_fee: MintCount,
+	pub min_free_mint_transfer: MintCount,
+	pub avatar_transfer_fee: BalanceOf<T>,
+}
+
+impl<T> OldTransferConfig<T>
+where
+	T: Config,
+{
+	fn migrate_to_v5(self) -> TransferConfig {
+		TransferConfig {
+			open: self.open,
+			free_mint_transfer_fee: self.free_mint_transfer_fee,
+			min_free_mint_transfer: self.min_free_mint_transfer,
+		}
+	}
+}
+
+#[derive(Decode)]
+pub struct OldTradeConfig<T: Config> {
+	pub open: bool,
+	pub min_fee: BalanceOf<T>,
+	pub percent_fee: u8,
+}
+
+impl<T> OldTradeConfig<T>
+where
+	T: Config,
+{
+	fn migrate_to_v5(self) -> TradeConfig {
+		TradeConfig { open: self.open }
+	}
+}
+
+#[derive(Decode)]
+pub struct OldAccountConfig<T: Config> {
+	pub storage_upgrade_fee: BalanceOf<T>,
+}
+
+#[derive(Decode)]
+pub struct OldNftTransferConfig<T: Config> {
+	pub open: bool,
+	pub prepare_fee: BalanceOf<T>,
+}
+
+impl<T> OldNftTransferConfig<T>
+where
+	T: Config,
+{
+	fn migrate_to_v5(self) -> NftTransferConfig {
+		NftTransferConfig { open: self.open }
+	}
+}
+
+#[derive(Decode)]
+pub struct OldGlobalConfig<T: Config> {
+	pub mint: OldMintConfig<T>,
+	pub forge: ForgeConfig,
+	pub transfer: OldTransferConfig<T>,
+	pub trade: OldTradeConfig<T>,
+	pub account: OldAccountConfig<T>,
+	pub nft_transfer: OldNftTransferConfig<T>,
+}
+
+impl<T> OldGlobalConfig<T>
+where
+	T: Config,
+{
+	fn migrate_to_v5(self) -> GlobalConfig<BlockNumberFor<T>> {
+		GlobalConfig {
+			mint: self.mint.migrate_to_v5(),
+			forge: self.forge,
+			transfer: self.transfer.migrate_to_v5(),
+			trade: self.trade.migrate_to_v5(),
+			nft_transfer: self.nft_transfer.migrate_to_v5(),
+		}
+	}
+}
+
+#[derive(Decode)]
 pub struct OldSeasonStatus {
 	pub early: bool,
 	pub active: bool,
@@ -129,6 +232,11 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		let current_version = Pallet::<T>::current_storage_version();
 		let onchain_version = Pallet::<T>::on_chain_storage_version();
 		if onchain_version == 4 && current_version == 5 {
+			let _ = GlobalConfigs::<T>::translate::<OldGlobalConfig<T>, _>(|old_config| {
+				log::info!(target: LOG_TARGET, "Updated GlobalConfig");
+				old_config.map(|old| old.migrate_to_v5())
+			});
+
 			let _ = CurrentSeasonStatus::<T>::translate::<OldSeasonStatus, _>(|maybe_old_value| {
 				maybe_old_value.map(|old_value| {
 					log::info!(target: LOG_TARGET, "Migrated current season status");
