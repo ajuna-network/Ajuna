@@ -2001,31 +2001,49 @@ mod forging {
 	fn forge_should_reject_out_of_bound_sacrifices() {
 		let season = Season::default().min_sacrifices(3).max_sacrifices(5);
 
-		ExtBuilder::default().seasons(&[(1, season.clone())]).build().execute_with(|| {
-			run_to_block(season.start);
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_000_000)])
+			.free_mints(&[(ALICE, MintCount::MAX)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
 
-			for i in 0..season.min_sacrifices {
-				assert_noop!(
-					AAvatars::forge(
+				for _ in 0..3 {
+					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
-						H256::default(),
-						(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
-					),
-					Error::<Test>::TooFewSacrifices,
-				);
-			}
+						MintOption {
+							pack_size: MintPackSize::Six,
+							payment: MintPayment::Normal,
+							pack_type: PackType::Material,
+						}
+					));
+				}
 
-			for i in (season.max_sacrifices + 1)..(season.max_sacrifices + 5) {
-				assert_noop!(
-					AAvatars::forge(
-						RuntimeOrigin::signed(ALICE),
-						H256::default(),
-						(0..i).map(|_| H256::default()).collect::<Vec<_>>(),
-					),
-					Error::<Test>::TooManySacrifices,
-				);
-			}
-		});
+				let owned_avatars = Owners::<Test>::get(ALICE, 1);
+
+				for i in 0..season.min_sacrifices {
+					assert_noop!(
+						AAvatars::forge(
+							RuntimeOrigin::signed(ALICE),
+							owned_avatars[0],
+							(0..i).map(|i| owned_avatars[i as usize + 1]).collect::<Vec<_>>(),
+						),
+						Error::<Test>::TooFewSacrifices,
+					);
+				}
+
+				for i in (season.max_sacrifices + 1)..(season.max_sacrifices + 5) {
+					assert_noop!(
+						AAvatars::forge(
+							RuntimeOrigin::signed(ALICE),
+							owned_avatars[0],
+							(0..i).map(|i| owned_avatars[i as usize + 1]).collect::<Vec<_>>(),
+						),
+						Error::<Test>::TooManySacrifices,
+					);
+				}
+			});
 	}
 
 	#[test]
@@ -2074,20 +2092,47 @@ mod forging {
 
 	#[test]
 	fn forge_should_reject_unknown_season_calls() {
-		ExtBuilder::default().build().execute_with(|| {
-			CurrentSeasonStatus::<Test>::mutate(|status| {
-				status.season_id = 123;
-				status.active = true;
-			});
-			assert_noop!(
-				AAvatars::forge(
+		let season = Season::default();
+
+		ExtBuilder::default()
+			.seasons(&[(1, season.clone())])
+			.balances(&[(ALICE, 1_000_000)])
+			.free_mints(&[(ALICE, MintCount::MAX)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+
+				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(ALICE),
-					H256::default(),
-					vec![H256::default()]
-				),
-				Error::<Test>::UnknownSeason,
-			);
-		});
+					MintOption {
+						pack_size: MintPackSize::Six,
+						payment: MintPayment::Normal,
+						pack_type: PackType::Material,
+					}
+				));
+
+				let owned_avatars = Owners::<Test>::get(ALICE, 1);
+
+				CurrentSeasonStatus::<Test>::mutate(|status| {
+					status.season_id = 123;
+					status.active = true;
+				});
+
+				Avatars::<Test>::mutate(owned_avatars[0], |maybe_avatar| {
+					if let Some((_, ref mut avatar)) = maybe_avatar {
+						avatar.season_id = 123;
+					}
+				});
+
+				assert_noop!(
+					AAvatars::forge(
+						RuntimeOrigin::signed(ALICE),
+						owned_avatars[0],
+						vec![owned_avatars[1]]
+					),
+					Error::<Test>::UnknownSeason,
+				);
+			});
 	}
 
 	#[test]
