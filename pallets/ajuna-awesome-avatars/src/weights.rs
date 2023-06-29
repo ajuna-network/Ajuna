@@ -50,7 +50,6 @@ pub trait WeightInfo {
 	fn set_free_mints() -> Weight;
 	fn lock_avatar(n: u32, ) -> Weight;
 	fn unlock_avatar(n: u32, ) -> Weight;
-	fn fix_variation() -> Weight;
 	fn set_service_account() -> Weight;
 	fn prepare_avatar() -> Weight;
 	fn unprepare_avatar() -> Weight;
@@ -504,17 +503,6 @@ impl<T: frame_system::Config> WeightInfo for AjunaWeight<T> {
 		Weight::from_parts(910_723_452, 18812)
 			.saturating_add(T::DbWeight::get().reads(20_u64))
 			.saturating_add(T::DbWeight::get().writes(19_u64))
-	}
-	/// Storage: AwesomeAvatars Avatars (r:1 w:1)
-	/// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(173), added: 2648, mode: MaxEncodedLen)
-	fn fix_variation() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `257`
-		//  Estimated: `3638`
-		// Minimum execution time: 20_578_000 picoseconds.
-		Weight::from_parts(21_552_000, 3638)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	/// Storage: AwesomeAvatars ServiceAccount (r:0 w:1)
 	/// Proof: AwesomeAvatars ServiceAccount (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
@@ -1029,17 +1017,6 @@ impl WeightInfo for () {
 		Weight::from_parts(910_723_452, 18812)
 			.saturating_add(RocksDbWeight::get().reads(20_u64))
 			.saturating_add(RocksDbWeight::get().writes(19_u64))
-	}
-	/// Storage: AwesomeAvatars Avatars (r:1 w:1)
-	/// Proof: AwesomeAvatars Avatars (max_values: None, max_size: Some(173), added: 2648, mode: MaxEncodedLen)
-	fn fix_variation() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `257`
-		//  Estimated: `3638`
-		// Minimum execution time: 20_578_000 picoseconds.
-		Weight::from_parts(21_552_000, 3638)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	/// Storage: AwesomeAvatars ServiceAccount (r:0 w:1)
 	/// Proof: AwesomeAvatars ServiceAccount (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
