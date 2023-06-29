@@ -876,36 +876,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Fix the variation of an avatar's DNA affected by a bug.
-		///
-		/// A trivial bug was introduced to incorrectly represent the 3rd component's variation,
-		/// which should be the same as that of the 2nd. Instead of fixing the DNAs via migration,
-		/// we allow players freedom to choose to fix these affected DNAs since they might prefer
-		/// the existing looks.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(17)]
-		#[pallet::weight(T::WeightInfo::fix_variation())]
-		pub fn fix_variation(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-			let mut avatar = Self::ensure_ownership(&account, &avatar_id)?;
-
-			// Update the variation of the 3rd component to be the same as that of the 2nd by
-			// copying the rightmost 4 bits of dna[1] to the dna[2]
-			avatar.dna[2] = (avatar.dna[2] & 0b1111_0000) | (avatar.dna[1] & 0b0000_1111);
-
-			Avatars::<T>::insert(avatar_id, (account, avatar));
-
-			Ok(())
-		}
-
 		/// Set a service account.
 		///
 		/// The origin of this call must be root. A service account has sufficient privilege to call
 		/// the `prepare_ipfs` extrinsic.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(18)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(T::WeightInfo::set_service_account())]
 		pub fn set_service_account(
 			origin: OriginFor<T>,
@@ -924,7 +901,7 @@ pub mod pallet {
 		/// event is emitted to be picked up by our external service that interacts with the IPFS.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(19)]
+		#[pallet::call_index(18)]
 		#[pallet::weight(T::WeightInfo::prepare_avatar())]
 		pub fn prepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -949,7 +926,7 @@ pub mod pallet {
 		/// the IPFS upload process.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(20)]
+		#[pallet::call_index(19)]
 		#[pallet::weight(T::WeightInfo::unprepare_avatar())]
 		pub fn unprepare_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
@@ -970,7 +947,7 @@ pub mod pallet {
 		/// storing their CIDs.
 		//
 		/// Weight: `O(1)`
-		#[pallet::call_index(21)]
+		#[pallet::call_index(20)]
 		#[pallet::weight(T::WeightInfo::prepare_ipfs())]
 		pub fn prepare_ipfs(
 			origin: OriginFor<T>,

@@ -541,21 +541,6 @@ benchmarks! {
 		assert_last_event::<T>(Event::AvatarUnlocked { avatar_id })
 	}
 
-	fix_variation {
-		let name = "player";
-		create_avatars::<T>(name, 1)?;
-
-		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get().season_id;
-		let avatar_id = Owners::<T>::get(&player, season_id)[0];
-		let (_owner, original_avatar) = Avatars::<T>::get(avatar_id).unwrap();
-	}: _(RawOrigin::Signed(player), avatar_id)
-	verify {
-		let (_owner, updated_avatar) = Avatars::<T>::get(avatar_id).unwrap();
-		assert!(original_avatar.dna[1] & 0b0000_1111 != original_avatar.dna[2] & 0b0000_1111);
-		assert!(updated_avatar.dna[1] & 0b0000_1111 == updated_avatar.dna[2] & 0b0000_1111);
-	}
-
 	set_service_account {
 		let service_account = account::<T>("sa");
 	}: _(RawOrigin::Root, service_account.clone())
