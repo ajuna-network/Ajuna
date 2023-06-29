@@ -2,18 +2,18 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn build_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (leader_id, mut leader) = input_leader;
+
 		let mut output_sacrifices = Vec::with_capacity(input_sacrifices.len());
 
-		let leader_spec_bytes = AvatarUtils::read_full_spec_bytes(&leader);
-
-		let unord_1 = AvatarUtils::bits_to_enums::<MaterialItemType>(leader_spec_bytes[0] as u32);
-		let pat_1 = AvatarUtils::bits_order_to_enum(leader_spec_bytes[1] as u32, 4, unord_1);
+		let leader_spec_bytes = leader.get_specs();
+		let unord_1 = DnaUtils::bits_to_enums::<MaterialItemType>(leader_spec_bytes[0] as u32);
+		let pat_1 = DnaUtils::bits_order_to_enum(leader_spec_bytes[1] as u32, 4, unord_1);
 
 		let quantities = [
 			leader_spec_bytes[3],
@@ -24,20 +24,17 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let sacrifice_pattern = input_sacrifices
 			.iter()
-			.map(|(_, sacrifice)| {
-				AvatarUtils::read_attribute_as::<MaterialItemType>(
-					sacrifice,
-					&AvatarAttributes::ItemSubType,
-				)
-			})
+			.map(|(_, sacrifice)| sacrifice.get_item_sub_type::<MaterialItemType>())
 			.collect::<Vec<MaterialItemType>>();
 
 		let level = {
 			let mut lvl = 0;
 			for i in 1..6 {
-				if input_sacrifices.iter().enumerate().all(|(index, (_, sacrifice))| {
-					AvatarUtils::can_use_avatar(sacrifice, quantities[index] * i)
-				}) {
+				if input_sacrifices
+					.iter()
+					.enumerate()
+					.all(|(index, (_, sacrifice))| sacrifice.can_use(quantities[index] * i))
+				{
 					lvl = i;
 				}
 			}
@@ -46,24 +43,22 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let mut soul_points = 0 as SoulCount;
 
-		let can_use_leader = AvatarUtils::can_use_avatar(&leader, 1);
-
 		let mut leader_consumed = false;
 
-		if sacrifice_pattern == pat_1 && can_use_leader && level > 0 {
-			let (_, consumed, out_souls) = AvatarUtils::use_avatar(&mut leader, 1);
+		if sacrifice_pattern == pat_1 && leader.can_use(1) && level > 0 {
+			let (_, consumed, out_souls) = leader.use_avatar(1);
 			soul_points += out_souls;
 			leader_consumed = consumed;
 
 			for (i, (sacrifice_id, mut sacrifice)) in input_sacrifices.into_iter().enumerate() {
 				let (_, avatar_consumed, out_soul_points) =
-					AvatarUtils::use_avatar(&mut sacrifice, quantities[i] * level);
+					sacrifice.use_avatar(quantities[i] * level);
 				soul_points += out_soul_points;
 
 				let sacrifice_output = if avatar_consumed {
 					ForgeOutput::Consumed(sacrifice_id)
 				} else {
-					ForgeOutput::Forged((sacrifice_id, sacrifice), 0)
+					ForgeOutput::Forged((sacrifice_id, sacrifice.unwrap()), 0)
 				};
 
 				output_sacrifices.push(sacrifice_output);
@@ -78,20 +73,10 @@ impl<T: Config> AvatarCombinator<T> {
 				if soul_points > 0 &&
 					(build_prop * MAX_BYTE >= hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC)
 				{
-					let pet_type = AvatarUtils::read_attribute_as::<PetType>(
-						&leader,
-						&AvatarAttributes::ClassType2,
-					);
-
-					let slot_type = AvatarUtils::read_attribute_as::<SlotType>(
-						&leader,
-						&AvatarAttributes::ClassType1,
-					);
-
-					let equippable_item_type = AvatarUtils::read_spec_byte_as::<EquippableItemType>(
-						&leader,
-						&AvatarSpecBytes::SpecByte3,
-					);
+					let pet_type = leader.get_class_type_2::<PetType>();
+					let slot_type = leader.get_class_type_1::<SlotType>();
+					let equippable_item_type =
+						leader.get_spec::<EquippableItemType>(SpecIdx::Byte3);
 
 					let rarity_value = {
 						let rarity_val = hash_provider.hash[i] % 8 + 1;
@@ -139,8 +124,7 @@ impl<T: Config> AvatarCombinator<T> {
 			}
 
 			for _ in 0..soul_points as usize {
-				let sacrifice_index =
-					hash_provider.get_hash_byte() as usize % generated_equippables.len();
+				let sacrifice_index = hash_provider.next() as usize % generated_equippables.len();
 				generated_equippables[sacrifice_index % 32].souls.saturating_inc();
 			}
 
@@ -148,15 +132,17 @@ impl<T: Config> AvatarCombinator<T> {
 				.extend(generated_equippables.into_iter().map(|gen| ForgeOutput::Minted(gen)));
 		} else {
 			// TODO: Incomplete
-			output_sacrifices.extend(
-				input_sacrifices.into_iter().map(|sacrifice| ForgeOutput::Forged(sacrifice, 0)),
-			);
+			output_sacrifices.extend(input_sacrifices.into_iter().map(
+				|(sacrifice_id, sacrifice)| {
+					ForgeOutput::Forged((sacrifice_id, sacrifice.unwrap()), 0)
+				},
+			));
 		}
 
 		let leader_output = if leader_consumed {
 			LeaderForgeOutput::Consumed(leader_id)
 		} else {
-			LeaderForgeOutput::Forged((leader_id, leader), 0)
+			LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0)
 		};
 
 		Ok((leader_output, output_sacrifices))
@@ -184,7 +170,7 @@ mod test {
 			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
+			let pattern = DnaUtils::create_pattern::<MaterialItemType>(
 				base_seed,
 				equip_type.as_byte() as usize,
 			);
@@ -207,11 +193,11 @@ mod test {
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
-			let total_soul_points = blueprint_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = blueprint_input_1.1.get_souls() +
+				material_input_1.1.get_souls() +
+				material_input_2.1.get_souls() +
+				material_input_3.1.get_souls() +
+				material_input_4.1.get_souls();
 			assert_eq!(total_soul_points, 15);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
@@ -232,26 +218,21 @@ mod test {
 			assert_eq!(
 				sacrifice_output
 					.iter()
-					.filter(|output| {
-						is_minted_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
-								(
-									AvatarAttributes::ItemSubType,
-									EquippableItemType::ArmorBase.as_byte(),
-								),
-							],
-						)
+					.filter(|output| if let ForgeOutput::Minted(avatar) = output {
+						WrappedAvatar::new(avatar.clone())
+							.has_full_type(ItemType::Equippable, EquippableItemType::ArmorBase)
+					} else {
+						false
 					})
 					.count(),
 				4
 			);
 
-			assert!(is_leader_forged_with_attributes(
-				&leader_output,
-				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
-			));
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 
@@ -271,7 +252,7 @@ mod test {
 			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
+			let pattern = DnaUtils::create_pattern::<MaterialItemType>(
 				base_seed,
 				equip_type.as_byte() as usize,
 			);
@@ -294,11 +275,11 @@ mod test {
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
-			let total_soul_points = blueprint_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = blueprint_input_1.1.get_souls() +
+				material_input_1.1.get_souls() +
+				material_input_2.1.get_souls() +
+				material_input_3.1.get_souls() +
+				material_input_4.1.get_souls();
 			assert_eq!(total_soul_points, 20);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
@@ -320,17 +301,11 @@ mod test {
 			assert_eq!(
 				sacrifice_output
 					.iter()
-					.filter(|output| {
-						is_minted_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
-								(
-									AvatarAttributes::ItemSubType,
-									EquippableItemType::ArmorBase.as_byte(),
-								),
-							],
-						)
+					.filter(|output| if let ForgeOutput::Minted(avatar) = output {
+						WrappedAvatar::new(avatar.clone())
+							.has_full_type(ItemType::Equippable, EquippableItemType::ArmorBase)
+					} else {
+						false
 					})
 					.count(),
 				4
@@ -340,22 +315,22 @@ mod test {
 				assert_eq!(
 					sacrifice_output
 						.iter()
-						.filter(|output| is_forged_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Material.as_byte()),
-								(AvatarAttributes::ItemSubType, material.as_byte()),
-							]
-						))
+						.filter(|output| if let ForgeOutput::Forged((_, avatar), _) = output {
+							WrappedAvatar::new(avatar.clone())
+								.has_full_type(ItemType::Material, material)
+						} else {
+							false
+						})
 						.count(),
 					1
 				);
 			}
 
-			assert!(is_leader_forged_with_attributes(
-				&leader_output,
-				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
-			));
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 
@@ -375,7 +350,7 @@ mod test {
 			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
+			let pattern = DnaUtils::create_pattern::<MaterialItemType>(
 				base_seed,
 				equip_type.as_byte() as usize,
 			);
@@ -398,11 +373,11 @@ mod test {
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
-			let total_soul_points = blueprint_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = blueprint_input_1.1.get_souls() +
+				material_input_1.1.get_souls() +
+				material_input_2.1.get_souls() +
+				material_input_3.1.get_souls() +
+				material_input_4.1.get_souls();
 			assert_eq!(total_soul_points, 105);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
@@ -424,17 +399,11 @@ mod test {
 			assert_eq!(
 				sacrifice_output
 					.iter()
-					.filter(|output| {
-						is_minted_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
-								(
-									AvatarAttributes::ItemSubType,
-									EquippableItemType::ArmorBase.as_byte(),
-								),
-							],
-						)
+					.filter(|output| if let ForgeOutput::Minted(avatar) = output {
+						WrappedAvatar::new(avatar.clone())
+							.has_full_type(ItemType::Equippable, EquippableItemType::ArmorBase)
+					} else {
+						false
 					})
 					.count(),
 				6
@@ -444,22 +413,22 @@ mod test {
 				assert_eq!(
 					sacrifice_output
 						.iter()
-						.filter(|output| is_forged_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Material.as_byte()),
-								(AvatarAttributes::ItemSubType, material.as_byte()),
-							]
-						))
+						.filter(|output| if let ForgeOutput::Forged((_, avatar), _) = output {
+							WrappedAvatar::new(avatar.clone())
+								.has_full_type(ItemType::Material, material)
+						} else {
+							false
+						})
 						.count(),
 					1
 				);
 			}
 
-			assert!(is_leader_forged_with_attributes(
-				&leader_output,
-				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
-			));
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 
@@ -479,7 +448,7 @@ mod test {
 			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
+			let pattern = DnaUtils::create_pattern::<MaterialItemType>(
 				base_seed,
 				equip_type.as_byte() as usize,
 			);
@@ -502,11 +471,11 @@ mod test {
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
-			let total_soul_points = blueprint_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = blueprint_input_1.1.get_souls() +
+				material_input_1.1.get_souls() +
+				material_input_2.1.get_souls() +
+				material_input_3.1.get_souls() +
+				material_input_4.1.get_souls();
 			assert_eq!(total_soul_points, 15);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
@@ -529,22 +498,22 @@ mod test {
 				assert_eq!(
 					sacrifice_output
 						.iter()
-						.filter(|output| is_forged_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Material.as_byte()),
-								(AvatarAttributes::ItemSubType, material.as_byte()),
-							]
-						))
+						.filter(|output| if let ForgeOutput::Forged((_, avatar), _) = output {
+							WrappedAvatar::new(avatar.clone())
+								.has_full_type(ItemType::Material, material)
+						} else {
+							false
+						})
 						.count(),
 					1
 				);
 			}
 
-			assert!(is_leader_forged_with_attributes(
-				&leader_output,
-				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
-			));
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 
@@ -564,7 +533,7 @@ mod test {
 			let equip_type = EquippableItemType::ArmorBase;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
+			let pattern = DnaUtils::create_pattern::<MaterialItemType>(
 				base_seed,
 				equip_type.as_byte() as usize,
 			);
@@ -596,11 +565,11 @@ mod test {
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
-			let total_soul_points = blueprint_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = blueprint_input_1.1.get_souls() +
+				material_input_1.1.get_souls() +
+				material_input_2.1.get_souls() +
+				material_input_3.1.get_souls() +
+				material_input_4.1.get_souls();
 			assert_eq!(total_soul_points, 17);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
@@ -623,22 +592,22 @@ mod test {
 				assert_eq!(
 					sacrifice_output
 						.iter()
-						.filter(|output| is_forged_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Material.as_byte()),
-								(AvatarAttributes::ItemSubType, material.as_byte()),
-							]
-						))
+						.filter(|output| if let ForgeOutput::Forged((_, avatar), _) = output {
+							WrappedAvatar::new(avatar.clone())
+								.has_full_type(ItemType::Material, material)
+						} else {
+							false
+						})
 						.count(),
 					1
 				);
 			}
 
-			assert!(is_leader_forged_with_attributes(
-				&leader_output,
-				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
-			));
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 
@@ -658,7 +627,7 @@ mod test {
 			let equip_type = EquippableItemType::ArmorComponent2;
 
 			let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-			let pattern = AvatarUtils::create_pattern::<MaterialItemType>(
+			let pattern = DnaUtils::create_pattern::<MaterialItemType>(
 				base_seed,
 				equip_type.as_byte() as usize,
 			);
@@ -681,11 +650,11 @@ mod test {
 			let blueprint_input_1 =
 				create_random_blueprint(&ALICE, &pet_type, &slot_type, &equip_type, &pattern, 5);
 
-			let total_soul_points = blueprint_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = blueprint_input_1.1.get_souls() +
+				material_input_1.1.get_souls() +
+				material_input_2.1.get_souls() +
+				material_input_3.1.get_souls() +
+				material_input_4.1.get_souls();
 			assert_eq!(total_soul_points, 15);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::build_avatars(
@@ -706,26 +675,23 @@ mod test {
 			assert_eq!(
 				sacrifice_output
 					.iter()
-					.filter(|output| {
-						is_minted_with_attributes(
-							output,
-							&[
-								(AvatarAttributes::ItemType, ItemType::Equippable.as_byte()),
-								(
-									AvatarAttributes::ItemSubType,
-									EquippableItemType::ArmorComponent2.as_byte(),
-								),
-							],
+					.filter(|output| if let ForgeOutput::Minted(avatar) = output {
+						WrappedAvatar::new(avatar.clone()).has_full_type(
+							ItemType::Equippable,
+							EquippableItemType::ArmorComponent2,
 						)
+					} else {
+						false
 					})
 					.count(),
 				4
 			);
 
-			assert!(is_leader_forged_with_attributes(
-				&leader_output,
-				&[(AvatarAttributes::ItemType, ItemType::Blueprint.as_byte())]
-			));
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+			} else {
+				panic!("LeaderForgeOutput should be Forged!");
+			}
 		});
 	}
 
@@ -770,7 +736,7 @@ mod test {
 				let mutate_fn = move |avatar: Avatar| {
 					let mut avatar = avatar;
 					avatar.souls = souls;
-					avatar
+					WrappedAvatar::new(avatar)
 				};
 
 				Some(mutate_fn)
@@ -783,11 +749,13 @@ mod test {
 			let sac_4 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[4]), avatar_fn(239));
 
 			let total_souls =
-				leader.1.souls + sac_1.1.souls + sac_2.1.souls + sac_3.1.souls + sac_4.1.souls;
+				leader.1.get_souls() +
+					sac_1.1.get_souls() + sac_2.1.get_souls() +
+					sac_3.1.get_souls() + sac_4.1.get_souls();
 			assert_eq!(total_souls, 953);
 
-			assert_eq!(AvatarUtils::read_attribute(&leader.1, &AvatarAttributes::Quantity), 5);
-			assert_eq!(leader.1.souls, 5);
+			assert_eq!(leader.1.get_quantity(), 5);
+			assert_eq!(leader.1.get_souls(), 5);
 
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(
@@ -810,16 +778,12 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 4);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-					&avatar,
-					&AvatarAttributes::ItemType,
-				);
+				let item_type = DnaUtils::read_attribute::<ItemType>(&avatar, AvatarAttr::ItemType);
 				assert_eq!(item_type, ItemType::Blueprint);
 
 				assert_eq!(avatar.souls, 4);
 
-				let leader_quantity =
-					AvatarUtils::read_attribute(&avatar, &AvatarAttributes::Quantity);
+				let leader_quantity = DnaUtils::read_attribute_raw(&avatar, AvatarAttr::Quantity);
 				assert_eq!(leader_quantity, 4);
 
 				let soul_points = sacrifice_output

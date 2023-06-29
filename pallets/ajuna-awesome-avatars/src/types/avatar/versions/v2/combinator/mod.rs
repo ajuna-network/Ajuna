@@ -14,6 +14,8 @@ mod tinker;
 use super::*;
 use sp_std::mem::variant_count;
 
+pub(super) type WrappedForgeItem<T> = (AvatarIdOf<T>, WrappedAvatar);
+
 pub(super) struct AvatarCombinator<T: Config>(pub PhantomData<T>);
 
 impl<T: Config> AvatarCombinator<T> {
@@ -21,8 +23,8 @@ impl<T: Config> AvatarCombinator<T> {
 		forge_type: ForgeType,
 		season_id: SeasonId,
 		_season: &SeasonOf<T>,
-		leader: ForgeItem<T>,
-		sacrifices: Vec<ForgeItem<T>>,
+		leader: WrappedForgeItem<T>,
+		sacrifices: Vec<WrappedForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		match forge_type {
@@ -61,36 +63,36 @@ impl<T: Config> AvatarCombinator<T> {
 	}
 
 	fn forge_none(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		Ok((
-			LeaderForgeOutput::Forged(input_leader, 0),
+			LeaderForgeOutput::Forged((input_leader.0, input_leader.1.unwrap()), 0),
 			input_sacrifices
 				.into_iter()
-				.map(|sacrifice| ForgeOutput::Forged(sacrifice, 0))
+				.map(|sacrifice| ForgeOutput::Forged((sacrifice.0, sacrifice.1.unwrap()), 0))
 				.collect(),
 		))
 	}
 
 	fn match_avatars(
-		input_leader: ForgeItem<T>,
-		sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		sacrifices: Vec<WrappedForgeItem<T>>,
 		rarity_level: u8,
 		hash_provider: &mut HashProvider<T, 32>,
-	) -> (ForgeItem<T>, Vec<ForgeItem<T>>) {
+	) -> (WrappedForgeItem<T>, Vec<WrappedForgeItem<T>>) {
 		let (leader_id, mut leader) = input_leader;
 
 		let mut matches: u8 = 0;
 		let mut no_fit: u8 = 0;
 		let mut matching_score = Vec::new();
 
-		let mut leader_progress_array = AvatarUtils::read_progress_array(&leader);
+		let mut leader_progress_array = leader.get_progress();
 
-		for sacrifice in sacrifices.iter() {
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&sacrifice.1);
+		for (_, sacrifice) in sacrifices.iter() {
+			let sacrifice_progress_array = sacrifice.get_progress();
 
-			if let Some(matched_indexes) = AvatarUtils::is_array_match(
+			if let Some(matched_indexes) = DnaUtils::is_progress_match(
 				leader_progress_array,
 				sacrifice_progress_array,
 				rarity_level,
@@ -125,10 +127,12 @@ impl<T: Config> AvatarCombinator<T> {
 				}
 			}
 
-			AvatarUtils::write_progress_array(&mut leader, leader_progress_array);
+			leader.set_progress(leader_progress_array);
 		}
 
-		leader.souls += sacrifices.iter().map(|(_, sacrifice)| sacrifice.souls).sum::<SoulCount>();
+		leader.add_souls(
+			sacrifices.iter().map(|(_, sacrifice)| sacrifice.get_souls()).sum::<SoulCount>(),
+		);
 
 		((leader_id, leader), sacrifices)
 	}
@@ -148,7 +152,7 @@ mod match_test {
 				0xCC, 0xFD, 0x01, 0xB4,
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(hash_bytes);
-			let unit_closure = |avatar| avatar;
+			let unit_closure = |avatar| WrappedAvatar::new(avatar);
 
 			let test_set: Vec<([u8; 32], [u8; 32], usize, (usize, u8), [u8; 11])> = vec![
 				(
@@ -246,10 +250,10 @@ mod match_test {
 				assert_eq!(sacrifices.len(), sac_len, "Test matched_avatars len for case {}", i);
 
 				if top_bit_index == 0 {
-					assert_eq!(leader.dna[0], top_1_bit, "Test top_bit for case {}", i);
+					assert_eq!(leader.get_dna()[0], top_1_bit, "Test top_bit for case {}", i);
 				} else {
 					assert_eq!(
-						sacrifices[top_bit_index - 1].1.dna[0],
+						sacrifices[top_bit_index - 1].1.get_dna()[0],
 						top_1_bit,
 						"Test top_bit for case {}",
 						i
@@ -257,7 +261,7 @@ mod match_test {
 				}
 
 				assert_eq!(
-					AvatarUtils::read_progress_array(&leader),
+					leader.get_progress(),
 					progress_array_1,
 					"Test progress_array for case {}",
 					i

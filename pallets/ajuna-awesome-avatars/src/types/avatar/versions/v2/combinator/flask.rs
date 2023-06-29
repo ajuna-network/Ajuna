@@ -2,8 +2,8 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn flask_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (leader_id, mut leader) = input_leader;
@@ -11,74 +11,42 @@ impl<T: Config> AvatarCombinator<T> {
 		let glimmer_count = input_sacrifices
 			.iter()
 			.filter(|(_, sacrifice)| {
-				AvatarUtils::has_attribute_set_with_values(
-					sacrifice,
-					&[
-						(AvatarAttributes::ItemType, ItemType::Essence.as_byte()),
-						(AvatarAttributes::ItemSubType, EssenceItemType::Glimmer.as_byte()),
-					],
-				)
+				sacrifice.has_full_type(ItemType::Essence, EssenceItemType::Glimmer)
 			})
 			.count();
 
 		let flask = input_sacrifices.iter().find(|(_, sacrifice)| {
-			let is_essence = AvatarUtils::has_attribute_with_value(
-				sacrifice,
-				&AvatarAttributes::ItemType,
-				ItemType::Essence,
-			);
+			let item_sub_type = sacrifice.get_item_sub_type::<EssenceItemType>();
 
-			let item_sub_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
-				sacrifice,
-				&AvatarAttributes::ItemSubType,
-			);
-
-			is_essence &&
+			sacrifice.has_type(ItemType::Essence) &&
 				(item_sub_type == EssenceItemType::PaintFlask ||
 					item_sub_type == EssenceItemType::GlowFlask)
 		});
 
 		if let Some((_, flask_avatar)) = flask {
-			let mut leader_progress_array = AvatarUtils::read_progress_array(&leader);
-			let flask_progress_array = AvatarUtils::read_progress_array(flask_avatar);
+			let mut leader_progress_array = leader.get_progress();
+			let flask_progress_array = flask_avatar.get_progress();
 
-			if let Some(mut matches) = AvatarUtils::is_array_match(
+			if let Some(mut matches) = DnaUtils::is_progress_match(
 				leader_progress_array,
 				flask_progress_array,
 				MATCH_ALGO_START_RARITY.as_byte(),
 			) {
-				let flask_essence_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
-					flask_avatar,
-					&AvatarAttributes::ItemSubType,
-				);
+				let flask_essence_type = flask_avatar.get_item_sub_type::<EssenceItemType>();
 
-				let flask_spec_byte_1 =
-					AvatarUtils::read_spec_byte(flask_avatar, &AvatarSpecBytes::SpecByte1);
-				let leader_spec_byte_2 =
-					AvatarUtils::read_spec_byte(&leader, &AvatarSpecBytes::SpecByte2);
+				let flask_spec_byte_1 = flask_avatar.get_spec::<u8>(SpecIdx::Byte1);
+				let leader_spec_byte_2 = leader.get_spec::<u8>(SpecIdx::Byte2);
 
 				if flask_essence_type == EssenceItemType::PaintFlask {
-					let leader_spec_byte_1 =
-						AvatarUtils::read_spec_byte(&leader, &AvatarSpecBytes::SpecByte1);
-					let flask_spec_byte_2 =
-						AvatarUtils::read_spec_byte(flask_avatar, &AvatarSpecBytes::SpecByte2);
+					let leader_spec_byte_1 = leader.get_spec::<u8>(SpecIdx::Byte1);
+					let flask_spec_byte_2 = flask_avatar.get_spec::<u8>(SpecIdx::Byte2);
 
-					AvatarUtils::write_spec_byte(
-						&mut leader,
-						&AvatarSpecBytes::SpecByte1,
-						(leader_spec_byte_1 & 0x0F) | flask_spec_byte_1,
-					);
-					AvatarUtils::write_spec_byte(
-						&mut leader,
-						&AvatarSpecBytes::SpecByte2,
-						leader_spec_byte_2 | flask_spec_byte_2,
-					);
+					leader
+						.set_spec(SpecIdx::Byte1, (leader_spec_byte_1 & 0x0F) | flask_spec_byte_1);
+					leader.set_spec(SpecIdx::Byte2, leader_spec_byte_2 | flask_spec_byte_2);
 				} else if flask_essence_type == EssenceItemType::GlowFlask {
-					AvatarUtils::write_spec_byte(
-						&mut leader,
-						&AvatarSpecBytes::SpecByte2,
-						(leader_spec_byte_2 & 0x0F) | flask_spec_byte_1,
-					);
+					leader
+						.set_spec(SpecIdx::Byte2, (leader_spec_byte_2 & 0x0F) | flask_spec_byte_1);
 				}
 
 				let mut index = matches.remove(0) as usize;
@@ -99,14 +67,9 @@ impl<T: Config> AvatarCombinator<T> {
 				}
 
 				let rarity_type =
-					AvatarUtils::read_lowest_progress_byte(&leader_progress_array, &ByteType::High);
-				AvatarUtils::write_attribute(
-					&mut leader,
-					&AvatarAttributes::RarityTier,
-					rarity_type,
-				);
-
-				AvatarUtils::write_progress_array(&mut leader, leader_progress_array);
+					DnaUtils::lowest_progress_byte(&leader_progress_array, ByteType::High);
+				leader.set_rarity(RarityTier::from_byte(rarity_type));
+				leader.set_progress(leader_progress_array);
 			}
 		}
 
@@ -114,20 +77,20 @@ impl<T: Config> AvatarCombinator<T> {
 			let mut new_souls = 0;
 
 			for (_, sacrifice) in &input_sacrifices {
-				new_souls += sacrifice.souls;
+				new_souls += sacrifice.get_souls();
 			}
 
 			new_souls
 		};
 
-		leader.souls += new_souls;
+		leader.add_souls(new_souls);
 
 		let output_vec: Vec<ForgeOutput<T>> = input_sacrifices
 			.into_iter()
 			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
-		Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), output_vec))
+		Ok((LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0), output_vec))
 	}
 }
 
@@ -183,19 +146,19 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
 				0x45, 0x41, 0x55, 0x43,
 			];
-			assert_eq!(armor_component.1.dna.as_slice(), &expected_dna);
+			assert_eq!(armor_component.1.get_dna().as_slice(), &expected_dna);
 
 			let expected_leader_progress_array =
 				[0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
-			let leader_progress_array = AvatarUtils::read_progress_array(&armor_component.1);
+			let leader_progress_array = armor_component.1.get_progress();
 			assert_eq!(leader_progress_array, expected_leader_progress_array);
 
 			let expected_sacrifice_progress_array =
 				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x41];
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&paint_flask.1);
+			let sacrifice_progress_array = paint_flask.1.get_progress();
 			assert_eq!(sacrifice_progress_array, expected_sacrifice_progress_array);
 
-			assert!(AvatarUtils::is_array_match(
+			assert!(DnaUtils::is_progress_match(
 				leader_progress_array,
 				sacrifice_progress_array,
 				MATCH_ALGO_START_RARITY.as_byte()
@@ -247,7 +210,7 @@ mod test {
 			let unit_closure = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 623;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let avatar =
@@ -267,10 +230,10 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
 				0x45, 0x41, 0x55, 0x43,
 			];
-			assert_eq!(avatar.1.dna.as_slice(), &expected_dna);
+			assert_eq!(avatar.1.get_dna().as_slice(), &expected_dna);
 
-			let leader_progress_array = AvatarUtils::read_progress_array(&avatar.1);
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
+			let leader_progress_array = avatar.1.get_progress();
+			let sacrifice_progress_array = glow_flask.1.get_progress();
 
 			let expected_progress_array_leader =
 				[0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
@@ -280,7 +243,7 @@ mod test {
 				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x42];
 			assert_eq!(sacrifice_progress_array, expected_progress_array_other);
 
-			assert!(AvatarUtils::is_array_match(
+			assert!(DnaUtils::is_progress_match(
 				leader_progress_array,
 				sacrifice_progress_array,
 				MATCH_ALGO_START_RARITY.as_byte()
@@ -359,10 +322,10 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
 				0x45, 0x41, 0x55, 0x43,
 			];
-			assert_eq!(armor_component.1.dna.as_slice(), &expected_dna);
+			assert_eq!(armor_component.1.get_dna().as_slice(), &expected_dna);
 
-			let leader_progress_array = AvatarUtils::read_progress_array(&armor_component.1);
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
+			let leader_progress_array = armor_component.1.get_progress();
+			let sacrifice_progress_array = glow_flask.1.get_progress();
 
 			let expected_progress_array_leader =
 				[0x44, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
@@ -372,7 +335,7 @@ mod test {
 				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x42];
 			assert_eq!(sacrifice_progress_array, expected_progress_array_other);
 
-			assert!(AvatarUtils::is_array_match(
+			assert!(DnaUtils::is_progress_match(
 				leader_progress_array,
 				sacrifice_progress_array,
 				MATCH_ALGO_START_RARITY.as_byte()
@@ -400,7 +363,7 @@ mod test {
 				];
 				assert_eq!(avatar.dna.as_slice(), &expected_dna);
 
-				let spec_byte_2 = AvatarUtils::read_spec_byte(&avatar, &AvatarSpecBytes::SpecByte2);
+				let spec_byte_2 = DnaUtils::read_spec_raw(&avatar, SpecIdx::Byte2);
 				assert_eq!(spec_byte_2, 0b0000_1110_u8);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
@@ -427,7 +390,7 @@ mod test {
 			let unit_closure = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 623;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let avatar =
@@ -447,10 +410,10 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40,
 				0x45, 0x41, 0x55, 0x43,
 			];
-			assert_eq!(avatar.1.dna.as_slice(), &expected_dna);
+			assert_eq!(avatar.1.get_dna().as_slice(), &expected_dna);
 
-			let leader_progress_array = AvatarUtils::read_progress_array(&avatar.1);
-			let sacrifice_progress_array = AvatarUtils::read_progress_array(&glow_flask.1);
+			let leader_progress_array = avatar.1.get_progress();
+			let sacrifice_progress_array = glow_flask.1.get_progress();
 
 			let expected_progress_array_leader =
 				[0x54, 0x42, 0x40, 0x41, 0x50, 0x51, 0x40, 0x45, 0x41, 0x55, 0x43];
@@ -460,7 +423,7 @@ mod test {
 				[0x45, 0x43, 0x54, 0x53, 0x54, 0x51, 0x52, 0x50, 0x54, 0x55, 0x41];
 			assert_eq!(sacrifice_progress_array, expected_progress_array_other);
 
-			assert!(AvatarUtils::is_array_match(
+			assert!(DnaUtils::is_progress_match(
 				leader_progress_array,
 				sacrifice_progress_array,
 				MATCH_ALGO_START_RARITY.as_byte()

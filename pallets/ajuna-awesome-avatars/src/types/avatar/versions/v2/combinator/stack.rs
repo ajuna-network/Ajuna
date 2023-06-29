@@ -2,8 +2,8 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn stack_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
@@ -11,24 +11,18 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let (mut new_quantity, new_souls) = input_sacrifices
 			.iter()
-			.map(|sacrifice| {
-				(
-					AvatarUtils::read_attribute(&sacrifice.1, &AvatarAttributes::Quantity) as u32,
-					sacrifice.1.souls,
-				)
-			})
+			.map(|(_, sacrifice)| (sacrifice.get_quantity() as u32, sacrifice.get_souls()))
 			.reduce(|(acc_qty, acc_souls), (qty, souls)| {
 				(acc_qty.saturating_add(qty), acc_souls.saturating_add(souls))
 			})
 			.unwrap_or_default();
 
-		let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity);
+		let leader_quantity = leader.get_quantity();
 
 		new_quantity = new_quantity.saturating_add(leader_quantity as u32);
 
 		let mut dust_quantity = if new_quantity > MAX_BYTE {
-			let leader_custom_type_1 =
-				AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType1);
+			let leader_custom_type_1 = leader.get_custom_type_1::<u8>();
 			let dust_qty = (new_quantity - MAX_BYTE) * leader_custom_type_1 as u32;
 			new_quantity = MAX_BYTE;
 			dust_qty
@@ -40,24 +34,23 @@ impl<T: Config> AvatarCombinator<T> {
 		let transform_per_cycle = ((exploit_level * exploit_level) + 1) as u8;
 		let add_prob_perc = 3 * (transform_per_cycle - 1) as u32;
 
-		AvatarUtils::write_attribute(&mut leader, &AvatarAttributes::Quantity, new_quantity as u8);
-		leader.souls = (leader.souls + new_souls).saturating_sub(dust_quantity);
+		leader.set_quantity(new_quantity as u8);
+		leader.set_souls((leader.get_souls() + new_souls).saturating_sub(dust_quantity));
 
 		let mut total_soul_points = 0;
 
 		for i in 0..input_sacrifices.len() {
 			if hash_provider.hash[i] as u32 * SCALING_FACTOR_PERC <
 				(STACK_PROB_PERC + add_prob_perc) * MAX_BYTE &&
-				AvatarUtils::can_use_avatar(&leader, transform_per_cycle)
+				leader.can_use(transform_per_cycle)
 			{
-				let (_, _, out_soul_points) =
-					AvatarUtils::use_avatar(&mut leader, transform_per_cycle);
+				let (_, _, out_soul_points) = leader.use_avatar(transform_per_cycle);
 				total_soul_points += out_soul_points;
 			}
 		}
 
-		let leader_forge_output = if leader.souls > 0 {
-			LeaderForgeOutput::Forged((leader_id, leader), 0)
+		let leader_forge_output = if leader.get_souls() > 0 {
+			LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0)
 		} else {
 			LeaderForgeOutput::Consumed(leader_id)
 		};
@@ -145,10 +138,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 16);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					8
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 8);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -183,10 +173,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 14);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					14
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 14);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -219,10 +206,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 100);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					100
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 100);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -244,10 +228,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 100);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					100
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 100);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -280,10 +261,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 200);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					100
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 100);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -306,10 +284,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, 200);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					100
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 100);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -350,7 +325,7 @@ mod test {
 				4,
 			);
 
-			let total_souls = blueprint_input_1.1.souls + blueprint_input_2.1.souls;
+			let total_souls = blueprint_input_1.1.get_souls() + blueprint_input_2.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				blueprint_input_1,
@@ -365,10 +340,7 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(leader_avatar.souls, total_souls);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					8
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 8);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -416,11 +388,11 @@ mod test {
 				4,
 			);
 
-			let total_souls = blueprint_input_1.1.souls +
-				blueprint_input_2.1.souls +
-				blueprint_input_3.1.souls +
-				blueprint_input_4.1.souls +
-				blueprint_input_5.1.souls;
+			let total_souls = blueprint_input_1.1.get_souls() +
+				blueprint_input_2.1.get_souls() +
+				blueprint_input_3.1.get_souls() +
+				blueprint_input_4.1.get_souls() +
+				blueprint_input_5.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				blueprint_input_1,
@@ -435,19 +407,14 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 4);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					16
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 16);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[4] {
-					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						avatar,
-						&AvatarAttributes::ItemType,
-					);
+					let item_type =
+						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType);
 					assert_eq!(item_type, ItemType::Essence);
 
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 2);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 2);
 
 					assert_eq!(avatar.souls + leader_avatar.souls, total_souls);
 				} else {
@@ -472,7 +439,7 @@ mod test {
 			let dust_input_1 = create_random_material(&ALICE, &MaterialItemType::Ceramics, u8::MAX);
 			let dust_input_2 = create_random_material(&ALICE, &MaterialItemType::Ceramics, u8::MAX);
 
-			let total_souls = dust_input_1.1.souls + dust_input_2.1.souls;
+			let total_souls = dust_input_1.1.get_souls() + dust_input_2.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				dust_input_1,
@@ -488,21 +455,16 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
+					DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity),
 					u8::MAX
 				);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						avatar,
-						&AvatarAttributes::ItemType,
-					);
+					let item_type =
+						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType);
 					assert_eq!(item_type, ItemType::Special);
 
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 
 					assert_eq!(avatar.souls + leader_avatar.souls, total_souls);
 				} else {
@@ -529,7 +491,7 @@ mod test {
 			let pet_part_input_2 =
 				create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::ArmBack, u8::MAX);
 
-			let total_souls = pet_part_input_1.1.souls + pet_part_input_2.1.souls;
+			let total_souls = pet_part_input_1.1.get_souls() + pet_part_input_2.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::stack_avatars(
 				pet_part_input_1,
@@ -545,21 +507,16 @@ mod test {
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
+					DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity),
 					u8::MAX
 				);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						avatar,
-						&AvatarAttributes::ItemType,
-					);
+					let item_type =
+						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType);
 					assert_eq!(item_type, ItemType::Special);
 
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 
 					assert_eq!(avatar.souls + leader_avatar.souls, total_souls);
 				} else {
@@ -597,23 +554,15 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 3);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					250
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 250);
 				assert_eq!(leader_avatar.souls, 500);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[2] {
-					let item_type = AvatarUtils::read_attribute_as::<ItemType>(
-						avatar,
-						&AvatarAttributes::ItemType,
-					);
+					let item_type =
+						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType);
 					assert_eq!(item_type, ItemType::Special);
 
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 
 					assert_eq!(avatar.souls, MAX_BYTE);
 				} else {
@@ -654,52 +603,34 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 5);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					221
-				);
+				assert_eq!(DnaUtils::read_attribute_raw(&leader_avatar, AvatarAttr::Quantity), 221);
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[4] {
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						17
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 17);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[5] {
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[6] {
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[7] {
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[8] {
-					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						u8::MAX
-					);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), u8::MAX);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}

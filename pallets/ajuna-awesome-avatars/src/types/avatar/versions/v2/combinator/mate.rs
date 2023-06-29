@@ -2,18 +2,18 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn mate_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 		_block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		if input_sacrifices.len() != 1 {
 			return Ok((
-				LeaderForgeOutput::Forged(input_leader, 0),
+				LeaderForgeOutput::Forged((input_leader.0, input_leader.1.unwrap()), 0),
 				input_sacrifices
 					.into_iter()
-					.map(|input| ForgeOutput::Forged(input, 0))
+					.map(|(id, sacrifice)| ForgeOutput::Forged((id, sacrifice.unwrap()), 0))
 					.collect(),
 			))
 		}
@@ -24,46 +24,41 @@ impl<T: Config> AvatarCombinator<T> {
 			input_sacrifices.pop().unwrap()
 		};
 
-		if AvatarUtils::spec_byte_split_ten_count(&leader) < MAX_EQUIPPED_SLOTS {
+		if leader.spec_byte_split_ten_count() < MAX_EQUIPPED_SLOTS {
 			return Ok((
-				LeaderForgeOutput::Forged((leader_id, leader), 0),
-				vec![ForgeOutput::Forged((partner_id, partner), 0)],
+				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
+				vec![ForgeOutput::Forged((partner_id, partner.unwrap()), 0)],
 			))
 		}
-		if AvatarUtils::spec_byte_split_ten_count(&partner) < MAX_EQUIPPED_SLOTS {
-			leader.souls += partner.souls;
+		if partner.spec_byte_split_ten_count() < MAX_EQUIPPED_SLOTS {
+			leader.add_souls(partner.get_souls());
 
 			return Ok((
-				LeaderForgeOutput::Forged((leader_id, leader), 0),
+				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
 				vec![ForgeOutput::Consumed(partner_id)],
 			))
 		}
 
-		let (mirrors, _) = AvatarUtils::match_progress_arrays(
-			AvatarUtils::read_progress_array(&leader),
-			AvatarUtils::read_progress_array(&partner),
+		let (mirrors, _) = DnaUtils::match_progress(
+			leader.get_progress(),
+			partner.get_progress(),
 			RarityTier::Common.as_byte(),
 		);
 
 		if mirrors.len() < 4 {
-			leader.souls += partner.souls;
+			leader.add_souls(partner.get_souls());
 
 			return Ok((
-				LeaderForgeOutput::Forged((leader_id, leader), 0),
+				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
 				vec![ForgeOutput::Consumed(partner_id)],
 			))
 		}
 
 		let leader_pet_type =
-			AvatarUtils::enums_to_bits(&[AvatarUtils::read_attribute_as::<PetType>(
-				&leader,
-				&AvatarAttributes::ClassType2,
-			)]) as u8;
+			DnaUtils::enums_to_bits(&[leader.get_class_type_2::<PetType>()]) as u8;
 
-		let leader_pet_variation =
-			AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType2);
-		let partner_pet_variation =
-			AvatarUtils::read_attribute(&partner, &AvatarAttributes::CustomType2);
+		let leader_pet_variation = leader.get_custom_type_2::<u8>();
+		let partner_pet_variation = partner.get_custom_type_2::<u8>();
 
 		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F) &&
 			((leader_pet_variation + partner_pet_variation) % 42) == 0;
@@ -78,17 +73,17 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let soul_points = (hash_provider.hash[0] | hash_provider.hash[1] & 0x7F) as SoulCount;
 
-		let (leader_output, other_output, any_survived) = if partner.souls > soul_points {
-			partner.souls -= soul_points;
+		let (leader_output, other_output, any_survived) = if partner.get_souls() > soul_points {
+			partner.dec_souls(soul_points);
 			(
-				LeaderForgeOutput::Forged((leader_id, leader), 0),
-				vec![ForgeOutput::Forged((partner_id, partner), 0)],
+				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
+				vec![ForgeOutput::Forged((partner_id, partner.unwrap()), 0)],
 				true,
 			)
-		} else if leader.souls + partner.souls > soul_points {
-			leader.souls -= soul_points - partner.souls;
+		} else if leader.get_souls() + partner.get_souls() > soul_points {
+			leader.dec_souls(soul_points - partner.get_souls());
 			(
-				LeaderForgeOutput::Forged((leader_id, leader), 0),
+				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
 				vec![ForgeOutput::Consumed(partner_id)],
 				true,
 			)
@@ -97,7 +92,7 @@ impl<T: Config> AvatarCombinator<T> {
 				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 
 				AvatarBuilder::with_dna(season_id, dna)
-					.into_dust(leader.souls + partner.souls)
+					.into_dust(leader.get_souls() + partner.get_souls())
 					.build()
 			};
 			(
@@ -110,7 +105,7 @@ impl<T: Config> AvatarCombinator<T> {
 		let additional_output = any_survived
 			.then(|| {
 				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
-				let progress_array = AvatarUtils::generate_progress_bytes(
+				let progress_array = DnaUtils::generate_progress(
 					&RarityTier::Rare,
 					SCALING_FACTOR_PERC,
 					Some(PROGRESS_PROBABILITY_PERC),
@@ -265,7 +260,7 @@ mod test {
 				0x00, 0x09, 0x75, 0x97, 0x50, 0x00, 0x00, 0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54,
 				0x51, 0x53, 0x55, 0x53,
 			];
-			assert_eq!(leader.1.dna.as_slice(), &expected_dna);
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
 				leader,
@@ -295,14 +290,11 @@ mod test {
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 				assert_eq!(avatar.souls, 122);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<PetItemType>(
-						avatar,
-						&AvatarAttributes::ItemSubType
-					),
+					DnaUtils::read_attribute::<PetItemType>(avatar, AvatarAttr::ItemSubType),
 					PetItemType::Egg
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2),
+					DnaUtils::read_attribute_raw(avatar, AvatarAttr::CustomType2),
 					0b0101_1010
 				);
 			} else {
@@ -338,7 +330,7 @@ mod test {
 				let leader = create_random_pet(
 					&ALICE,
 					&PetType::FoxishDude,
-					(hash_provider.get_hash_byte() % 128) + 1,
+					(hash_provider.next() % 128) + 1,
 					leader_spec_bytes,
 					leader_progress_array,
 					1000,
@@ -346,7 +338,7 @@ mod test {
 				let partner = create_random_pet(
 					&ALICE,
 					&PetType::FoxishDude,
-					(hash_provider.get_hash_byte() % 128) + 1,
+					(hash_provider.next() % 128) + 1,
 					partner_spec_bytes,
 					partner_progress_array,
 					1000,
@@ -367,15 +359,12 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<PetItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType
-						),
+						DnaUtils::read_attribute::<PetItemType>(avatar, AvatarAttr::ItemSubType),
 						PetItemType::Egg
 					);
 
 					let custom_type_2 =
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2);
+						DnaUtils::read_attribute_raw(avatar, AvatarAttr::CustomType2);
 
 					distribution_map
 						.entry(custom_type_2)
@@ -463,15 +452,12 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<PetItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType
-						),
+						DnaUtils::read_attribute::<PetItemType>(avatar, AvatarAttr::ItemSubType),
 						PetItemType::Egg
 					);
 
 					let custom_type_2 =
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2);
+						DnaUtils::read_attribute_raw(avatar, AvatarAttr::CustomType2);
 
 					distribution_map
 						.entry(custom_type_2)
@@ -481,14 +467,14 @@ mod test {
 					if custom_type_2 == 0b0000_0000 {
 						let leader_custom_type_2 =
 							if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
-								AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType2)
+								DnaUtils::read_attribute_raw(&leader, AvatarAttr::CustomType2)
 							} else {
 								panic!("ForgeOutput for leader should have been Minted!")
 							};
 
 						let partner_custom_type_2 =
 							if let ForgeOutput::Forged((_, partner), _) = &sacrifice_output[0] {
-								AvatarUtils::read_attribute(partner, &AvatarAttributes::CustomType2)
+								DnaUtils::read_attribute_raw(partner, AvatarAttr::CustomType2)
 							} else {
 								panic!("ForgeOutput for leader should have been Minted!")
 							};
@@ -505,10 +491,8 @@ mod test {
 						.map(|(key, _)| *key)
 						.collect::<Vec<_>>();
 
-					leader_pet =
-						keys_no_0[hash_provider.get_hash_byte() as usize % keys_no_0.len()];
-					partner_pet =
-						keys_no_0[hash_provider.get_hash_byte() as usize % keys_no_0.len()];
+					leader_pet = keys_no_0[hash_provider.next() as usize % keys_no_0.len()];
+					partner_pet = keys_no_0[hash_provider.next() as usize % keys_no_0.len()];
 				} else {
 					panic!("ForgeOutput for second output should have been Minted!")
 				}
@@ -583,15 +567,12 @@ mod test {
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<PetItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType
-						),
+						DnaUtils::read_attribute::<PetItemType>(avatar, AvatarAttr::ItemSubType),
 						PetItemType::Egg
 					);
 
 					let custom_type_2 =
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::CustomType2);
+						DnaUtils::read_attribute_raw(avatar, AvatarAttr::CustomType2);
 
 					distribution_map
 						.entry(custom_type_2)
@@ -601,14 +582,14 @@ mod test {
 					if custom_type_2 == 0b0000_0000 {
 						let leader_custom_type_2 =
 							if let LeaderForgeOutput::Forged((_, leader), _) = leader_output {
-								AvatarUtils::read_attribute(&leader, &AvatarAttributes::CustomType2)
+								DnaUtils::read_attribute_raw(&leader, AvatarAttr::CustomType2)
 							} else {
 								panic!("ForgeOutput for leader should have been Minted!")
 							};
 
 						let partner_custom_type_2 =
 							if let ForgeOutput::Forged((_, partner), _) = &sacrifice_output[0] {
-								AvatarUtils::read_attribute(partner, &AvatarAttributes::CustomType2)
+								DnaUtils::read_attribute_raw(partner, AvatarAttr::CustomType2)
 							} else {
 								panic!("ForgeOutput for leader should have been Minted!")
 							};

@@ -2,24 +2,27 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn feed_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		match input_sacrifices.len() {
-			0 => Ok((LeaderForgeOutput::Forged(input_leader, 0), Vec::with_capacity(0))),
+			0 => Ok((
+				LeaderForgeOutput::Forged((input_leader.0, input_leader.1.unwrap()), 0),
+				Vec::with_capacity(0),
+			)),
 			sacrifice_count => {
 				let (sacrifice_souls, other_output) = input_sacrifices.into_iter().fold(
 					(0, Vec::with_capacity(sacrifice_count)),
-					|(souls, mut items), item| {
-						items.push(ForgeOutput::Consumed(item.0));
-						(souls + item.1.souls, items)
+					|(souls, mut items), (sacrifice_id, sacrifice)| {
+						items.push(ForgeOutput::Consumed(sacrifice_id));
+						(souls + sacrifice.get_souls(), items)
 					},
 				);
 
 				let (leader_id, mut leader) = input_leader;
-				leader.souls += sacrifice_souls;
+				leader.add_souls(sacrifice_souls);
 
-				Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), other_output))
+				Ok((LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0), other_output))
 			},
 		}
 	}
@@ -53,7 +56,8 @@ mod test {
 			let sacrifice_2 =
 				create_random_egg(None, &ALICE, &RarityTier::Epic, 0b0000_1111, 100, [0x00; 11]);
 
-			let total_soul_points = leader.1.souls + sacrifice_1.1.souls + sacrifice_2.1.souls;
+			let total_soul_points =
+				leader.1.get_souls() + sacrifice_1.1.get_souls() + sacrifice_2.1.get_souls();
 
 			let (leader_output, sacrifice_output) =
 				AvatarCombinator::<Test>::feed_avatars(leader, vec![sacrifice_1, sacrifice_2])
