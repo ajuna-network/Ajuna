@@ -315,11 +315,8 @@ mod test {
 	#[test]
 	fn test_mutate_pet() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -357,11 +354,8 @@ mod test {
 	#[test]
 	fn test_mutate_pet_part() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -400,11 +394,8 @@ mod test {
 	#[test]
 	fn test_mutate_egg() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -442,11 +433,8 @@ mod test {
 	#[test]
 	fn test_mutate_material() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -485,11 +473,8 @@ mod test {
 	#[test]
 	fn test_mutate_color_spark() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -533,11 +518,8 @@ mod test {
 	#[test]
 	fn test_mutate_paint_flask() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -581,11 +563,8 @@ mod test {
 	#[test]
 	fn test_mutate_glow_spark() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -629,11 +608,8 @@ mod test {
 	#[test]
 	fn test_mutate_glow_flask() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -677,11 +653,8 @@ mod test {
 	#[test]
 	fn test_mutate_armor() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -723,11 +696,8 @@ mod test {
 	#[test]
 	fn test_mutate_weapon() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -769,11 +739,8 @@ mod test {
 	#[test]
 	fn test_mutate_blueprint() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -815,11 +782,8 @@ mod test {
 	#[test]
 	fn test_mutate_dust() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -858,11 +822,8 @@ mod test {
 	#[test]
 	fn test_mutate_unidentified() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 
@@ -904,11 +865,8 @@ mod test {
 	#[test]
 	fn test_mutate_toolbox() {
 		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_avatar::<Test, _>(
-				&ALICE,
-				None,
-				Some(|avatar| WrappedAvatar::new(avatar)),
-			);
+			let (_, avatar) =
+				create_random_avatar::<Test, _>(&ALICE, None, Some(WrappedAvatar::new));
 			let mut hash_provider =
 				HashProvider::<Test, 32>::new(&Pallet::<Test>::random_hash(b"test_mutate", &ALICE));
 

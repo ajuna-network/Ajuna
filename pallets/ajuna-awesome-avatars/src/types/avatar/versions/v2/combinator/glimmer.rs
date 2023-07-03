@@ -530,9 +530,7 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) =
-					sacrifice_output.into_iter().skip(1).next().unwrap()
-				{
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
 					let wrapped = WrappedAvatar::new(avatar);
 					assert_eq!(wrapped.get_quantity(), 1);
 					assert_eq!(wrapped.get_item_type(), ItemType::Essence);
@@ -587,9 +585,7 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) =
-					sacrifice_output.into_iter().skip(1).next().unwrap()
-				{
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
 					let wrapped = WrappedAvatar::new(avatar);
 					assert_eq!(wrapped.get_quantity(), 1);
 					assert_eq!(wrapped.get_item_type(), ItemType::Essence);
@@ -644,9 +640,7 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) =
-					sacrifice_output.into_iter().skip(1).next().unwrap()
-				{
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
 					let wrapped = WrappedAvatar::new(avatar);
 					assert_eq!(wrapped.get_quantity(), 1);
 					assert_eq!(wrapped.get_item_type(), ItemType::Pet);
@@ -698,9 +692,7 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) =
-					sacrifice_output.into_iter().skip(1).next().unwrap()
-				{
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
 					let wrapped = WrappedAvatar::new(avatar);
 					assert_eq!(wrapped.get_quantity(), 1);
 					assert_eq!(wrapped.get_item_type(), ItemType::Special);

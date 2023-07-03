@@ -152,7 +152,7 @@ mod match_test {
 				0xCC, 0xFD, 0x01, 0xB4,
 			];
 			let mut hash_provider = HashProvider::new_with_bytes(hash_bytes);
-			let unit_closure = |avatar| WrappedAvatar::new(avatar);
+			let unit_closure = WrappedAvatar::new;
 
 			let test_set: Vec<([u8; 32], [u8; 32], usize, (usize, u8), [u8; 11])> = vec![
 				(

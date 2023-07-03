@@ -104,7 +104,7 @@ mod test {
 				],
 			];
 
-			let unit_closure = |avatar| WrappedAvatar::new(avatar);
+			let unit_closure = WrappedAvatar::new;
 
 			let mut avatar_set = (0..5)
 				.map(|i| {

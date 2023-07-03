@@ -229,7 +229,7 @@ mod test {
 			);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+				assert!(WrappedAvatar::new(avatar).has_type(ItemType::Blueprint));
 			} else {
 				panic!("LeaderForgeOutput should be Forged!");
 			}
@@ -327,7 +327,7 @@ mod test {
 			}
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+				assert!(WrappedAvatar::new(avatar).has_type(ItemType::Blueprint));
 			} else {
 				panic!("LeaderForgeOutput should be Forged!");
 			}
@@ -425,7 +425,7 @@ mod test {
 			}
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+				assert!(WrappedAvatar::new(avatar).has_type(ItemType::Blueprint));
 			} else {
 				panic!("LeaderForgeOutput should be Forged!");
 			}
@@ -510,7 +510,7 @@ mod test {
 			}
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+				assert!(WrappedAvatar::new(avatar).has_type(ItemType::Blueprint));
 			} else {
 				panic!("LeaderForgeOutput should be Forged!");
 			}
@@ -604,7 +604,7 @@ mod test {
 			}
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+				assert!(WrappedAvatar::new(avatar).has_type(ItemType::Blueprint));
 			} else {
 				panic!("LeaderForgeOutput should be Forged!");
 			}
@@ -688,7 +688,7 @@ mod test {
 			);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				assert!(WrappedAvatar::new(avatar.clone()).has_type(ItemType::Blueprint));
+				assert!(WrappedAvatar::new(avatar).has_type(ItemType::Blueprint));
 			} else {
 				panic!("LeaderForgeOutput should be Forged!");
 			}
