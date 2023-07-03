@@ -838,6 +838,7 @@ impl AvatarBuilder {
 		self.inner
 	}
 
+	#[allow(dead_code)]
 	pub fn build_wrapped(self) -> WrappedAvatar {
 		WrappedAvatar::new(self.inner)
 	}
