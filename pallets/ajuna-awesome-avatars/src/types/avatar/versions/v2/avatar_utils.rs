@@ -17,6 +17,7 @@ pub(crate) struct WrappedAvatar {
 	inner: Avatar,
 }
 
+#[allow(dead_code)]
 impl WrappedAvatar {
 	pub fn new(avatar: Avatar) -> Self {
 		Self { inner: avatar }
