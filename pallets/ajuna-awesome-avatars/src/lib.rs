@@ -1099,9 +1099,9 @@ pub mod pallet {
 			let (leader, sacrifice_ids, sacrifices, season_id, season) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids)?;
 
-			let avatar_count = Owners::<T>::get(player, &season_id).len();
+			let avatar_count = Owners::<T>::get(player, season_id).len();
 			let max_storage =
-				PlayerSeasonConfigs::<T>::get(player, &season_id).storage_tier as usize;
+				PlayerSeasonConfigs::<T>::get(player, season_id).storage_tier as usize;
 			ensure!(
 				max_storage.saturating_sub(avatar_count) >= 6,
 				Error::<T>::InsufficientStorageForForging
