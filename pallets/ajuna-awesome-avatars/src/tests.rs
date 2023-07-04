@@ -2063,7 +2063,7 @@ mod forging {
 				});
 
 				run_to_block(season_1.early_start);
-				for _ in 0..33 {
+				for _ in 0..31 {
 					assert_ok!(AAvatars::mint(
 						RuntimeOrigin::signed(ALICE),
 						MintOption {

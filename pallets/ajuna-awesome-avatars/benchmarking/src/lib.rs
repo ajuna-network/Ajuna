@@ -243,7 +243,7 @@ benchmarks! {
 
 	forge {
 		let name = "player";
-		let n in 5 .. MaxAvatarsPerPlayer::get();
+		let n in 5 .. (MaxAvatarsPerPlayer::get() - 10);
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);

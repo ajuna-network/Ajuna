@@ -389,6 +389,8 @@ pub mod pallet {
 		IncorrectAvatarSeason,
 		/// Tried to forge avatars with different DNA versions.
 		IncompatibleAvatarVersions,
+		/// There's not enough space to hold the forging results
+		InsufficientStorageForForging,
 		/// Tried transferring to his or her own account.
 		CannotTransferToSelf,
 		/// Tried claiming treasury during a season.
@@ -1097,6 +1099,11 @@ pub mod pallet {
 			let (leader, sacrifice_ids, sacrifices, season_id, season) =
 				Self::ensure_for_forge(player, leader_id, sacrifice_ids)?;
 
+			let avatar_count = Owners::<T>::get(player, season_id).len();
+			let max_storage =
+				PlayerSeasonConfigs::<T>::get(player, season_id).storage_tier as usize;
+			let restricted_forge = max_storage == avatar_count;
+
 			let input_leader = (*leader_id, leader);
 			let input_sacrifices =
 				sacrifice_ids.into_iter().zip(sacrifices).collect::<Vec<ForgeItem<T>>>();
@@ -1107,6 +1114,7 @@ pub mod pallet {
 					&season,
 					input_leader.clone(),
 					input_sacrifices,
+					false,
 				),
 				LogicGeneration::Second => ForgerV2::<T>::forge(
 					player,
@@ -1114,6 +1122,7 @@ pub mod pallet {
 					&season,
 					input_leader.clone(),
 					input_sacrifices,
+					restricted_forge,
 				),
 			}?;
 
