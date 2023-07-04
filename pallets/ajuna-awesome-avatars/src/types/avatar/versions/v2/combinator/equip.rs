@@ -17,8 +17,8 @@ impl<T: Config> AvatarCombinator<T> {
 			.map(|slot| slot.iter().sum::<u8>() == 0)
 			.collect::<Vec<_>>();
 
-		let are_slots_maxed =
-			equipment_slots_state.iter().filter(|slot| !**slot).count() >= MAX_EQUIPPED_SLOTS;
+		let are_slots_maxed = equipment_slots_state.iter().filter(|slot| !**slot).count() >=
+			(MAX_EQUIPPED_SLOTS + leader.get_spec::<u8>(SpecIdx::Byte16) as usize);
 
 		for (_, sacrifice) in input_sacrifices.iter() {
 			new_souls += sacrifice.get_souls();

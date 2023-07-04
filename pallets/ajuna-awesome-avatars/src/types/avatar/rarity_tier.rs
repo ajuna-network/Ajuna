@@ -23,13 +23,13 @@ use sp_std::{fmt, prelude::*};
 )]
 pub enum RarityTier {
 	#[default]
-	None,
-	Common,
-	Uncommon,
-	Rare,
-	Epic,
-	Legendary,
-	Mythical,
+	None = 0,
+	Common = 1,
+	Uncommon = 2,
+	Rare = 3,
+	Epic = 4,
+	Legendary = 5,
+	Mythical = 6,
 }
 
 impl fmt::Display for RarityTier {

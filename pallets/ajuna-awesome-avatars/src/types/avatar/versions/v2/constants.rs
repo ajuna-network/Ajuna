@@ -12,6 +12,7 @@ pub(crate) const PROGRESS_PROBABILITY_PERC: u32 = 15;
 pub(crate) const PROGRESS_VARIATIONS: u8 = 6;
 pub(crate) const BASE_PROGRESS_PROB_PERC: u32 = 20;
 pub(crate) const MAX_EQUIPPED_SLOTS: usize = 5;
+pub(crate) const MAX_TOOLBOXES: usize = 2;
 pub(crate) const GLIMMER_PROB_PERC: u32 = 15;
 pub(crate) const COLOR_GLOW_SPARK: u32 = 52;
 pub(crate) const SPARK_PROGRESS_PROB_PERC: u32 = 25;

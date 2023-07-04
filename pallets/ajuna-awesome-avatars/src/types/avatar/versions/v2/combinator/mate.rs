@@ -6,7 +6,7 @@ impl<T: Config> AvatarCombinator<T> {
 		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
-		_block_number: T::BlockNumber,
+		block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		if input_sacrifices.len() != 1 {
 			return Ok((
@@ -24,35 +24,22 @@ impl<T: Config> AvatarCombinator<T> {
 			input_sacrifices.pop().unwrap()
 		};
 
-		if leader.spec_byte_split_ten_count() < MAX_EQUIPPED_SLOTS {
-			return Ok((
-				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
-				vec![ForgeOutput::Forged((partner_id, partner.unwrap()), 0)],
-			))
-		}
-		if partner.spec_byte_split_ten_count() < MAX_EQUIPPED_SLOTS {
-			leader.add_souls(partner.get_souls());
+		let filled_slots_leader = leader.spec_byte_split_ten_count();
+		let filled_slots_partner = partner.spec_byte_split_ten_count();
+		let partner_pet_type_match = partner.get_class_type_2::<PetType>() ==
+			PetType::from_byte(
+				(DnaUtils::current_period::<T>(
+					PET_MOON_PHASE_SIZE,
+					PET_MOON_PHASE_AMOUNT,
+					block_number,
+				) % 7) as u8 + 1,
+			);
 
-			return Ok((
-				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
-				vec![ForgeOutput::Consumed(partner_id)],
-			))
-		}
-
-		let (mirrors, _) = DnaUtils::match_progress(
+		let progress_match = DnaUtils::is_progress_match(
 			leader.get_progress(),
 			partner.get_progress(),
 			RarityTier::Common.as_byte(),
 		);
-
-		if mirrors.len() < 4 {
-			leader.add_souls(partner.get_souls());
-
-			return Ok((
-				LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0),
-				vec![ForgeOutput::Consumed(partner_id)],
-			))
-		}
 
 		let leader_pet_type =
 			DnaUtils::enums_to_bits(&[leader.get_class_type_2::<PetType>()]) as u8;
@@ -105,16 +92,26 @@ impl<T: Config> AvatarCombinator<T> {
 		let additional_output = any_survived
 			.then(|| {
 				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
-				let progress_array = DnaUtils::generate_progress(
-					&RarityTier::Rare,
-					SCALING_FACTOR_PERC,
-					Some(PROGRESS_PROBABILITY_PERC),
-					hash_provider,
-				);
-				let generated_egg = AvatarBuilder::with_dna(season_id, dna)
-					.into_egg(&RarityTier::Rare, pet_variation, soul_points, progress_array)
-					.build();
-				Ok::<_, DispatchError>(ForgeOutput::Minted(generated_egg))
+
+				let output_avatar = if filled_slots_leader < MAX_EQUIPPED_SLOTS ||
+					filled_slots_partner < MAX_EQUIPPED_SLOTS ||
+					progress_match.is_none() ||
+					!partner_pet_type_match
+				{
+					AvatarBuilder::with_dna(season_id, dna).into_dust(soul_points).build()
+				} else {
+					let progress_array = DnaUtils::generate_progress(
+						&RarityTier::Rare,
+						SCALING_FACTOR_PERC,
+						Some(PROGRESS_PROBABILITY_PERC),
+						hash_provider,
+					);
+					AvatarBuilder::with_dna(season_id, dna)
+						.into_egg(&RarityTier::Rare, pet_variation, soul_points, progress_array)
+						.build()
+				};
+
+				Ok::<_, DispatchError>(ForgeOutput::Minted(output_avatar))
 			})
 			.transpose()?;
 
@@ -175,7 +172,7 @@ mod test {
 			)
 			.expect("Should succeed in forging");
 
-			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.len(), 2);
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
 
 			assert!(is_leader_forged(&leader_output));
@@ -207,8 +204,9 @@ mod test {
 			)
 			.expect("Should succeed in forging");
 
-			assert_eq!(sacrifice_output.len(), 1);
-			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+			assert_eq!(sacrifice_output.len(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
 
 			assert!(is_leader_forged(&leader_output));
 		});
@@ -225,7 +223,7 @@ mod test {
 			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
 
 			let leader_progress_array =
-				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x53, 0x55, 0x53];
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x52, 0x52, 0x52];
 			let leader_spec_bytes = [
 				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
 				0x00, 0x00,
@@ -258,7 +256,7 @@ mod test {
 			let expected_dna = [
 				0x11, 0x05, 0x05, 0x01, 0x19, 0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x09, 0x75, 0x97, 0x50, 0x00, 0x00, 0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54,
-				0x51, 0x53, 0x55, 0x53,
+				0x51, 0x52, 0x52, 0x52,
 			];
 			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
 
@@ -267,7 +265,7 @@ mod test {
 				vec![partner],
 				0,
 				&mut hash_provider,
-				1,
+				61,
 			)
 			.expect("Should succeed in forging");
 
@@ -304,6 +302,176 @@ mod test {
 	}
 
 	#[test]
+	fn test_mate_non_equipped_leader() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
+				0xCC, 0xFD, 0x01, 0xB4,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let leader_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x52, 0x52, 0x52];
+			let leader_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x00, 0x00,
+				0x00, 0x00,
+			];
+
+			let partner_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+			let partner_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+
+			let leader = create_random_pet(
+				&ALICE,
+				&PetType::BigHybrid,
+				0b0001_1001,
+				leader_spec_bytes,
+				leader_progress_array,
+				1000,
+			);
+			let partner = create_random_pet(
+				&ALICE,
+				&PetType::CrazyDude,
+				0b0101_0011,
+				partner_spec_bytes,
+				partner_progress_array,
+				1000,
+			);
+
+			let expected_dna = [
+				0x11, 0x05, 0x05, 0x01, 0x19, 0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x09, 0x75, 0x00, 0x00, 0x00, 0x00, 0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54,
+				0x51, 0x52, 0x52, 0x52,
+			];
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+				leader,
+				vec![partner],
+				0,
+				&mut hash_provider,
+				61,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+
+			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				assert_eq!(leader_avatar.souls, 1000);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+
+			if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[0] {
+				assert_eq!(avatar.souls, 878);
+			} else {
+				panic!("ForgeOutput for first output should have been Forged!")
+			}
+
+			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+				assert_eq!(avatar.souls, 122);
+				assert_eq!(
+					DnaUtils::read_attribute::<SpecialItemType>(avatar, AvatarAttr::ItemSubType),
+					SpecialItemType::Dust
+				);
+			} else {
+				panic!("ForgeOutput for second output should have been Minted!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_mate_non_equipped_partner() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
+				0xCC, 0xFD, 0x01, 0xB4,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let leader_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x52, 0x52, 0x52];
+			let leader_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x00, 0x00,
+				0x00, 0x00,
+			];
+
+			let partner_progress_array =
+				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+			let partner_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+
+			let leader = create_random_pet(
+				&ALICE,
+				&PetType::BigHybrid,
+				0b0001_1001,
+				leader_spec_bytes,
+				leader_progress_array,
+				1000,
+			);
+			let partner = create_random_pet(
+				&ALICE,
+				&PetType::CrazyDude,
+				0b0101_0011,
+				partner_spec_bytes,
+				partner_progress_array,
+				1000,
+			);
+
+			let expected_dna = [
+				0x11, 0x05, 0x05, 0x01, 0x19, 0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x09, 0x75, 0x00, 0x00, 0x00, 0x00, 0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54,
+				0x51, 0x52, 0x52, 0x52,
+			];
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+				leader,
+				vec![partner],
+				0,
+				&mut hash_provider,
+				61,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 2);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
+
+			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				assert_eq!(leader_avatar.souls, 1000);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+
+			if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[0] {
+				assert_eq!(avatar.souls, 878);
+			} else {
+				panic!("ForgeOutput for first output should have been Forged!")
+			}
+
+			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+				assert_eq!(avatar.souls, 122);
+				assert_eq!(
+					DnaUtils::read_attribute::<SpecialItemType>(avatar, AvatarAttr::ItemSubType),
+					SpecialItemType::Dust
+				);
+			} else {
+				panic!("ForgeOutput for second output should have been Minted!")
+			}
+		});
+	}
+
+	#[test]
 	fn test_mate_egg_distribution_1() {
 		ExtBuilder::default().build().execute_with(|| {
 			let hash = Pallet::<Test>::random_hash(b"mate_dist_1", &ALICE);
@@ -317,7 +485,7 @@ mod test {
 			];
 
 			let partner_progress_array =
-				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+				[0x52, 0x53, 0x52, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x52];
 			let partner_spec_bytes = [
 				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
 				0x00, 0x00,
@@ -349,7 +517,7 @@ mod test {
 					vec![partner],
 					0,
 					&mut hash_provider,
-					1,
+					11,
 				)
 				.expect("Should succeed in forging");
 
@@ -408,7 +576,7 @@ mod test {
 			let mut leader_pet = 0b0000_1111_u8;
 
 			let partner_progress_array =
-				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x53, 0x55, 0x53, 0x51];
+				[0x53, 0x54, 0x51, 0x52, 0x54, 0x50, 0x50, 0x52, 0x55, 0x53, 0x52];
 			let partner_spec_bytes = [
 				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
 				0x00, 0x00,
@@ -442,7 +610,7 @@ mod test {
 					vec![partner],
 					0,
 					&mut hash_provider,
-					1,
+					11,
 				)
 				.expect("Should succeed in forging");
 
@@ -515,7 +683,7 @@ mod test {
 			let mut hash_provider: HashProvider<Test, 32> = HashProvider::new(&hash);
 
 			let leader_progress_array =
-				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x53, 0x55, 0x53];
+				[0x53, 0x54, 0x51, 0x52, 0x55, 0x55, 0x54, 0x51, 0x50, 0x54, 0x52];
 			let leader_spec_bytes = [
 				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
 				0x00, 0x00,
@@ -557,7 +725,7 @@ mod test {
 					vec![partner],
 					0,
 					&mut hash_provider,
-					1,
+					11,
 				)
 				.expect("Should succeed in forging");
 
