@@ -176,10 +176,7 @@ pub(crate) enum ForgeType {
 
 impl ForgeType {
 	pub(crate) fn is_restricted(&self) -> bool {
-		match self {
-			ForgeType::Tinker | ForgeType::Build | ForgeType::Mate | ForgeType::Glimmer => true,
-			_ => false,
-		}
+		matches!(self, ForgeType::Tinker | ForgeType::Build | ForgeType::Mate | ForgeType::Glimmer)
 	}
 }
 
