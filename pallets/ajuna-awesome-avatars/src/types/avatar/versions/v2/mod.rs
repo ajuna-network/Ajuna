@@ -330,7 +330,17 @@ impl<T: Config> ForgerV2<T> {
 					(same_assemble_version && equipable_sacrifice_item.is_armor()) || is_toolbox
 				});
 
-				if leader_sub_type.is_armor() && all_sacrifice_are_armor_or_toolbox {
+				let sacrificed_toolboxes = sacrifices
+					.iter()
+					.filter(|sacrifice| {
+						sacrifice.has_full_type(ItemType::Special, SpecialItemType::ToolBox)
+					})
+					.count();
+
+				if leader_sub_type.is_armor() &&
+					all_sacrifice_are_armor_or_toolbox &&
+					sacrificed_toolboxes <= MAX_TOOLBOXES
+				{
 					ForgeType::Assemble
 				} else if leader_rarity == RarityTier::Epic && leader_sub_type.is_armor_base() {
 					let has_one_paint_flask_or_glow = sacrifices

@@ -867,7 +867,23 @@ mod test {
 				(id, avatar)
 			};
 
-			let sac_2 = create_random_toolbox([0; 32], &ALICE, 100);
+			let sac_2 = {
+				let (id, mut avatar) = create_random_armor_component(
+					[0; 32],
+					&ALICE,
+					&PetType::FoxishDude,
+					&SlotType::Head,
+					&RarityTier::Uncommon,
+					&[EquippableItemType::ArmorBase],
+					&(ColorType::Null, ColorType::Null),
+					&Force::Null,
+					10,
+					&mut hash_generators[1],
+				);
+				avatar.set_progress(progress_arrays[1]);
+				(id, avatar)
+			};
+
 			let sac_3 = create_random_toolbox([0; 32], &ALICE, 100);
 			let sac_4 = create_random_toolbox([0; 32], &ALICE, 100);
 
