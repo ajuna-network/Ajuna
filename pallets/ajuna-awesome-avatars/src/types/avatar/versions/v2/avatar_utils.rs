@@ -1036,7 +1036,7 @@ impl DnaUtils {
 			let variation_2 = Self::read_at(&array_2, i, ByteType::Low);
 
 			let have_same_rarity = rarity_1 == rarity_2 || rarity_2 == 0x0B;
-			let is_maxed = rarity_1 > lowest_1 || lowest_1 == RarityTier::Legendary.as_byte();
+			let is_maxed = rarity_1 > lowest_1;
 			let byte_match = Self::match_progress_byte(variation_1, variation_2);
 
 			if have_same_rarity &&
