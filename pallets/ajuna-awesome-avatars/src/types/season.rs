@@ -106,7 +106,7 @@ impl<BlockNumber: AtLeast32Bit, Balance> Season<BlockNumber, Balance> {
 			let bytes = filter.to_le_bytes();
 			let is_matching_class =
 				(0..3).all(|i| Self::is_matching_with_zero_wildcard(dna[i], bytes[i]));
-			let is_matching_quantity = dna[3] == bytes[3] || bytes[3] == 0;
+			let is_matching_quantity = bytes[3] == 0 || dna[3] >= bytes[3];
 
 			is_matching_class && is_matching_quantity
 		})
@@ -542,7 +542,7 @@ mod test {
 			([0x41, 0x00, 0x04, 0x01], false), // Epic ArmorBase of quantity 1
 			([0x45, 0x00, 0x05, 0x0F], true),  // Legendary WeaponVersion1 of quantity 15
 			([0x45, 0x00, 0x05, 0x01], false), // Legendary WeaponVersion1 of quantity 1
-			([0x45, 0x00, 0x05, 0x10], false), // Legendary WeaponVersion1 of quantity 16
+			([0x45, 0x00, 0x05, 0x10], true),  // Legendary WeaponVersion1 of quantity 16
 		] {
 			let avatar = Avatar::default().dna(bytes.as_slice());
 			assert_eq!(season.is_tradable(&avatar), expected);
