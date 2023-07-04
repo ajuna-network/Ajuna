@@ -57,5 +57,6 @@ pub(crate) trait Forger<T: Config> {
 		season: &SeasonOf<T>,
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
+		restricted: bool,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError>;
 }

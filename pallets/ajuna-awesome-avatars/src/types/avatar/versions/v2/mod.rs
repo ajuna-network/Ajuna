@@ -174,6 +174,15 @@ pub(crate) enum ForgeType {
 	Flask,
 }
 
+impl ForgeType {
+	pub(crate) fn is_restricted(&self) -> bool {
+		match self {
+			ForgeType::Tinker | ForgeType::Build | ForgeType::Mate | ForgeType::Glimmer => true,
+			_ => false,
+		}
+	}
+}
+
 pub(crate) struct ForgerV2<T: Config>(pub PhantomData<T>);
 
 impl<T: Config> Forger<T> for ForgerV2<T> {
@@ -183,6 +192,7 @@ impl<T: Config> Forger<T> for ForgerV2<T> {
 		season: &SeasonOf<T>,
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
+		restricted: bool,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let mut hash_provider =
 			HashProvider::<T, 32>::new(&Pallet::<T>::random_hash(b"avatar_forger_v2", player));
@@ -196,6 +206,11 @@ impl<T: Config> Forger<T> for ForgerV2<T> {
 			input_sacrifices.iter().map(|(_, sacrifice)| sacrifice).collect::<Vec<_>>();
 
 		let forge_type = Self::determine_forge_type(&input_leader.1, sacrifices.as_slice());
+
+		ensure!(
+			!restricted || !forge_type.is_restricted(),
+			Error::<T>::InsufficientStorageForForging
+		);
 
 		AvatarCombinator::<T>::combine_avatars_in(
 			forge_type,
@@ -480,7 +495,8 @@ mod test {
 				1,
 				&season,
 				leader.clone(),
-				sacrifices[0..4].to_vec()
+				sacrifices[0..4].to_vec(),
+				false
 			)
 			.is_ok());
 
@@ -490,12 +506,15 @@ mod test {
 				1,
 				&season,
 				leader.clone(),
-				sacrifices.to_vec()
+				sacrifices.to_vec(),
+				false
 			)
 			.is_err());
 
 			// Can't forge with less than MIN_SACRIFICE amount
-			assert!(ForgerV2::<Test>::forge(&ALICE, 1, &season, leader, [].to_vec()).is_err());
+			assert!(
+				ForgerV2::<Test>::forge(&ALICE, 1, &season, leader, [].to_vec(), false).is_err()
+			);
 		});
 	}
 

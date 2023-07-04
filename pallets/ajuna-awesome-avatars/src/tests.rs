@@ -2315,44 +2315,6 @@ mod forging {
 	}
 
 	#[test]
-	fn forge_should_reject_when_over_storage_capacity() {
-		let season_1 = Season::default().early_start(5).start(10).end(20);
-		let seasons = &[(1, season_1.clone())];
-
-		ExtBuilder::default()
-			.seasons(seasons)
-			.mint_cooldown(0)
-			.free_mints(&[(ALICE, 100)])
-			.build()
-			.execute_with(|| {
-				PlayerSeasonConfigs::<Test>::mutate(ALICE, SEASON_ID, |config| {
-					config.storage_tier = StorageTier::Two
-				});
-
-				run_to_block(season_1.early_start);
-				for _ in 0..8 {
-					assert_ok!(AAvatars::mint(
-						RuntimeOrigin::signed(ALICE),
-						MintOption {
-							pack_size: MintPackSize::Six,
-							payment: MintPayment::Free,
-							pack_type: PackType::Material,
-						}
-					));
-				}
-
-				assert_noop!(
-					AAvatars::forge(
-						RuntimeOrigin::signed(ALICE),
-						Owners::<Test>::get(ALICE, 1)[0],
-						Owners::<Test>::get(ALICE, 1)[1..3].to_vec()
-					),
-					Error::<Test>::InsufficientStorageForForging
-				);
-			});
-	}
-
-	#[test]
 	fn forge_should_reject_avatars_from_different_seasons() {
 		let min_sacrifices = 1;
 		let max_sacrifices = 3;

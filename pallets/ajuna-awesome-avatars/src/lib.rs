@@ -1102,10 +1102,7 @@ pub mod pallet {
 			let avatar_count = Owners::<T>::get(player, season_id).len();
 			let max_storage =
 				PlayerSeasonConfigs::<T>::get(player, season_id).storage_tier as usize;
-			ensure!(
-				max_storage.saturating_sub(avatar_count) >= 6,
-				Error::<T>::InsufficientStorageForForging
-			);
+			let restricted_forge = max_storage == avatar_count;
 
 			let input_leader = (*leader_id, leader);
 			let input_sacrifices =
@@ -1117,6 +1114,7 @@ pub mod pallet {
 					&season,
 					input_leader.clone(),
 					input_sacrifices,
+					false,
 				),
 				LogicGeneration::Second => ForgerV2::<T>::forge(
 					player,
@@ -1124,6 +1122,7 @@ pub mod pallet {
 					&season,
 					input_leader.clone(),
 					input_sacrifices,
+					restricted_forge,
 				),
 			}?;
 

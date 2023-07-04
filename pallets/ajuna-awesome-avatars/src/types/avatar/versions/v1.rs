@@ -93,6 +93,7 @@ impl<T: Config> Forger<T> for ForgerV1<T> {
 		season: &SeasonOf<T>,
 		input_leader: ForgeItem<T>,
 		input_sacrifices: Vec<ForgeItem<T>>,
+		_restricted: bool,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (leader_id, mut leader) = input_leader;
 
