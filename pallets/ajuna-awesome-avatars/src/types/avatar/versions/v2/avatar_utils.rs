@@ -3,17 +3,299 @@ use crate::{
 	types::{Avatar, Dna, DnaEncoding, SeasonId, SoulCount},
 	ByteConvertible, Config, Force, Ranged, RarityTier,
 };
-use core::cmp::Ordering;
-use frame_support::traits::Len;
+//use frame_support::traits::Len;
 use sp_runtime::{traits::Hash, SaturatedConversion};
 use sp_std::{
+	cmp::Ordering,
 	marker::PhantomData,
 	ops::{Div, Rem},
 	vec::Vec,
 };
 
+#[derive(Clone)]
+pub(crate) struct WrappedAvatar {
+	inner: Avatar,
+}
+
+#[allow(dead_code)]
+impl WrappedAvatar {
+	pub fn new(avatar: Avatar) -> Self {
+		Self { inner: avatar }
+	}
+
+	pub fn unwrap(self) -> Avatar {
+		self.inner
+	}
+
+	pub fn get_dna(&self) -> &Dna {
+		&self.inner.dna
+	}
+
+	pub fn get_souls(&self) -> SoulCount {
+		self.inner.souls
+	}
+
+	pub fn set_souls(&mut self, souls: SoulCount) {
+		self.inner.souls = souls;
+	}
+
+	pub fn add_souls(&mut self, souls: SoulCount) {
+		self.inner.souls += souls;
+	}
+
+	pub fn dec_souls(&mut self, souls: SoulCount) {
+		self.inner.souls -= souls;
+	}
+
+	pub fn can_use(&self, quantity: u8) -> bool {
+		self.get_quantity() >= quantity
+	}
+
+	pub fn use_avatar(&mut self, quantity: u8) -> (bool, bool, SoulCount) {
+		let current_qty = self.get_quantity();
+
+		if current_qty < quantity {
+			return (false, false, 0)
+		}
+
+		let new_qty = current_qty - quantity;
+		self.set_quantity(new_qty);
+
+		let (avatar_consumed, output_soul_points) = if new_qty == 0 {
+			let soul_points = self.get_souls();
+			self.set_souls(0);
+			(true, soul_points)
+		} else {
+			let diff = self.get_custom_type_1::<u8>().saturating_mul(quantity) as SoulCount;
+			self.set_souls(self.get_souls().saturating_sub(diff));
+			(false, diff)
+		};
+
+		(true, avatar_consumed, output_soul_points)
+	}
+
+	// TODO: Improve return type to [[u8; 3]; 10] if possible
+	pub fn spec_byte_split_ten(&self) -> Vec<Vec<u8>> {
+		self.get_specs()
+			.into_iter()
+			.flat_map(|entry| [entry >> 4, entry & 0x0F])
+			.take(30)
+			.collect::<Vec<u8>>()
+			.chunks_exact(3)
+			.map(|item| item.into())
+			.collect::<Vec<Vec<u8>>>()
+	}
+
+	pub fn spec_byte_split_ten_count(&self) -> usize {
+		self.spec_byte_split_ten()
+			.into_iter()
+			.filter(|segment| segment.iter().sum::<u8>() > 0)
+			.count()
+	}
+
+	pub fn get_item_type(&self) -> ItemType {
+		DnaUtils::read_attribute(&self.inner, AvatarAttr::ItemType)
+	}
+
+	pub fn set_item_type(&mut self, item_type: ItemType) {
+		DnaUtils::write_attribute(&mut self.inner, AvatarAttr::ItemType, &item_type)
+	}
+
+	pub fn same_item_type(&self, other: &WrappedAvatar) -> bool {
+		self.get_item_type().cmp(&other.get_item_type()).is_eq()
+	}
+
+	pub fn get_item_sub_type<T>(&self) -> T
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::read_attribute::<T>(&self.inner, AvatarAttr::ItemSubType)
+	}
+
+	pub fn set_item_sub_type<T>(&mut self, item_sub_type: T)
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::ItemSubType, &item_sub_type)
+	}
+
+	pub fn same_item_sub_type(&self, other: &WrappedAvatar) -> bool {
+		self.get_item_sub_type::<u8>().cmp(&other.get_item_sub_type::<u8>()).is_eq()
+	}
+
+	pub fn get_class_type_1<T>(&self) -> T
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::read_attribute::<T>(&self.inner, AvatarAttr::ClassType1)
+	}
+
+	pub fn set_class_type_1<T>(&mut self, class_type_1: T)
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::ClassType1, &class_type_1)
+	}
+
+	pub fn same_class_type_1(&self, other: &WrappedAvatar) -> bool {
+		self.get_class_type_1::<u8>().cmp(&other.get_class_type_1::<u8>()).is_eq()
+	}
+
+	pub fn get_class_type_2<T>(&self) -> T
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::read_attribute::<T>(&self.inner, AvatarAttr::ClassType2)
+	}
+
+	pub fn set_class_type_2<T>(&mut self, class_type_2: T)
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::ClassType2, &class_type_2)
+	}
+
+	pub fn same_class_type_2(&self, other: &WrappedAvatar) -> bool {
+		self.get_class_type_2::<u8>().cmp(&other.get_class_type_2::<u8>()).is_eq()
+	}
+
+	pub fn get_custom_type_1<T>(&self) -> T
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::read_attribute::<T>(&self.inner, AvatarAttr::CustomType1)
+	}
+
+	pub fn set_custom_type_1<T>(&mut self, custom_type_1: T)
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::CustomType1, &custom_type_1)
+	}
+
+	pub fn same_custom_type_1(&self, other: &WrappedAvatar) -> bool {
+		self.get_custom_type_1::<u8>().cmp(&other.get_custom_type_1::<u8>()).is_eq()
+	}
+
+	pub fn get_custom_type_2<T>(&self) -> T
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::read_attribute::<T>(&self.inner, AvatarAttr::CustomType2)
+	}
+
+	pub fn set_custom_type_2<T>(&mut self, custom_type_1: T)
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::CustomType2, &custom_type_1)
+	}
+
+	pub fn same_custom_type_2(&self, other: &WrappedAvatar) -> bool {
+		self.get_custom_type_2::<u8>().cmp(&other.get_custom_type_2::<u8>()).is_eq()
+	}
+
+	pub fn get_rarity(&self) -> RarityTier {
+		DnaUtils::read_attribute(&self.inner, AvatarAttr::RarityTier)
+	}
+
+	pub fn set_rarity(&mut self, rarity: RarityTier) {
+		DnaUtils::write_attribute::<RarityTier>(&mut self.inner, AvatarAttr::RarityTier, &rarity)
+	}
+
+	pub fn same_rarity(&self, other: &WrappedAvatar) -> bool {
+		self.get_rarity().cmp(&other.get_rarity()).is_eq()
+	}
+
+	pub fn get_quantity(&self) -> u8 {
+		DnaUtils::read_attribute_raw(&self.inner, AvatarAttr::Quantity)
+	}
+
+	pub fn set_quantity(&mut self, quantity: u8) {
+		DnaUtils::write_attribute_raw(&mut self.inner, AvatarAttr::Quantity, quantity)
+	}
+
+	pub fn same_quantity(&self, other: &WrappedAvatar) -> bool {
+		self.get_quantity().cmp(&other.get_quantity()).is_eq()
+	}
+
+	pub fn get_spec<T>(&self, spec_index: SpecIdx) -> T
+	where
+		T: ByteConvertible,
+	{
+		DnaUtils::read_spec::<T>(&self.inner, spec_index)
+	}
+
+	pub fn set_spec(&mut self, spec_index: SpecIdx, value: u8) {
+		DnaUtils::write_spec(&mut self.inner, spec_index, value);
+	}
+
+	pub fn get_specs(&self) -> [u8; 16] {
+		DnaUtils::read_specs(&self.inner)
+	}
+
+	pub fn set_specs(&mut self, spec_bytes: [u8; 16]) {
+		DnaUtils::write_specs(&mut self.inner, spec_bytes)
+	}
+
+	pub fn same_specs(&self, other: &WrappedAvatar) -> bool {
+		self.get_specs() == other.get_specs()
+	}
+
+	pub fn same_spec_at(&self, other: &WrappedAvatar, position: SpecIdx) -> bool {
+		DnaUtils::read_spec_raw(&self.inner, position) ==
+			DnaUtils::read_spec_raw(&other.inner, position)
+	}
+
+	pub fn get_progress(&self) -> [u8; 11] {
+		DnaUtils::read_progress(&self.inner)
+	}
+
+	pub fn set_progress(&mut self, progress_array: [u8; 11]) {
+		DnaUtils::write_progress(&mut self.inner, progress_array)
+	}
+
+	pub fn same_progress(&self, other: &WrappedAvatar) -> bool {
+		self.get_progress() == other.get_progress()
+	}
+
+	pub fn has_type(&self, item_type: ItemType) -> bool {
+		self.get_item_type() == item_type
+	}
+
+	pub fn has_subtype<T>(&self, item_sub_type: T) -> bool
+	where
+		T: ByteConvertible + Eq,
+	{
+		self.get_item_sub_type::<T>() == item_sub_type
+	}
+
+	pub fn has_full_type<T>(&self, item_type: ItemType, item_sub_type: T) -> bool
+	where
+		T: ByteConvertible + Eq,
+	{
+		self.has_type(item_type) && self.has_subtype(item_sub_type)
+	}
+
+	pub fn has_zeroed_class_types(&self) -> bool {
+		self.get_class_type_1::<u8>() == 0 && self.get_class_type_2::<u8>() == 0
+	}
+
+	pub fn same_full_type(&self, other: &WrappedAvatar) -> bool {
+		self.same_item_type(other) && self.same_item_sub_type(other)
+	}
+
+	pub fn same_full_and_class_types(&self, other: &WrappedAvatar) -> bool {
+		self.same_full_type(other) && self.same_class_type_1(other) && self.same_class_type_2(other)
+	}
+
+	pub fn same_assemble_version(&self, other: &WrappedAvatar) -> bool {
+		self.same_item_type(other) && self.same_class_type_1(other) && self.same_class_type_2(other)
+	}
+}
+
 #[derive(Copy, Clone)]
-pub enum AvatarAttributes {
+pub enum AvatarAttr {
 	ItemType,
 	ItemSubType,
 	ClassType1,
@@ -24,32 +306,32 @@ pub enum AvatarAttributes {
 	Quantity,
 }
 
-#[derive(Clone)]
-pub enum AvatarSpecBytes {
-	SpecByte1,
-	SpecByte2,
-	SpecByte3,
-	SpecByte4,
-	SpecByte5,
-	SpecByte6,
-	SpecByte7,
-	SpecByte8,
+#[derive(Copy, Clone)]
+pub enum SpecIdx {
+	Byte1,
+	Byte2,
+	Byte3,
+	Byte4,
+	Byte5,
+	Byte6,
+	Byte7,
+	Byte8,
 	#[allow(dead_code)]
-	SpecByte9,
+	Byte9,
 	#[allow(dead_code)]
-	SpecByte10,
+	Byte10,
 	#[allow(dead_code)]
-	SpecByte11,
+	Byte11,
 	#[allow(dead_code)]
-	SpecByte12,
+	Byte12,
 	#[allow(dead_code)]
-	SpecByte13,
+	Byte13,
 	#[allow(dead_code)]
-	SpecByte14,
+	Byte14,
 	#[allow(dead_code)]
-	SpecByte15,
+	Byte15,
 	#[allow(dead_code)]
-	SpecByte16,
+	Byte16,
 }
 
 #[derive(Default)]
@@ -66,25 +348,25 @@ impl AvatarBuilder {
 		Self { inner: avatar }
 	}
 
-	pub fn with_attribute<T>(self, attribute: &AvatarAttributes, value: &T) -> Self
+	pub fn with_attribute<T>(self, attribute: AvatarAttr, value: &T) -> Self
 	where
 		T: ByteConvertible,
 	{
 		self.with_attribute_raw(attribute, value.as_byte())
 	}
 
-	pub fn with_attribute_raw(mut self, attribute: &AvatarAttributes, value: u8) -> Self {
-		AvatarUtils::write_attribute(&mut self.inner, attribute, value);
+	pub fn with_attribute_raw(mut self, attribute: AvatarAttr, value: u8) -> Self {
+		DnaUtils::write_attribute_raw(&mut self.inner, attribute, value);
 		self
 	}
 
-	pub fn with_spec_byte_raw(mut self, spec_byte: &AvatarSpecBytes, value: u8) -> Self {
-		AvatarUtils::write_spec_byte(&mut self.inner, spec_byte, value);
+	pub fn with_spec_byte_raw(mut self, spec_byte: SpecIdx, value: u8) -> Self {
+		DnaUtils::write_spec(&mut self.inner, spec_byte, value);
 		self
 	}
 
 	pub fn with_spec_bytes(mut self, spec_bytes: [u8; 16]) -> Self {
-		AvatarUtils::write_full_spec_bytes(&mut self.inner, spec_bytes);
+		DnaUtils::write_specs(&mut self.inner, spec_bytes);
 		self
 	}
 
@@ -94,7 +376,7 @@ impl AvatarBuilder {
 	}
 
 	pub fn with_progress_array(mut self, progress_array: [u8; 11]) -> Self {
-		AvatarUtils::write_progress_array(&mut self.inner, progress_array);
+		DnaUtils::write_progress(&mut self.inner, progress_array);
 		self
 	}
 
@@ -106,14 +388,14 @@ impl AvatarBuilder {
 		progress_array: [u8; 11],
 		soul_points: SoulCount,
 	) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
-			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::Pet)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Legendary)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Pet)
+			.with_attribute(AvatarAttr::ItemSubType, &PetItemType::Pet)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, pet_type)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Legendary)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_attribute_raw(AvatarAttr::CustomType2, pet_variation)
 			.with_spec_bytes(spec_bytes)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points)
@@ -123,7 +405,7 @@ impl AvatarBuilder {
 		let custom_type_1 = HexType::X1;
 
 		let spec_bytes = {
-			let mut spec_bytes = AvatarUtils::read_full_spec_bytes(&self.inner);
+			let mut spec_bytes = DnaUtils::read_specs(&self.inner);
 
 			for slot_index in slot_types.iter().map(|slot_type| slot_type.as_byte() as usize) {
 				spec_bytes[slot_index] = spec_bytes[slot_index].saturating_add(1);
@@ -132,14 +414,14 @@ impl AvatarBuilder {
 			spec_bytes
 		};
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
-			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::PetPart)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
-			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Pet)
+			.with_attribute(AvatarAttr::ItemSubType, &PetItemType::PetPart)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &custom_type_1)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Uncommon)
+			.with_attribute_raw(AvatarAttr::Quantity, quantity)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
 			.with_spec_bytes(spec_bytes)
 			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
@@ -149,64 +431,40 @@ impl AvatarBuilder {
 		let custom_type_1 = HexType::X1;
 
 		let base_seed = pet_type.as_byte() as usize + slot_type.as_byte() as usize;
-		let base_0 = AvatarUtils::create_pattern::<NibbleType>(
+		let base_0 = DnaUtils::create_pattern::<NibbleType>(
 			base_seed,
 			EquippableItemType::ArmorBase.as_byte() as usize,
 		);
-		let comp_1 = AvatarUtils::create_pattern::<NibbleType>(
+		let comp_1 = DnaUtils::create_pattern::<NibbleType>(
 			base_seed,
 			EquippableItemType::ArmorComponent1.as_byte() as usize,
 		);
-		let comp_2 = AvatarUtils::create_pattern::<NibbleType>(
+		let comp_2 = DnaUtils::create_pattern::<NibbleType>(
 			base_seed,
 			EquippableItemType::ArmorComponent2.as_byte() as usize,
 		);
-		let comp_3 = AvatarUtils::create_pattern::<NibbleType>(
+		let comp_3 = DnaUtils::create_pattern::<NibbleType>(
 			base_seed,
 			EquippableItemType::ArmorComponent3.as_byte() as usize,
 		);
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
-			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::PetPart)
-			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
-			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
-			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Pet)
+			.with_attribute(AvatarAttr::ItemSubType, &PetItemType::PetPart)
+			.with_attribute(AvatarAttr::ClassType1, slot_type)
+			.with_attribute(AvatarAttr::ClassType2, pet_type)
+			.with_attribute(AvatarAttr::CustomType1, &custom_type_1)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Uncommon)
+			.with_attribute_raw(AvatarAttr::Quantity, quantity)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte1,
-				AvatarUtils::enums_to_bits(&base_0) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte2,
-				AvatarUtils::enums_order_to_bits(&base_0) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte3,
-				AvatarUtils::enums_to_bits(&comp_1) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte4,
-				AvatarUtils::enums_order_to_bits(&comp_1) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte5,
-				AvatarUtils::enums_to_bits(&comp_2) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte6,
-				AvatarUtils::enums_order_to_bits(&comp_2) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte7,
-				AvatarUtils::enums_to_bits(&comp_3) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte8,
-				AvatarUtils::enums_order_to_bits(&comp_3) as u8,
-			)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_spec_byte_raw(SpecIdx::Byte1, DnaUtils::enums_to_bits(&base_0) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte2, DnaUtils::enums_order_to_bits(&base_0) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte3, DnaUtils::enums_to_bits(&comp_1) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte4, DnaUtils::enums_order_to_bits(&comp_1) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte5, DnaUtils::enums_to_bits(&comp_2) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte6, DnaUtils::enums_order_to_bits(&comp_2) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte7, DnaUtils::enums_to_bits(&comp_3) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte8, DnaUtils::enums_order_to_bits(&comp_3) as u8)
 			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
 
@@ -217,16 +475,16 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: [u8; 11],
 	) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Pet)
-			.with_attribute(&AvatarAttributes::ItemSubType, &PetItemType::Egg)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Pet)
+			.with_attribute(AvatarAttr::ItemSubType, &PetItemType::Egg)
 			// Unused
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
 			// Unused
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, rarity)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_attribute_raw(&AvatarAttributes::CustomType2, pet_variation)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, rarity)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_attribute_raw(AvatarAttr::CustomType2, pet_variation)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points)
 	}
@@ -239,30 +497,30 @@ impl AvatarBuilder {
 			MaterialItemType::Optics | MaterialItemType::Nanomaterials => HexType::X4,
 		};
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Material)
-			.with_attribute(&AvatarAttributes::ItemSubType, material_type)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &sp_ratio)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Common)
-			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Material)
+			.with_attribute(AvatarAttr::ItemSubType, material_type)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &sp_ratio)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Common)
+			.with_attribute_raw(AvatarAttr::Quantity, quantity)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
 			.with_soul_count(quantity as SoulCount * sp_ratio as SoulCount)
 	}
 
 	pub fn into_glimmer(self, quantity: u8) -> Self {
 		let custom_type_1 = HexType::from_byte(GLIMMER_SP);
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
-			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::Glimmer)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &custom_type_1)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Essence)
+			.with_attribute(AvatarAttr::ItemSubType, &EssenceItemType::Glimmer)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &custom_type_1)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Uncommon)
-			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Uncommon)
+			.with_attribute_raw(AvatarAttr::Quantity, quantity)
 			.with_soul_count(quantity as SoulCount * custom_type_1 as SoulCount)
 	}
 
@@ -272,23 +530,23 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: [u8; 11],
 	) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
-			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::ColorSpark)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Essence)
+			.with_attribute(AvatarAttr::ItemSubType, &EssenceItemType::ColorSpark)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, color_pair.0.as_byte())
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, color_pair.1.as_byte())
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte8, 0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Rare)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_spec_byte_raw(SpecIdx::Byte1, color_pair.0.as_byte())
+			.with_spec_byte_raw(SpecIdx::Byte2, color_pair.1.as_byte())
+			.with_spec_byte_raw(SpecIdx::Byte3, 0)
+			.with_spec_byte_raw(SpecIdx::Byte4, 0)
+			.with_spec_byte_raw(SpecIdx::Byte5, 0)
+			.with_spec_byte_raw(SpecIdx::Byte6, 0)
+			.with_spec_byte_raw(SpecIdx::Byte7, 0)
+			.with_spec_byte_raw(SpecIdx::Byte8, 0)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points)
 	}
@@ -299,23 +557,23 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: [u8; 11],
 	) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
-			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::GlowSpark)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Essence)
+			.with_attribute(AvatarAttr::ItemSubType, &EssenceItemType::GlowSpark)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte8, 0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Rare)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_spec_byte_raw(SpecIdx::Byte1, force.as_byte())
+			.with_spec_byte_raw(SpecIdx::Byte2, 0)
+			.with_spec_byte_raw(SpecIdx::Byte3, 0)
+			.with_spec_byte_raw(SpecIdx::Byte4, 0)
+			.with_spec_byte_raw(SpecIdx::Byte5, 0)
+			.with_spec_byte_raw(SpecIdx::Byte6, 0)
+			.with_spec_byte_raw(SpecIdx::Byte7, 0)
+			.with_spec_byte_raw(SpecIdx::Byte8, 0)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points)
 	}
@@ -329,23 +587,23 @@ impl AvatarBuilder {
 		let color_bytes = ((color_pair.0.as_byte().saturating_sub(1)) << 6) |
 			((color_pair.1.as_byte().saturating_sub(1)) << 4);
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
-			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::PaintFlask)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Essence)
+			.with_attribute(AvatarAttr::ItemSubType, &EssenceItemType::PaintFlask)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Epic)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, color_bytes)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0b0000_1000)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte8, 0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Epic)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_spec_byte_raw(SpecIdx::Byte1, color_bytes)
+			.with_spec_byte_raw(SpecIdx::Byte2, 0b0000_1000)
+			.with_spec_byte_raw(SpecIdx::Byte3, 0)
+			.with_spec_byte_raw(SpecIdx::Byte4, 0)
+			.with_spec_byte_raw(SpecIdx::Byte5, 0)
+			.with_spec_byte_raw(SpecIdx::Byte6, 0)
+			.with_spec_byte_raw(SpecIdx::Byte7, 0)
+			.with_spec_byte_raw(SpecIdx::Byte8, 0)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points)
 	}
@@ -356,23 +614,23 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		progress_array: [u8; 11],
 	) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Essence)
-			.with_attribute(&AvatarAttributes::ItemSubType, &EssenceItemType::GlowFlask)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Essence)
+			.with_attribute(AvatarAttr::ItemSubType, &EssenceItemType::GlowFlask)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Epic)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, force.as_byte())
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte8, 0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Epic)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_spec_byte_raw(SpecIdx::Byte1, force.as_byte())
+			.with_spec_byte_raw(SpecIdx::Byte2, 0)
+			.with_spec_byte_raw(SpecIdx::Byte3, 0)
+			.with_spec_byte_raw(SpecIdx::Byte4, 0)
+			.with_spec_byte_raw(SpecIdx::Byte5, 0)
+			.with_spec_byte_raw(SpecIdx::Byte6, 0)
+			.with_spec_byte_raw(SpecIdx::Byte7, 0)
+			.with_spec_byte_raw(SpecIdx::Byte8, 0)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points)
 	}
@@ -388,15 +646,13 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<Self, ()> {
-		if equippable_type.is_empty() ||
-			equippable_type.iter().any(|equip| !EquippableItemType::is_armor(*equip))
-		{
+		if equippable_type.is_empty() || equippable_type.iter().any(|equip| !equip.is_armor()) {
 			return Err(())
 		}
 
 		let (armor_assemble_progress, color_flag) = {
 			let mut color_flag = 0b0000_0000;
-			let mut progress = AvatarUtils::enums_to_bits(equippable_type) as u8;
+			let mut progress = DnaUtils::enums_to_bits(equippable_type) as u8;
 
 			if color_pair.0 != ColorType::Null && color_pair.1 != ColorType::Null {
 				color_flag = 0b0000_1000;
@@ -410,7 +666,7 @@ impl AvatarBuilder {
 		// Guaranteed to work because of check above
 		let first_equippable = equippable_type.first().unwrap();
 
-		let progress_array = AvatarUtils::generate_progress_bytes(
+		let progress_array = DnaUtils::generate_progress(
 			rarity,
 			SCALING_FACTOR_PERC,
 			Some(PROGRESS_PROBABILITY_PERC),
@@ -418,23 +674,23 @@ impl AvatarBuilder {
 		);
 
 		Ok(self
-			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equippable)
-			.with_attribute(&AvatarAttributes::ItemSubType, first_equippable)
-			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
-			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, rarity)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
+			.with_attribute(AvatarAttr::ItemType, &ItemType::Equippable)
+			.with_attribute(AvatarAttr::ItemSubType, first_equippable)
+			.with_attribute(AvatarAttr::ClassType1, slot_type)
+			.with_attribute(AvatarAttr::ClassType2, pet_type)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, rarity)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, armor_assemble_progress)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte() | color_flag)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte8, 0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_spec_byte_raw(SpecIdx::Byte1, armor_assemble_progress)
+			.with_spec_byte_raw(SpecIdx::Byte2, force.as_byte() | color_flag)
+			.with_spec_byte_raw(SpecIdx::Byte3, 0)
+			.with_spec_byte_raw(SpecIdx::Byte4, 0)
+			.with_spec_byte_raw(SpecIdx::Byte5, 0)
+			.with_spec_byte_raw(SpecIdx::Byte6, 0)
+			.with_spec_byte_raw(SpecIdx::Byte7, 0)
+			.with_spec_byte_raw(SpecIdx::Byte8, 0)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points))
 	}
@@ -449,13 +705,13 @@ impl AvatarBuilder {
 		soul_points: SoulCount,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<Self, ()> {
-		if !EquippableItemType::is_weapon(*equippable_type) {
+		if !equippable_type.is_weapon() {
 			return Err(())
 		}
 
 		let (weapon_info, color_flag) = {
 			let mut color_flag = 0b0000_0000;
-			let mut info = AvatarUtils::enums_to_bits(&[*equippable_type]) as u8 >> 4;
+			let mut info = DnaUtils::enums_to_bits(&[*equippable_type]) as u8 >> 4;
 
 			if color_pair.0 != ColorType::Null && color_pair.1 != ColorType::Null {
 				color_flag = 0b0000_1000;
@@ -469,26 +725,26 @@ impl AvatarBuilder {
 		let rarity = RarityTier::Legendary;
 
 		let progress_array =
-			AvatarUtils::generate_progress_bytes(&rarity, SCALING_FACTOR_PERC, None, hash_provider);
+			DnaUtils::generate_progress(&rarity, SCALING_FACTOR_PERC, None, hash_provider);
 
 		Ok(self
-			.with_attribute(&AvatarAttributes::ItemType, &ItemType::Equippable)
-			.with_attribute(&AvatarAttributes::ItemSubType, equippable_type)
-			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
-			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &rarity)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
+			.with_attribute(AvatarAttr::ItemType, &ItemType::Equippable)
+			.with_attribute(AvatarAttr::ItemSubType, equippable_type)
+			.with_attribute(AvatarAttr::ClassType1, slot_type)
+			.with_attribute(AvatarAttr::ClassType2, pet_type)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &rarity)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, weapon_info)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte() | color_flag)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, 0)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte8, 0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_spec_byte_raw(SpecIdx::Byte1, weapon_info)
+			.with_spec_byte_raw(SpecIdx::Byte2, force.as_byte() | color_flag)
+			.with_spec_byte_raw(SpecIdx::Byte3, 0)
+			.with_spec_byte_raw(SpecIdx::Byte4, 0)
+			.with_spec_byte_raw(SpecIdx::Byte5, 0)
+			.with_spec_byte_raw(SpecIdx::Byte6, 0)
+			.with_spec_byte_raw(SpecIdx::Byte7, 0)
+			.with_spec_byte_raw(SpecIdx::Byte8, 0)
 			.with_progress_array(progress_array)
 			.with_soul_count(soul_points))
 	}
@@ -510,28 +766,22 @@ impl AvatarBuilder {
 		let mat_req3 = 1;
 		let mat_req4 = 1;
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Blueprint)
-			.with_attribute(&AvatarAttributes::ItemSubType, blueprint_type)
-			.with_attribute(&AvatarAttributes::ClassType1, slot_type)
-			.with_attribute(&AvatarAttributes::ClassType2, pet_type)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Rare)
-			.with_attribute_raw(&AvatarAttributes::Quantity, quantity)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Blueprint)
+			.with_attribute(AvatarAttr::ItemSubType, blueprint_type)
+			.with_attribute(AvatarAttr::ClassType1, slot_type)
+			.with_attribute(AvatarAttr::ClassType2, pet_type)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X1)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Rare)
+			.with_attribute_raw(AvatarAttr::Quantity, quantity)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte1,
-				AvatarUtils::enums_to_bits(pattern) as u8,
-			)
-			.with_spec_byte_raw(
-				&AvatarSpecBytes::SpecByte2,
-				AvatarUtils::enums_order_to_bits(pattern) as u8,
-			)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte3, equippable_item_type.as_byte())
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte4, mat_req1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte5, mat_req2)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte6, mat_req3)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte7, mat_req4)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_spec_byte_raw(SpecIdx::Byte1, DnaUtils::enums_to_bits(pattern) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte2, DnaUtils::enums_order_to_bits(pattern) as u8)
+			.with_spec_byte_raw(SpecIdx::Byte3, equippable_item_type.as_byte())
+			.with_spec_byte_raw(SpecIdx::Byte4, mat_req1)
+			.with_spec_byte_raw(SpecIdx::Byte5, mat_req2)
+			.with_spec_byte_raw(SpecIdx::Byte6, mat_req3)
+			.with_spec_byte_raw(SpecIdx::Byte7, mat_req4)
 			.with_soul_count(quantity as SoulCount)
 	}
 
@@ -545,41 +795,41 @@ impl AvatarBuilder {
 			((color_pair.0.as_byte().saturating_sub(1)) << 6 |
 				(color_pair.1.as_byte().saturating_sub(1)) << 4);
 
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Special)
-			.with_attribute(&AvatarAttributes::ItemSubType, &SpecialItemType::Unidentified)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Special)
+			.with_attribute(AvatarAttr::ItemSubType, &SpecialItemType::Unidentified)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
 			// Unused
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Legendary)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte1, git_info)
-			.with_spec_byte_raw(&AvatarSpecBytes::SpecByte2, force.as_byte())
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Legendary)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
+			.with_spec_byte_raw(SpecIdx::Byte1, git_info)
+			.with_spec_byte_raw(SpecIdx::Byte2, force.as_byte())
 			.with_soul_count(soul_points)
 	}
 
 	pub fn into_dust(self, soul_points: SoulCount) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Special)
-			.with_attribute(&AvatarAttributes::ItemSubType, &SpecialItemType::Dust)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X1)
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Common)
-			.with_attribute_raw(&AvatarAttributes::Quantity, soul_points as u8)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Special)
+			.with_attribute(AvatarAttr::ItemSubType, &SpecialItemType::Dust)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X1)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Common)
+			.with_attribute_raw(AvatarAttr::Quantity, soul_points as u8)
 			.with_soul_count(soul_points)
 	}
 
 	pub fn into_toolbox(self, soul_points: SoulCount) -> Self {
-		self.with_attribute(&AvatarAttributes::ItemType, &ItemType::Special)
-			.with_attribute(&AvatarAttributes::ItemSubType, &SpecialItemType::ToolBox)
-			.with_attribute(&AvatarAttributes::ClassType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::ClassType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType1, &HexType::X0)
-			.with_attribute(&AvatarAttributes::CustomType2, &HexType::X0)
-			.with_attribute(&AvatarAttributes::RarityTier, &RarityTier::Epic)
-			.with_attribute_raw(&AvatarAttributes::Quantity, 1)
+		self.with_attribute(AvatarAttr::ItemType, &ItemType::Special)
+			.with_attribute(AvatarAttr::ItemSubType, &SpecialItemType::ToolBox)
+			.with_attribute(AvatarAttr::ClassType1, &HexType::X0)
+			.with_attribute(AvatarAttr::ClassType2, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType1, &HexType::X0)
+			.with_attribute(AvatarAttr::CustomType2, &HexType::X0)
+			.with_attribute(AvatarAttr::RarityTier, &RarityTier::Epic)
+			.with_attribute_raw(AvatarAttr::Quantity, 1)
 			.with_progress_array([0xBB; 11])
 			.with_soul_count(soul_points)
 	}
@@ -587,79 +837,23 @@ impl AvatarBuilder {
 	pub fn build(self) -> Avatar {
 		self.inner
 	}
+
+	#[allow(dead_code)]
+	pub fn build_wrapped(self) -> WrappedAvatar {
+		WrappedAvatar::new(self.inner)
+	}
 }
 
 /// Struct to wrap DNA interactions with Avatars from V2 upwards.
 /// Don't use with Avatars with V1.
-pub(crate) struct AvatarUtils;
+pub(crate) struct DnaUtils;
 
-impl AvatarUtils {
-	pub fn has_attribute_with_same_value_as(
-		avatar: &Avatar,
-		other: &Avatar,
-		attribute: &AvatarAttributes,
-	) -> bool {
-		Self::read_attribute(avatar, attribute) == Self::read_attribute(other, attribute)
+impl DnaUtils {
+	fn read_strand(avatar: &Avatar, position: usize, byte_type: ByteType) -> u8 {
+		Self::read_at(avatar.dna.as_slice(), position, byte_type)
 	}
 
-	pub fn same_item_type(avatar: &Avatar, other: &Avatar) -> bool {
-		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ItemType)
-	}
-
-	pub fn same_item_sub_type(avatar: &Avatar, other: &Avatar) -> bool {
-		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ItemSubType)
-	}
-
-	pub fn same_rarity_tier(avatar: &Avatar, other: &Avatar) -> bool {
-		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::RarityTier)
-	}
-
-	pub fn same_class_type1(avatar: &Avatar, other: &Avatar) -> bool {
-		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ClassType1)
-	}
-
-	pub fn same_class_type2(avatar: &Avatar, other: &Avatar) -> bool {
-		Self::has_attribute_with_same_value_as(avatar, other, &AvatarAttributes::ClassType2)
-	}
-
-	pub fn has_zeroed_class_types(avatar: &Avatar) -> bool {
-		Self::has_attribute_set_with_values(
-			avatar,
-			&[(AvatarAttributes::ClassType1, 0), (AvatarAttributes::ClassType2, 0)],
-		)
-	}
-
-	pub fn has_attribute_set_with_same_values_as(
-		avatar: &Avatar,
-		other: &Avatar,
-		attribute_set: &[AvatarAttributes],
-	) -> bool {
-		attribute_set
-			.iter()
-			.all(|attribute| Self::has_attribute_with_same_value_as(avatar, other, attribute))
-	}
-
-	fn read_dna_strand(avatar: &Avatar, position: usize, byte_type: &ByteType) -> u8 {
-		Self::read_dna_at(avatar.dna.as_slice(), position, byte_type)
-	}
-
-	fn read_dna_at(dna: &[u8], position: usize, byte_type: &ByteType) -> u8 {
-		match byte_type {
-			ByteType::Full => dna[position],
-			ByteType::High => Self::high_nibble_of(dna[position]),
-			ByteType::Low => Self::low_nibble_of(dna[position]),
-		}
-	}
-
-	pub fn high_nibble_of(byte: u8) -> u8 {
-		byte >> 4
-	}
-
-	pub fn low_nibble_of(byte: u8) -> u8 {
-		byte & 0x0F
-	}
-
-	fn write_dna_strand(avatar: &mut Avatar, position: usize, byte_type: ByteType, value: u8) {
+	fn write_strand(avatar: &mut Avatar, position: usize, byte_type: ByteType, value: u8) {
 		match byte_type {
 			ByteType::Full => avatar.dna[position] = value,
 			ByteType::High =>
@@ -671,7 +865,15 @@ impl AvatarUtils {
 		}
 	}
 
-	fn write_dna_at(dna: &mut [u8], position: usize, byte_type: ByteType, value: u8) {
+	fn read_at(dna: &[u8], position: usize, byte_type: ByteType) -> u8 {
+		match byte_type {
+			ByteType::Full => dna[position],
+			ByteType::High => Self::high_nibble_of(dna[position]),
+			ByteType::Low => Self::low_nibble_of(dna[position]),
+		}
+	}
+
+	fn write_at(dna: &mut [u8], position: usize, byte_type: ByteType, value: u8) {
 		match byte_type {
 			ByteType::Full => dna[position] = value,
 			ByteType::High =>
@@ -682,250 +884,136 @@ impl AvatarUtils {
 		}
 	}
 
-	pub fn has_attribute_set_with_values(
-		avatar: &Avatar,
-		attribute_value_set: &[(AvatarAttributes, u8)],
-	) -> bool {
-		attribute_value_set
-			.iter()
-			.all(|(attr, value)| Self::has_attribute_with_value_raw(avatar, attr, *value))
+	pub fn high_nibble_of(byte: u8) -> u8 {
+		byte >> 4
 	}
 
-	pub fn has_attribute_with_value<T>(
-		avatar: &Avatar,
-		attribute: &AvatarAttributes,
-		value: T,
-	) -> bool
+	pub fn low_nibble_of(byte: u8) -> u8 {
+		byte & 0x0F
+	}
+
+	pub fn read_attribute<T>(avatar: &Avatar, attribute: AvatarAttr) -> T
 	where
 		T: ByteConvertible,
 	{
-		Self::has_attribute_with_value_raw(avatar, attribute, value.as_byte())
+		T::from_byte(Self::read_attribute_raw(avatar, attribute))
 	}
 
-	pub fn has_item_type<T: ByteConvertible>(avatar: &Avatar, value: T) -> bool {
-		Self::has_attribute_with_value(avatar, &AvatarAttributes::ItemType, value)
-	}
-
-	pub fn has_item_sub_type<T: ByteConvertible>(avatar: &Avatar, value: T) -> bool {
-		Self::has_attribute_with_value(avatar, &AvatarAttributes::ItemSubType, value)
-	}
-
-	pub fn has_attribute_with_value_different_than<T>(
-		avatar: &Avatar,
-		attribute: &AvatarAttributes,
-		value: T,
-	) -> bool
-	where
-		T: ByteConvertible + PartialEq,
-	{
-		Self::read_attribute_as::<T>(avatar, attribute) != value
-	}
-
-	pub fn has_attribute_with_value_raw(
-		avatar: &Avatar,
-		attribute: &AvatarAttributes,
-		value: u8,
-	) -> bool {
-		Self::read_attribute(avatar, attribute) == value
-	}
-
-	pub fn read_attribute_as<T>(avatar: &Avatar, attribute: &AvatarAttributes) -> T
-	where
-		T: ByteConvertible,
-	{
-		T::from_byte(Self::read_attribute(avatar, attribute))
-	}
-
-	pub fn read_item_type<T: ByteConvertible>(avatar: &Avatar) -> T {
-		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::ItemType)
-	}
-
-	pub fn read_sub_type<T: ByteConvertible>(avatar: &Avatar) -> T {
-		Self::read_attribute_as::<T>(avatar, &AvatarAttributes::ItemSubType)
-	}
-
-	pub fn read_rarity(avatar: &Avatar) -> RarityTier {
-		Self::read_attribute_as::<RarityTier>(avatar, &AvatarAttributes::RarityTier)
-	}
-
-	pub fn read_quantity(avatar: &Avatar) -> u8 {
-		Self::read_attribute(avatar, &AvatarAttributes::Quantity)
-	}
-
-	pub fn read_attribute(avatar: &Avatar, attribute: &AvatarAttributes) -> u8 {
+	pub fn read_attribute_raw(avatar: &Avatar, attribute: AvatarAttr) -> u8 {
 		match attribute {
-			AvatarAttributes::ItemType => Self::read_dna_strand(avatar, 0, &ByteType::High),
-			AvatarAttributes::ItemSubType => Self::read_dna_strand(avatar, 0, &ByteType::Low),
-			AvatarAttributes::ClassType1 => Self::read_dna_strand(avatar, 1, &ByteType::High),
-			AvatarAttributes::ClassType2 => Self::read_dna_strand(avatar, 1, &ByteType::Low),
-			AvatarAttributes::CustomType1 => Self::read_dna_strand(avatar, 2, &ByteType::High),
-			AvatarAttributes::CustomType2 => Self::read_dna_strand(avatar, 4, &ByteType::Full),
-			AvatarAttributes::RarityTier => Self::read_dna_strand(avatar, 2, &ByteType::Low),
-			AvatarAttributes::Quantity => Self::read_dna_strand(avatar, 3, &ByteType::Full),
+			AvatarAttr::ItemType => Self::read_strand(avatar, 0, ByteType::High),
+			AvatarAttr::ItemSubType => Self::read_strand(avatar, 0, ByteType::Low),
+			AvatarAttr::ClassType1 => Self::read_strand(avatar, 1, ByteType::High),
+			AvatarAttr::ClassType2 => Self::read_strand(avatar, 1, ByteType::Low),
+			AvatarAttr::CustomType1 => Self::read_strand(avatar, 2, ByteType::High),
+			AvatarAttr::CustomType2 => Self::read_strand(avatar, 4, ByteType::Full),
+			AvatarAttr::RarityTier => Self::read_strand(avatar, 2, ByteType::Low),
+			AvatarAttr::Quantity => Self::read_strand(avatar, 3, ByteType::Full),
 		}
 	}
 
-	pub fn write_typed_attribute<T>(avatar: &mut Avatar, attribute: &AvatarAttributes, value: &T)
+	pub fn write_attribute<T>(avatar: &mut Avatar, attribute: AvatarAttr, value: &T)
 	where
 		T: ByteConvertible,
 	{
-		Self::write_attribute(avatar, attribute, value.as_byte())
+		Self::write_attribute_raw(avatar, attribute, value.as_byte())
 	}
 
-	pub fn write_attribute(avatar: &mut Avatar, attribute: &AvatarAttributes, value: u8) {
+	pub fn write_attribute_raw(avatar: &mut Avatar, attribute: AvatarAttr, value: u8) {
 		match attribute {
-			AvatarAttributes::ItemType => Self::write_dna_strand(avatar, 0, ByteType::High, value),
-			AvatarAttributes::ItemSubType =>
-				Self::write_dna_strand(avatar, 0, ByteType::Low, value),
-			AvatarAttributes::ClassType1 =>
-				Self::write_dna_strand(avatar, 1, ByteType::High, value),
-			AvatarAttributes::ClassType2 => Self::write_dna_strand(avatar, 1, ByteType::Low, value),
-			AvatarAttributes::CustomType1 =>
-				Self::write_dna_strand(avatar, 2, ByteType::High, value),
-			AvatarAttributes::CustomType2 =>
-				Self::write_dna_strand(avatar, 4, ByteType::Full, value),
-			AvatarAttributes::RarityTier => Self::write_dna_strand(avatar, 2, ByteType::Low, value),
-			AvatarAttributes::Quantity => Self::write_dna_strand(avatar, 3, ByteType::Full, value),
+			AvatarAttr::ItemType => Self::write_strand(avatar, 0, ByteType::High, value),
+			AvatarAttr::ItemSubType => Self::write_strand(avatar, 0, ByteType::Low, value),
+			AvatarAttr::ClassType1 => Self::write_strand(avatar, 1, ByteType::High, value),
+			AvatarAttr::ClassType2 => Self::write_strand(avatar, 1, ByteType::Low, value),
+			AvatarAttr::CustomType1 => Self::write_strand(avatar, 2, ByteType::High, value),
+			AvatarAttr::CustomType2 => Self::write_strand(avatar, 4, ByteType::Full, value),
+			AvatarAttr::RarityTier => Self::write_strand(avatar, 2, ByteType::Low, value),
+			AvatarAttr::Quantity => Self::write_strand(avatar, 3, ByteType::Full, value),
 		}
 	}
 
-	pub fn read_full_spec_bytes(avatar: &Avatar) -> [u8; 16] {
+	pub fn read_specs(avatar: &Avatar) -> [u8; 16] {
 		let mut out = [0; 16];
 		out.copy_from_slice(&avatar.dna[5..21]);
 		out
 	}
 
-	pub fn read_spec_byte(avatar: &Avatar, spec_byte: &AvatarSpecBytes) -> u8 {
-		match spec_byte {
-			AvatarSpecBytes::SpecByte1 => Self::read_dna_strand(avatar, 5, &ByteType::Full),
-			AvatarSpecBytes::SpecByte2 => Self::read_dna_strand(avatar, 6, &ByteType::Full),
-			AvatarSpecBytes::SpecByte3 => Self::read_dna_strand(avatar, 7, &ByteType::Full),
-			AvatarSpecBytes::SpecByte4 => Self::read_dna_strand(avatar, 8, &ByteType::Full),
-			AvatarSpecBytes::SpecByte5 => Self::read_dna_strand(avatar, 9, &ByteType::Full),
-			AvatarSpecBytes::SpecByte6 => Self::read_dna_strand(avatar, 10, &ByteType::Full),
-			AvatarSpecBytes::SpecByte7 => Self::read_dna_strand(avatar, 11, &ByteType::Full),
-			AvatarSpecBytes::SpecByte8 => Self::read_dna_strand(avatar, 12, &ByteType::Full),
-			AvatarSpecBytes::SpecByte9 => Self::read_dna_strand(avatar, 13, &ByteType::Full),
-			AvatarSpecBytes::SpecByte10 => Self::read_dna_strand(avatar, 14, &ByteType::Full),
-			AvatarSpecBytes::SpecByte11 => Self::read_dna_strand(avatar, 15, &ByteType::Full),
-			AvatarSpecBytes::SpecByte12 => Self::read_dna_strand(avatar, 16, &ByteType::Full),
-			AvatarSpecBytes::SpecByte13 => Self::read_dna_strand(avatar, 17, &ByteType::Full),
-			AvatarSpecBytes::SpecByte14 => Self::read_dna_strand(avatar, 18, &ByteType::Full),
-			AvatarSpecBytes::SpecByte15 => Self::read_dna_strand(avatar, 19, &ByteType::Full),
-			AvatarSpecBytes::SpecByte16 => Self::read_dna_strand(avatar, 20, &ByteType::Full),
+	pub fn read_spec_raw(avatar: &Avatar, index: SpecIdx) -> u8 {
+		match index {
+			SpecIdx::Byte1 => Self::read_strand(avatar, 5, ByteType::Full),
+			SpecIdx::Byte2 => Self::read_strand(avatar, 6, ByteType::Full),
+			SpecIdx::Byte3 => Self::read_strand(avatar, 7, ByteType::Full),
+			SpecIdx::Byte4 => Self::read_strand(avatar, 8, ByteType::Full),
+			SpecIdx::Byte5 => Self::read_strand(avatar, 9, ByteType::Full),
+			SpecIdx::Byte6 => Self::read_strand(avatar, 10, ByteType::Full),
+			SpecIdx::Byte7 => Self::read_strand(avatar, 11, ByteType::Full),
+			SpecIdx::Byte8 => Self::read_strand(avatar, 12, ByteType::Full),
+			SpecIdx::Byte9 => Self::read_strand(avatar, 13, ByteType::Full),
+			SpecIdx::Byte10 => Self::read_strand(avatar, 14, ByteType::Full),
+			SpecIdx::Byte11 => Self::read_strand(avatar, 15, ByteType::Full),
+			SpecIdx::Byte12 => Self::read_strand(avatar, 16, ByteType::Full),
+			SpecIdx::Byte13 => Self::read_strand(avatar, 17, ByteType::Full),
+			SpecIdx::Byte14 => Self::read_strand(avatar, 18, ByteType::Full),
+			SpecIdx::Byte15 => Self::read_strand(avatar, 19, ByteType::Full),
+			SpecIdx::Byte16 => Self::read_strand(avatar, 20, ByteType::Full),
 		}
 	}
 
-	pub fn read_spec_byte_as<T>(avatar: &Avatar, spec_byte: &AvatarSpecBytes) -> T
+	pub fn read_spec<T>(avatar: &Avatar, spec_byte: SpecIdx) -> T
 	where
 		T: ByteConvertible,
 	{
-		T::from_byte(Self::read_spec_byte(avatar, spec_byte))
+		T::from_byte(Self::read_spec_raw(avatar, spec_byte))
 	}
 
-	pub fn write_full_spec_bytes(avatar: &mut Avatar, value: [u8; 16]) {
+	pub fn write_specs(avatar: &mut Avatar, value: [u8; 16]) {
 		(avatar.dna[5..21]).copy_from_slice(&value);
 	}
 
-	pub fn write_spec_byte(avatar: &mut Avatar, spec_byte: &AvatarSpecBytes, value: u8) {
+	pub fn write_spec(avatar: &mut Avatar, spec_byte: SpecIdx, value: u8) {
 		match spec_byte {
-			AvatarSpecBytes::SpecByte1 => Self::write_dna_strand(avatar, 5, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte2 => Self::write_dna_strand(avatar, 6, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte3 => Self::write_dna_strand(avatar, 7, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte4 => Self::write_dna_strand(avatar, 8, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte5 => Self::write_dna_strand(avatar, 9, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte6 => Self::write_dna_strand(avatar, 10, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte7 => Self::write_dna_strand(avatar, 11, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte8 => Self::write_dna_strand(avatar, 12, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte9 => Self::write_dna_strand(avatar, 13, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte10 =>
-				Self::write_dna_strand(avatar, 14, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte11 =>
-				Self::write_dna_strand(avatar, 15, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte12 =>
-				Self::write_dna_strand(avatar, 16, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte13 =>
-				Self::write_dna_strand(avatar, 17, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte14 =>
-				Self::write_dna_strand(avatar, 18, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte15 =>
-				Self::write_dna_strand(avatar, 19, ByteType::Full, value),
-			AvatarSpecBytes::SpecByte16 =>
-				Self::write_dna_strand(avatar, 20, ByteType::Full, value),
+			SpecIdx::Byte1 => Self::write_strand(avatar, 5, ByteType::Full, value),
+			SpecIdx::Byte2 => Self::write_strand(avatar, 6, ByteType::Full, value),
+			SpecIdx::Byte3 => Self::write_strand(avatar, 7, ByteType::Full, value),
+			SpecIdx::Byte4 => Self::write_strand(avatar, 8, ByteType::Full, value),
+			SpecIdx::Byte5 => Self::write_strand(avatar, 9, ByteType::Full, value),
+			SpecIdx::Byte6 => Self::write_strand(avatar, 10, ByteType::Full, value),
+			SpecIdx::Byte7 => Self::write_strand(avatar, 11, ByteType::Full, value),
+			SpecIdx::Byte8 => Self::write_strand(avatar, 12, ByteType::Full, value),
+			SpecIdx::Byte9 => Self::write_strand(avatar, 13, ByteType::Full, value),
+			SpecIdx::Byte10 => Self::write_strand(avatar, 14, ByteType::Full, value),
+			SpecIdx::Byte11 => Self::write_strand(avatar, 15, ByteType::Full, value),
+			SpecIdx::Byte12 => Self::write_strand(avatar, 16, ByteType::Full, value),
+			SpecIdx::Byte13 => Self::write_strand(avatar, 17, ByteType::Full, value),
+			SpecIdx::Byte14 => Self::write_strand(avatar, 18, ByteType::Full, value),
+			SpecIdx::Byte15 => Self::write_strand(avatar, 19, ByteType::Full, value),
+			SpecIdx::Byte16 => Self::write_strand(avatar, 20, ByteType::Full, value),
 		}
 	}
 
-	pub fn has_same_spec_byte_as(
-		avatar: &Avatar,
-		other: &Avatar,
-		spec_byte: &AvatarSpecBytes,
-	) -> bool {
-		Self::read_spec_byte(avatar, spec_byte) == Self::read_spec_byte(other, spec_byte)
-	}
-
-	pub fn same_item_type_and_class_types(avatar_1: &Avatar, avatar_2: &Avatar) -> bool {
-		AvatarUtils::has_attribute_set_with_same_values_as(
-			avatar_1,
-			avatar_2,
-			&[
-				AvatarAttributes::ItemType,
-				AvatarAttributes::ItemSubType,
-				AvatarAttributes::ClassType1,
-				AvatarAttributes::ClassType2,
-			],
-		)
-	}
-
-	pub fn same_assemble_version(avatar_1: &Avatar, avatar_2: &Avatar) -> bool {
-		AvatarUtils::has_attribute_set_with_same_values_as(
-			avatar_1,
-			avatar_2,
-			&[
-				AvatarAttributes::ItemType,
-				AvatarAttributes::ClassType1,
-				AvatarAttributes::ClassType2,
-			],
-		)
-	}
-
-	// TODO: Improve return type to [[u8; 3]; 10] if possible
-	pub fn spec_byte_split_ten(avatar: &Avatar) -> Vec<Vec<u8>> {
-		Self::read_full_spec_bytes(avatar)
-			.into_iter()
-			.flat_map(|entry| [entry >> 4, entry & 0x0F])
-			.take(30)
-			.collect::<Vec<u8>>()
-			.chunks_exact(3)
-			.map(|item| item.into())
-			.collect::<Vec<Vec<u8>>>()
-	}
-
-	pub fn spec_byte_split_ten_count(avatar: &Avatar) -> usize {
-		Self::spec_byte_split_ten(avatar)
-			.into_iter()
-			.filter(|segment| segment.iter().sum::<u8>() > 0)
-			.count()
-	}
-
-	pub fn read_progress_array(avatar: &Avatar) -> [u8; 11] {
+	pub fn read_progress(avatar: &Avatar) -> [u8; 11] {
 		let mut out = [0; 11];
 		out.copy_from_slice(&avatar.dna[21..32]);
 		out
 	}
 
-	pub fn is_array_match(
+	pub fn write_progress(avatar: &mut Avatar, value: [u8; 11]) {
+		(avatar.dna[21..32]).copy_from_slice(&value);
+	}
+
+	pub fn is_progress_match(
 		array_1: [u8; 11],
 		array_2: [u8; 11],
 		rarity_level: u8,
 	) -> Option<Vec<u32>> {
-		let (mirror, matches) = Self::match_progress_arrays(array_1, array_2, rarity_level);
+		let (mirror, matches) = Self::match_progress(array_1, array_2, rarity_level);
 		let match_count = matches.len() as u32;
 		let mirror_count = mirror.len() as u32;
 
 		(match_count > 0 && (((match_count * 2) + mirror_count) >= 6)).then_some(matches)
 	}
 
-	pub fn match_progress_arrays(
+	pub fn match_progress(
 		array_1: [u8; 11],
 		array_2: [u8; 11],
 		rarity_level: u8,
@@ -933,19 +1021,19 @@ impl AvatarUtils {
 		let mut matches = Vec::<u32>::new();
 		let mut mirrors = Vec::<u32>::new();
 
-		let lowest_1 = Self::read_lowest_progress_byte(&array_1, &ByteType::High);
-		let lowest_2 = Self::read_lowest_progress_byte(&array_2, &ByteType::High);
+		let lowest_1 = Self::lowest_progress_byte(&array_1, ByteType::High);
+		let lowest_2 = Self::lowest_progress_byte(&array_2, ByteType::High);
 
 		if lowest_1 > lowest_2 {
 			return (mirrors, matches)
 		}
 
 		for i in 0..array_1.len() {
-			let rarity_1 = Self::read_dna_at(&array_1, i, &ByteType::High);
-			let variation_1 = Self::read_dna_at(&array_1, i, &ByteType::Low);
+			let rarity_1 = Self::read_at(&array_1, i, ByteType::High);
+			let variation_1 = Self::read_at(&array_1, i, ByteType::Low);
 
-			let rarity_2 = Self::read_dna_at(&array_2, i, &ByteType::High);
-			let variation_2 = Self::read_dna_at(&array_2, i, &ByteType::Low);
+			let rarity_2 = Self::read_at(&array_2, i, ByteType::High);
+			let variation_2 = Self::read_at(&array_2, i, ByteType::Low);
 
 			let have_same_rarity = rarity_1 == rarity_2 || rarity_2 == 0x0B;
 			let is_maxed = rarity_1 > lowest_1 || lowest_1 == RarityTier::Legendary.as_byte();
@@ -966,38 +1054,6 @@ impl AvatarUtils {
 	fn match_progress_byte(byte_1: u8, byte_2: u8) -> bool {
 		let diff = if byte_1 >= byte_2 { byte_1 - byte_2 } else { byte_2 - byte_1 };
 		diff == 1 || diff == (PROGRESS_VARIATIONS - 1)
-	}
-
-	pub fn write_progress_array(avatar: &mut Avatar, value: [u8; 11]) {
-		(avatar.dna[21..32]).copy_from_slice(&value);
-	}
-
-	pub fn can_use_avatar(avatar: &Avatar, quantity: u8) -> bool {
-		Self::read_attribute(avatar, &AvatarAttributes::Quantity) >= quantity
-	}
-
-	pub fn use_avatar(avatar: &mut Avatar, quantity: u8) -> (bool, bool, SoulCount) {
-		let current_qty = Self::read_attribute(avatar, &AvatarAttributes::Quantity);
-
-		if current_qty < quantity {
-			return (false, false, 0)
-		}
-
-		let new_qty = current_qty - quantity;
-		Self::write_attribute(avatar, &AvatarAttributes::Quantity, new_qty);
-
-		let (avatar_consumed, output_soul_points) = if new_qty == 0 {
-			let soul_points = avatar.souls;
-			avatar.souls = 0;
-			(true, soul_points)
-		} else {
-			let diff = Self::read_attribute(avatar, &AvatarAttributes::CustomType1)
-				.saturating_mul(quantity) as SoulCount;
-			avatar.souls = avatar.souls.saturating_sub(diff);
-			(false, diff)
-		};
-
-		(true, avatar_consumed, output_soul_points)
 	}
 
 	pub fn create_pattern<T>(mut base_seed: usize, increase_seed: usize) -> Vec<T>
@@ -1095,7 +1151,7 @@ impl AvatarUtils {
 		output_enums
 	}
 
-	pub fn generate_progress_bytes<T: Config>(
+	pub fn generate_progress<T: Config>(
 		rarity: &RarityTier,
 		scale_factor: u32,
 		probability: Option<u32>,
@@ -1106,7 +1162,7 @@ impl AvatarUtils {
 		let prob_value = probability.unwrap_or_default();
 
 		for i in 0..progress_bytes.len() {
-			let random_value = hash_provider.get_hash_byte();
+			let random_value = hash_provider.next();
 
 			// Upcast random_value
 			let new_rarity =
@@ -1116,8 +1172,8 @@ impl AvatarUtils {
 					rarity.as_byte()
 				};
 
-			Self::write_dna_at(&mut progress_bytes, i, ByteType::High, new_rarity);
-			Self::write_dna_at(
+			Self::write_at(&mut progress_bytes, i, ByteType::High, new_rarity);
+			Self::write_at(
 				&mut progress_bytes,
 				i,
 				ByteType::Low,
@@ -1125,16 +1181,16 @@ impl AvatarUtils {
 			);
 		}
 
-		Self::write_dna_at(&mut progress_bytes, 10, ByteType::High, rarity.as_byte());
+		Self::write_at(&mut progress_bytes, 10, ByteType::High, rarity.as_byte());
 
 		progress_bytes
 	}
 
-	pub fn read_lowest_progress_byte(progress_bytes: &[u8; 11], byte_type: &ByteType) -> u8 {
+	pub fn lowest_progress_byte(progress_bytes: &[u8; 11], byte_type: ByteType) -> u8 {
 		let mut result = u8::MAX;
 
 		for i in 0..progress_bytes.len() {
-			let value = Self::read_dna_at(progress_bytes, i, byte_type);
+			let value = Self::read_at(progress_bytes, i, byte_type);
 			if result > value {
 				result = value;
 			}
@@ -1143,17 +1199,14 @@ impl AvatarUtils {
 		result
 	}
 
-	#[allow(dead_code)]
-	pub fn read_lowest_progress_indexes(
-		progress_bytes: &[u8; 11],
-		byte_type: &ByteType,
-	) -> Vec<usize> {
+	#[cfg(test)]
+	pub fn lowest_progress_indexes(progress_bytes: &[u8; 11], byte_type: ByteType) -> Vec<usize> {
 		let mut lowest = u8::MAX;
 
 		let mut result = Vec::new();
 
 		for i in 0..progress_bytes.len() {
-			let value = Self::read_dna_at(progress_bytes, i, byte_type);
+			let value = Self::read_at(progress_bytes, i, byte_type);
 
 			match lowest.cmp(&value) {
 				Ordering::Greater => {
@@ -1246,8 +1299,8 @@ impl<T: Config, const N: usize> HashProvider<T, N> {
 		T::Hashing::hash(&full_hash)
 	}
 
-	pub fn get_hash_byte(&mut self) -> u8 {
-		self.next().unwrap_or_default()
+	pub fn next(&mut self) -> u8 {
+		<Self as Iterator>::next(self).unwrap_or_default()
 	}
 }
 
@@ -1271,7 +1324,7 @@ mod test {
 	fn test_bits_to_enums_consistency_1() {
 		let bits = 0b_01_01_01_01;
 
-		let result = AvatarUtils::bits_to_enums::<NibbleType>(bits);
+		let result = DnaUtils::bits_to_enums::<NibbleType>(bits);
 		let expected = vec![NibbleType::X0, NibbleType::X2, NibbleType::X4, NibbleType::X6];
 
 		assert_eq!(result, expected);
@@ -1281,7 +1334,7 @@ mod test {
 	fn test_bits_to_enums_consistency_2() {
 		let bits = 0b_11_01_10_01;
 
-		let result = AvatarUtils::bits_to_enums::<MaterialItemType>(bits);
+		let result = DnaUtils::bits_to_enums::<MaterialItemType>(bits);
 		let expected = vec![
 			MaterialItemType::Polymers,
 			MaterialItemType::Optics,
@@ -1298,14 +1351,14 @@ mod test {
 		let bit_order = 0b_01_10_11_00;
 		let enum_list = vec![NibbleType::X0, NibbleType::X2, NibbleType::X4, NibbleType::X6];
 
-		let result = AvatarUtils::bits_order_to_enum(bit_order, 4, enum_list);
+		let result = DnaUtils::bits_order_to_enum(bit_order, 4, enum_list);
 		let expected = vec![NibbleType::X2, NibbleType::X4, NibbleType::X6, NibbleType::X0];
 		assert_eq!(result, expected);
 
 		let bit_order_2 = 0b_01_11_00_10;
 		let enum_list_2 = vec![NibbleType::X4, NibbleType::X5, NibbleType::X6, NibbleType::X7];
 
-		let result_2 = AvatarUtils::bits_order_to_enum(bit_order_2, 4, enum_list_2);
+		let result_2 = DnaUtils::bits_order_to_enum(bit_order_2, 4, enum_list_2);
 		let expected_2 = vec![NibbleType::X5, NibbleType::X7, NibbleType::X4, NibbleType::X6];
 		assert_eq!(result_2, expected_2);
 	}
@@ -1315,7 +1368,7 @@ mod test {
 		let bit_order = 0b_01_10_00_10;
 		let enum_list = vec![PetType::FoxishDude, PetType::FireDino, PetType::GiantWoodStick];
 
-		let result = AvatarUtils::bits_order_to_enum(bit_order, 4, enum_list);
+		let result = DnaUtils::bits_order_to_enum(bit_order, 4, enum_list);
 		let expected = vec![
 			PetType::FireDino,
 			PetType::GiantWoodStick,
@@ -1331,7 +1384,7 @@ mod test {
 		let pattern = vec![NibbleType::X2, NibbleType::X4, NibbleType::X1, NibbleType::X3];
 		let expected = 0b_00_01_11_10;
 
-		assert_eq!(AvatarUtils::enums_to_bits(&pattern), expected);
+		assert_eq!(DnaUtils::enums_to_bits(&pattern), expected);
 	}
 
 	#[test]
@@ -1339,7 +1392,7 @@ mod test {
 		let pattern = vec![PetType::FoxishDude, PetType::BigHybrid, PetType::GiantWoodStick];
 		let expected = 0b_00_11_00_10;
 
-		assert_eq!(AvatarUtils::enums_to_bits(&pattern), expected);
+		assert_eq!(DnaUtils::enums_to_bits(&pattern), expected);
 	}
 
 	#[test]
@@ -1355,7 +1408,7 @@ mod test {
 		// We group by 3 because the output is grouped by 3
 		let expected = 0b_010_000_011_100_001;
 
-		assert_eq!(AvatarUtils::enums_order_to_bits(&pattern), expected);
+		assert_eq!(DnaUtils::enums_order_to_bits(&pattern), expected);
 	}
 
 	#[test]
@@ -1372,20 +1425,18 @@ mod test {
 			MaterialItemType::Superconductors,
 		];
 
-		let bits = AvatarUtils::enums_to_bits(&pattern);
+		let bits = DnaUtils::enums_to_bits(&pattern);
 		assert_eq!(bits, 0b_01_10_00_01);
 
-		let enums = AvatarUtils::bits_to_enums::<MaterialItemType>(bits);
+		let enums = DnaUtils::bits_to_enums::<MaterialItemType>(bits);
 		assert_eq!(enums, expected);
 	}
 
 	#[test]
 	fn test_create_pattern_consistency() {
 		let base_seed = SlotType::Head.as_byte() as usize;
-		let pattern = AvatarUtils::create_pattern::<NibbleType>(
-			base_seed,
-			SlotType::Breast.as_byte() as usize,
-		);
+		let pattern =
+			DnaUtils::create_pattern::<NibbleType>(base_seed, SlotType::Breast.as_byte() as usize);
 
 		let expected = vec![NibbleType::X7, NibbleType::X5, NibbleType::X4, NibbleType::X3];
 
@@ -1396,25 +1447,25 @@ mod test {
 	fn tests_pattern_and_order() {
 		let base_seed = (PetType::FoxishDude.as_byte() + SlotType::Head.as_byte()) as usize;
 
-		let pattern_1 = AvatarUtils::create_pattern::<NibbleType>(
+		let pattern_1 = DnaUtils::create_pattern::<NibbleType>(
 			base_seed,
 			EquippableItemType::ArmorBase.as_byte() as usize,
 		);
-		let p10 = AvatarUtils::enums_to_bits(&pattern_1);
-		let p11 = AvatarUtils::enums_order_to_bits(&pattern_1);
+		let p10 = DnaUtils::enums_to_bits(&pattern_1);
+		let p11 = DnaUtils::enums_order_to_bits(&pattern_1);
 
 		assert_eq!(p10, 0b_01_10_11_00);
 		assert_eq!(p11, 0b_01_11_10_00);
 
 		// Decode Blueprint
-		let unordered_1 = AvatarUtils::bits_to_enums::<NibbleType>(p10);
-		let pattern_1_check = AvatarUtils::bits_order_to_enum(p11, 4, unordered_1);
+		let unordered_1 = DnaUtils::bits_to_enums::<NibbleType>(p10);
+		let pattern_1_check = DnaUtils::bits_order_to_enum(p11, 4, unordered_1);
 		assert_eq!(pattern_1_check, pattern_1);
 
 		// Pattern number and enum number only match if they are according to the index in the list
-		let unordered_material = AvatarUtils::bits_to_enums::<MaterialItemType>(p10);
+		let unordered_material = DnaUtils::bits_to_enums::<MaterialItemType>(p10);
 		assert_eq!(
-			AvatarUtils::bits_order_to_enum(p11, 4, unordered_material)[0],
+			DnaUtils::bits_order_to_enum(p11, 4, unordered_material)[0],
 			MaterialItemType::Optics
 		);
 
@@ -1425,18 +1476,18 @@ mod test {
 		];
 
 		for (armor_component, enum_to_bits, enum_order_to_bits) in test_set {
-			let pattern_base = AvatarUtils::create_pattern::<NibbleType>(
+			let pattern_base = DnaUtils::create_pattern::<NibbleType>(
 				base_seed,
 				armor_component.as_byte() as usize,
 			);
-			let p_enum_to_bits = AvatarUtils::enums_to_bits(&pattern_base);
-			let p_enum_order_to_bits = AvatarUtils::enums_order_to_bits(&pattern_base);
+			let p_enum_to_bits = DnaUtils::enums_to_bits(&pattern_base);
+			let p_enum_order_to_bits = DnaUtils::enums_order_to_bits(&pattern_base);
 			assert_eq!(p_enum_to_bits, enum_to_bits);
 			assert_eq!(p_enum_order_to_bits, enum_order_to_bits);
 			// Decode Blueprint
-			let unordered_base = AvatarUtils::bits_to_enums::<NibbleType>(p_enum_to_bits);
+			let unordered_base = DnaUtils::bits_to_enums::<NibbleType>(p_enum_to_bits);
 			let pattern_base_check =
-				AvatarUtils::bits_order_to_enum(p_enum_order_to_bits, 4, unordered_base);
+				DnaUtils::bits_order_to_enum(p_enum_order_to_bits, 4, unordered_base);
 			assert_eq!(pattern_base_check, pattern_base);
 		}
 	}
@@ -1447,77 +1498,77 @@ mod test {
 
 		let arr_1 = [0x00; 11];
 		let arr_2 = [0x00; 11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10; 11];
 		let arr_2 = [0x00; 11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00];
 		let arr_2 = [0x00; 11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_mirrors: Vec<u32> = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, expected_mirrors);
 
 		let arr_1 = [0x00; 11];
 		let arr_2 = [0x10; 11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10; 11];
 		let arr_2 = [0x10; 11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x00];
 		let arr_2 = [0x10; 11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_mirrors: Vec<u32> = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, expected_mirrors);
 
 		let arr_1 = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00];
 		let arr_2 = [0x01, 0x02, 0x03, 0x04, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00, 0x05];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10];
 		let arr_2 = [0x01, 0x02, 0x03, 0x04, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00, 0x05];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10];
 		let arr_2 = [0x11, 0x12, 0x13, 0x14, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x15];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x14, 0x13, 0x12, 0x11, 0x00];
 		let arr_2 = [0x11, 0x12, 0x13, 0x14, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x15];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00];
 		let arr_2 = [0x11, 0x12, 0x13, 0x14, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x15];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x00, 0x11, 0x02, 0x13, 0x04, 0x15, 0x04, 0x13, 0x02, 0x11, 0x00];
 		let arr_2 = [0x01, 0x01, 0x12, 0x13, 0x04, 0x04, 0x13, 0x12, 0x01, 0x01, 0x15];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![0, 8];
 		let expected_mirrors: Vec<u32> = vec![1, 3, 9];
 		assert_eq!(matches, expected_matches);
@@ -1530,7 +1581,7 @@ mod test {
 
 		let arr_1 = [0x14, 0x12, 0x10, 0x11, 0x20, 0x21, 0x10, 0x15, 0x11, 0x25, 0x13];
 		let arr_2 = [0x12, 0x13, 0x14, 0x13, 0x14, 0x11, 0x22, 0x10, 0x14, 0x22, 0x11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![1, 7];
 		let expected_mirrors: Vec<u32> = vec![5];
 		assert_eq!(matches, expected_matches);
@@ -1538,14 +1589,14 @@ mod test {
 
 		let arr_1 = [0x14, 0x12, 0x10, 0x11, 0x20, 0x21, 0x10, 0x15, 0x11, 0x25, 0x13];
 		let arr_2 = [0x10, 0x10, 0x10, 0x14, 0x14, 0x13, 0x13, 0x12, 0x15, 0x14, 0x14];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![10];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x14, 0x12, 0x10, 0x11, 0x20, 0x21, 0x10, 0x15, 0x11, 0x25, 0x13];
 		let arr_2 = [0x15, 0x10, 0x14, 0x13, 0x13, 0x11, 0x10, 0x14, 0x12, 0x20, 0x11];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![0, 7, 8];
 		let expected_mirrors: Vec<u32> = vec![5];
 		assert_eq!(matches, expected_matches);
@@ -1553,7 +1604,7 @@ mod test {
 
 		let arr_1 = [0x14, 0x12, 0x10, 0x11, 0x20, 0x21, 0x10, 0x15, 0x11, 0x25, 0x13];
 		let arr_2 = [0x11, 0x11, 0x11, 0x10, 0x15, 0x12, 0x11, 0x11, 0x13, 0x12, 0x14];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![1, 2, 3, 6, 10];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
@@ -1565,21 +1616,21 @@ mod test {
 
 		let arr_1 = [0x42, 0x40, 0x40, 0x44, 0x43, 0x42, 0x41, 0x44, 0x44, 0x42, 0x45];
 		let arr_2 = [0x41, 0x51, 0x52, 0x53, 0x44, 0x52, 0x45, 0x41, 0x40, 0x41, 0x43];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![0, 4, 9];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x42, 0x40, 0x40, 0x44, 0x43, 0x42, 0x41, 0x44, 0x44, 0x42, 0x45];
 		let arr_2 = [0x52, 0x41, 0x43, 0x41, 0x53, 0x45, 0x43, 0x44, 0x52, 0x43, 0x43];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![1, 9];
 		assert_eq!(matches, expected_matches);
 		assert_eq!(mirrors, empty_vec);
 
 		let arr_1 = [0x42, 0x40, 0x40, 0x44, 0x43, 0x42, 0x41, 0x54, 0x44, 0x42, 0x53];
 		let arr_2 = [0x52, 0x40, 0x43, 0x41, 0x53, 0x45, 0x41, 0x44, 0x52, 0x43, 0x43];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![9];
 		let expected_mirrors: Vec<u32> = vec![7, 10];
 		assert_eq!(matches, expected_matches);
@@ -1587,7 +1638,7 @@ mod test {
 
 		let arr_1 = [0x45, 0x45, 0x45, 0x45, 0x45, 0x45, 0x45, 0x30, 0x30, 0x30, 0x30];
 		let arr_2 = [0x45, 0x45, 0x45, 0x45, 0x45, 0x35, 0x45, 0x31, 0x30, 0x45, 0x45];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		let expected_matches: Vec<u32> = vec![7];
 		let expected_mirrors: Vec<u32> = vec![0, 1, 2, 3, 4, 5, 6];
 		assert_eq!(matches, expected_matches);
@@ -1595,7 +1646,7 @@ mod test {
 
 		let arr_1 = [0x31, 0x30, 0x35, 0x33, 0x30, 0x33, 0x31, 0x32, 0x32, 0x32, 0x34];
 		let arr_2 = [0x21, 0x21, 0x35, 0x34, 0x24, 0x33, 0x23, 0x22, 0x22, 0x22, 0x22];
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 	}
@@ -1608,7 +1659,7 @@ mod test {
 			hex::decode("3130353330333132323234").expect("Decode").try_into().unwrap();
 		let arr_2: [u8; 11] =
 			hex::decode("2121353424332322222222").expect("Decode").try_into().unwrap();
-		let (mirrors, matches) = AvatarUtils::match_progress_arrays(arr_1, arr_2, 0);
+		let (mirrors, matches) = DnaUtils::match_progress(arr_1, arr_2, 0);
 		assert_eq!(matches, empty_vec);
 		assert_eq!(mirrors, empty_vec);
 	}
@@ -1616,23 +1667,23 @@ mod test {
 	#[test]
 	fn test_indexes_of_max() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(AvatarUtils::indexes_of_max(&[0, 2, 1, 1]), vec![1]);
-			assert_eq!(AvatarUtils::indexes_of_max(&[9, 5, 3, 9, 7, 2, 1]), vec![0, 3]);
-			assert_eq!(AvatarUtils::indexes_of_max(&[0, 0, 0, 0, 0]), vec![0, 1, 2, 3, 4]);
-			assert_eq!(AvatarUtils::indexes_of_max(&[1, 4, 9, 2, 3, 11, 10, 11, 0, 1]), vec![5, 7]);
+			assert_eq!(DnaUtils::indexes_of_max(&[0, 2, 1, 1]), vec![1]);
+			assert_eq!(DnaUtils::indexes_of_max(&[9, 5, 3, 9, 7, 2, 1]), vec![0, 3]);
+			assert_eq!(DnaUtils::indexes_of_max(&[0, 0, 0, 0, 0]), vec![0, 1, 2, 3, 4]);
+			assert_eq!(DnaUtils::indexes_of_max(&[1, 4, 9, 2, 3, 11, 10, 11, 0, 1]), vec![5, 7]);
 		});
 	}
 
 	#[test]
 	fn test_current_period() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 0), 0);
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 9), 0);
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 10), 1);
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 19), 1);
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 130), 13);
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 139), 13);
-			assert_eq!(AvatarUtils::current_period::<Test>(10, 14, 140), 0);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 0), 0);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 9), 0);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 10), 1);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 19), 1);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 130), 13);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 139), 13);
+			assert_eq!(DnaUtils::current_period::<Test>(10, 14, 140), 0);
 		});
 	}
 }

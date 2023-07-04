@@ -84,6 +84,16 @@ pub(crate) trait ByteConvertible: Clone {
 	fn as_byte(&self) -> u8;
 }
 
+impl ByteConvertible for u8 {
+	fn from_byte(byte: u8) -> Self {
+		byte
+	}
+
+	fn as_byte(&self) -> u8 {
+		*self
+	}
+}
+
 pub(crate) trait Ranged {
 	fn range() -> Range<usize>;
 }

@@ -2,8 +2,8 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn glimmer_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
@@ -19,32 +19,30 @@ impl<T: Config> AvatarCombinator<T> {
 			if leader_consumed {
 				// If we consumed the leader in a previous step, we collect all
 				// sacrifices and skip all future loops
-				other_output.push(ForgeOutput::Forged((sacrifice_id, sacrifice), 0));
+				other_output.push(ForgeOutput::Forged((sacrifice_id, sacrifice.unwrap()), 0));
 				continue
 			}
 
-			let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity);
-			let sacrifice_quantity =
-				AvatarUtils::read_attribute(&sacrifice, &AvatarAttributes::Quantity);
+			let leader_quantity = leader.get_quantity();
+			let sacrifice_quantity = sacrifice.get_quantity();
 
 			if leader_quantity < GLIMMER_FORGE_GLIMMER_USE ||
 				sacrifice_quantity < GLIMMER_FORGE_MATERIAL_USE
 			{
 				// If we skip the loop then the sacrifice remains unused
-				other_output.push(ForgeOutput::Forged((sacrifice_id, sacrifice), 0));
+				other_output.push(ForgeOutput::Forged((sacrifice_id, sacrifice.unwrap()), 0));
 				continue
 			}
 
-			let (_, consumed, out_leader_souls) =
-				AvatarUtils::use_avatar(&mut leader, GLIMMER_FORGE_GLIMMER_USE);
+			let (_, consumed, out_leader_souls) = leader.use_avatar(GLIMMER_FORGE_GLIMMER_USE);
 			leader_consumed = consumed;
 			let (_, consumed_sacrifice, out_sacrifice_souls) =
-				AvatarUtils::use_avatar(&mut sacrifice, GLIMMER_FORGE_MATERIAL_USE);
+				sacrifice.use_avatar(GLIMMER_FORGE_MATERIAL_USE);
 
 			other_output.push(if consumed_sacrifice {
 				ForgeOutput::Consumed(sacrifice_id)
 			} else {
-				ForgeOutput::Forged((sacrifice_id, sacrifice), 0)
+				ForgeOutput::Forged((sacrifice_id, sacrifice.unwrap()), 0)
 			});
 
 			let soul_points = out_leader_souls + out_sacrifice_souls;
@@ -61,7 +59,7 @@ impl<T: Config> AvatarCombinator<T> {
 
 			if rand_0 as u32 * SCALING_FACTOR_PERC < GLIMMER_PROB_PERC * MAX_BYTE {
 				if rand_1 == rand_2 {
-					let progress_array = AvatarUtils::generate_progress_bytes(
+					let progress_array = DnaUtils::generate_progress(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
 						Some(SPARK_PROGRESS_PROB_PERC),
@@ -70,7 +68,7 @@ impl<T: Config> AvatarCombinator<T> {
 					gen_avatar =
 						gen_avatar.into_egg(&RarityTier::Rare, 0x00, soul_points, progress_array);
 				} else if rand_1 ==
-					(AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
+					(DnaUtils::high_nibble_of(rand_1) + DnaUtils::low_nibble_of(rand_2))
 				{
 					let color_pair = (
 						ColorType::from_byte(rand_1 % (color_types + 1)),
@@ -84,7 +82,7 @@ impl<T: Config> AvatarCombinator<T> {
 						ColorType::from_byte(rand_2 % (color_types + 1)),
 						ColorType::from_byte(rand_3 % (color_types + 1)),
 					);
-					let progress_array = AvatarUtils::generate_progress_bytes(
+					let progress_array = DnaUtils::generate_progress(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
 						Some(SPARK_PROGRESS_PROB_PERC),
@@ -94,7 +92,7 @@ impl<T: Config> AvatarCombinator<T> {
 						gen_avatar.into_color_spark(&color_pair, soul_points, progress_array);
 				} else {
 					let force = Force::from_byte((rand_2 % forces) + 1);
-					let progress_array = AvatarUtils::generate_progress_bytes(
+					let progress_array = DnaUtils::generate_progress(
 						&RarityTier::Rare,
 						SCALING_FACTOR_PERC,
 						Some(SPARK_PROGRESS_PROB_PERC),
@@ -104,10 +102,9 @@ impl<T: Config> AvatarCombinator<T> {
 				}
 			} else if (rand_0 as u32 * SCALING_FACTOR_PERC <
 				(GLIMMER_PROB_PERC * TOOLBOX_PERC) * MAX_BYTE) &&
-				AvatarUtils::can_use_avatar(&leader, GLIMMER_FORGE_TOOLBOX_USE)
+				leader.can_use(GLIMMER_FORGE_TOOLBOX_USE)
 			{
-				let (_, consumed, out_leader_souls) =
-					AvatarUtils::use_avatar(&mut leader, GLIMMER_FORGE_TOOLBOX_USE);
+				let (_, consumed, out_leader_souls) = leader.use_avatar(GLIMMER_FORGE_TOOLBOX_USE);
 				leader_consumed = consumed;
 				gen_avatar = gen_avatar.into_toolbox(soul_points + out_leader_souls);
 			} else {
@@ -120,7 +117,7 @@ impl<T: Config> AvatarCombinator<T> {
 		let leader_output = if leader_consumed {
 			LeaderForgeOutput::Consumed(leader_id)
 		} else {
-			LeaderForgeOutput::Forged((leader_id, leader), 0)
+			LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0)
 		};
 
 		Ok((leader_output, other_output))
@@ -150,9 +147,9 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
 			];
-			assert_eq!(leader.1.dna.as_slice(), &expected_dna);
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -167,6 +164,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				let wrapped = WrappedAvatar::new(leader_avatar);
 				let output_souls = sacrifice_output
 					.iter()
 					.map(|sacrifice| match sacrifice {
@@ -174,41 +172,26 @@ mod test {
 						ForgeOutput::Minted(avatar) => avatar.souls,
 						_ => 0,
 					})
-					.sum::<SoulCount>() + leader_avatar.souls;
+					.sum::<SoulCount>() + wrapped.get_souls();
 				assert_eq!(output_souls, total_soul_points);
 
+				assert_eq!(wrapped.get_quantity(), 9);
+				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					9
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<ItemType>(
-						&leader_avatar,
-						&AvatarAttributes::ItemType,
-					),
-					ItemType::Essence
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<EssenceItemType>(
-						&leader_avatar,
-						&AvatarAttributes::ItemSubType,
-					),
+					wrapped.get_item_sub_type::<EssenceItemType>(),
 					EssenceItemType::Glimmer
 				);
 
 				if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[0] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 4);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 4);
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<ItemType>(
-							avatar,
-							&AvatarAttributes::ItemType,
-						),
+						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 						ItemType::Material
 					);
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<MaterialItemType>(
+						DnaUtils::read_attribute::<MaterialItemType>(
 							avatar,
-							&AvatarAttributes::ItemSubType,
+							AvatarAttr::ItemSubType,
 						),
 						MaterialItemType::Polymers
 					);
@@ -217,21 +200,15 @@ mod test {
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 10);
 					assert_eq!(
-						AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-						10
-					);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<ItemType>(
-							avatar,
-							&AvatarAttributes::ItemType,
-						),
+						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 						ItemType::Special
 					);
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<SpecialItemType>(
+						DnaUtils::read_attribute::<SpecialItemType>(
 							avatar,
-							&AvatarAttributes::ItemSubType,
+							AvatarAttr::ItemSubType,
 						),
 						SpecialItemType::Dust
 					);
@@ -268,10 +245,11 @@ mod test {
 			let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
 			let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
 
-			let total_soul_points =
-				leader.1.souls +
-					sacrifice_1.1.souls + sacrifice_2.1.souls +
-					sacrifice_3.1.souls + sacrifice_4.1.souls;
+			let total_soul_points = leader.1.get_souls() +
+				sacrifice_1.1.get_souls() +
+				sacrifice_2.1.get_souls() +
+				sacrifice_3.1.get_souls() +
+				sacrifice_4.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -286,6 +264,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 4);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				let wrapped = WrappedAvatar::new(leader_avatar);
 				let output_souls = sacrifice_output
 					.iter()
 					.map(|sacrifice| match sacrifice {
@@ -293,25 +272,13 @@ mod test {
 						ForgeOutput::Minted(avatar) => avatar.souls,
 						_ => 0,
 					})
-					.sum::<SoulCount>() + leader_avatar.souls;
+					.sum::<SoulCount>() + wrapped.get_souls();
 				assert_eq!(output_souls, total_soul_points);
 
+				assert_eq!(wrapped.get_quantity(), 96);
+				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					96
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<ItemType>(
-						&leader_avatar,
-						&AvatarAttributes::ItemType,
-					),
-					ItemType::Essence
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<EssenceItemType>(
-						&leader_avatar,
-						&AvatarAttributes::ItemSubType,
-					),
+					wrapped.get_item_sub_type::<EssenceItemType>(),
 					EssenceItemType::Glimmer
 				);
 
@@ -324,21 +291,15 @@ mod test {
 
 				for (i, material) in material_set.into_iter().enumerate() {
 					if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[i * 2] {
+						assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 16);
 						assert_eq!(
-							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-							16
-						);
-						assert_eq!(
-							AvatarUtils::read_attribute_as::<ItemType>(
-								avatar,
-								&AvatarAttributes::ItemType,
-							),
+							DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 							ItemType::Material
 						);
 						assert_eq!(
-							AvatarUtils::read_attribute_as::<MaterialItemType>(
+							DnaUtils::read_attribute::<MaterialItemType>(
 								avatar,
-								&AvatarAttributes::ItemSubType,
+								AvatarAttr::ItemSubType,
 							),
 							material
 						);
@@ -350,19 +311,16 @@ mod test {
 				for i in (1..8).step_by(2) {
 					if let ForgeOutput::Minted(avatar) = &sacrifice_output[i] {
 						assert_eq!(
-							AvatarUtils::read_attribute_as::<ItemType>(
-								avatar,
-								&AvatarAttributes::ItemType,
-							),
+							DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 							ItemType::Special
 						);
 
-						let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+						let item_sub_type = DnaUtils::read_attribute::<SpecialItemType>(
 							avatar,
-							&AvatarAttributes::ItemSubType,
+							AvatarAttr::ItemSubType,
 						);
 
-						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
+						let qty = DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity);
 
 						match item_sub_type {
 							SpecialItemType::Dust => assert!(qty == 6 || qty == 10 || qty == 14),
@@ -396,10 +354,11 @@ mod test {
 			let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
 			let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
 
-			let total_soul_points =
-				leader.1.souls +
-					sacrifice_1.1.souls + sacrifice_2.1.souls +
-					sacrifice_3.1.souls + sacrifice_4.1.souls;
+			let total_soul_points = leader.1.get_souls() +
+				sacrifice_1.1.get_souls() +
+				sacrifice_2.1.get_souls() +
+				sacrifice_3.1.get_souls() +
+				sacrifice_4.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -414,6 +373,7 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_minted(output)).count(), 4);
 
 			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				let wrapped = WrappedAvatar::new(leader_avatar);
 				let output_souls = sacrifice_output
 					.iter()
 					.map(|sacrifice| match sacrifice {
@@ -421,25 +381,13 @@ mod test {
 						ForgeOutput::Minted(avatar) => avatar.souls,
 						_ => 0,
 					})
-					.sum::<SoulCount>() + leader_avatar.souls;
+					.sum::<SoulCount>() + wrapped.get_souls();
 				assert_eq!(output_souls, total_soul_points);
 
+				assert_eq!(wrapped.get_quantity(), 96);
+				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
 				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					96
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<ItemType>(
-						&leader_avatar,
-						&AvatarAttributes::ItemType,
-					),
-					ItemType::Essence
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<EssenceItemType>(
-						&leader_avatar,
-						&AvatarAttributes::ItemSubType,
-					),
+					wrapped.get_item_sub_type::<EssenceItemType>(),
 					EssenceItemType::Glimmer
 				);
 
@@ -452,21 +400,15 @@ mod test {
 
 				for (i, material) in material_set.into_iter().enumerate() {
 					if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[i * 2] {
+						assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 16);
 						assert_eq!(
-							AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity),
-							16
-						);
-						assert_eq!(
-							AvatarUtils::read_attribute_as::<ItemType>(
-								avatar,
-								&AvatarAttributes::ItemType,
-							),
+							DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 							ItemType::Material
 						);
 						assert_eq!(
-							AvatarUtils::read_attribute_as::<MaterialItemType>(
+							DnaUtils::read_attribute::<MaterialItemType>(
 								avatar,
-								&AvatarAttributes::ItemSubType,
+								AvatarAttr::ItemSubType,
 							),
 							material
 						);
@@ -478,19 +420,16 @@ mod test {
 				for i in (1..8).step_by(2) {
 					if let ForgeOutput::Minted(avatar) = &sacrifice_output[i] {
 						assert_eq!(
-							AvatarUtils::read_attribute_as::<ItemType>(
-								avatar,
-								&AvatarAttributes::ItemType,
-							),
+							DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 							ItemType::Special
 						);
 
-						let item_sub_type = AvatarUtils::read_attribute_as::<SpecialItemType>(
+						let item_sub_type = DnaUtils::read_attribute::<SpecialItemType>(
 							avatar,
-							&AvatarAttributes::ItemSubType,
+							AvatarAttr::ItemSubType,
 						);
 
-						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
+						let qty = DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity);
 
 						match item_sub_type {
 							SpecialItemType::Dust => assert!(qty == 6 || qty == 10 || qty == 14),
@@ -520,7 +459,7 @@ mod test {
 			let leader = create_random_glimmer(&ALICE, 1);
 			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 4);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -538,16 +477,13 @@ mod test {
 
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 				assert_eq!(avatar.souls, total_soul_points);
-				assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 10);
+				assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 10);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<ItemType>(avatar, &AvatarAttributes::ItemType),
+					DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType),
 					ItemType::Special
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<SpecialItemType>(
-						avatar,
-						&AvatarAttributes::ItemSubType,
-					),
+					DnaUtils::read_attribute::<SpecialItemType>(avatar, AvatarAttr::ItemSubType,),
 					SpecialItemType::Dust
 				);
 			} else {
@@ -569,7 +505,7 @@ mod test {
 			let leader = create_random_glimmer(&ALICE, 10);
 			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -594,20 +530,12 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
+					let wrapped = WrappedAvatar::new(avatar);
+					assert_eq!(wrapped.get_quantity(), 1);
+					assert_eq!(wrapped.get_item_type(), ItemType::Essence);
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<ItemType>(
-							avatar,
-							&AvatarAttributes::ItemType,
-						),
-						ItemType::Essence
-					);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<EssenceItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType,
-						),
+						wrapped.get_item_sub_type::<EssenceItemType>(),
 						EssenceItemType::GlowSpark
 					);
 				} else {
@@ -632,7 +560,7 @@ mod test {
 			let leader = create_random_glimmer(&ALICE, 10);
 			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -657,20 +585,12 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
+					let wrapped = WrappedAvatar::new(avatar);
+					assert_eq!(wrapped.get_quantity(), 1);
+					assert_eq!(wrapped.get_item_type(), ItemType::Essence);
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<ItemType>(
-							avatar,
-							&AvatarAttributes::ItemType,
-						),
-						ItemType::Essence
-					);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<EssenceItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType,
-						),
+						wrapped.get_item_sub_type::<EssenceItemType>(),
 						EssenceItemType::GlowSpark
 					);
 				} else {
@@ -695,7 +615,7 @@ mod test {
 			let leader = create_random_glimmer(&ALICE, 10);
 			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -720,22 +640,11 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<ItemType>(
-							avatar,
-							&AvatarAttributes::ItemType,
-						),
-						ItemType::Pet
-					);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<PetItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType,
-						),
-						PetItemType::Egg
-					);
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
+					let wrapped = WrappedAvatar::new(avatar);
+					assert_eq!(wrapped.get_quantity(), 1);
+					assert_eq!(wrapped.get_item_type(), ItemType::Pet);
+					assert_eq!(wrapped.get_item_sub_type::<PetItemType>(), PetItemType::Egg);
 				} else {
 					panic!("ForgeOutput should have been Minted!")
 				}
@@ -758,7 +667,7 @@ mod test {
 			let leader = create_random_glimmer(&ALICE, 10);
 			let sacrifice = create_random_material(&ALICE, &MaterialItemType::Polymers, 8);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -783,20 +692,12 @@ mod test {
 					.sum::<SoulCount>() + leader_avatar.souls;
 				assert_eq!(output_souls, total_soul_points);
 
-				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 1);
+				if let ForgeOutput::Minted(avatar) = sacrifice_output.into_iter().nth(1).unwrap() {
+					let wrapped = WrappedAvatar::new(avatar);
+					assert_eq!(wrapped.get_quantity(), 1);
+					assert_eq!(wrapped.get_item_type(), ItemType::Special);
 					assert_eq!(
-						AvatarUtils::read_attribute_as::<ItemType>(
-							avatar,
-							&AvatarAttributes::ItemType,
-						),
-						ItemType::Special
-					);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<SpecialItemType>(
-							avatar,
-							&AvatarAttributes::ItemSubType,
-						),
+						wrapped.get_item_sub_type::<SpecialItemType>(),
 						SpecialItemType::Unidentified
 					);
 				} else {
@@ -839,30 +740,25 @@ mod test {
 
 				probability_array[0] += 1;
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					match AvatarUtils::read_attribute_as::<ItemType>(
-						avatar,
-						&AvatarAttributes::ItemType,
-					) {
+					match DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType) {
 						ItemType::Pet => probability_array[1] += 1,
-						ItemType::Essence =>
-							match AvatarUtils::read_attribute_as::<EssenceItemType>(
-								avatar,
-								&AvatarAttributes::ItemSubType,
-							) {
-								EssenceItemType::ColorSpark => probability_array[2] += 1,
-								EssenceItemType::GlowSpark => probability_array[3] += 1,
-								_ => panic!("Generated avatar EssenceItemType not valid!"),
-							},
-						ItemType::Special =>
-							match AvatarUtils::read_attribute_as::<SpecialItemType>(
-								avatar,
-								&AvatarAttributes::ItemSubType,
-							) {
-								SpecialItemType::Dust => probability_array[4] += 1,
-								SpecialItemType::Unidentified => probability_array[5] += 1,
-								SpecialItemType::Fragment => probability_array[6] += 1,
-								SpecialItemType::ToolBox => probability_array[7] += 1,
-							},
+						ItemType::Essence => match DnaUtils::read_attribute::<EssenceItemType>(
+							avatar,
+							AvatarAttr::ItemSubType,
+						) {
+							EssenceItemType::ColorSpark => probability_array[2] += 1,
+							EssenceItemType::GlowSpark => probability_array[3] += 1,
+							_ => panic!("Generated avatar EssenceItemType not valid!"),
+						},
+						ItemType::Special => match DnaUtils::read_attribute::<SpecialItemType>(
+							avatar,
+							AvatarAttr::ItemSubType,
+						) {
+							SpecialItemType::Dust => probability_array[4] += 1,
+							SpecialItemType::Unidentified => probability_array[5] += 1,
+							SpecialItemType::Fragment => probability_array[6] += 1,
+							SpecialItemType::ToolBox => probability_array[7] += 1,
+						},
 						_ => panic!("Generated avatar ItemType not valid!"),
 					}
 				} else {
@@ -923,7 +819,7 @@ mod test {
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 100;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let mut probability_array = [0_u32; 8];
@@ -950,30 +846,25 @@ mod test {
 
 				probability_array[0] += 1;
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					match AvatarUtils::read_attribute_as::<ItemType>(
-						avatar,
-						&AvatarAttributes::ItemType,
-					) {
+					match DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType) {
 						ItemType::Pet => probability_array[1] += 1,
-						ItemType::Essence =>
-							match AvatarUtils::read_attribute_as::<EssenceItemType>(
-								avatar,
-								&AvatarAttributes::ItemSubType,
-							) {
-								EssenceItemType::ColorSpark => probability_array[2] += 1,
-								EssenceItemType::GlowSpark => probability_array[3] += 1,
-								_ => panic!("Generated avatar EssenceItemType not valid!"),
-							},
-						ItemType::Special =>
-							match AvatarUtils::read_attribute_as::<SpecialItemType>(
-								avatar,
-								&AvatarAttributes::ItemSubType,
-							) {
-								SpecialItemType::Dust => probability_array[4] += 1,
-								SpecialItemType::Unidentified => probability_array[5] += 1,
-								SpecialItemType::Fragment => probability_array[6] += 1,
-								SpecialItemType::ToolBox => probability_array[7] += 1,
-							},
+						ItemType::Essence => match DnaUtils::read_attribute::<EssenceItemType>(
+							avatar,
+							AvatarAttr::ItemSubType,
+						) {
+							EssenceItemType::ColorSpark => probability_array[2] += 1,
+							EssenceItemType::GlowSpark => probability_array[3] += 1,
+							_ => panic!("Generated avatar EssenceItemType not valid!"),
+						},
+						ItemType::Special => match DnaUtils::read_attribute::<SpecialItemType>(
+							avatar,
+							AvatarAttr::ItemSubType,
+						) {
+							SpecialItemType::Dust => probability_array[4] += 1,
+							SpecialItemType::Unidentified => probability_array[5] += 1,
+							SpecialItemType::Fragment => probability_array[6] += 1,
+							SpecialItemType::ToolBox => probability_array[7] += 1,
+						},
 						_ => panic!("Generated avatar ItemType not valid!"),
 					}
 				} else {

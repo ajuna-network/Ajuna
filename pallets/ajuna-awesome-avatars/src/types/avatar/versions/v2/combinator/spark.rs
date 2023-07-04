@@ -2,8 +2,8 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn spark_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let all_count = input_sacrifices.len();
@@ -15,65 +15,46 @@ impl<T: Config> AvatarCombinator<T> {
 			hash_provider,
 		);
 
-		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
-			&AvatarUtils::read_progress_array(&leader),
-			&ByteType::High,
+		let progress_rarity = RarityTier::from_byte(DnaUtils::lowest_progress_byte(
+			&leader.get_progress(),
+			ByteType::High,
 		));
-		let essence_type = AvatarUtils::read_attribute_as::<EssenceItemType>(
-			&leader,
-			&AvatarAttributes::ItemSubType,
-		);
+		let essence_type = leader.get_item_sub_type::<EssenceItemType>();
 
-		if essence_type == EssenceItemType::ColorSpark && rarity == RarityTier::Epic {
+		if essence_type == EssenceItemType::ColorSpark && progress_rarity == RarityTier::Epic {
 			let rolls = MAX_SACRIFICE - all_count + 1;
 
 			for _ in 0..rolls {
-				let rand = hash_provider.get_hash_byte() as usize;
+				let rand = hash_provider.next() as usize;
 				if rand > 150 {
 					let (_, sacrifice) = &sacrifices[rand % all_count];
-					let spec_byte_index = if rand > 200 {
-						AvatarSpecBytes::SpecByte1
-					} else {
-						AvatarSpecBytes::SpecByte2
-					};
-					AvatarUtils::write_spec_byte(
-						&mut leader,
-						&spec_byte_index,
-						AvatarUtils::read_spec_byte(sacrifice, &spec_byte_index),
-					);
+					let spec_byte_index = if rand > 200 { SpecIdx::Byte1 } else { SpecIdx::Byte2 };
+					leader.set_spec(spec_byte_index, sacrifice.get_spec(spec_byte_index));
 				}
 
-				let leader_spec_byte_1 =
-					AvatarUtils::read_spec_byte(&leader, &AvatarSpecBytes::SpecByte1);
-				let leader_spec_byte_2 =
-					AvatarUtils::read_spec_byte(&leader, &AvatarSpecBytes::SpecByte2);
+				let leader_spec_byte_1 = leader.get_spec::<u8>(SpecIdx::Byte1);
+				let leader_spec_byte_2 = leader.get_spec::<u8>(SpecIdx::Byte2);
+
 				let color_bits = ((leader_spec_byte_1 - 1) << 6) | (leader_spec_byte_2 - 1) << 4;
 
-				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte1, color_bits);
-				AvatarUtils::write_spec_byte(&mut leader, &AvatarSpecBytes::SpecByte2, 0b0000_1000);
+				leader.set_spec(SpecIdx::Byte1, color_bits);
+				leader.set_spec(SpecIdx::Byte2, 0b0000_1000);
 
-				AvatarUtils::write_typed_attribute(
-					&mut leader,
-					&AvatarAttributes::ItemSubType,
-					&EssenceItemType::PaintFlask,
-				);
+				leader.set_item_sub_type(EssenceItemType::PaintFlask);
 			}
-		} else if essence_type == EssenceItemType::GlowSpark && rarity == RarityTier::Epic {
-			AvatarUtils::write_typed_attribute(
-				&mut leader,
-				&AvatarAttributes::ItemSubType,
-				&EssenceItemType::GlowFlask,
-			);
+		} else if essence_type == EssenceItemType::GlowSpark && progress_rarity == RarityTier::Epic
+		{
+			leader.set_item_sub_type(EssenceItemType::GlowFlask);
 		}
 
-		AvatarUtils::write_typed_attribute(&mut leader, &AvatarAttributes::RarityTier, &rarity);
+		leader.set_rarity(progress_rarity);
 
 		let output_vec: Vec<ForgeOutput<T>> = sacrifices
 			.into_iter()
 			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
-		Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), output_vec))
+		Ok((LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0), output_vec))
 	}
 }
 
@@ -123,7 +104,7 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x45, 0x33, 0x40, 0x40, 0x31, 0x31,
 				0x44, 0x44, 0x33, 0x42,
 			];
-			assert_eq!(leader.1.dna.as_slice(), &expected_dna);
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
 
 			let (leader_output, sacrifice_output) =
 				AvatarCombinator::<Test>::spark_avatars(leader, sacrifices, &mut hash_provider)
@@ -137,26 +118,20 @@ mod test {
 
 				let expected_progress_array =
 					[0x44, 0x45, 0x43, 0x40, 0x40, 0x41, 0x41, 0x44, 0x44, 0x43, 0x42];
-				let leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
+				let leader_progress_array = DnaUtils::read_progress(&leader_avatar);
 				assert_eq!(leader_progress_array, expected_progress_array);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<RarityTier>(
-						&leader_avatar,
-						&AvatarAttributes::RarityTier
-					),
+					DnaUtils::read_attribute::<RarityTier>(&leader_avatar, AvatarAttr::RarityTier),
 					RarityTier::Epic
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<EssenceItemType>(
+					DnaUtils::read_attribute::<EssenceItemType>(
 						&leader_avatar,
-						&AvatarAttributes::ItemSubType
+						AvatarAttr::ItemSubType
 					),
 					EssenceItemType::PaintFlask
 				);
-				assert_eq!(
-					AvatarUtils::read_spec_byte(&leader_avatar, &AvatarSpecBytes::SpecByte1),
-					0b0010_0000
-				);
+				assert_eq!(DnaUtils::read_spec_raw(&leader_avatar, SpecIdx::Byte1), 0b0010_0000);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -209,27 +184,21 @@ mod test {
 
 				let expected_progress_array =
 					[0x44, 0x45, 0x43, 0x40, 0x40, 0x41, 0x41, 0x44, 0x44, 0x43, 0x42];
-				let leader_progress_array = AvatarUtils::read_progress_array(&leader_avatar);
+				let leader_progress_array = DnaUtils::read_progress(&leader_avatar);
 				assert_eq!(leader_progress_array, expected_progress_array);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<RarityTier>(
-						&leader_avatar,
-						&AvatarAttributes::RarityTier
-					),
+					DnaUtils::read_attribute::<RarityTier>(&leader_avatar, AvatarAttr::RarityTier),
 					RarityTier::Epic
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<EssenceItemType>(
+					DnaUtils::read_attribute::<EssenceItemType>(
 						&leader_avatar,
-						&AvatarAttributes::ItemSubType
+						AvatarAttr::ItemSubType
 					),
 					EssenceItemType::GlowFlask
 				);
 				assert_eq!(
-					Force::from_byte(AvatarUtils::read_spec_byte(
-						&leader_avatar,
-						&AvatarSpecBytes::SpecByte1
-					)),
+					Force::from_byte(DnaUtils::read_spec_raw(&leader_avatar, SpecIdx::Byte1)),
 					Force::Kinetic
 				);
 			} else {

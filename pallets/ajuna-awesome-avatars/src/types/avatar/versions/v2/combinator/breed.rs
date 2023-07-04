@@ -2,41 +2,34 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn breed_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
 		block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		let (mut input_leader, sacrifices) = Self::match_avatars(
+		let ((leader_id, mut input_leader), sacrifices) = Self::match_avatars(
 			input_leader,
 			input_sacrifices,
 			MATCH_ALGO_START_RARITY.as_byte(),
 			hash_provider,
 		);
 
-		let rarity = RarityTier::from_byte(AvatarUtils::read_lowest_progress_byte(
-			&AvatarUtils::read_progress_array(&input_leader.1),
-			&ByteType::High,
+		let progress_rarity = RarityTier::from_byte(DnaUtils::lowest_progress_byte(
+			&input_leader.get_progress(),
+			ByteType::High,
 		));
 
-		let is_leader_egg = AvatarUtils::has_attribute_set_with_values(
-			&input_leader.1,
-			&[
-				(AvatarAttributes::ItemType, ItemType::Pet.as_byte()),
-				(AvatarAttributes::ItemSubType, PetItemType::Egg.as_byte()),
-			],
-		);
-		let is_leader_legendary = rarity == RarityTier::Legendary;
+		let is_leader_egg = input_leader.has_full_type(ItemType::Pet, PetItemType::Egg);
+		let is_leader_legendary = progress_rarity == RarityTier::Legendary;
 
-		let pet_variation =
-			AvatarUtils::read_attribute(&input_leader.1, &AvatarAttributes::CustomType2);
+		let pet_variation = input_leader.get_custom_type_2::<u8>();
 
 		if is_leader_egg && is_leader_legendary && pet_variation > 0 {
 			let pet_type_list = {
-				let mut pet_type_list = AvatarUtils::bits_to_enums::<PetType>(pet_variation as u32);
+				let mut pet_type_list = DnaUtils::bits_to_enums::<PetType>(pet_variation as u32);
 
 				let pet_type_add = PetType::from_byte(
-					(AvatarUtils::current_period::<T>(
+					(DnaUtils::current_period::<T>(
 						PET_MOON_PHASE_SIZE,
 						PET_MOON_PHASE_AMOUNT,
 						block_number,
@@ -50,33 +43,20 @@ impl<T: Config> AvatarCombinator<T> {
 				pet_type_list
 			};
 
-			let pet_type = &pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
+			let pet_type = pet_type_list[hash_provider.hash[0] as usize % pet_type_list.len()];
 
-			AvatarUtils::write_typed_attribute(
-				&mut input_leader.1,
-				&AvatarAttributes::ClassType2,
-				pet_type,
-			);
-
-			AvatarUtils::write_typed_attribute(
-				&mut input_leader.1,
-				&AvatarAttributes::ItemSubType,
-				&PetItemType::Pet,
-			);
+			input_leader.set_class_type_2(pet_type);
+			input_leader.set_item_sub_type(PetItemType::Pet);
 		}
 
-		AvatarUtils::write_typed_attribute(
-			&mut input_leader.1,
-			&AvatarAttributes::RarityTier,
-			&rarity,
-		);
+		input_leader.set_rarity(progress_rarity);
 
 		let output_vec: Vec<ForgeOutput<T>> = sacrifices
 			.into_iter()
 			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
-		Ok((LeaderForgeOutput::Forged(input_leader, 0), output_vec))
+		Ok((LeaderForgeOutput::Forged((leader_id, input_leader.unwrap()), 0), output_vec))
 	}
 }
 
@@ -124,7 +104,7 @@ mod test {
 				],
 			];
 
-			let unit_closure = |avatar| avatar;
+			let unit_closure = WrappedAvatar::new;
 
 			let mut avatar_set = (0..5)
 				.map(|i| {
@@ -203,7 +183,7 @@ mod test {
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
 				let expected_progress_array =
 					[0x43, 0x44, 0x51, 0x43, 0x45, 0x44, 0x44, 0x51, 0x43, 0x41, 0x43];
-				assert_eq!(AvatarUtils::read_progress_array(&avatar), expected_progress_array);
+				assert_eq!(DnaUtils::read_progress(&avatar), expected_progress_array);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -252,7 +232,7 @@ mod test {
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
 				let expected_progress_array =
 					[0x54, 0x55, 0x53, 0x50, 0x50, 0x51, 0x51, 0x54, 0x54, 0x53, 0x52];
-				assert_eq!(AvatarUtils::read_progress_array(&avatar), expected_progress_array);
+				assert_eq!(DnaUtils::read_progress(&avatar), expected_progress_array);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
@@ -267,7 +247,7 @@ mod test {
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 100;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let leader = create_random_avatar::<Test, _>(
@@ -333,10 +313,9 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-				let progress_array = AvatarUtils::read_progress_array(&avatar);
+				let progress_array = DnaUtils::read_progress(&avatar);
 				let lowest_count =
-					AvatarUtils::read_lowest_progress_indexes(&progress_array, &ByteType::High)
-						.len();
+					DnaUtils::lowest_progress_indexes(&progress_array, ByteType::High).len();
 				assert_eq!(lowest_count, 7);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
@@ -357,7 +336,7 @@ mod test {
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 100;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			for _ in 0..1000 {
@@ -411,12 +390,9 @@ mod test {
 					Some(unit_fn),
 				);
 
-				let leader_progress_array = AvatarUtils::read_progress_array(&leader.1);
-				let lowest_count = AvatarUtils::read_lowest_progress_indexes(
-					&leader_progress_array,
-					&ByteType::High,
-				)
-				.len();
+				let leader_progress_array = leader.1.get_progress();
+				let lowest_count =
+					DnaUtils::lowest_progress_indexes(&leader_progress_array, ByteType::High).len();
 				assert_eq!(lowest_count, 7);
 
 				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
@@ -432,10 +408,10 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 				if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-					let out_leader_progress_array = AvatarUtils::read_progress_array(&avatar);
-					let out_lowest_count = AvatarUtils::read_lowest_progress_indexes(
+					let out_leader_progress_array = DnaUtils::read_progress(&avatar);
+					let out_lowest_count = DnaUtils::lowest_progress_indexes(
 						&out_leader_progress_array,
-						&ByteType::High,
+						ByteType::High,
 					)
 					.len();
 					assert_eq!(out_lowest_count, 3);
@@ -458,7 +434,7 @@ mod test {
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 100;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let dna_sets: [([[u8; 32]; 5], usize, usize); 4] = [
@@ -606,12 +582,9 @@ mod test {
 				let sac_4 =
 					create_random_avatar::<Test, _>(&ALICE, Some(dna_set[4]), Some(unit_fn));
 
-				let leader_progress_array = AvatarUtils::read_progress_array(&leader.1);
-				let lowest_count = AvatarUtils::read_lowest_progress_indexes(
-					&leader_progress_array,
-					&ByteType::High,
-				)
-				.len();
+				let leader_progress_array = leader.1.get_progress();
+				let lowest_count =
+					DnaUtils::lowest_progress_indexes(&leader_progress_array, ByteType::High).len();
 				assert_eq!(lowest_count, lc);
 
 				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
@@ -627,10 +600,10 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 				if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-					let out_leader_progress_array = AvatarUtils::read_progress_array(&avatar);
-					let out_lowest_count = AvatarUtils::read_lowest_progress_indexes(
+					let out_leader_progress_array = DnaUtils::read_progress(&avatar);
+					let out_lowest_count = DnaUtils::lowest_progress_indexes(
 						&out_leader_progress_array,
-						&ByteType::High,
+						ByteType::High,
 					)
 					.len();
 					assert_eq!(out_lowest_count, out_lc);
@@ -653,7 +626,7 @@ mod test {
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 100;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let dna_sets: [([[u8; 32]; 5], usize, usize); 4] = [
@@ -801,12 +774,9 @@ mod test {
 				let sac_4 =
 					create_random_avatar::<Test, _>(&ALICE, Some(dna_set[4]), Some(unit_fn));
 
-				let leader_progress_array = AvatarUtils::read_progress_array(&leader.1);
-				let lowest_count = AvatarUtils::read_lowest_progress_indexes(
-					&leader_progress_array,
-					&ByteType::High,
-				)
-				.len();
+				let leader_progress_array = leader.1.get_progress();
+				let lowest_count =
+					DnaUtils::lowest_progress_indexes(&leader_progress_array, ByteType::High).len();
 				assert_eq!(lowest_count, lwst_count);
 
 				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::breed_avatars(
@@ -822,10 +792,10 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 				if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-					let out_leader_progress_array = AvatarUtils::read_progress_array(&avatar);
-					let out_lowest_count = AvatarUtils::read_lowest_progress_indexes(
+					let out_leader_progress_array = DnaUtils::read_progress(&avatar);
+					let out_lowest_count = DnaUtils::lowest_progress_indexes(
 						&out_leader_progress_array,
-						&ByteType::High,
+						ByteType::High,
 					)
 					.len();
 					assert_eq!(out_lowest_count, out_lwst_count);
@@ -863,7 +833,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(PROGRESS_PROBABILITY_PERC),
@@ -876,7 +846,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(PROGRESS_PROBABILITY_PERC),
@@ -889,7 +859,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(PROGRESS_PROBABILITY_PERC),
@@ -902,7 +872,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(SPARK_PROGRESS_PROB_PERC),
@@ -924,41 +894,35 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 				if let LeaderForgeOutput::Forged((avatar_id, avatar), _) = leader_output {
-					let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
-						&avatar,
-						&AvatarAttributes::RarityTier,
-					);
+					let leader_rarity =
+						DnaUtils::read_attribute::<RarityTier>(&avatar, AvatarAttr::RarityTier);
 
 					if leader_rarity == RarityTier::Legendary {
 						assert_eq!(i, 19);
 
 						let expected_progress_array =
 							[0x50, 0x52, 0x51, 0x53, 0x53, 0x55, 0x54, 0x53, 0x50, 0x54, 0x51];
-						let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
+						let leader_progress_array = DnaUtils::read_progress(&avatar);
 						assert_eq!(leader_progress_array, expected_progress_array);
 
-						let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
-							&avatar,
-							&AvatarAttributes::RarityTier,
-						);
+						let leader_rarity =
+							DnaUtils::read_attribute::<RarityTier>(&avatar, AvatarAttr::RarityTier);
 						assert_eq!(leader_rarity, RarityTier::Legendary);
 
-						let leader_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+						let leader_sub_type = DnaUtils::read_attribute::<PetItemType>(
 							&avatar,
-							&AvatarAttributes::ItemSubType,
+							AvatarAttr::ItemSubType,
 						);
 						assert_eq!(leader_sub_type, PetItemType::Pet);
 
-						let leader_class_type_2 = AvatarUtils::read_attribute_as::<PetType>(
-							&avatar,
-							&AvatarAttributes::ClassType2,
-						);
+						let leader_class_type_2 =
+							DnaUtils::read_attribute::<PetType>(&avatar, AvatarAttr::ClassType2);
 						assert_eq!(leader_class_type_2, PetType::BigHybrid);
 
 						break
 					}
 
-					leader_1 = (avatar_id, avatar);
+					leader_1 = (avatar_id, WrappedAvatar::new(avatar));
 				} else {
 					panic!("LeaderForgeOutput should have been Forged!")
 				}
@@ -993,7 +957,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(PROGRESS_PROBABILITY_PERC),
@@ -1006,7 +970,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(PROGRESS_PROBABILITY_PERC),
@@ -1019,7 +983,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(PROGRESS_PROBABILITY_PERC),
@@ -1032,7 +996,7 @@ mod test {
 						&RarityTier::Epic,
 						16,
 						100,
-						AvatarUtils::generate_progress_bytes(
+						DnaUtils::generate_progress(
 							&RarityTier::Epic,
 							SCALING_FACTOR_PERC,
 							Some(SPARK_PROGRESS_PROB_PERC),
@@ -1054,41 +1018,35 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 				if let LeaderForgeOutput::Forged((avatar_id, avatar), _) = leader_output {
-					let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
-						&avatar,
-						&AvatarAttributes::RarityTier,
-					);
+					let leader_rarity =
+						DnaUtils::read_attribute::<RarityTier>(&avatar, AvatarAttr::RarityTier);
 
 					if leader_rarity == RarityTier::Legendary {
 						assert_eq!(i, 19);
 
 						let expected_progress_array =
 							[0x55, 0x53, 0x55, 0x55, 0x51, 0x50, 0x51, 0x53, 0x54, 0x55, 0x51];
-						let leader_progress_array = AvatarUtils::read_progress_array(&avatar);
+						let leader_progress_array = DnaUtils::read_progress(&avatar);
 						assert_eq!(leader_progress_array, expected_progress_array);
 
-						let leader_rarity = AvatarUtils::read_attribute_as::<RarityTier>(
-							&avatar,
-							&AvatarAttributes::RarityTier,
-						);
+						let leader_rarity =
+							DnaUtils::read_attribute::<RarityTier>(&avatar, AvatarAttr::RarityTier);
 						assert_eq!(leader_rarity, RarityTier::Legendary);
 
-						let leader_sub_type = AvatarUtils::read_attribute_as::<PetItemType>(
+						let leader_sub_type = DnaUtils::read_attribute::<PetItemType>(
 							&avatar,
-							&AvatarAttributes::ItemSubType,
+							AvatarAttr::ItemSubType,
 						);
 						assert_eq!(leader_sub_type, PetItemType::Pet);
 
-						let leader_class_type_2 = AvatarUtils::read_attribute_as::<PetType>(
-							&avatar,
-							&AvatarAttributes::ClassType2,
-						);
+						let leader_class_type_2 =
+							DnaUtils::read_attribute::<PetType>(&avatar, AvatarAttr::ClassType2);
 						assert_eq!(leader_class_type_2, PetType::TankyBullwog);
 
 						break
 					}
 
-					leader_1 = (avatar_id, avatar);
+					leader_1 = (avatar_id, WrappedAvatar::new(avatar));
 				} else {
 					panic!("LeaderForgeOutput should have been Forged!")
 				}
@@ -1109,7 +1067,7 @@ mod test {
 			let unit_fn = |avatar: Avatar| {
 				let mut avatar = avatar;
 				avatar.souls = 100;
-				avatar
+				WrappedAvatar::new(avatar)
 			};
 
 			let mut distribution_map = BTreeMap::new();
@@ -1178,10 +1136,8 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
 
 				if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
-					let class_type_2 = AvatarUtils::read_attribute_as::<PetType>(
-						&avatar,
-						&AvatarAttributes::ClassType2,
-					);
+					let class_type_2 =
+						DnaUtils::read_attribute::<PetType>(&avatar, AvatarAttr::ClassType2);
 
 					distribution_map
 						.entry(class_type_2)

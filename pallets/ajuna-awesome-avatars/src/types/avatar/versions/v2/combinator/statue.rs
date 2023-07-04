@@ -2,8 +2,8 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn statue_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 		block_number: T::BlockNumber,
@@ -12,20 +12,15 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let (mut new_quantity, mut new_souls) = input_sacrifices
 			.iter()
-			.map(|sacrifice| {
-				(
-					AvatarUtils::read_attribute(&sacrifice.1, &AvatarAttributes::Quantity) as u32,
-					sacrifice.1.souls,
-				)
-			})
+			.map(|(_, sacrifice)| (sacrifice.get_quantity() as u32, sacrifice.get_souls()))
 			.reduce(|(acc_qty, acc_souls), (qty, souls)| {
 				(acc_qty.saturating_add(qty), acc_souls.saturating_add(souls))
 			})
 			.unwrap_or_default();
 
-		let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity);
+		let leader_quantity = leader.get_quantity();
 		new_quantity = new_quantity.saturating_add(leader_quantity as u32);
-		new_souls = new_souls.saturating_add(leader.souls);
+		new_souls = new_souls.saturating_add(leader.get_souls());
 
 		let max_quantity = 16;
 		if new_quantity > max_quantity {
@@ -44,115 +39,68 @@ impl<T: Config> AvatarCombinator<T> {
 			))
 		}
 
-		AvatarUtils::write_attribute(&mut leader, &AvatarAttributes::Quantity, new_quantity as u8);
-		leader.souls = new_souls;
+		leader.set_quantity(new_quantity as u8);
+		leader.set_souls(new_souls);
 
 		let updated_spec_bytes = {
-			let mut leader_spec_bytes = AvatarUtils::read_full_spec_bytes(&leader);
+			let mut leader_spec_bytes = leader.get_specs();
 
-			for spec_bytes in input_sacrifices
-				.iter()
-				.map(|(_, sacrifice)| AvatarUtils::read_full_spec_bytes(sacrifice))
-			{
+			for spec_bytes in input_sacrifices.iter().map(|(_, sacrifice)| sacrifice.get_specs()) {
 				for (i, spec_byte) in spec_bytes.into_iter().enumerate() {
 					leader_spec_bytes[i] = leader_spec_bytes[i].saturating_add(spec_byte);
 				}
 			}
 
-			let pet_type_index = (AvatarUtils::current_period::<T>(
+			let pet_type_index = (DnaUtils::current_period::<T>(
 				PET_MOON_PHASE_SIZE,
 				PET_MOON_PHASE_AMOUNT,
 				block_number,
 			) % 7) as usize + 9;
 			leader_spec_bytes[pet_type_index] = leader_spec_bytes[pet_type_index].saturating_add(1);
 
-			AvatarUtils::write_full_spec_bytes(&mut leader, leader_spec_bytes);
+			leader.set_specs(leader_spec_bytes);
 
 			leader_spec_bytes
 		};
 
 		if updated_spec_bytes.iter().take(8).skip(1).all(|spec_byte| *spec_byte > 0) {
-			let slot_types = AvatarUtils::indexes_of_max(&updated_spec_bytes[0..8]);
+			let slot_types = DnaUtils::indexes_of_max(&updated_spec_bytes[0..8]);
 			let final_slot_type = slot_types[hash_provider.hash[0] as usize % slot_types.len()];
 
-			let pet_types = AvatarUtils::indexes_of_max(&updated_spec_bytes[8..16]);
+			let pet_types = DnaUtils::indexes_of_max(&updated_spec_bytes[8..16]);
 			let final_pet_type = pet_types[hash_provider.hash[1] as usize % pet_types.len()];
 
-			AvatarUtils::write_typed_attribute(
-				&mut leader,
-				&AvatarAttributes::RarityTier,
-				&RarityTier::Rare,
-			);
-			AvatarUtils::write_typed_attribute(
-				&mut leader,
-				&AvatarAttributes::ClassType1,
-				&HexType::from_byte(final_slot_type as u8),
-			);
-			AvatarUtils::write_typed_attribute(
-				&mut leader,
-				&AvatarAttributes::ClassType2,
-				&HexType::from_byte(final_pet_type as u8),
-			);
+			leader.set_rarity(RarityTier::Rare);
+			leader.set_class_type_1(final_slot_type as u8);
+			leader.set_class_type_2(final_pet_type as u8);
 
 			let base_seed = final_slot_type + final_pet_type;
 
-			let base_0 = AvatarUtils::create_pattern::<NibbleType>(
+			let base_0 = DnaUtils::create_pattern::<NibbleType>(
 				base_seed,
 				EquippableItemType::ArmorBase.as_byte() as usize,
 			);
-			let comp_1 = AvatarUtils::create_pattern::<NibbleType>(
+			let comp_1 = DnaUtils::create_pattern::<NibbleType>(
 				base_seed,
 				EquippableItemType::ArmorComponent1.as_byte() as usize,
 			);
-			let comp_2 = AvatarUtils::create_pattern::<NibbleType>(
+			let comp_2 = DnaUtils::create_pattern::<NibbleType>(
 				base_seed,
 				EquippableItemType::ArmorComponent2.as_byte() as usize,
 			);
-			let comp_3 = AvatarUtils::create_pattern::<NibbleType>(
+			let comp_3 = DnaUtils::create_pattern::<NibbleType>(
 				base_seed,
 				EquippableItemType::ArmorComponent3.as_byte() as usize,
 			);
 
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte1,
-				AvatarUtils::enums_to_bits(&base_0) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte2,
-				AvatarUtils::enums_order_to_bits(&base_0) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte3,
-				AvatarUtils::enums_to_bits(&comp_1) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte4,
-				AvatarUtils::enums_order_to_bits(&comp_1) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte5,
-				AvatarUtils::enums_to_bits(&comp_2) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte6,
-				AvatarUtils::enums_order_to_bits(&comp_2) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte7,
-				AvatarUtils::enums_to_bits(&comp_3) as u8,
-			);
-			AvatarUtils::write_spec_byte(
-				&mut leader,
-				&AvatarSpecBytes::SpecByte8,
-				AvatarUtils::enums_order_to_bits(&comp_3) as u8,
-			);
+			leader.set_spec(SpecIdx::Byte1, DnaUtils::enums_to_bits(&base_0) as u8);
+			leader.set_spec(SpecIdx::Byte2, DnaUtils::enums_order_to_bits(&base_0) as u8);
+			leader.set_spec(SpecIdx::Byte3, DnaUtils::enums_to_bits(&comp_1) as u8);
+			leader.set_spec(SpecIdx::Byte4, DnaUtils::enums_order_to_bits(&comp_1) as u8);
+			leader.set_spec(SpecIdx::Byte5, DnaUtils::enums_to_bits(&comp_2) as u8);
+			leader.set_spec(SpecIdx::Byte6, DnaUtils::enums_order_to_bits(&comp_2) as u8);
+			leader.set_spec(SpecIdx::Byte7, DnaUtils::enums_to_bits(&comp_3) as u8);
+			leader.set_spec(SpecIdx::Byte8, DnaUtils::enums_order_to_bits(&comp_3) as u8);
 		}
 
 		let output_vec: Vec<ForgeOutput<T>> = input_sacrifices
@@ -160,7 +108,7 @@ impl<T: Config> AvatarCombinator<T> {
 			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
-		Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), output_vec))
+		Ok((LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0), output_vec))
 	}
 }
 
@@ -190,9 +138,9 @@ mod test {
 				0x00, 0x00, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00,
 			];
-			assert_eq!(AvatarUtils::read_full_spec_bytes(&lead_statue.1), expected_spec_bytes);
+			assert_eq!(lead_statue.1.get_specs(), expected_spec_bytes);
 
-			let prev_souls = lead_statue.1.souls + statue_2.1.souls;
+			let prev_souls = lead_statue.1.get_souls() + statue_2.1.get_souls();
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::statue_avatars(
 				lead_statue,
@@ -207,33 +155,19 @@ mod test {
 			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
 
 			if let LeaderForgeOutput::Forged((leader_id, leader_avatar), _) = leader_output {
-				assert_eq!(leader_avatar.souls, prev_souls);
-				assert_eq!(
-					AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-					6
-				);
+				let wrapped = WrappedAvatar::new(leader_avatar);
+				assert_eq!(wrapped.get_souls(), prev_souls);
+				assert_eq!(wrapped.get_quantity(), 6);
 
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<HexType>(
-						&leader_avatar,
-						&AvatarAttributes::ClassType1
-					),
-					HexType::X0
-				);
-				assert_eq!(
-					AvatarUtils::read_attribute_as::<HexType>(
-						&leader_avatar,
-						&AvatarAttributes::ClassType2
-					),
-					HexType::X0
-				);
+				assert_eq!(wrapped.get_class_type_1::<HexType>(), HexType::X0);
+				assert_eq!(wrapped.get_class_type_2::<HexType>(), HexType::X0);
 
 				let expected_dna = [
 					0x12, 0x00, 0x12, 0x06, 0x00, 0x00, 0x01, 0x02, 0x01, 0x00, 0x01, 0x01, 0x00,
 					0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				];
-				assert_eq!(leader_avatar.dna.as_slice(), &expected_dna);
+				assert_eq!(wrapped.get_dna().as_slice(), &expected_dna);
 
 				let (statue_3_id, statue_3) = create_random_generic_part(
 					&ALICE,
@@ -241,15 +175,15 @@ mod test {
 					4,
 				);
 
-				let prev_souls = leader_avatar.souls + statue_3.souls;
+				let prev_souls = wrapped.get_souls() + statue_3.get_souls();
 
 				assert_eq!(
-					ForgerV2::<Test>::determine_forge_type(&leader_avatar, &[&statue_3]),
+					ForgerV2::<Test>::determine_forge_type(&wrapped, &[&statue_3]),
 					ForgeType::Statue
 				);
 
 				let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::statue_avatars(
-					(leader_id, leader_avatar),
+					(leader_id, wrapped),
 					vec![(statue_3_id, statue_3)],
 					season_id,
 					&mut hash_provider,
@@ -261,33 +195,19 @@ mod test {
 				assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
 
 				if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
-					assert_eq!(leader_avatar.souls, prev_souls);
-					assert_eq!(
-						AvatarUtils::read_attribute(&leader_avatar, &AvatarAttributes::Quantity),
-						10
-					);
+					let wrapped = WrappedAvatar::new(leader_avatar);
+					assert_eq!(wrapped.get_souls(), prev_souls);
+					assert_eq!(wrapped.get_quantity(), 10);
 
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<SlotType>(
-							&leader_avatar,
-							&AvatarAttributes::ClassType1
-						),
-						SlotType::Breast
-					);
-					assert_eq!(
-						AvatarUtils::read_attribute_as::<PetType>(
-							&leader_avatar,
-							&AvatarAttributes::ClassType2
-						),
-						PetType::TankyBullwog
-					);
+					assert_eq!(wrapped.get_class_type_1::<SlotType>(), SlotType::Breast);
+					assert_eq!(wrapped.get_class_type_2::<PetType>(), PetType::TankyBullwog);
 
 					let expected_dna = [
 						0x12, 0x21, 0x13, 0x0A, 0x00, 0x6C, 0x78, 0xD8, 0x72, 0x55, 0x78, 0x66,
 						0x6C, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					];
-					assert_eq!(leader_avatar.dna.as_slice(), &expected_dna);
+					assert_eq!(wrapped.get_dna().as_slice(), &expected_dna);
 				} else {
 					panic!("LeaderForgeOutput should have been Forged!")
 				}
@@ -318,9 +238,9 @@ mod test {
 				0x00, 0x00, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00,
 			];
-			assert_eq!(AvatarUtils::read_full_spec_bytes(&lead_statue), expected_spec_bytes);
+			assert_eq!(lead_statue.get_specs(), expected_spec_bytes);
 
-			let prev_souls = lead_statue.souls + statue_2.souls;
+			let prev_souls = lead_statue.get_souls() + statue_2.get_souls();
 
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&lead_statue, &[&statue_2]),
@@ -344,17 +264,14 @@ mod test {
 
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
 				assert_eq!(avatar.souls, prev_souls);
-				assert_eq!(AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity), 17);
+				assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 17);
 
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<ItemType>(avatar, &AvatarAttributes::ItemType),
+					DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType),
 					ItemType::Special
 				);
 				assert_eq!(
-					AvatarUtils::read_attribute_as::<SpecialItemType>(
-						avatar,
-						&AvatarAttributes::ItemSubType
-					),
+					DnaUtils::read_attribute::<SpecialItemType>(avatar, AvatarAttr::ItemSubType),
 					SpecialItemType::Dust
 				);
 			}

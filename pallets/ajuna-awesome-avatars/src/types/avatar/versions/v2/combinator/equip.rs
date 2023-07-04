@@ -2,16 +2,17 @@ use super::*;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn equip_avatars(
-		input_leader: ForgeItem<T>,
-		input_sacrifices: Vec<ForgeItem<T>>,
+		input_leader: WrappedForgeItem<T>,
+		input_sacrifices: Vec<WrappedForgeItem<T>>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let (leader_id, mut leader) = input_leader;
 
 		let mut new_souls = SoulCount::MIN;
 
-		let mut leader_spec_bytes = AvatarUtils::read_full_spec_bytes(&leader);
+		let mut leader_spec_bytes = leader.get_specs();
 
-		let equipment_slots_state = AvatarUtils::spec_byte_split_ten(&leader)
+		let equipment_slots_state = leader
+			.spec_byte_split_ten()
 			.into_iter()
 			.map(|slot| slot.iter().sum::<u8>() == 0)
 			.collect::<Vec<_>>();
@@ -20,19 +21,16 @@ impl<T: Config> AvatarCombinator<T> {
 			equipment_slots_state.iter().filter(|slot| !**slot).count() >= MAX_EQUIPPED_SLOTS;
 
 		for (_, sacrifice) in input_sacrifices.iter() {
-			new_souls += sacrifice.souls;
+			new_souls += sacrifice.get_souls();
 
-			let slot_type =
-				AvatarUtils::read_attribute(sacrifice, &AvatarAttributes::ClassType1) as usize - 1;
+			let slot_type = sacrifice.get_class_type_1::<u8>() as usize - 1;
 
 			if are_slots_maxed && equipment_slots_state[slot_type] {
 				continue
 			}
 
-			let sacrifice_spec_byte_1 =
-				AvatarUtils::read_spec_byte(sacrifice, &AvatarSpecBytes::SpecByte1);
-			let sacrifice_spec_byte_2 =
-				AvatarUtils::read_spec_byte(sacrifice, &AvatarSpecBytes::SpecByte2);
+			let sacrifice_spec_byte_1 = sacrifice.get_spec::<u8>(SpecIdx::Byte1);
+			let sacrifice_spec_byte_2 = sacrifice.get_spec::<u8>(SpecIdx::Byte2);
 			let slot_type_mod = slot_type % 2;
 			let slot_index = ((slot_type - slot_type_mod) * 3) / 2;
 
@@ -49,16 +47,15 @@ impl<T: Config> AvatarCombinator<T> {
 			}
 		}
 
-		AvatarUtils::write_full_spec_bytes(&mut leader, leader_spec_bytes);
-
-		leader.souls += new_souls;
+		leader.set_specs(leader_spec_bytes);
+		leader.add_souls(new_souls);
 
 		let output_vec: Vec<ForgeOutput<T>> = input_sacrifices
 			.into_iter()
 			.map(|(sacrifice_id, _)| ForgeOutput::Consumed(sacrifice_id))
 			.collect();
 
-		Ok((LeaderForgeOutput::Forged((leader_id, leader), 0), output_vec))
+		Ok((LeaderForgeOutput::Forged((leader_id, leader.unwrap()), 0), output_vec))
 	}
 }
 
@@ -140,9 +137,9 @@ mod test {
 				&mut hash_provider,
 			);
 
-			let total_soul_points = leader.1.souls +
-				armor_sacrifices.iter().map(|(_, avatar)| avatar.souls).sum::<SoulCount>() +
-				weapon_sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() +
+				armor_sacrifices.iter().map(|(_, avatar)| avatar.get_souls()).sum::<SoulCount>() +
+				weapon_sacrifice.1.get_souls();
 			assert_eq!(total_soul_points, 500);
 
 			let expected_dna = [
@@ -150,7 +147,7 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
 			];
-			assert_eq!(leader.1.dna.as_slice(), &expected_dna);
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
 
 			armor_sacrifices.push(weapon_sacrifice);
 
@@ -190,7 +187,7 @@ mod test {
 
 				let (leader_output_2, sacrifice_output_2) =
 					AvatarCombinator::<Test>::equip_avatars(
-						(avatar_id, avatar),
+						(avatar_id, WrappedAvatar::new(avatar)),
 						vec![weapon_sacrifice_2],
 					)
 					.expect("Should succeed in forging");
@@ -255,14 +252,14 @@ mod test {
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
 			];
-			assert_eq!(leader.1.dna.as_slice(), &expected_leader_dna);
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_leader_dna);
 
 			let expected_sacrifice_dna = [
 				0x41, 0x62, 0x05, 0x01, 0x00, 0xFF, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x55, 0x50, 0x50, 0x50, 0x53, 0x53,
 				0x51, 0x55, 0x54, 0x52,
 			];
-			assert_eq!(sac_1.1.dna.as_slice(), &expected_sacrifice_dna);
+			assert_eq!(sac_1.1.get_dna().as_slice(), &expected_sacrifice_dna);
 
 			let (leader_output, sacrifice_output) =
 				AvatarCombinator::<Test>::equip_avatars(leader, vec![sac_1])
@@ -324,7 +321,7 @@ mod test {
 				&mut hash_provider,
 			);
 
-			let total_soul_points = leader.1.souls + sacrifice.1.souls;
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
 			assert_eq!(total_soul_points, 200);
 
 			let (leader_output, sacrifice_output) =

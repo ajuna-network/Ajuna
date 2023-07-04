@@ -1,7 +1,7 @@
 use crate::{ByteConvertible, Ranged};
 use sp_std::ops::Range;
 
-#[derive(Clone, Default)]
+#[derive(Copy, Clone, Default)]
 pub(crate) enum ByteType {
 	#[default]
 	Full = 0b1111_1111,
@@ -20,11 +20,11 @@ impl ByteConvertible for ByteType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum HexType {
 	#[default]
 	X0 = 0b0000,
@@ -69,11 +69,11 @@ impl ByteConvertible for HexType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum NibbleType {
 	#[default]
 	X0 = 0b0000,
@@ -102,7 +102,7 @@ impl ByteConvertible for NibbleType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
@@ -112,7 +112,7 @@ impl Ranged for NibbleType {
 	}
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum ItemType {
 	#[default]
 	Pet = 1,
@@ -141,7 +141,7 @@ impl ByteConvertible for ItemType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum PetItemType {
 	#[default]
 	Pet = 1,
@@ -160,11 +160,11 @@ impl ByteConvertible for PetItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum EquippableItemType {
 	#[default]
 	ArmorBase = 1,
@@ -202,21 +202,25 @@ impl Ranged for EquippableItemType {
 }
 
 impl EquippableItemType {
-	pub fn is_armor(item: EquippableItemType) -> bool {
-		item == EquippableItemType::ArmorBase ||
-			item == EquippableItemType::ArmorComponent1 ||
-			item == EquippableItemType::ArmorComponent2 ||
-			item == EquippableItemType::ArmorComponent3
+	pub fn is_armor_base(&self) -> bool {
+		*self == EquippableItemType::ArmorBase
 	}
 
-	pub fn is_weapon(item: EquippableItemType) -> bool {
-		item == EquippableItemType::WeaponVersion1 ||
-			item == EquippableItemType::WeaponVersion2 ||
-			item == EquippableItemType::WeaponVersion3
+	pub fn is_armor(&self) -> bool {
+		*self == EquippableItemType::ArmorBase ||
+			*self == EquippableItemType::ArmorComponent1 ||
+			*self == EquippableItemType::ArmorComponent2 ||
+			*self == EquippableItemType::ArmorComponent3
+	}
+
+	pub fn is_weapon(&self) -> bool {
+		*self == EquippableItemType::WeaponVersion1 ||
+			*self == EquippableItemType::WeaponVersion2 ||
+			*self == EquippableItemType::WeaponVersion3
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum PetType {
 	#[default]
 	TankyBullwog = 1,
@@ -243,7 +247,7 @@ impl ByteConvertible for PetType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
@@ -253,7 +257,7 @@ impl Ranged for PetType {
 	}
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum PetPartType {
 	#[default]
 	Horns = 1,
@@ -280,11 +284,11 @@ impl ByteConvertible for PetPartType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum SlotType {
 	#[default]
 	Head = 1,
@@ -315,7 +319,7 @@ impl ByteConvertible for SlotType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
@@ -325,7 +329,7 @@ impl Ranged for SlotType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum MaterialItemType {
 	#[default]
 	Polymers = 1,
@@ -354,7 +358,7 @@ impl ByteConvertible for MaterialItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
@@ -364,7 +368,7 @@ impl Ranged for MaterialItemType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum EssenceItemType {
 	#[default]
 	Glimmer = 1,
@@ -387,11 +391,11 @@ impl ByteConvertible for EssenceItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum BlueprintItemType {
 	#[default]
 	Blueprint = 1,
@@ -406,11 +410,11 @@ impl ByteConvertible for BlueprintItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum ColorType {
 	Null = 0,
 	#[default]
@@ -432,7 +436,7 @@ impl ByteConvertible for ColorType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
 
@@ -442,7 +446,7 @@ impl Ranged for ColorType {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum SpecialItemType {
 	#[default]
 	Dust = 1,
@@ -463,6 +467,6 @@ impl ByteConvertible for SpecialItemType {
 	}
 
 	fn as_byte(&self) -> u8 {
-		self.clone() as u8
+		*self as u8
 	}
 }
