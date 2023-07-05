@@ -1,5 +1,5 @@
 use super::*;
-use std::ops::Not;
+use sp_std::ops::Not;
 
 impl<T: Config> AvatarCombinator<T> {
 	pub(super) fn assemble_avatars(
