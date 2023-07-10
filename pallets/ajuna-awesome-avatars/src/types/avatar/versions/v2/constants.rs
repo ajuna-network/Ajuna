@@ -76,9 +76,9 @@ pub(crate) const PACK_TYPE_MATERIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES: Probabili
 	(EquippableItemType::ArmorComponent1, 0),
 	(EquippableItemType::ArmorComponent2, 0),
 	(EquippableItemType::ArmorComponent3, 0),
-	(EquippableItemType::WeaponVersion1, 10),
+	(EquippableItemType::WeaponVersion1, 15),
 	(EquippableItemType::WeaponVersion2, 10),
-	(EquippableItemType::WeaponVersion3, 10),
+	(EquippableItemType::WeaponVersion3, 5),
 ];
 
 pub(crate) const PACK_TYPE_MATERIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -143,9 +143,9 @@ pub(crate) const PACK_TYPE_EQUIPMENT_EQUIPABLE_ITEM_TYPE_PROBABILITIES: Probabil
 	(EquippableItemType::ArmorComponent1, 0),
 	(EquippableItemType::ArmorComponent2, 0),
 	(EquippableItemType::ArmorComponent3, 0),
-	(EquippableItemType::WeaponVersion1, 80),
+	(EquippableItemType::WeaponVersion1, 120),
 	(EquippableItemType::WeaponVersion2, 80),
-	(EquippableItemType::WeaponVersion3, 80),
+	(EquippableItemType::WeaponVersion3, 40),
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -210,9 +210,9 @@ pub(crate) const PACK_TYPE_SPECIAL_EQUIPABLE_ITEM_TYPE_PROBABILITIES: Probabilit
 	(EquippableItemType::ArmorComponent1, 0),
 	(EquippableItemType::ArmorComponent2, 0),
 	(EquippableItemType::ArmorComponent3, 0),
-	(EquippableItemType::WeaponVersion1, 10),
+	(EquippableItemType::WeaponVersion1, 15),
 	(EquippableItemType::WeaponVersion2, 10),
-	(EquippableItemType::WeaponVersion3, 10),
+	(EquippableItemType::WeaponVersion3, 5),
 ];
 
 pub(crate) const PACK_TYPE_SPECIAL_BLUEPRINT_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
