@@ -245,8 +245,7 @@ impl<T: Config> ForgerV2<T> {
 						ForgeType::Mate
 					} else if sacrifices.iter().all(|sacrifice| {
 						sacrifice.same_item_type(leader) &&
-							sacrifice.has_subtype(PetItemType::Egg) &&
-							sacrifice.get_rarity() < RarityTier::Legendary
+							sacrifice.has_subtype(PetItemType::Egg)
 					}) {
 						ForgeType::Feed
 					} else {
@@ -683,19 +682,19 @@ mod test {
 				ForgeType::Feed
 			);
 
-			// Feed with Legendary egg sacrifices fails
+			// Feed with Legendary egg sacrifices doesn't fail anymore
 			let sacrifices_err = [&create_random_egg(
 				None,
 				&ALICE,
 				&RarityTier::Legendary,
-				0b0001_0010,
+				0b0000_0000,
 				10,
 				[2; 11],
 			)
 			.1];
 			assert_eq!(
 				ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices_err),
-				ForgeType::None
+				ForgeType::Feed
 			);
 
 			// Feed with non-eggs fails
@@ -830,13 +829,12 @@ mod test {
 			);
 
 			// Mate with non-pet fails
-			let sacrifices_err = [&create_random_egg(
-				None,
+
+			let sacrifices_err = [&create_random_pet_part(
 				&ALICE,
-				&RarityTier::Legendary,
-				0b0001_0010,
-				10,
-				[2; 11],
+				&PetType::FoxishDude, 
+				&SlotType::Head, 
+				1
 			)
 			.1];
 			assert_eq!(

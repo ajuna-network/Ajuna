@@ -184,11 +184,11 @@ impl WrappedAvatar {
 		DnaUtils::read_attribute::<T>(&self.inner, AvatarAttr::CustomType2)
 	}
 
-	pub fn set_custom_type_2<T>(&mut self, custom_type_1: T)
+	pub fn set_custom_type_2<T>(&mut self, custom_type_2: T)
 	where
 		T: ByteConvertible,
 	{
-		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::CustomType2, &custom_type_1)
+		DnaUtils::write_attribute::<T>(&mut self.inner, AvatarAttr::CustomType2, &custom_type_2)
 	}
 
 	pub fn same_custom_type_2(&self, other: &WrappedAvatar) -> bool {
