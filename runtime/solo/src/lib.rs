@@ -445,11 +445,6 @@ where
 	type OverarchingCall = RuntimeCall;
 }
 
-impl pallet_sudo::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
-}
-
 parameter_types! {
 	pub const MaxScheduledPerBlock: u32 = 50;
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
@@ -680,18 +675,17 @@ construct_runtime!(
 		CouncilMembership: pallet_membership::<Instance2> = 10,
 		Treasury: pallet_treasury = 11,
 		Democracy: pallet_democracy = 12,
-		Sudo: pallet_sudo = 13,
-		Scheduler: pallet_scheduler = 14,
-		Identity: pallet_identity = 15,
-		Proxy: pallet_proxy = 16,
-		Multisig: pallet_multisig = 17,
-		Utility: pallet_utility = 18,
-		Preimage: pallet_preimage = 19,
-		AwesomeAvatars: pallet_ajuna_awesome_avatars = 22,
-		Randomness: pallet_insecure_randomness_collective_flip = 23,
-		Nft: pallet_nfts = 24,
-		NftTransfer: pallet_ajuna_nft_transfer = 25,
-		NftStaking: pallet_ajuna_nft_staking = 26,
+		Scheduler: pallet_scheduler = 13,
+		Identity: pallet_identity = 14,
+		Proxy: pallet_proxy = 15,
+		Multisig: pallet_multisig = 16,
+		Utility: pallet_utility = 17,
+		Preimage: pallet_preimage = 18,
+		AwesomeAvatars: pallet_ajuna_awesome_avatars = 19,
+		Randomness: pallet_insecure_randomness_collective_flip = 20,
+		Nft: pallet_nfts = 21,
+		NftTransfer: pallet_ajuna_nft_transfer = 22,
+		NftStaking: pallet_ajuna_nft_staking = 23,
 	}
 );
 

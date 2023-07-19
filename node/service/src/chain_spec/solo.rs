@@ -18,7 +18,7 @@ use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
 	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GenesisConfig,
-	GrandpaConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
+	GrandpaConfig, SystemConfig, VestingConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 
@@ -69,7 +69,6 @@ pub fn testnet_config() -> Result<ChainSpec, String> {
 struct Config {
 	aura: AuraConfig,
 	grandpa: GrandpaConfig,
-	sudo: SudoConfig,
 	council: CouncilConfig,
 	balances: BalancesConfig,
 	assets: AssetsConfig,
@@ -93,9 +92,13 @@ fn development_config_genesis() -> GenesisConfig {
 	compose_genesis_config(Config {
 		aura: AuraConfig { authorities: aura_authorities },
 		grandpa: GrandpaConfig { authorities: grandpa_authorities },
-		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		council: CouncilConfig {
-			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
+			members: vec![
+				accounts.alice.clone(),
+				accounts.bob.clone(),
+				accounts.charlie.clone(),
+				accounts.dave.clone(),
+			],
 			phantom: Default::default(),
 		},
 		balances: BalancesConfig {
@@ -158,8 +161,15 @@ fn testnet_config_genesis() -> GenesisConfig {
 				),
 			],
 		},
-		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
-		council: CouncilConfig::default(),
+		council: CouncilConfig {
+			members: vec![
+				accounts.alice.clone(),
+				accounts.bob.clone(),
+				accounts.charlie.clone(),
+				accounts.dave.clone(),
+			],
+			phantom: Default::default(),
+		},
 		balances: BalancesConfig {
 			balances: vec![
 				(accounts.alice, INITIAL_BALANCE),
@@ -186,12 +196,11 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 	let wasm_binary = WASM_BINARY.expect(
 		"Development wasm binary is not available. Please rebuild with SKIP_WASM_BUILD disabled.",
 	);
-	let Config { aura, grandpa, sudo, council, balances, assets, vesting } = config;
+	let Config { aura, grandpa, council, balances, assets, vesting } = config;
 	GenesisConfig {
 		// overridden config
 		aura,
 		grandpa,
-		sudo,
 		council,
 		balances,
 		assets,
