@@ -1440,7 +1440,8 @@ pub mod pallet {
 		}
 
 		fn ensure_tradable(avatar: &Avatar) -> DispatchResult {
-			let (_, season) = Self::current_season_with_id()?;
+			let season = Seasons::<T>::get(avatar.season_id)
+				.ok_or::<DispatchError>(Error::<T>::UnknownSeason.into())?;
 			ensure!(season.is_tradable(avatar), Error::<T>::AvatarCannotBeTraded);
 			Ok(())
 		}
