@@ -360,7 +360,7 @@ benchmarks! {
 		let player = account::<T>("player");
 		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
 		CurrencyOf::<T>::make_free_balance_be(&player, season.fee.upgrade_storage);
-	}: _(RawOrigin::Signed(player))
+	}: _(RawOrigin::Signed(player), None, None)
 	verify {
 		assert_last_event::<T>(Event::StorageTierUpgraded)
 	}
