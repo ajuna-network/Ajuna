@@ -2371,7 +2371,7 @@ mod transferring {
 			.free_mints(&[(ALICE, 17), (BOB, 4)])
 			.build()
 			.execute_with(|| {
-				SeasonStats::<Test>::mutate(&1, &ALICE, |stats| {
+				SeasonStats::<Test>::mutate(1, ALICE, |stats| {
 					stats.minted = 1;
 					stats.forged = 1;
 				});
@@ -2400,7 +2400,7 @@ mod transferring {
 			.free_mints(&[(ALICE, 11)])
 			.build()
 			.execute_with(|| {
-				SeasonStats::<Test>::mutate(&1, &ALICE, |stats| {
+				SeasonStats::<Test>::mutate(1, ALICE, |stats| {
 					stats.minted = 1;
 					stats.forged = 1;
 				});
@@ -2423,7 +2423,7 @@ mod transferring {
 			.free_mints(&[(ALICE, 7)])
 			.build()
 			.execute_with(|| {
-				SeasonStats::<Test>::mutate(&1, &ALICE, |stats| {
+				SeasonStats::<Test>::mutate(1, ALICE, |stats| {
 					stats.minted = 1;
 					stats.forged = 1;
 				});
