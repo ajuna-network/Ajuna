@@ -300,6 +300,7 @@ benchmarks! {
 	}
 
 	transfer_free_mints {
+		create_seasons::<T>(1)?;
 		let from = account::<T>("from");
 		let to = account::<T>("to");
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
