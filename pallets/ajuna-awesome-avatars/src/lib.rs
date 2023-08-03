@@ -393,6 +393,8 @@ pub mod pallet {
 		InsufficientStorageForForging,
 		/// Tried transferring to his or her own account.
 		CannotTransferToSelf,
+		/// Tried transferring while the account still hasn't minted and forged anything.
+		CannotTransferFromInactiveAccount,
 		/// Tried claiming treasury during a season.
 		CannotClaimDuringSeason,
 		/// Tried claiming treasury which is zero.
@@ -522,6 +524,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
+
+			let (season_id, _) = Self::current_season_with_id()?;
+			let SeasonInfo { minted, forged } = SeasonStats::<T>::get(season_id, &from);
+			ensure!(minted > 0 && forged > 0, Error::<T>::CannotTransferFromInactiveAccount);
 
 			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 			ensure!(how_many >= transfer.min_free_mint_transfer, Error::<T>::TooLowFreeMints);
