@@ -2367,9 +2367,15 @@ mod transferring {
 	#[test]
 	fn transfer_free_mints_should_work() {
 		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
 			.free_mints(&[(ALICE, 17), (BOB, 4)])
 			.build()
 			.execute_with(|| {
+				SeasonStats::<Test>::mutate(&1, &ALICE, |stats| {
+					stats.minted = 1;
+					stats.forged = 1;
+				});
+
 				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10));
 				System::assert_last_event(mock::RuntimeEvent::AAvatars(
 					crate::Event::FreeMintsTransferred { from: ALICE, to: BOB, how_many: 10 },
@@ -2389,24 +2395,44 @@ mod transferring {
 
 	#[test]
 	fn transfer_free_mints_should_reject_when_amount_is_lower_than_minimum_allowed() {
-		ExtBuilder::default().free_mints(&[(ALICE, 11)]).build().execute_with(|| {
-			let transfer = 5;
-			GlobalConfigs::<Test>::mutate(|cfg| cfg.transfer.min_free_mint_transfer = transfer + 1);
-			assert_noop!(
-				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, transfer),
-				Error::<Test>::TooLowFreeMints
-			);
-		});
+		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
+			.free_mints(&[(ALICE, 11)])
+			.build()
+			.execute_with(|| {
+				SeasonStats::<Test>::mutate(&1, &ALICE, |stats| {
+					stats.minted = 1;
+					stats.forged = 1;
+				});
+
+				let transfer = 5;
+				GlobalConfigs::<Test>::mutate(|cfg| {
+					cfg.transfer.min_free_mint_transfer = transfer + 1
+				});
+				assert_noop!(
+					AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, transfer),
+					Error::<Test>::TooLowFreeMints
+				);
+			});
 	}
 
 	#[test]
 	fn transfer_free_mints_should_reject_when_balance_is_insufficient() {
-		ExtBuilder::default().free_mints(&[(ALICE, 7)]).build().execute_with(|| {
-			assert_noop!(
-				AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10),
-				Error::<Test>::InsufficientFreeMints
-			);
-		});
+		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
+			.free_mints(&[(ALICE, 7)])
+			.build()
+			.execute_with(|| {
+				SeasonStats::<Test>::mutate(&1, &ALICE, |stats| {
+					stats.minted = 1;
+					stats.forged = 1;
+				});
+
+				assert_noop!(
+					AAvatars::transfer_free_mints(RuntimeOrigin::signed(ALICE), BOB, 10),
+					Error::<Test>::InsufficientFreeMints
+				);
+			});
 	}
 
 	#[test]
