@@ -101,8 +101,8 @@ pub(crate) const PACK_TYPE_MATERIAL_SPECIAL_ITEM_TYPE_PROBABILITIES: Probability
 pub(crate) const PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
 	(ItemType::Pet, 50),
 	(ItemType::Material, 450),
-	(ItemType::Essence, 250),
-	(ItemType::Equippable, 50),
+	(ItemType::Essence, 270),
+	(ItemType::Equippable, 30),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
