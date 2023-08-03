@@ -305,6 +305,11 @@ benchmarks! {
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
+		let season_id = CurrentSeasonStatus::<T>::get().season_id;
+		SeasonStats::<T>::mutate(season_id, &from, |stats| {
+			stats.minted = 1;
+			stats.forged = 1;
+		});
 		PlayerConfigs::<T>::mutate(&from, |account| account.free_mints = MintCount::MAX);
 	}: _(RawOrigin::Signed(from.clone()), to.clone(), how_many)
 	verify {
