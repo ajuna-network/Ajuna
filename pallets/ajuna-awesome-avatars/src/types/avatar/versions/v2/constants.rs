@@ -175,7 +175,7 @@ pub(crate) const PACK_TYPE_SPECIAL_ITEM_PROBABILITIES: ProbabilitySlots<ItemType
 ];
 
 pub(crate) const PACK_TYPE_SPECIAL_PET_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<PetItemType, 3> =
-	[(PetItemType::Pet, 1), (PetItemType::PetPart, 29), (PetItemType::Egg, 979)];
+	[(PetItemType::Pet, 1), (PetItemType::PetPart, 29), (PetItemType::Egg, 970)];
 
 pub(crate) const PACK_TYPE_SPECIAL_MATERIAL_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
 	MaterialItemType,
