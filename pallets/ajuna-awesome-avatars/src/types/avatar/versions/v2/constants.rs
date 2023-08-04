@@ -260,7 +260,7 @@ pub(crate) const PET_TYPE_PROBABILITIES: ProbabilitySlots<PetType, 7> = [
 pub(crate) const EQUIPMENT_TYPE_PROBABILITIES: ProbabilitySlots<EquippableItemType, 7> = [
 	(EquippableItemType::ArmorBase, 250),
 	(EquippableItemType::ArmorComponent1, 150),
-	(EquippableItemType::ArmorComponent3, 150),
+	(EquippableItemType::ArmorComponent2, 150),
 	(EquippableItemType::ArmorComponent3, 150),
 	(EquippableItemType::WeaponVersion1, 100),
 	(EquippableItemType::WeaponVersion2, 100),
