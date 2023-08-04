@@ -47,14 +47,14 @@ pub(crate) const PACK_TYPE_MATERIAL_MATERIAL_ITEM_TYPE_PROBABILITIES: Probabilit
 	MaterialItemType,
 	8,
 > = [
-	(MaterialItemType::Polymers, 125),
-	(MaterialItemType::Electronics, 125),
-	(MaterialItemType::PowerCells, 125),
-	(MaterialItemType::Optics, 125),
-	(MaterialItemType::Metals, 125),
-	(MaterialItemType::Ceramics, 125),
-	(MaterialItemType::Superconductors, 125),
-	(MaterialItemType::Nanomaterials, 125),
+	(MaterialItemType::Polymers, 135),
+	(MaterialItemType::Electronics, 145),
+	(MaterialItemType::PowerCells, 135),
+	(MaterialItemType::Optics, 105),
+	(MaterialItemType::Metals, 115),
+	(MaterialItemType::Ceramics, 145),
+	(MaterialItemType::Superconductors, 115),
+	(MaterialItemType::Nanomaterials, 105),
 ];
 
 pub(crate) const PACK_TYPE_MATERIAL_ESSENCE_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -101,8 +101,8 @@ pub(crate) const PACK_TYPE_MATERIAL_SPECIAL_ITEM_TYPE_PROBABILITIES: Probability
 pub(crate) const PACK_TYPE_EQUIPMENT_ITEM_PROBABILITIES: ProbabilitySlots<ItemType, 6> = [
 	(ItemType::Pet, 50),
 	(ItemType::Material, 450),
-	(ItemType::Essence, 250),
-	(ItemType::Equippable, 50),
+	(ItemType::Essence, 270),
+	(ItemType::Equippable, 30),
 	(ItemType::Blueprint, 0),
 	(ItemType::Special, 200),
 ];
@@ -114,14 +114,14 @@ pub(crate) const PACK_TYPE_EQUIPMENT_MATERIAL_ITEM_TYPE_PROBABILITIES: Probabili
 	MaterialItemType,
 	8,
 > = [
-	(MaterialItemType::Polymers, 125),
-	(MaterialItemType::Electronics, 125),
-	(MaterialItemType::PowerCells, 125),
-	(MaterialItemType::Optics, 125),
-	(MaterialItemType::Metals, 125),
-	(MaterialItemType::Ceramics, 125),
-	(MaterialItemType::Superconductors, 125),
-	(MaterialItemType::Nanomaterials, 125),
+	(MaterialItemType::Polymers, 135),
+	(MaterialItemType::Electronics, 145),
+	(MaterialItemType::PowerCells, 135),
+	(MaterialItemType::Optics, 105),
+	(MaterialItemType::Metals, 115),
+	(MaterialItemType::Ceramics, 145),
+	(MaterialItemType::Superconductors, 115),
+	(MaterialItemType::Nanomaterials, 105),
 ];
 
 pub(crate) const PACK_TYPE_EQUIPMENT_ESSENCE_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<
@@ -181,14 +181,14 @@ pub(crate) const PACK_TYPE_SPECIAL_MATERIAL_ITEM_TYPE_PROBABILITIES: Probability
 	MaterialItemType,
 	8,
 > = [
-	(MaterialItemType::Polymers, 125),
-	(MaterialItemType::Electronics, 125),
-	(MaterialItemType::PowerCells, 125),
-	(MaterialItemType::Optics, 125),
-	(MaterialItemType::Metals, 125),
-	(MaterialItemType::Ceramics, 125),
-	(MaterialItemType::Superconductors, 125),
-	(MaterialItemType::Nanomaterials, 125),
+	(MaterialItemType::Polymers, 135),
+	(MaterialItemType::Electronics, 145),
+	(MaterialItemType::PowerCells, 135),
+	(MaterialItemType::Optics, 105),
+	(MaterialItemType::Metals, 115),
+	(MaterialItemType::Ceramics, 145),
+	(MaterialItemType::Superconductors, 115),
+	(MaterialItemType::Nanomaterials, 105),
 ];
 
 pub(crate) const PACK_TYPE_SPECIAL_ESSENCE_ITEM_TYPE_PROBABILITIES: ProbabilitySlots<

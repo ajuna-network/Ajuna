@@ -101,14 +101,15 @@ impl<T: Config> AvatarCombinator<T> {
 					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, progress_array);
 				}
 			} else if (rand_0 as u32 * SCALING_FACTOR_PERC <
-				(GLIMMER_PROB_PERC * TOOLBOX_PERC) * MAX_BYTE) &&
+				(GLIMMER_PROB_PERC + TOOLBOX_PERC) * MAX_BYTE) &&
 				leader.can_use(GLIMMER_FORGE_TOOLBOX_USE)
 			{
 				let (_, consumed, out_leader_souls) = leader.use_avatar(GLIMMER_FORGE_TOOLBOX_USE);
 				leader_consumed = consumed;
 				gen_avatar = gen_avatar.into_toolbox(soul_points + out_leader_souls);
 			} else {
-				gen_avatar = gen_avatar.into_dust(soul_points);
+				// the glimmer used to gamble is burnt
+				gen_avatar = gen_avatar.into_dust(soul_points - out_leader_souls);
 			}
 
 			other_output.push(ForgeOutput::Minted(gen_avatar.build()));
@@ -173,7 +174,7 @@ mod test {
 						_ => 0,
 					})
 					.sum::<SoulCount>() + wrapped.get_souls();
-				assert_eq!(output_souls, total_soul_points);
+				assert_eq!(output_souls + GLIMMER_SP as u32, total_soul_points);
 
 				assert_eq!(wrapped.get_quantity(), 9);
 				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
@@ -200,7 +201,7 @@ mod test {
 				}
 
 				if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 10);
+					assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 8);
 					assert_eq!(
 						DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType,),
 						ItemType::Special
@@ -213,7 +214,7 @@ mod test {
 						SpecialItemType::Dust
 					);
 
-					let expected_dna_head = [0x61, 0x00, 0x11, 0x0A, 0x00];
+					let expected_dna_head = [0x61, 0x00, 0x11, 0x08, 0x00];
 					let avatar_dna_slice = &avatar.dna[0..5];
 
 					// We only need to check the 5 first bytes since the rest are not relevant for
@@ -273,7 +274,7 @@ mod test {
 						_ => 0,
 					})
 					.sum::<SoulCount>() + wrapped.get_souls();
-				assert_eq!(output_souls, total_soul_points);
+				assert_eq!(output_souls + 4 * GLIMMER_SP as u32, total_soul_points);
 
 				assert_eq!(wrapped.get_quantity(), 96);
 				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
@@ -323,7 +324,7 @@ mod test {
 						let qty = DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity);
 
 						match item_sub_type {
-							SpecialItemType::Dust => assert!(qty == 6 || qty == 10 || qty == 14),
+							SpecialItemType::Dust => assert!(qty == 4 || qty == 8 || qty == 12),
 							SpecialItemType::ToolBox => assert_eq!(qty, 1),
 							_ => panic!("Item sub type should be Dust or Toolbox"),
 						}
@@ -382,7 +383,7 @@ mod test {
 						_ => 0,
 					})
 					.sum::<SoulCount>() + wrapped.get_souls();
-				assert_eq!(output_souls, total_soul_points);
+				assert_eq!(output_souls + 4 * GLIMMER_SP as u32, total_soul_points);
 
 				assert_eq!(wrapped.get_quantity(), 96);
 				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
@@ -432,7 +433,7 @@ mod test {
 						let qty = DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity);
 
 						match item_sub_type {
-							SpecialItemType::Dust => assert!(qty == 6 || qty == 10 || qty == 14),
+							SpecialItemType::Dust => assert!(qty == 4 || qty == 8 || qty == 12),
 							SpecialItemType::ToolBox => assert_eq!(qty, 1),
 							_ => panic!("Item sub type should be Dust or Toolbox"),
 						}
@@ -476,8 +477,8 @@ mod test {
 			assert!(is_leader_consumed(&leader_output));
 
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-				assert_eq!(avatar.souls, total_soul_points);
-				assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 10);
+				assert_eq!(avatar.souls + GLIMMER_SP as u32, total_soul_points);
+				assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 8);
 				assert_eq!(
 					DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType),
 					ItemType::Special
@@ -771,10 +772,10 @@ mod test {
 			assert_eq!(probability_array[1], 9);
 			assert_eq!(probability_array[2], 797);
 			assert_eq!(probability_array[3], 723);
-			assert_eq!(probability_array[4], 0);
+			assert_eq!(probability_array[4], 6965);
 			assert_eq!(probability_array[5], 6);
 			assert_eq!(probability_array[6], 0);
-			assert_eq!(probability_array[7], 8465);
+			assert_eq!(probability_array[7], 1500);
 		});
 	}
 
