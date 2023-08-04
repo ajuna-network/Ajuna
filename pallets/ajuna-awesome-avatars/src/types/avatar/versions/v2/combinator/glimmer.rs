@@ -174,7 +174,7 @@ mod test {
 						_ => 0,
 					})
 					.sum::<SoulCount>() + wrapped.get_souls();
-				assert_eq!(output_souls + 1 * GLIMMER_SP as u32, total_soul_points);
+				assert_eq!(output_souls + GLIMMER_SP as u32, total_soul_points);
 
 				assert_eq!(wrapped.get_quantity(), 9);
 				assert_eq!(wrapped.get_item_type(), ItemType::Essence);
@@ -477,7 +477,7 @@ mod test {
 			assert!(is_leader_consumed(&leader_output));
 
 			if let ForgeOutput::Minted(avatar) = &sacrifice_output[1] {
-				assert_eq!(avatar.souls + 1 * GLIMMER_SP as u32, total_soul_points);
+				assert_eq!(avatar.souls + GLIMMER_SP as u32, total_soul_points);
 				assert_eq!(DnaUtils::read_attribute_raw(avatar, AvatarAttr::Quantity), 8);
 				assert_eq!(
 					DnaUtils::read_attribute::<ItemType>(avatar, AvatarAttr::ItemType),
