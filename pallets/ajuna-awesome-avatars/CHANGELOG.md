@@ -1,8 +1,28 @@
 
 # Change Log
 All notable changes to the Awesome Ajuna Avatars will be documented in this file.
+
+## [0.1.21] - 2023-08-04
+
+Hotfixes & Balancing
+
+### Fixed
+- [ABO-90] Blueprint building should not increase SP
+- [ABO-89] TradeFilters should not apply for Season1
+- Toolboxes probabilities wrongly calculated leading to a 100% chance
+
+### Changed
+- [Season 2] Add account activity check for free mint transfer
+- [ABO-140] Upgrade storage for someone else and/or for a different season
+
+### Added
+- Balancing for Materials & Weapons
+
+## [0.1.20] - 2023-07-28
+
+Season 2 Launch early start! Pawprints & Artifacts - Battle Mogs
  
- ## [0.1.17] - 2023-04-13
+## [0.1.17] - 2023-04-13
   
 Fixed Treasury claim, reclaimed burned balances to total issuance (sudo).
 
