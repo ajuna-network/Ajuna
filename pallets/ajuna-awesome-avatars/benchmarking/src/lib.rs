@@ -364,11 +364,14 @@ benchmarks! {
 	upgrade_storage {
 		create_seasons::<T>(1)?;
 		let player = account::<T>("player");
-		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get().season_id).unwrap();
+		let current_season_id = CurrentSeasonStatus::<T>::get().season_id;
+		let season = Seasons::<T>::get(current_season_id).unwrap();
 		CurrencyOf::<T>::make_free_balance_be(&player, season.fee.upgrade_storage);
-	}: _(RawOrigin::Signed(player))
+	}: _(RawOrigin::Signed(player.clone()), None, None)
 	verify {
-		assert_last_event::<T>(Event::StorageTierUpgraded)
+		assert_last_event::<T>(Event::StorageTierUpgraded {
+			account: player, season_id: current_season_id,
+		})
 	}
 
 	set_organizer {

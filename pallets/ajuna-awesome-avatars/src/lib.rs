@@ -271,7 +271,7 @@ pub mod pallet {
 		/// Avatar unlocked.
 		AvatarUnlocked { avatar_id: AvatarIdOf<T> },
 		/// Storage tier has been upgraded.
-		StorageTierUpgraded,
+		StorageTierUpgraded { account: T::AccountId, season_id: SeasonId },
 		/// Avatar prepared.
 		PreparedAvatar { avatar_id: AvatarIdOf<T> },
 		/// Avatar unprepared.
@@ -639,27 +639,51 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Upgrade storage.
+		/// Upgrade the avatar inventory space in a season.
+		///
+		/// * If called with a value in the **beneficiary** parameter, that account will receive the
+		///   upgrade
+		/// instead of the caller.
+		/// * If the **in_season** parameter contains a value, this will set which specific season
+		/// will the storage be upgraded for, if no value is set then the current season will be the
+		/// one for which the storage will be upgraded.
+		///
+		/// In all cases the upgrade fees are **paid by the caller**.
 		///
 		/// Emits `StorageTierUpgraded` event when successful.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
-		pub fn upgrade_storage(origin: OriginFor<T>) -> DispatchResult {
-			let player = ensure_signed(origin)?;
-			let (season_id, Season { fee, .. }) = Self::current_season_with_id()?;
+		pub fn upgrade_storage(
+			origin: OriginFor<T>,
+			beneficiary: Option<AccountIdOf<T>>,
+			in_season: Option<SeasonId>,
+		) -> DispatchResult {
+			let caller = ensure_signed(origin)?;
+			let (season_id, Season { fee, .. }) = {
+				if let Some(season_id) = in_season {
+					(season_id, Self::seasons(&season_id)?)
+				} else {
+					Self::current_season_with_id()?
+				}
+			};
+			let account_to_upgrade = beneficiary.unwrap_or_else(|| caller.clone());
 
-			let storage_tier = PlayerSeasonConfigs::<T>::get(&player, season_id).storage_tier;
+			let storage_tier =
+				PlayerSeasonConfigs::<T>::get(&account_to_upgrade, season_id).storage_tier;
 			ensure!(storage_tier != StorageTier::Max, Error::<T>::MaxStorageTierReached);
 
-			T::Currency::withdraw(&player, fee.upgrade_storage, WithdrawReasons::FEE, AllowDeath)?;
+			T::Currency::withdraw(&caller, fee.upgrade_storage, WithdrawReasons::FEE, AllowDeath)?;
 			Self::deposit_into_treasury(&season_id, fee.upgrade_storage);
 
-			PlayerSeasonConfigs::<T>::mutate(&player, season_id, |account| {
+			PlayerSeasonConfigs::<T>::mutate(&account_to_upgrade, season_id, |account| {
 				account.storage_tier = storage_tier.upgrade()
 			});
-			Self::deposit_event(Event::StorageTierUpgraded);
+			Self::deposit_event(Event::StorageTierUpgraded {
+				account: account_to_upgrade,
+				season_id,
+			});
 			Ok(())
 		}
 

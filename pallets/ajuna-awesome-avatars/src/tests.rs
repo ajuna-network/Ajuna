@@ -3008,7 +3008,7 @@ mod account {
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None));
 				assert_eq!(
 					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Two
@@ -3024,7 +3024,7 @@ mod account {
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None));
 				assert_eq!(
 					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Three
@@ -3040,7 +3040,7 @@ mod account {
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None));
 				assert_eq!(
 					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Four
@@ -3056,7 +3056,7 @@ mod account {
 				);
 				assert_eq!(Balances::total_issuance(), total_supply);
 
-				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None));
 				assert_eq!(
 					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Five
@@ -3066,7 +3066,7 @@ mod account {
 					150
 				);
 
-				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)));
+				assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None));
 				assert_eq!(
 					PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
 					StorageTier::Max
@@ -3079,13 +3079,78 @@ mod account {
 	}
 
 	#[test]
+	fn upgrade_storage_should_work_on_different_beneficiary() {
+		let season = Season::default().early_start(10).start(20).end(30);
+
+		ExtBuilder::default().seasons(&[(SEASON_ID, season)]).build().execute_with(|| {
+			assert_eq!(
+				PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
+				StorageTier::One
+			);
+			assert_eq!(
+				PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID).storage_tier,
+				StorageTier::One
+			);
+
+			assert_ok!(AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), Some(BOB), None));
+
+			assert_eq!(
+				PlayerSeasonConfigs::<Test>::get(ALICE, SEASON_ID).storage_tier,
+				StorageTier::One
+			);
+			assert_eq!(
+				PlayerSeasonConfigs::<Test>::get(BOB, SEASON_ID).storage_tier,
+				StorageTier::Two
+			);
+		});
+	}
+
+	#[test]
+	fn upgrade_storage_should_work_on_different_season() {
+		let season_1_id = 1;
+		let season_1 = Season::default().early_start(10).start(20).end(30);
+
+		let season_2_id = 2;
+		let season_2 = Season::default().early_start(40).start(50).end(60);
+
+		ExtBuilder::default()
+			.seasons(&[(season_1_id, season_1), (season_2_id, season_2)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, season_1_id).storage_tier,
+					StorageTier::One
+				);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, season_2_id).storage_tier,
+					StorageTier::One
+				);
+
+				assert_ok!(AAvatars::upgrade_storage(
+					RuntimeOrigin::signed(ALICE),
+					None,
+					Some(season_2_id)
+				));
+
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, season_1_id).storage_tier,
+					StorageTier::One
+				);
+				assert_eq!(
+					PlayerSeasonConfigs::<Test>::get(ALICE, season_2_id).storage_tier,
+					StorageTier::Two
+				);
+			});
+	}
+
+	#[test]
 	fn upgrade_storage_should_reject_insufficient_balance() {
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, Season::default().upgrade_storage_fee(1))])
 			.build()
 			.execute_with(|| {
 				assert_noop!(
-					AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
+					AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None),
 					pallet_balances::Error::<Test>::InsufficientBalance
 				);
 			});
@@ -3101,7 +3166,7 @@ mod account {
 			});
 
 			assert_noop!(
-				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE)),
+				AAvatars::upgrade_storage(RuntimeOrigin::signed(ALICE), None, None),
 				Error::<Test>::MaxStorageTierReached
 			);
 		});
