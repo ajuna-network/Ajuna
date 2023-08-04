@@ -994,6 +994,20 @@ pub mod pallet {
 			Self::deposit_event(Event::PreparedIpfsUrl { url });
 			Ok(())
 		}
+
+		#[pallet::call_index(21)]
+		#[pallet::weight({3_000_000})]
+		pub fn dispose_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+			let player = ensure_signed(origin)?;
+			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			Self::ensure_unlocked(&avatar_id)?;
+			Self::ensure_unprepared(&avatar_id)?;
+			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
+
+			// DO stuff
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
