@@ -5,17 +5,19 @@ All notable changes to the Awesome Ajuna Avatars will be documented in this file
 ## [0.1.22] - 2023-08-05
 
 ### Fixed
-- Blueprint Probability fix
-- [ABO-90] Blueprint building should not increase SP
-- [ABO-89] TradeFilters should not apply for Season1
-- Toolboxes probabilities wrongly calculated leading to a 100% chance
+- Blueprint probabilities fix to includ addon 2
+- Blueprint building fixed to not increase soulpoints
+- TradeFilters fixed to not apply for season 1
+- Toolboxes probabilities fixed to work as intended
 
 ### Changed
-- [Season 2] Add account activity check for free mint transfer
-- [ABO-140] Upgrade storage for someone else and/or for a different season
+- Add account activity check for free mint transfer
+- Upgrade storage for someone else and/or for a different season
 
 ### Added
-- Balancing for Materials & Weapons
+- Materials, have now drop rate according to there sp/unit value 
+- Weapon drop rate changed in favour of Essences in Essence Pack
+- Glimmer Forge, now burns one glimmer per material in slot
 
 ## [0.1.20] - 2023-07-28
 
