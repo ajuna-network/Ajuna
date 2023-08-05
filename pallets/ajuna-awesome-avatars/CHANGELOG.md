@@ -2,11 +2,10 @@
 # Change Log
 All notable changes to the Awesome Ajuna Avatars will be documented in this file.
 
-## [0.1.21] - 2023-08-04
-
-Hotfixes & Balancing
+## [0.1.22] - 2023-08-05
 
 ### Fixed
+- Blueprint Probability fix
 - [ABO-90] Blueprint building should not increase SP
 - [ABO-89] TradeFilters should not apply for Season1
 - Toolboxes probabilities wrongly calculated leading to a 100% chance
