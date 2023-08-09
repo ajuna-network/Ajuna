@@ -63,7 +63,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		// There are 2,024 season stats entries as of as of 08/08/2023. But the exact number could
 		// change as avatars are traded between accounts.
 		// We estimate there should be between 2,000 and 2,500 accounts.
-		let mut season_stats = SeasonStats::<T>::iter_keys().collect::<Vec<_>>();
+		let season_stats = SeasonStats::<T>::iter_keys().collect::<Vec<_>>();
 		assert!(season_stats.len() >= 2000 && season_stats.len() <= 2500);
 
 		Ok(())
