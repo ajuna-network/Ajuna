@@ -15,11 +15,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pub mod v5;
+pub mod v6;
 
 use super::*;
 use frame_support::traits::OnRuntimeUpgrade;
 
 // The current storage version.
-pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(5);
+pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(6);
 
 const LOG_TARGET: &str = "runtime::ajuna-awesome-avatars";

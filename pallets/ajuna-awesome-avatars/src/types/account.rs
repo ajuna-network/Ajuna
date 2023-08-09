@@ -93,4 +93,6 @@ pub struct PlayerSeasonConfig<BlockNumber> {
 pub struct SeasonInfo {
 	pub minted: Stat,
 	pub forged: Stat,
+	pub disposed: Stat,
+	pub lost_soul_points: Stat,
 }

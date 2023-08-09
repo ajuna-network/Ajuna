@@ -274,6 +274,8 @@ pub mod pallet {
 		StorageTierUpgraded { account: T::AccountId, season_id: SeasonId },
 		/// Avatar prepared.
 		PreparedAvatar { avatar_id: AvatarIdOf<T> },
+		/// Avatar prepared.
+		DisposedAvatar { avatar_id: AvatarIdOf<T> },
 		/// Avatar unprepared.
 		UnpreparedAvatar { avatar_id: AvatarIdOf<T> },
 		/// IPFS URL prepared.
@@ -526,7 +528,7 @@ pub mod pallet {
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
 
 			let (season_id, _) = Self::current_season_with_id()?;
-			let SeasonInfo { minted, forged } = SeasonStats::<T>::get(season_id, &from);
+			let SeasonInfo { minted, forged, .. } = SeasonStats::<T>::get(season_id, &from);
 			ensure!(minted > 0 && forged > 0, Error::<T>::CannotTransferFromInactiveAccount);
 
 			let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
@@ -999,12 +1001,22 @@ pub mod pallet {
 		#[pallet::weight({3_000_000})]
 		pub fn dispose_avatar(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			let _ = Self::ensure_ownership(&player, &avatar_id)?;
+			let Avatar { souls, season_id, .. } = Self::ensure_ownership(&player, &avatar_id)?;
 			Self::ensure_unlocked(&avatar_id)?;
 			Self::ensure_unprepared(&avatar_id)?;
 			ensure!(Self::ensure_for_trade(&avatar_id).is_err(), Error::<T>::AvatarInTrade);
 
-			// DO stuff
+			Avatars::<T>::remove(avatar_id);
+			Owners::<T>::mutate(&player, season_id, |avatars| {
+				avatars.retain(|owned_id| owned_id != &avatar_id);
+			});
+
+			SeasonStats::<T>::mutate(season_id, &player, |stats| {
+				stats.lost_soul_points = stats.lost_soul_points.saturating_add(souls);
+				stats.disposed = stats.disposed.saturating_add(1);
+			});
+
+			Self::deposit_event(Event::DisposedAvatar { avatar_id });
 
 			Ok(())
 		}

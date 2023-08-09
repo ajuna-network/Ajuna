@@ -3830,3 +3830,46 @@ mod ipfs {
 			});
 	}
 }
+
+mod dispose_avatar {
+	use super::*;
+
+	#[test]
+	fn dispose_avatar_should_work() {
+		let season = Season::default().early_start(10).start(20).end(30);
+
+		ExtBuilder::default()
+			.seasons(&[(SEASON_ID, season.clone())])
+			.free_mints(&[(ALICE, 42)])
+			.build()
+			.execute_with(|| {
+				run_to_block(season.start);
+
+				let avatar_id =
+					create_avatars(SEASON_ID, ALICE, 1).pop().expect("Should contain avatar id");
+
+				let (_, avatar) = {
+					let maybe_avatar = Avatars::<Test>::get(&avatar_id);
+					assert!(maybe_avatar.is_some());
+					maybe_avatar.unwrap()
+				};
+				assert!(Owners::<Test>::get(ALICE, SEASON_ID).contains(&avatar_id));
+				let season_stats = SeasonStats::<Test>::get(SEASON_ID, ALICE);
+				assert_eq!(season_stats.disposed, 0);
+				assert_eq!(season_stats.lost_soul_points, 0);
+
+				assert_ok!(AAvatars::dispose_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
+
+				System::assert_last_event(mock::RuntimeEvent::AAvatars(
+					crate::Event::DisposedAvatar { avatar_id },
+				));
+
+				assert!(!Avatars::<Test>::contains_key(&avatar_id));
+				assert!(!Owners::<Test>::get(ALICE, SEASON_ID).contains(&avatar_id));
+
+				let season_stats = SeasonStats::<Test>::get(SEASON_ID, ALICE);
+				assert_eq!(season_stats.disposed, 1);
+				assert_eq!(season_stats.lost_soul_points, avatar.souls);
+			});
+	}
+}
