@@ -3849,7 +3849,7 @@ mod dispose_avatar {
 					create_avatars(SEASON_ID, ALICE, 1).pop().expect("Should contain avatar id");
 
 				let (_, avatar) = {
-					let maybe_avatar = Avatars::<Test>::get(&avatar_id);
+					let maybe_avatar = Avatars::<Test>::get(avatar_id);
 					assert!(maybe_avatar.is_some());
 					maybe_avatar.unwrap()
 				};
@@ -3864,7 +3864,7 @@ mod dispose_avatar {
 					crate::Event::DisposedAvatar { avatar_id },
 				));
 
-				assert!(!Avatars::<Test>::contains_key(&avatar_id));
+				assert!(!Avatars::<Test>::contains_key(avatar_id));
 				assert!(!Owners::<Test>::get(ALICE, SEASON_ID).contains(&avatar_id));
 
 				let season_stats = SeasonStats::<Test>::get(SEASON_ID, ALICE);
