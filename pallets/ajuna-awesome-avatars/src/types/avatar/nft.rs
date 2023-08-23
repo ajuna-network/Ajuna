@@ -23,13 +23,14 @@ pub const DNA: AttributeCode = 10;
 pub const SOUL_POINTS: AttributeCode = 11;
 pub const RARITY: AttributeCode = 12;
 pub const FORCE: AttributeCode = 13;
+pub const SEASON_ID: AttributeCode = 14;
 
 impl NftConvertible for Avatar {
 	const ITEM_CODE: AttributeCode = 0;
 	const IPFS_URL_CODE: AttributeCode = 1;
 
 	fn get_attribute_codes() -> Vec<AttributeCode> {
-		vec![DNA, SOUL_POINTS, RARITY, FORCE]
+		vec![DNA, SOUL_POINTS, RARITY, FORCE, SEASON_ID]
 	}
 
 	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)> {
@@ -38,6 +39,7 @@ impl NftConvertible for Avatar {
 			(SOUL_POINTS, self.souls.encode()),
 			(RARITY, RarityTier::from_byte(self.rarity()).encode()),
 			(FORCE, Force::from_byte(self.force()).encode()),
+			(SEASON_ID, self.season_id.encode()),
 		]
 	}
 }
