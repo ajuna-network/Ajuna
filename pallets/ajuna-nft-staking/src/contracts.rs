@@ -41,8 +41,8 @@ pub enum Reward<Balance, CollectionId, ItemId> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct ContractClause<CollectionId, AttributeKey, AttributeValue> {
-	pub(crate) namespace: AttributeNamespace,
-	pub(crate) clause: Clause<CollectionId, AttributeKey, AttributeValue>,
+	pub namespace: AttributeNamespace,
+	pub clause: Clause<CollectionId, AttributeKey, AttributeValue>,
 }
 
 impl<CollectionId, AttributeKey, AttributeValue>

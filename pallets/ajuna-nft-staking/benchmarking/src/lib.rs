@@ -241,23 +241,25 @@ fn contract_with<T: Config>(
 		claim_duration: 1_u32.unique_saturated_into(),
 		stake_duration: 1_u32.unique_saturated_into(),
 		stake_clauses: (0..num_stake_clauses)
-			.map(|i| {
-				Clause::HasAttributeWithValue(
+			.map(|i| ContractClause {
+				namespace: AttributeNamespace::Pallet,
+				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(stake_collection),
 					T::BenchmarkHelper::contract_key(i),
 					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
-				)
+				),
 			})
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap(),
 		fee_clauses: (num_stake_clauses..num_stake_clauses + num_fee_clauses)
-			.map(|i| {
-				Clause::HasAttributeWithValue(
+			.map(|i| ContractClause {
+				namespace: AttributeNamespace::Pallet,
+				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(fee_collection),
 					T::BenchmarkHelper::contract_key(i),
 					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
-				)
+				),
 			})
 			.collect::<Vec<_>>()
 			.try_into()
