@@ -30,8 +30,8 @@ fn works_with_token_reward() {
 		.reward(Reward::Tokens(reward))
 		.stake_duration(stake_duration)
 		.claim_duration(claim_duration)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -93,8 +93,8 @@ fn works_with_nft_reward() {
 		.reward(Reward::Nft(reward_addr.clone()))
 		.stake_duration(stake_duration)
 		.claim_duration(claim_duration)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));

@@ -243,12 +243,22 @@ impl ContractOf<Test> {
 		self.stake_duration = stake_duration;
 		self
 	}
-	pub fn stake_clauses(mut self, clauses: Vec<MockClause>) -> Self {
-		self.stake_clauses = clauses.try_into().unwrap();
+	pub fn stake_clauses(mut self, ns: AttributeNamespace, clauses: Vec<MockClause>) -> Self {
+		self.stake_clauses = clauses
+			.into_iter()
+			.map(|clause| MockContractClause { namespace: ns, clause })
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap();
 		self
 	}
-	pub fn fee_clauses(mut self, clauses: Vec<MockClause>) -> Self {
-		self.fee_clauses = clauses.try_into().unwrap();
+	pub fn fee_clauses(mut self, ns: AttributeNamespace, clauses: Vec<MockClause>) -> Self {
+		self.fee_clauses = clauses
+			.into_iter()
+			.map(|clause| MockContractClause { namespace: ns, clause })
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap();
 		self
 	}
 	pub fn reward(mut self, reward: RewardOf<Test>) -> Self {
@@ -262,6 +272,7 @@ impl ContractOf<Test> {
 }
 
 pub type MockClause = Clause<MockCollectionId, AttributeKey, AttributeValue>;
+pub type MockContractClause = ContractClause<MockCollectionId, AttributeKey, AttributeValue>;
 pub struct MockClauses(pub Vec<MockClause>);
 pub type MockMints = Vec<(NftId<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
 

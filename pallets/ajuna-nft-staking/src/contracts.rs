@@ -20,6 +20,15 @@ use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
 use sp_std::fmt::Debug;
 
+/// Attribute namespaces for non-fungible tokens.
+/// Based on the logic for
+/// https://github.com/paritytech/substrate/blob/polkadot-v0.9.42/frame/nfts/src/types.rs#L326
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub enum AttributeNamespace {
+	Pallet,
+	CollectionOwner,
+}
+
 /// Type to represent the collection and item IDs of an NFT.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct NftId<CollectionId, ItemId>(pub CollectionId, pub ItemId);
@@ -31,13 +40,13 @@ pub enum Reward<Balance, CollectionId, ItemId> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum Clause<CollectionId, AttributeKey, AttributeValue> {
-	HasAttribute(CollectionId, AttributeKey),
-	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue),
+pub struct ContractClause<CollectionId, AttributeKey, AttributeValue> {
+	pub(crate) namespace: AttributeNamespace,
+	pub(crate) clause: Clause<CollectionId, AttributeKey, AttributeValue>,
 }
 
 impl<CollectionId, AttributeKey, AttributeValue>
-	Clause<CollectionId, AttributeKey, AttributeValue>
+	ContractClause<CollectionId, AttributeKey, AttributeValue>
 {
 	pub fn evaluate_for<AccountId, NftInspector, ItemId>(
 		&self,
@@ -50,6 +59,38 @@ impl<CollectionId, AttributeKey, AttributeValue>
 		AttributeKey: Encode,
 		AttributeValue: Encode + Decode + PartialEq,
 	{
+		let evaluate_fn = match self.namespace {
+			AttributeNamespace::Pallet => NftInspector::system_attribute,
+			AttributeNamespace::CollectionOwner => NftInspector::attribute,
+		};
+
+		self.clause
+			.evaluate_for::<AccountId, NftInspector, ItemId, _>(address, evaluate_fn)
+	}
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub enum Clause<CollectionId, AttributeKey, AttributeValue> {
+	HasAttribute(CollectionId, AttributeKey),
+	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue),
+}
+
+impl<CollectionId, AttributeKey, AttributeValue>
+	Clause<CollectionId, AttributeKey, AttributeValue>
+{
+	pub fn evaluate_for<AccountId, NftInspector, ItemId, Fn>(
+		&self,
+		address: &NftId<CollectionId, ItemId>,
+		evaluate_fn: Fn,
+	) -> bool
+	where
+		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
+		CollectionId: PartialEq,
+		ItemId: PartialEq,
+		AttributeKey: Encode,
+		AttributeValue: Encode + Decode + PartialEq,
+		Fn: FnOnce(&CollectionId, &ItemId, &[u8]) -> Option<Vec<u8>>,
+	{
 		let clause_collection_id = match self {
 			Clause::HasAttribute(collection_id, _) => collection_id,
 			Clause::HasAttributeWithValue(collection_id, _, _) => collection_id,
@@ -58,11 +99,9 @@ impl<CollectionId, AttributeKey, AttributeValue>
 		clause_collection_id == collection_id &&
 			(match self {
 				Clause::HasAttribute(_, key) =>
-					NftInspector::system_attribute(collection_id, item_id, &key.encode()).is_some(),
+					evaluate_fn(collection_id, item_id, &key.encode()).is_some(),
 				Clause::HasAttributeWithValue(_, key, expected_value) =>
-					if let Some(value) =
-						NftInspector::system_attribute(collection_id, item_id, &key.encode())
-					{
+					if let Some(value) = evaluate_fn(collection_id, item_id, &key.encode()) {
 						expected_value.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
 					} else {
 						false
@@ -72,7 +111,7 @@ impl<CollectionId, AttributeKey, AttributeValue>
 }
 
 type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
-	BoundedVec<Clause<CollectionId, AttributeKey, AttributeValue>, ConstU32<100>>;
+	BoundedVec<ContractClause<CollectionId, AttributeKey, AttributeValue>, ConstU32<100>>;
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
 /// with a given reward after the duration is complete.

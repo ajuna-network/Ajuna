@@ -29,8 +29,8 @@ fn works_with_token_reward() {
 	let contract = Contract::default()
 		.reward(Reward::Tokens(reward))
 		.stake_duration(stake_duration)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone())
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
 		.cancel_fee(cancellation_fee);
 	let contract_id = H256::random();
 
@@ -88,8 +88,8 @@ fn works_with_nft_reward() {
 	let contract = Contract::default()
 		.reward(Reward::Nft(reward_addr.clone()))
 		.stake_duration(stake_duration)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone())
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
 		.cancel_fee(cancellation_fee);
 	let contract_id = H256::random();
 
