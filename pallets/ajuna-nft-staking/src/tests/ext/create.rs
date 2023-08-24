@@ -123,7 +123,9 @@ fn rejects_out_of_bound_staking_clauses() {
 			NftStake::create(
 				RuntimeOrigin::signed(ALICE),
 				H256::random(),
-				Contract::default().reward(Reward::Tokens(1)).stake_clauses(staking_clauses)
+				Contract::default()
+					.reward(Reward::Tokens(1))
+					.stake_clauses(AttributeNamespace::Pallet, staking_clauses)
 			),
 			Error::<Test>::MaxStakingClauses
 		);
@@ -141,7 +143,9 @@ fn rejects_out_of_bound_fee_clauses() {
 			NftStake::create(
 				RuntimeOrigin::signed(ALICE),
 				H256::random(),
-				Contract::default().reward(Reward::Tokens(1)).fee_clauses(fee_clauses)
+				Contract::default()
+					.reward(Reward::Tokens(1))
+					.fee_clauses(AttributeNamespace::Pallet, fee_clauses)
 			),
 			Error::<Test>::MaxFeeClauses
 		);

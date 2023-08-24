@@ -28,8 +28,8 @@ fn works() {
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(stake_duration)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -165,8 +165,8 @@ fn rejects_when_contract_is_already_accepted() {
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
 	let alice_stakes = MockMints::from(MockClauses(stake_clauses));
@@ -255,8 +255,8 @@ fn rejects_unowned_stakes() {
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
-		.stake_clauses(stake_clauses.clone())
-		.fee_clauses(fee_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
 	let stakes = MockMints::from(MockClauses(stake_clauses));
@@ -315,7 +315,7 @@ fn rejects_unfulfilling_stakes() {
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
-		.stake_clauses(stake_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone());
 	let contract_id = H256::random();
 
 	let mut stakes = MockMints::from(MockClauses(stake_clauses));
@@ -350,7 +350,7 @@ fn rejects_unfulfilling_fees() {
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
-		.fee_clauses(fee_clauses.clone());
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
 	let mut fees = MockMints::from(MockClauses(fee_clauses));
