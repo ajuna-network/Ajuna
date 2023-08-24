@@ -18,7 +18,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{tokens::nonfungibles_v2::Inspect, ConstU32};
 use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
-use sp_std::fmt::Debug;
+use sp_std::{fmt::Debug, vec::Vec};
 
 /// Attribute namespaces for non-fungible tokens.
 /// Based on the logic for
