@@ -1233,13 +1233,4 @@ mod test {
 			assert_eq!(forge_type_map.get(&ForgeType::Flask).unwrap(), &0);
 		});
 	}
-
-	#[test]
-	fn test_nft_conversion() {
-		ExtBuilder::default().build().execute_with(|| {
-			let (_, avatar) = create_random_material(&ALICE, &MaterialItemType::Polymers, 10);
-
-
-		});
-	}
 }

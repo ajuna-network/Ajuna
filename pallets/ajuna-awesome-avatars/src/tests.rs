@@ -3199,7 +3199,10 @@ mod nft_transfer {
 
 	#[test]
 	fn can_lock_avatar_successfully() {
-		let season = Season::default().max_components(8).max_variations(5);
+		let season = Season::default()
+			.mint_logic(LogicGeneration::Second)
+			.max_components(8)
+			.max_variations(5);
 
 		ExtBuilder::default()
 			.seasons(&[(SEASON_ID, season.clone())])
@@ -3238,9 +3241,13 @@ mod nft_transfer {
 					avatar,
 					Avatar {
 						season_id: 1,
-						dna: bounded_vec![0x20, 0x20, 0x23, 0x22, 0x10, 0x32, 0x12, 0x10],
-						souls: 34,
-						encoding: DnaEncoding::V1,
+						dna: bounded_vec![
+							0x24, 0x00, 0x41, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+							0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+							0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+						],
+						souls: 60,
+						encoding: DnaEncoding::V2,
 					}
 				);
 
@@ -3260,8 +3267,8 @@ mod nft_transfer {
 					Avatar::get_attribute_codes().iter().zip([
 						avatar.dna.encode(),
 						avatar.souls.encode(),
-						RarityTier::Common.encode(),
-						Force::Kinetic.encode(),
+						avatar.rarity().encode(),
+						avatar.force().encode(),
 					]) {
 					assert_eq!(
 						<Nft as Inspect<MockAccountId>>::system_attribute(
