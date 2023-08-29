@@ -33,6 +33,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::pallet_prelude::*;
+use scale_info::prelude::string::String as Str;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, Zero},
 	ArithmeticError,
@@ -460,7 +461,7 @@ pub mod pallet {
 			creator: T::AccountId,
 			contract_id: T::ItemId,
 			mut contract: ContractOf<T>,
-			metadata: Option<String>,
+			metadata: Option<Str>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
