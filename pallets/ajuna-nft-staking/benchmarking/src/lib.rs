@@ -146,6 +146,7 @@ fn create_contract<T: Config>(
 		RawOrigin::Signed(creator).into(),
 		contract_id,
 		contract,
+		None,
 	)
 }
 
@@ -243,6 +244,7 @@ fn contract_with<T: Config>(
 		stake_clauses: (0..num_stake_clauses)
 			.map(|i| ContractClause {
 				namespace: AttributeNamespace::Pallet,
+				target_index: i as u8,
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(stake_collection),
 					T::BenchmarkHelper::contract_key(i),
@@ -255,6 +257,7 @@ fn contract_with<T: Config>(
 		fee_clauses: (num_stake_clauses..num_stake_clauses + num_fee_clauses)
 			.map(|i| ContractClause {
 				namespace: AttributeNamespace::Pallet,
+				target_index: (i - num_stake_clauses) as u8,
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(fee_collection),
 					T::BenchmarkHelper::contract_key(i),
@@ -266,6 +269,8 @@ fn contract_with<T: Config>(
 			.unwrap(),
 		reward,
 		cancel_fee: 333_u64.unique_saturated_into(),
+		nft_stake_amount: num_stake_clauses as u8,
+		nft_fee_amount: num_fee_clauses as u8,
 	}
 }
 
@@ -301,7 +306,7 @@ benchmarks! {
 		let reward = Reward::Tokens(123_u64.unique_saturated_into());
 		let contract = contract_with::<T>(m, n, reward, Mode::Staker);
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
-	}: create(RawOrigin::Signed(creator), contract_id, contract)
+	}: create(RawOrigin::Signed(creator), contract_id, contract, None)
 	verify {
 		assert_last_event::<T>(Event::Created { contract_id })
 	}
@@ -317,7 +322,7 @@ benchmarks! {
 		let contract = contract_with::<T>(m, n, reward, Mode::Staker);
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 		let creator = create_creator::<T>(Some(vec![reward_nft_item]))?;
-	}: create(RawOrigin::Signed(creator), contract_id, contract)
+	}: create(RawOrigin::Signed(creator), contract_id, contract, None)
 	verify {
 		assert_last_event::<T>(Event::Created { contract_id })
 	}

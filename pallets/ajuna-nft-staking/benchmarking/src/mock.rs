@@ -168,6 +168,7 @@ parameter_types! {
 	pub const MaxContracts: u32 = 100;
 	pub const MaxStakingClauses: u32 = 10;
 	pub const MaxFeeClauses: u32 = 1;
+	pub const MaxMetadataLenght: u32 = 100;
 }
 
 pub type AttributeKey = u32;
@@ -184,6 +185,7 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type MaxContracts = MaxContracts;
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
+	type MaxMetadataLength = MaxMetadataLenght;
 	type AttributeKey = AttributeKey;
 	type AttributeValue = AttributeValue;
 	pallet_ajuna_nft_staking::runtime_benchmarks_enabled! {
