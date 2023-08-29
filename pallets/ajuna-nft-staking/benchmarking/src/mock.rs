@@ -172,7 +172,6 @@ parameter_types! {
 }
 
 pub type AttributeKey = u32;
-pub type AttributeValue = u64;
 
 impl pallet_ajuna_nft_staking::Config for Runtime {
 	type PalletId = NftStakingPalletId;
@@ -187,7 +186,6 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type MaxFeeClauses = MaxFeeClauses;
 	type MaxMetadataLength = MaxMetadataLenght;
 	type AttributeKey = AttributeKey;
-	type AttributeValue = AttributeValue;
 	pallet_ajuna_nft_staking::runtime_benchmarks_enabled! {
 		type BenchmarkHelper = ();
 	}

@@ -23,7 +23,8 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
-use pallet_nfts::PalletFeatures;
+use pallet_nfts::{ItemConfig, PalletFeatures};
+use sp_core::bounded_vec;
 use sp_runtime::{
 	testing::{Header, TestSignature, H256},
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
@@ -198,7 +199,6 @@ pub type CollectionConfig =
 	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 
 pub type AttributeKey = u32;
-pub type AttributeValue = u64;
 
 impl pallet_nft_staking::Config for Test {
 	type PalletId = NftStakingPalletId;
@@ -212,7 +212,6 @@ impl pallet_nft_staking::Config for Test {
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
 	type AttributeKey = AttributeKey;
-	type AttributeValueLimit = AttributeByteGetter<{ AttributeMaxBytes::get() }>;
 	type MaxMetadataLength = MaxMetadataLenght;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
@@ -301,9 +300,8 @@ impl ContractOf<Test> {
 	}
 }
 
-pub type MockClause =
-	Clause<MockCollectionId, AttributeKey, AttributeByteGetter<{ AttributeMaxBytes::get() }>>;
-pub type MockContractClause = ContractClause<MockCollectionId, AttributeKey, AttributeValue>;
+pub type MockClause = Clause<MockCollectionId, AttributeKey>;
+pub type MockContractClause = ContractClause<MockCollectionId, AttributeKey>;
 pub struct MockClauses(pub Vec<MockClause>);
 pub type MockMints = Vec<(NftId<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
 
@@ -315,7 +313,7 @@ impl From<MockClauses> for MockMints {
 			.enumerate()
 			.map(|(i, clause)| match clause {
 				Clause::HasAttribute(collection_id, key) =>
-					(NftId(collection_id, H256::random()), key, i as AttributeValue),
+					(NftId(collection_id, H256::random()), key, bounded_vec![i as u8]),
 				Clause::HasAttributeWithValue(collection_id, key, value) =>
 					(NftId(collection_id, H256::random()), key, value),
 			})
@@ -515,7 +513,13 @@ fn set_attribute(
 	key: &AttributeKey,
 	value: &AttributeValue,
 ) {
-	NftHelperOf::<Test>::set_typed_attribute(collection_id, item_id, key, value).unwrap()
+	<NftHelperOf<Test> as Mutate<MockAccountId, ItemConfig>>::set_attribute(
+		collection_id,
+		item_id,
+		key.encode().as_slice(),
+		value.as_slice(),
+	)
+	.unwrap()
 }
 
 pub fn run_to_block(n: u64) {

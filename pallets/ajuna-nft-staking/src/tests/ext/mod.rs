@@ -26,4 +26,5 @@ mod snipe;
 
 use crate::{tests::mock::*, *};
 use frame_support::{assert_noop, assert_ok};
+use sp_core::bounded_vec;
 use sp_runtime::testing::H256;

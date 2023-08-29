@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::{tokens::nonfungibles_v2::Inspect, ConstU32, Get};
+use frame_support::traits::{tokens::nonfungibles_v2::Inspect, ConstU32};
 use scale_info::TypeInfo;
 use sp_runtime::BoundedVec;
 use sp_std::{fmt::Debug, vec::Vec};
@@ -40,17 +40,13 @@ pub enum Reward<Balance, CollectionId, ItemId> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct ContractClause<CollectionId, AttributeKey, AttributeValueLength: Get<u32>> {
+pub struct ContractClause<CollectionId, AttributeKey> {
 	pub namespace: AttributeNamespace,
 	pub target_index: u8,
-	pub clause: Clause<CollectionId, AttributeKey, AttributeValueLength>,
+	pub clause: Clause<CollectionId, AttributeKey>,
 }
 
-impl<CollectionId, AttributeKey, AttributeValueLength>
-	ContractClause<CollectionId, AttributeKey, AttributeValueLength>
-where
-	AttributeValueLength: Get<u32>,
-{
+impl<CollectionId, AttributeKey> ContractClause<CollectionId, AttributeKey> {
 	pub fn evaluate_for<AccountId, NftInspector, ItemId>(
 		&self,
 		address: &NftId<CollectionId, ItemId>,
@@ -71,21 +67,17 @@ where
 	}
 }
 
-pub type AttributeValue2<const N: u32> = BoundedVec<u8, N>;
+pub const MAX_BYTES_PER_ATTRIBUTE: u32 = 32;
 
-pub type AttributeValue<AttributeValueLength> = BoundedVec<u8, AttributeValueLength>;
+pub type AttributeValue = BoundedVec<u8, ConstU32<MAX_BYTES_PER_ATTRIBUTE>>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum Clause<CollectionId, AttributeKey, AttributeValueLength: Get<u32>> {
+pub enum Clause<CollectionId, AttributeKey> {
 	HasAttribute(CollectionId, AttributeKey),
-	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue<AttributeValueLength>),
+	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue),
 }
 
-impl<CollectionId, AttributeKey, AttributeValueLength>
-	Clause<CollectionId, AttributeKey, AttributeValueLength>
-where
-	AttributeValueLength: Get<u32>,
-{
+impl<CollectionId, AttributeKey> Clause<CollectionId, AttributeKey> {
 	pub fn evaluate_for<AccountId, NftInspector, ItemId, Fn>(
 		&self,
 		address: &NftId<CollectionId, ItemId>,
@@ -117,20 +109,13 @@ where
 	}
 }
 
-type BoundedClauses<CollectionId, AttributeKey, AttributeValueLength> =
-	BoundedVec<ContractClause<CollectionId, AttributeKey, AttributeValueLength>, ConstU32<100>>;
+type BoundedClauses<CollectionId, AttributeKey> =
+	BoundedVec<ContractClause<CollectionId, AttributeKey>, ConstU32<100>>;
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
 /// with a given reward after the duration is complete.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct Contract<
-	Balance,
-	CollectionId,
-	ItemId,
-	BlockNumber,
-	AttributeKey,
-	AttributeValueLength: Get<u32>,
-> {
+pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey> {
 	/// The block number at which the given contract becomes active for a staker to accept. If it
 	/// is not set, the contract activates immediately upon creation.
 	pub activation: Option<BlockNumber>,
@@ -146,10 +131,10 @@ pub struct Contract<
 
 	/// The list of conditions to satisfy as staking NFTs. A staker must provide NFTs that meet
 	/// these requirements, which will be locked for the staking duration of the contract.
-	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValueLength>,
+	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey>,
 	/// The list of conditions to satisfy as fee NFTs. A staker must provide NFTs that meet these
 	/// requirements to accept the contract, which is transferred to the contract creator.
-	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValueLength>,
+	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey>,
 
 	/// The reward of fulfilling the given contract in the form of either tokens or NFTs.
 	pub reward: Reward<Balance, CollectionId, ItemId>,
@@ -163,13 +148,12 @@ pub struct Contract<
 	pub nft_fee_amount: u8,
 }
 
-impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValueLength>
-	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValueLength>
+impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey>
+	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey>
 where
 	CollectionId: PartialEq,
 	ItemId: PartialEq,
 	AttributeKey: Encode,
-	AttributeValueLength: Get<u32>,
 {
 	pub fn evaluate_stakes<AccountId, NftInspector>(
 		&self,

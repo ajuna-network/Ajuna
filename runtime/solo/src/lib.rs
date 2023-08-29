@@ -641,7 +641,6 @@ parameter_types! {
 }
 
 type AttributeKey = u32;
-type AttributeValue = u64;
 
 impl pallet_ajuna_nft_staking::Config for Runtime {
 	type PalletId = NftStakingPalletId;
@@ -654,9 +653,8 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type MaxContracts = MaxContracts;
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
-	type AttributeKey = AttributeKey;
-	type AttributeValue = AttributeValue;
 	type MaxMetadataLength = MaxMetadataLenght;
+	type AttributeKey = AttributeKey;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type WeightInfo = ();
