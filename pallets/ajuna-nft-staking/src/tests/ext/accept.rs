@@ -19,23 +19,25 @@ use super::*;
 #[test]
 fn works() {
 	let stake_clauses = vec![
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 4),
-		Clause::HasAttribute(RESERVED_COLLECTION_1, 5),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 4)),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, 5)),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7)),
 	];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 123)];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123))];
 	let stake_duration = 4;
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(stake_duration)
+		.stake_amt(3)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_amt(1)
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
-	let stakes = MockMints::from(MockClauses(stake_clauses));
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let stake_addresses = stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let fee_addresses = fees.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 	ExtBuilder::default()
@@ -117,9 +119,23 @@ fn rejects_when_pallet_is_locked() {
 
 #[test]
 fn rejects_out_of_bound_stakes() {
+	let contract_id = H256::random();
+
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
+		.create_contract_with_funds(
+			contract_id,
+			Contract::default()
+				.stake_amt(MaxStakingClauses::get() as u8)
+				.fee_amt(0)
+				.stake_clauses(
+					AttributeNamespace::Pallet,
+					(0..MaxStakingClauses::get())
+						.map(|i| (i as u8, MockClause::HasAttribute(0, 0)))
+						.collect::<Vec<_>>(),
+				),
+		)
 		.build()
 		.execute_with(|| {
 			let stake_addresses = (0..MaxStakingClauses::get() + 1)
@@ -129,11 +145,11 @@ fn rejects_out_of_bound_stakes() {
 			assert_noop!(
 				NftStake::accept(
 					RuntimeOrigin::signed(ALICE),
-					Default::default(),
+					contract_id,
 					stake_addresses,
 					Default::default()
 				),
-				Error::<Test>::MaxStakingClauses
+				Error::<Test>::InvalidNFTStakeAmount
 			);
 		});
 }
@@ -160,8 +176,8 @@ fn rejects_when_contract_collection_id_is_not_set() {
 
 #[test]
 fn rejects_when_contract_is_already_accepted() {
-	let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 123)];
+	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 2))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123))];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
@@ -169,7 +185,8 @@ fn rejects_when_contract_is_already_accepted() {
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
-	let alice_stakes = MockMints::from(MockClauses(stake_clauses));
+	let alice_stakes =
+		MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let bob_stakes = alice_stakes
 		.clone()
 		.into_iter()
@@ -192,7 +209,8 @@ fn rejects_when_contract_is_already_accepted() {
 	let charlie_stake_addresses =
 		charlie_stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
-	let alice_fees = MockMints::from(MockClauses(fee_clauses));
+	let alice_fees =
+		MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let bob_fees = alice_fees
 		.clone()
 		.into_iter()
@@ -250,8 +268,8 @@ fn rejects_when_contract_is_already_accepted() {
 
 #[test]
 fn rejects_unowned_stakes() {
-	let stake_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 2)];
+	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 2))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 2))];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
@@ -259,10 +277,10 @@ fn rejects_unowned_stakes() {
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
-	let stakes = MockMints::from(MockClauses(stake_clauses));
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let stake_addresses = stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let fee_addresses = fees.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
 	ExtBuilder::default()
@@ -307,18 +325,21 @@ fn rejects_when_contract_is_not_created() {
 #[test]
 fn rejects_unfulfilling_stakes() {
 	let stake_clauses = vec![
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 123),
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 456),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 12, 34),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 56, 78),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123)),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, 456)),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 12, 34)),
+		(3, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 56, 78)),
 	];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
-		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone());
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.stake_amt(4)
+		.fee_amt(0);
 	let contract_id = H256::random();
 
-	let mut stakes = MockMints::from(MockClauses(stake_clauses));
+	let mut stakes =
+		MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	stakes.iter_mut().for_each(|(_, key, value)| {
 		*key += 1;
 		*value += 1;
@@ -346,14 +367,15 @@ fn rejects_unfulfilling_stakes() {
 
 #[test]
 fn rejects_unfulfilling_fees() {
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_0, 123)];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123))];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
-		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
+		.stake_amt(0);
 	let contract_id = H256::random();
 
-	let mut fees = MockMints::from(MockClauses(fee_clauses));
+	let mut fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	fees.iter_mut().for_each(|(_, key, value)| {
 		*key += 1;
 		*value += 1;
@@ -386,7 +408,7 @@ fn rejects_unknown_activation() {
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, Contract::default())
+		.create_contract_with_funds(contract_id, Contract::default().stake_amt(0).fee_amt(0))
 		.build()
 		.execute_with(|| {
 			// NOTE: technically all contracts should have activation set via `create`
@@ -410,7 +432,11 @@ fn rejects_unknown_activation() {
 fn rejects_inactive_contracts() {
 	let activation = 3;
 	let active_duration = 2;
-	let contract = Contract::default().activation(activation).active_duration(active_duration);
+	let contract = Contract::default()
+		.activation(activation)
+		.active_duration(active_duration)
+		.stake_amt(0)
+		.fee_amt(0);
 	let contract_id = H256::random();
 
 	ExtBuilder::default()

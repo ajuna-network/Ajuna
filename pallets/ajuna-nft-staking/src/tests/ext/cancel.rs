@@ -19,10 +19,10 @@ use super::*;
 #[test]
 fn works_with_token_reward() {
 	let stake_clauses = vec![
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 1),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, 4),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 1)),
+		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, 4)),
 	];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, 11))];
 	let stake_duration = 4;
 	let reward = 135;
 	let cancellation_fee = 111;
@@ -34,10 +34,10 @@ fn works_with_token_reward() {
 		.cancel_fee(cancellation_fee);
 	let contract_id = H256::random();
 
-	let stakes = MockMints::from(MockClauses(stake_clauses));
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let stake_addresses =
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
 	ExtBuilder::default()
@@ -78,10 +78,10 @@ fn works_with_token_reward() {
 #[test]
 fn works_with_nft_reward() {
 	let stake_clauses = vec![
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 1),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, 4),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 1)),
+		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, 4)),
 	];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 11)];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, 11))];
 	let stake_duration = 4;
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let cancellation_fee = 111;
@@ -93,10 +93,10 @@ fn works_with_nft_reward() {
 		.cancel_fee(cancellation_fee);
 	let contract_id = H256::random();
 
-	let stakes = MockMints::from(MockClauses(stake_clauses));
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let stake_addresses =
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
 	ExtBuilder::default()

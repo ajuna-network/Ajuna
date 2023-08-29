@@ -19,11 +19,11 @@ use super::*;
 #[test]
 fn works_with_token_reward() {
 	let stake_clauses = vec![
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 4),
-		Clause::HasAttribute(RESERVED_COLLECTION_1, 5),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 4)),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, 5)),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, 7)),
 	];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_2, 33)];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_2, 33))];
 	let stake_duration = 4;
 	let reward_amount = 135;
 	let contract = Contract::default()
@@ -33,10 +33,10 @@ fn works_with_token_reward() {
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
-	let stakes = MockMints::from(MockClauses(stake_clauses));
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let stake_addresses =
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
 	ExtBuilder::default()
@@ -78,11 +78,11 @@ fn works_with_token_reward() {
 #[test]
 fn works_with_nft_reward() {
 	let stake_clauses = vec![
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 4),
-		Clause::HasAttribute(RESERVED_COLLECTION_0, 5),
-		Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 6, 7),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 4)),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, 5)),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 6, 7)),
 	];
-	let fee_clauses = vec![Clause::HasAttribute(RESERVED_COLLECTION_1, 1)];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, 1))];
 	let stake_duration = 8;
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let contract = Contract::default()
@@ -92,10 +92,10 @@ fn works_with_nft_reward() {
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
 
-	let stakes = MockMints::from(MockClauses(stake_clauses));
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	let stake_addresses =
 		stakes.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
-	let fees = MockMints::from(MockClauses(fee_clauses));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	let fee_addresses = fees.clone().into_iter().map(|(address, _, _)| address).collect::<Vec<_>>();
 
 	ExtBuilder::default()
