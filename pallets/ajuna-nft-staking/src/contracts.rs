@@ -42,6 +42,7 @@ pub enum Reward<Balance, CollectionId, ItemId> {
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct ContractClause<CollectionId, AttributeKey, AttributeValue> {
 	pub namespace: AttributeNamespace,
+	pub target_index: u8,
 	pub clause: Clause<CollectionId, AttributeKey, AttributeValue>,
 }
 
@@ -142,6 +143,11 @@ pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, At
 	/// The fee required to cancel the given contract. Any staked NFTs for the contract will be
 	/// immediately returned to the staker upon cancellation.
 	pub cancel_fee: Balance,
+
+	/// Amount of NFT to stake for the contract.
+	pub nft_stake_amount: u8,
+	/// Amount of NFT to fee for the contract.
+	pub nft_fee_amount: u8,
 }
 
 impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>
@@ -159,10 +165,12 @@ where
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 	{
-		(self.stake_clauses.len() == stakes.len())
+		(self.nft_stake_amount == stakes.len() as u8)
 			.then(|| {
-				self.stake_clauses.iter().zip(stakes.iter()).all(|(stake_clause, stake)| {
-					stake_clause.evaluate_for::<AccountId, NftInspector, ItemId>(stake)
+				self.stake_clauses.iter().all(|stake_clause| {
+					stake_clause.evaluate_for::<AccountId, NftInspector, ItemId>(
+						&stakes[stake_clause.target_index as usize],
+					)
 				})
 			})
 			.unwrap_or(false)
@@ -175,10 +183,12 @@ where
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 	{
-		(self.fee_clauses.len() == fees.len())
+		(self.nft_fee_amount == fees.len() as u8)
 			.then(|| {
-				self.fee_clauses.iter().zip(fees.iter()).all(|(fee_clause, fee)| {
-					fee_clause.evaluate_for::<AccountId, NftInspector, ItemId>(fee)
+				self.fee_clauses.iter().all(|fee_clause| {
+					fee_clause.evaluate_for::<AccountId, NftInspector, ItemId>(
+						&fees[fee_clause.target_index as usize],
+					)
 				})
 			})
 			.unwrap_or(false)

@@ -147,6 +147,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxFeeClauses: Get<u32>;
 
+		/// The maximum number of bytes used for a contract's metadata.
+		#[pallet::constant]
+		type MaxMetadataLength: Get<u32>;
+
 		/// Type of the contract's attribute keys, used on contract condition evaluation
 		type AttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
@@ -176,6 +180,10 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type Contracts<T: Config> = StorageMap<_, Identity, T::ItemId, ContractOf<T>>;
+
+	#[pallet::storage]
+	pub type ContractsMetadata<T: Config> =
+		StorageMap<_, Identity, T::ItemId, BoundedVec<u8, T::MaxMetadataLength>>;
 
 	#[pallet::storage]
 	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
@@ -258,6 +266,12 @@ pub mod pallet {
 		MaxStakingClauses,
 		/// The number of the given contract's fee clauses exceeds maximum allowed.
 		MaxFeeClauses,
+		/// The number of staked NFTs doesn't match the contract specs.
+		InvalidNFTStakeAmount,
+		/// The number of fee NFTs doesn't match the contract specs.
+		InvalidNFTFeeAmount,
+		/// Metadata for the contract is too long.
+		MetadataTooLong,
 		/// The given account does not hold any contracts.
 		NotContractHolder,
 		/// The given account does not meet the criteria to be a sniper.
@@ -277,6 +291,7 @@ pub mod pallet {
 		pub fn set_creator(origin: OriginFor<T>, creator: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 			Creator::<T>::put(&creator);
+
 			Self::deposit_event(Event::CreatorSet { creator });
 			Ok(())
 		}
@@ -328,11 +343,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
 			contract: ContractOf<T>,
+			metadata: Option<String>,
 		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_contract_clauses(&contract)?;
-			Self::create_contract(creator, contract_id, contract)
+			Self::create_contract(creator, contract_id, contract, metadata)
 		}
 
 		/// Remove a staking contract.
@@ -444,6 +460,7 @@ pub mod pallet {
 			creator: T::AccountId,
 			contract_id: T::ItemId,
 			mut contract: ContractOf<T>,
+			metadata: Option<String>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
@@ -487,6 +504,12 @@ pub mod pallet {
 			ensure!(contract.active_duration > Zero::zero(), Error::<T>::ZeroActiveDuration);
 			ensure!(contract.claim_duration > Zero::zero(), Error::<T>::ZeroClaimDuration);
 			Contracts::<T>::insert(contract_id, contract);
+
+			if let Some(msg) = metadata {
+				let msg_bytes: BoundedVec<_, _> =
+					msg.into_bytes().try_into().map_err(|_| Error::<T>::MetadataTooLong)?;
+				ContractsMetadata::<T>::insert(contract_id, msg_bytes);
+			}
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
 			Ok(())
@@ -674,17 +697,18 @@ pub mod pallet {
 			stake_addresses: &[NftIdOf<T>],
 			fee_addresses: &[NftIdOf<T>],
 		) -> DispatchResult {
-			ensure!(
-				stake_addresses.len() as u32 <= T::MaxStakingClauses::get(),
-				Error::<T>::MaxStakingClauses
-			);
-			ensure!(
-				fee_addresses.len() as u32 <= T::MaxFeeClauses::get(),
-				Error::<T>::MaxFeeClauses
-			);
-
 			let contract =
 				Self::ensure_contract_ownership(contract_id, &Self::account_id(), false)?;
+
+			ensure!(
+				Self::count_consecutive_unique_nft(stake_addresses) == contract.nft_stake_amount,
+				Error::<T>::InvalidNFTStakeAmount
+			);
+			ensure!(
+				Self::count_consecutive_unique_nft(fee_addresses) == contract.nft_fee_amount,
+				Error::<T>::InvalidNFTFeeAmount
+			);
+
 			let activation = contract.activation.ok_or(Error::<T>::UnknownActivation)?;
 			let now = <frame_system::Pallet<T>>::block_number();
 			let inactive = activation
@@ -751,6 +775,15 @@ pub mod pallet {
 				}
 			}
 			Ok(())
+		}
+
+		#[inline]
+		fn count_consecutive_unique_nft(nft_set: &[NftIdOf<T>]) -> u8 {
+			nft_set
+				.iter()
+				.map(|i| i.encode())
+				.collect::<sp_std::collections::btree_set::BTreeSet<_>>()
+				.len() as u8
 		}
 	}
 

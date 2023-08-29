@@ -181,6 +181,7 @@ parameter_types! {
 	pub const MaxContracts: u32 = 5;
 	pub const MaxStakingClauses: u32 = 10;
 	pub const MaxFeeClauses: u32 = 1;
+	pub const MaxMetadataLenght: u32 = 100;
 }
 
 pub type CollectionConfig =
@@ -202,6 +203,7 @@ impl pallet_nft_staking::Config for Test {
 	type MaxFeeClauses = MaxFeeClauses;
 	type AttributeKey = AttributeKey;
 	type AttributeValue = AttributeValue;
+	type MaxMetadataLength = MaxMetadataLenght;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type WeightInfo = ();
@@ -223,6 +225,8 @@ impl Default for ContractOf<Test> {
 			fee_clauses: Default::default(),
 			reward: Default::default(),
 			cancel_fee: Default::default(),
+			nft_stake_amount: 1,
+			nft_fee_amount: 1,
 		}
 	}
 }
@@ -243,19 +247,27 @@ impl ContractOf<Test> {
 		self.stake_duration = stake_duration;
 		self
 	}
-	pub fn stake_clauses(mut self, ns: AttributeNamespace, clauses: Vec<MockClause>) -> Self {
+	pub fn stake_clauses(mut self, ns: AttributeNamespace, clauses: Vec<(u8, MockClause)>) -> Self {
 		self.stake_clauses = clauses
 			.into_iter()
-			.map(|clause| MockContractClause { namespace: ns, clause })
+			.map(|(target_index, clause)| MockContractClause {
+				namespace: ns,
+				target_index,
+				clause,
+			})
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
 		self
 	}
-	pub fn fee_clauses(mut self, ns: AttributeNamespace, clauses: Vec<MockClause>) -> Self {
+	pub fn fee_clauses(mut self, ns: AttributeNamespace, clauses: Vec<(u8, MockClause)>) -> Self {
 		self.fee_clauses = clauses
 			.into_iter()
-			.map(|clause| MockContractClause { namespace: ns, clause })
+			.map(|(target_index, clause)| MockContractClause {
+				namespace: ns,
+				target_index,
+				clause,
+			})
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
@@ -267,6 +279,14 @@ impl ContractOf<Test> {
 	}
 	pub fn cancel_fee(mut self, cancel_fee: MockBalance) -> Self {
 		self.cancel_fee = cancel_fee;
+		self
+	}
+	pub fn stake_amt(mut self, stake_amount: u8) -> Self {
+		self.nft_stake_amount = stake_amount;
+		self
+	}
+	pub fn fee_amt(mut self, fee_amount: u8) -> Self {
+		self.nft_fee_amount = fee_amount;
 		self
 	}
 }
@@ -464,7 +484,7 @@ pub fn create_contract(contract_id: MockItemId, contract: ContractOf<Test>, shou
 	if should_fund {
 		let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
 	}
-	NftStake::create_contract(creator, contract_id, contract).unwrap();
+	NftStake::create_contract(creator, contract_id, contract, None).unwrap();
 }
 
 pub fn mint_item(
