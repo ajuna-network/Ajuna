@@ -638,6 +638,25 @@ mod test {
 					ForgeType::Equip
 				);
 
+				// Equip with Mythical
+				let (_, leader) = {
+					let (id, mut leader) = create_random_pet(
+						&ALICE,
+						&PetType::TankyBullwog,
+						0b0001_0001,
+						[0; 16],
+						[0; 11],
+						2,
+					);
+					leader.set_rarity(RarityTier::Mythical);
+
+					(id, leader)
+				};
+				assert_eq!(
+					ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+					ForgeType::Equip
+				);
+
 				// Equip without armor-parts fails
 				let sacrifices_err =
 					[&create_random_material(&ALICE, &MaterialItemType::Polymers, 4).1];
@@ -827,8 +846,43 @@ mod test {
 				ForgeType::Mate
 			);
 
-			// Mate with non-pet fails
+			// Mate Mythical
+			let (_, leader) = {
+				let (id, mut leader) = create_random_pet(
+					&ALICE,
+					&PetType::TankyBullwog,
+					0b0001_0001,
+					[0; 16],
+					[0; 11],
+					2,
+				);
 
+				leader.set_rarity(RarityTier::Mythical);
+
+				(id, leader)
+			};
+			let sacrifices = {
+				let mut avatar = create_random_pet(
+					&ALICE,
+					&PetType::CrazyDude,
+					0b0001_0001,
+					[0; 16],
+					[0; 11],
+					2,
+				)
+				.1;
+
+				avatar.set_rarity(RarityTier::Mythical);
+
+				avatar
+			};
+
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &[&sacrifices]),
+				ForgeType::Mate
+			);
+
+			// Mate with non-pet fails
 			let sacrifices_err =
 				[&create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::Head, 1).1];
 			assert_eq!(
