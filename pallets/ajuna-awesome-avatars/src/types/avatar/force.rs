@@ -47,6 +47,7 @@ impl fmt::Display for Force {
 impl ByteConvertible for Force {
 	fn from_byte(byte: u8) -> Self {
 		match byte {
+			0 => Self::Null,
 			1 => Self::Kinetic,
 			2 => Self::Dream,
 			3 => Self::Solar,

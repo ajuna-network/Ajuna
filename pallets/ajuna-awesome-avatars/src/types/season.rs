@@ -339,6 +339,10 @@ mod test {
 			self.fee.prepare_avatar = fee;
 			self
 		}
+		pub fn mint_logic(mut self, logic: LogicGeneration) -> Self {
+			self.mint_logic = logic;
+			self
+		}
 	}
 
 	impl SeasonStatus {
