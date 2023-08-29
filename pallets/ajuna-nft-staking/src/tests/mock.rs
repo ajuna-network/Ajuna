@@ -182,6 +182,16 @@ parameter_types! {
 	pub const MaxStakingClauses: u32 = 10;
 	pub const MaxFeeClauses: u32 = 1;
 	pub const MaxMetadataLenght: u32 = 100;
+	pub const AttributeMaxBytes: u32 = 32;
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub(crate) struct AttributeByteGetter<const N: u32>;
+
+impl<const N: u32> Get<u32> for AttributeByteGetter<N> {
+	fn get() -> u32 {
+		N
+	}
 }
 
 pub type CollectionConfig =
@@ -202,7 +212,7 @@ impl pallet_nft_staking::Config for Test {
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
 	type AttributeKey = AttributeKey;
-	type AttributeValue = AttributeValue;
+	type AttributeValueLimit = AttributeByteGetter<{ AttributeMaxBytes::get() }>;
 	type MaxMetadataLength = MaxMetadataLenght;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
@@ -291,7 +301,8 @@ impl ContractOf<Test> {
 	}
 }
 
-pub type MockClause = Clause<MockCollectionId, AttributeKey, AttributeValue>;
+pub type MockClause =
+	Clause<MockCollectionId, AttributeKey, AttributeByteGetter<{ AttributeMaxBytes::get() }>>;
 pub type MockContractClause = ContractClause<MockCollectionId, AttributeKey, AttributeValue>;
 pub struct MockClauses(pub Vec<MockClause>);
 pub type MockMints = Vec<(NftId<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;

@@ -59,7 +59,7 @@ pub mod pallet {
 		ItemIdOf<T>,
 		<T as frame_system::Config>::BlockNumber,
 		<T as Config>::AttributeKey,
-		<T as Config>::AttributeValue,
+		<T as Config>::AttributeValueLimit,
 	>;
 	pub type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
@@ -85,21 +85,19 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[cfg(feature = "runtime-benchmarks")]
-	pub trait BenchmarkHelper<ContractKey, ContractValue, ItemId> {
+	pub trait BenchmarkHelper<ContractKey, ItemId> {
 		fn contract_key(i: u32) -> ContractKey;
-		fn contract_value(i: u64) -> ContractValue;
+		fn contract_value(i: u64) -> u64;
 		fn item_id(i: u16) -> ItemId;
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<ContractKey: From<u32>, ContractValue: From<u64>, ItemId: From<[u8; 32]>>
-		BenchmarkHelper<ContractKey, ContractValue, ItemId> for ()
-	{
+	impl<ContractKey: From<u32>, ItemId: From<[u8; 32]>> BenchmarkHelper<ContractKey, ItemId> for () {
 		fn contract_key(i: u32) -> ContractKey {
 			i.into()
 		}
-		fn contract_value(i: u64) -> ContractValue {
-			i.into()
+		fn contract_value(i: u64) -> u64 {
+			i
 		}
 		fn item_id(i: u16) -> ItemId {
 			let mut id = [0_u8; 32];
@@ -155,16 +153,18 @@ pub mod pallet {
 		/// Type of the contract's attribute keys, used on contract condition evaluation
 		type AttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
 
-		/// Type of the contract's attribute values, used on contract condition evaluation
-		type AttributeValue: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
+		/// The maximum length of an attribute value in bytes.
+		type AttributeValueLimit: sp_std::fmt::Debug
+			+ Clone
+			+ Encode
+			+ Decode
+			+ MaxEncodedLen
+			+ TypeInfo
+			+ Get<u32>;
 
 		/// A set of helper functions for benchmarking.
 		#[cfg(feature = "runtime-benchmarks")]
-		type BenchmarkHelper: BenchmarkHelper<
-			Self::AttributeKey,
-			Self::AttributeValue,
-			Self::ItemId,
-		>;
+		type BenchmarkHelper: BenchmarkHelper<Self::AttributeKey, Self::ItemId>;
 
 		/// The weight calculations
 		type WeightInfo: WeightInfo;
