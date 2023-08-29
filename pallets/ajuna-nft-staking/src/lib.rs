@@ -344,7 +344,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			contract_id: T::ItemId,
 			contract: ContractOf<T>,
-			metadata: Option<String>,
+			metadata: Option<Str>,
 		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
