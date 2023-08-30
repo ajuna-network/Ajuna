@@ -8,7 +8,10 @@ impl<T: Config> AvatarCombinator<T> {
 		hash_provider: &mut HashProvider<T, 32>,
 		block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		if input_sacrifices.len() != 1 {
+		if input_sacrifices.len() != 1 ||
+			input_leader.1.get_rarity() == RarityTier::Mythical ||
+			input_sacrifices.iter().any(|(_, sac)| sac.get_rarity() == RarityTier::Mythical)
+		{
 			return Ok((
 				LeaderForgeOutput::Forged((input_leader.0, input_leader.1.unwrap()), 0),
 				input_sacrifices
@@ -467,6 +470,88 @@ mod test {
 				);
 			} else {
 				panic!("ForgeOutput for second output should have been Minted!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_mate_mythical_fail() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x28, 0xD2, 0x1C, 0xCA, 0xEE, 0x3F, 0x80, 0xD9, 0x83, 0x21, 0x5D, 0xF9, 0xAC, 0x5E,
+				0x29, 0x74, 0x6A, 0xD9, 0x6C, 0xB0, 0x20, 0x16, 0xB5, 0xAD, 0xEA, 0x86, 0xFD, 0xE0,
+				0xCC, 0xFD, 0x01, 0xB4,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let leader_progress_array =
+				[0x63, 0x64, 0x61, 0x62, 0x65, 0x65, 0x64, 0x61, 0x62, 0x62, 0x62];
+			let leader_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+
+			let partner_progress_array =
+				[0x63, 0x64, 0x61, 0x62, 0x64, 0x60, 0x60, 0x63, 0x65, 0x63, 0x61];
+			let partner_spec_bytes = [
+				0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x75, 0x97, 0x50,
+				0x00, 0x00,
+			];
+
+			let leader = {
+				let (id, mut avatar) = create_random_pet(
+					&ALICE,
+					&PetType::BigHybrid,
+					0b0001_1001,
+					leader_spec_bytes,
+					leader_progress_array,
+					1000,
+				);
+				avatar.set_rarity(RarityTier::Mythical);
+				(id, avatar)
+			};
+			let partner = {
+				let (id, mut avatar) = create_random_pet(
+					&ALICE,
+					&PetType::CrazyDude,
+					0b0101_0011,
+					partner_spec_bytes,
+					partner_progress_array,
+					1000,
+				);
+				avatar.set_rarity(RarityTier::Mythical);
+				(id, avatar)
+			};
+
+			let expected_dna = [
+				0x11, 0x05, 0x06, 0x01, 0x19, 0x97, 0x59, 0x75, 0x97, 0x50, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x09, 0x75, 0x97, 0x50, 0x00, 0x00, 0x63, 0x64, 0x61, 0x62, 0x65, 0x65, 0x64,
+				0x61, 0x62, 0x62, 0x62,
+			];
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
+
+			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::mate_avatars(
+				leader,
+				vec![partner],
+				0,
+				&mut hash_provider,
+				61,
+			)
+			.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 1);
+
+			if let LeaderForgeOutput::Forged((_, leader_avatar), _) = leader_output {
+				assert_eq!(leader_avatar.souls, 1000);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+
+			if let ForgeOutput::Forged((_, avatar), _) = &sacrifice_output[0] {
+				assert_eq!(avatar.souls, 1000);
+			} else {
+				panic!("ForgeOutput for first output should have been Forged!")
 			}
 		});
 	}
