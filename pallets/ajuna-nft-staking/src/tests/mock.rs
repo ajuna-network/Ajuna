@@ -120,8 +120,6 @@ parameter_types! {
 	pub const AttributeDepositBase: MockBalance = 0;
 	pub const DepositPerByte: MockBalance = 0;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 64;
 	pub const ApprovalsLimit: u32 = 1;
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
@@ -146,6 +144,18 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 		id.into()
 	}
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<8>;
+pub type ValueLimit = ParameterGet<32>;
 
 impl pallet_nfts::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
@@ -186,19 +196,8 @@ parameter_types! {
 	pub const AttributeMaxBytes: u32 = 32;
 }
 
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub(crate) struct AttributeByteGetter<const N: u32>;
-
-impl<const N: u32> Get<u32> for AttributeByteGetter<N> {
-	fn get() -> u32 {
-		N
-	}
-}
-
 pub type CollectionConfig =
 	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
-
-pub type AttributeKey = u32;
 
 impl pallet_nft_staking::Config for Test {
 	type PalletId = NftStakingPalletId;
@@ -211,8 +210,9 @@ impl pallet_nft_staking::Config for Test {
 	type MaxContracts = MaxContracts;
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
-	type AttributeKey = AttributeKey;
 	type MaxMetadataLength = MaxMetadataLenght;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type WeightInfo = ();
@@ -300,10 +300,11 @@ impl ContractOf<Test> {
 	}
 }
 
-pub type MockClause = Clause<MockCollectionId, AttributeKey>;
-pub type MockContractClause = ContractClause<MockCollectionId, AttributeKey>;
+pub type MockClause = Clause<MockCollectionId, KeyLimit, ValueLimit>;
+pub type MockContractClause = ContractClause<MockCollectionId, KeyLimit, ValueLimit>;
 pub struct MockClauses(pub Vec<MockClause>);
-pub type MockMints = Vec<(NftId<MockCollectionId, MockItemId>, AttributeKey, AttributeValue)>;
+pub type MockMints =
+	Vec<(NftId<MockCollectionId, MockItemId>, Attribute<KeyLimit>, Attribute<ValueLimit>)>;
 
 impl From<MockClauses> for MockMints {
 	fn from(clauses: MockClauses) -> Self {
@@ -510,13 +511,13 @@ pub fn mint_item(
 fn set_attribute(
 	collection_id: &MockCollectionId,
 	item_id: &MockItemId,
-	key: &AttributeKey,
-	value: &AttributeValue,
+	key: &Attribute<KeyLimit>,
+	value: &Attribute<ValueLimit>,
 ) {
 	<NftHelperOf<Test> as Mutate<MockAccountId, ItemConfig>>::set_attribute(
 		collection_id,
 		item_id,
-		key.encode().as_slice(),
+		key.as_slice(),
 		value.as_slice(),
 	)
 	.unwrap()

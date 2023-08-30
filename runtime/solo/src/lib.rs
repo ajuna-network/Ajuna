@@ -22,9 +22,11 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::Encode;
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	dispatch::TypeInfo,
+	parameter_types,
 	traits::{AsEnsureOriginWithArg, Contains},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
@@ -41,7 +43,7 @@ use pallet_grandpa::{
 use pallet_transaction_payment::CurrencyAdapter;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -578,8 +580,6 @@ parameter_types! {
 	pub const CollectionDeposit: Balance = NANO_AJUNS;
 	pub const ItemDeposit: Balance = NANO_AJUNS;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 64;
 	pub const AttributeDepositBase: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub const ApprovalsLimit: u32 = 1;
@@ -589,6 +589,18 @@ parameter_types! {
 	pub const MaxAttributesPerCall: u32 = 10;
 	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<8>;
+pub type ValueLimit = ParameterGet<32>;
 
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -640,8 +652,6 @@ parameter_types! {
 	pub const MaxMetadataLenght: u32 = 100;
 }
 
-type AttributeKey = u32;
-
 impl pallet_ajuna_nft_staking::Config for Runtime {
 	type PalletId = NftStakingPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -654,7 +664,8 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
 	type MaxMetadataLength = MaxMetadataLenght;
-	type AttributeKey = AttributeKey;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type WeightInfo = ();

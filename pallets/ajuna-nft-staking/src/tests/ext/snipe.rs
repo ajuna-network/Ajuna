@@ -19,11 +19,11 @@ use super::*;
 #[test]
 fn works_with_token_reward() {
 	let stake_clauses = vec![
-		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 4)),
-		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, 5)),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, bounded_vec![7])),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![5])),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![6], bounded_vec![7])),
 	];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_2, 33))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_2, bounded_vec![33]))];
 	let (stake_duration, claim_duration) = (4, 3);
 	let reward = 135;
 	let contract = Contract::default()
@@ -82,11 +82,11 @@ fn works_with_token_reward() {
 #[test]
 fn works_with_nft_reward() {
 	let stake_clauses = vec![
-		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 4)),
-		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, 5)),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 6, bounded_vec![7])),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![5])),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, bounded_vec![6], bounded_vec![7])),
 	];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, 1))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![1]))];
 	let (stake_duration, claim_duration) = (2, 3);
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let contract = Contract::default()

@@ -19,11 +19,11 @@ use super::*;
 #[test]
 fn works() {
 	let stake_clauses = vec![
-		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 4)),
-		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, 5)),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 6, bounded_vec![7])),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![5])),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![6], bounded_vec![7])),
 	];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let stake_duration = 4;
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
@@ -132,7 +132,7 @@ fn rejects_out_of_bound_stakes() {
 				.stake_clauses(
 					AttributeNamespace::Pallet,
 					(0..MaxStakingClauses::get())
-						.map(|i| (i as u8, MockClause::HasAttribute(0, 0)))
+						.map(|i| (i as u8, MockClause::HasAttribute(0, bounded_vec![0])))
 						.collect::<Vec<_>>(),
 				),
 		)
@@ -176,8 +176,8 @@ fn rejects_when_contract_collection_id_is_not_set() {
 
 #[test]
 fn rejects_when_contract_is_already_accepted() {
-	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 2))];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123))];
+	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![2]))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
@@ -268,8 +268,8 @@ fn rejects_when_contract_is_already_accepted() {
 
 #[test]
 fn rejects_unowned_stakes() {
-	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 2))];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 2))];
+	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![2]))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![2]))];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
@@ -325,10 +325,24 @@ fn rejects_when_contract_is_not_created() {
 #[test]
 fn rejects_unfulfilling_stakes() {
 	let stake_clauses = vec![
-		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123)),
-		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, 456)),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 12, bounded_vec![34])),
-		(3, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, 56, bounded_vec![78])),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123])),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![97])),
+		(
+			2,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_1,
+				bounded_vec![12],
+				bounded_vec![34],
+			),
+		),
+		(
+			3,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_1,
+				bounded_vec![56],
+				bounded_vec![78],
+			),
+		),
 	];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
@@ -341,7 +355,7 @@ fn rejects_unfulfilling_stakes() {
 	let mut stakes =
 		MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	stakes.iter_mut().for_each(|(_, key, value)| {
-		*key += 1;
+		key.try_insert(0, 1).expect("Should insert");
 		value.try_insert(0, 1).expect("Should insert");
 	});
 	let stake_addresses = stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
@@ -367,7 +381,7 @@ fn rejects_unfulfilling_stakes() {
 
 #[test]
 fn rejects_unfulfilling_fees() {
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 123))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let contract = Contract::default()
 		.reward(Reward::Tokens(123))
 		.stake_duration(123)
@@ -377,7 +391,7 @@ fn rejects_unfulfilling_fees() {
 
 	let mut fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	fees.iter_mut().for_each(|(_, key, value)| {
-		*key += 1;
+		key.try_insert(0, 1).expect("Should insert");
 		value.try_insert(0, 1).expect("Should insert");
 	});
 	let fee_addresses = fees.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();

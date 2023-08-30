@@ -58,7 +58,8 @@ pub mod pallet {
 		CollectionIdOf<T>,
 		ItemIdOf<T>,
 		<T as frame_system::Config>::BlockNumber,
-		<T as Config>::AttributeKey,
+		<T as Config>::KeyLimit,
+		<T as Config>::ValueLimit,
 	>;
 	pub type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
 	pub type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
@@ -84,18 +85,18 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[cfg(feature = "runtime-benchmarks")]
-	pub trait BenchmarkHelper<ContractKey, ItemId> {
-		fn contract_key(i: u32) -> ContractKey;
-		fn contract_value(i: u8) -> BoundedVec<u8, ConstU32<MAX_BYTES_PER_ATTRIBUTE>>;
+	pub trait BenchmarkHelper<KL, VL, ItemId> {
+		fn contract_key(i: u8) -> BoundedVec<u8, KL>;
+		fn contract_value(i: u8) -> BoundedVec<u8, VL>;
 		fn item_id(i: u16) -> ItemId;
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<ContractKey: From<u32>, ItemId: From<[u8; 32]>> BenchmarkHelper<ContractKey, ItemId> for () {
-		fn contract_key(i: u32) -> ContractKey {
-			i.into()
+	impl<KL: Get<u32>, VL: Get<u32>, ItemId: From<[u8; 32]>> BenchmarkHelper<KL, VL, ItemId> for () {
+		fn contract_key(i: u8) -> BoundedVec<u8, KL> {
+			BoundedVec::try_from(vec![i]).expect("Should work")
 		}
-		fn contract_value(i: u8) -> BoundedVec<u8, ConstU32<MAX_BYTES_PER_ATTRIBUTE>> {
+		fn contract_value(i: u8) -> BoundedVec<u8, VL> {
 			BoundedVec::try_from(vec![i]).expect("Should work")
 		}
 		fn item_id(i: u16) -> ItemId {
@@ -149,12 +150,17 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxMetadataLength: Get<u32>;
 
-		/// Type of the contract's attribute keys, used on contract condition evaluation
-		type AttributeKey: Member + Encode + Decode + MaxEncodedLen + TypeInfo;
+		/// The maximum length of an attribute key.
+		#[pallet::constant]
+		type KeyLimit: Parameter + Get<u32>;
+
+		/// The maximum length of an attribute value.
+		#[pallet::constant]
+		type ValueLimit: Parameter + Get<u32>;
 
 		/// A set of helper functions for benchmarking.
 		#[cfg(feature = "runtime-benchmarks")]
-		type BenchmarkHelper: BenchmarkHelper<Self::AttributeKey, Self::ItemId>;
+		type BenchmarkHelper: BenchmarkHelper<Self::KeyLimit, Self::ValueLimit, Self::ItemId>;
 
 		/// The weight calculations
 		type WeightInfo: WeightInfo;
