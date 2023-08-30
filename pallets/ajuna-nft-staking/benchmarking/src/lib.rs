@@ -47,7 +47,7 @@ const FEE_COLLECTION: u16 = 3;
 const SNIPER_STAKE_COLLECTION: u16 = 4;
 const SNIPER_FEE_COLLECTION: u16 = 5;
 // Unified attribute value for all contracts.
-const ATTRIBUTE_VALUE: u64 = 10;
+const ATTRIBUTE_VALUE: u8 = 10;
 
 enum Mode {
 	Staker,
@@ -78,7 +78,6 @@ type ContractOf<T> = Contract<
 	<T as NftStakingConfig>::ItemId,
 	<T as frame_system::Config>::BlockNumber,
 	<T as NftStakingConfig>::AttributeKey,
-	<T as NftStakingConfig>::AttributeValue,
 >;
 
 type NftCurrencyOf<T> = <T as pallet_nfts::Config>::Currency;
@@ -184,15 +183,15 @@ fn set_attribute<T: Config>(
 	collection_id: u16,
 	item_id: u16,
 	key: u32,
-	value: u64,
+	value: u8,
 ) -> DispatchResult {
 	let collection_id = &T::Helper::collection(collection_id);
 	let item_id = &T::Helper::item(item_id);
-	<pallet_nfts::Pallet<T> as Mutate<T::AccountId, ItemConfig>>::set_typed_attribute(
+	<pallet_nfts::Pallet<T> as Mutate<T::AccountId, ItemConfig>>::set_attribute(
 		collection_id,
 		item_id,
-		&key,
-		&value,
+		key.encode().as_slice(),
+		&[value],
 	)?;
 	Ok(())
 }

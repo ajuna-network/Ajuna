@@ -40,15 +40,13 @@ pub enum Reward<Balance, CollectionId, ItemId> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct ContractClause<CollectionId, AttributeKey, AttributeValue> {
+pub struct ContractClause<CollectionId, AttributeKey> {
 	pub namespace: AttributeNamespace,
 	pub target_index: u8,
-	pub clause: Clause<CollectionId, AttributeKey, AttributeValue>,
+	pub clause: Clause<CollectionId, AttributeKey>,
 }
 
-impl<CollectionId, AttributeKey, AttributeValue>
-	ContractClause<CollectionId, AttributeKey, AttributeValue>
-{
+impl<CollectionId, AttributeKey> ContractClause<CollectionId, AttributeKey> {
 	pub fn evaluate_for<AccountId, NftInspector, ItemId>(
 		&self,
 		address: &NftId<CollectionId, ItemId>,
@@ -58,7 +56,6 @@ impl<CollectionId, AttributeKey, AttributeValue>
 		CollectionId: PartialEq,
 		ItemId: PartialEq,
 		AttributeKey: Encode,
-		AttributeValue: Encode + Decode + PartialEq,
 	{
 		let evaluate_fn = match self.namespace {
 			AttributeNamespace::Pallet => NftInspector::system_attribute,
@@ -70,15 +67,17 @@ impl<CollectionId, AttributeKey, AttributeValue>
 	}
 }
 
+pub const MAX_BYTES_PER_ATTRIBUTE: u32 = 32;
+
+pub type AttributeValue = BoundedVec<u8, ConstU32<MAX_BYTES_PER_ATTRIBUTE>>;
+
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum Clause<CollectionId, AttributeKey, AttributeValue> {
+pub enum Clause<CollectionId, AttributeKey> {
 	HasAttribute(CollectionId, AttributeKey),
 	HasAttributeWithValue(CollectionId, AttributeKey, AttributeValue),
 }
 
-impl<CollectionId, AttributeKey, AttributeValue>
-	Clause<CollectionId, AttributeKey, AttributeValue>
-{
+impl<CollectionId, AttributeKey> Clause<CollectionId, AttributeKey> {
 	pub fn evaluate_for<AccountId, NftInspector, ItemId, Fn>(
 		&self,
 		address: &NftId<CollectionId, ItemId>,
@@ -89,7 +88,6 @@ impl<CollectionId, AttributeKey, AttributeValue>
 		CollectionId: PartialEq,
 		ItemId: PartialEq,
 		AttributeKey: Encode,
-		AttributeValue: Encode + Decode + PartialEq,
 		Fn: FnOnce(&CollectionId, &ItemId, &[u8]) -> Option<Vec<u8>>,
 	{
 		let clause_collection_id = match self {
@@ -103,7 +101,7 @@ impl<CollectionId, AttributeKey, AttributeValue>
 					evaluate_fn(collection_id, item_id, &key.encode()).is_some(),
 				Clause::HasAttributeWithValue(_, key, expected_value) =>
 					if let Some(value) = evaluate_fn(collection_id, item_id, &key.encode()) {
-						expected_value.eq(&AttributeValue::decode(&mut value.as_slice()).unwrap())
+						expected_value.as_slice().eq(value.as_slice())
 					} else {
 						false
 					},
@@ -111,13 +109,13 @@ impl<CollectionId, AttributeKey, AttributeValue>
 	}
 }
 
-type BoundedClauses<CollectionId, AttributeKey, AttributeValue> =
-	BoundedVec<ContractClause<CollectionId, AttributeKey, AttributeValue>, ConstU32<100>>;
+type BoundedClauses<CollectionId, AttributeKey> =
+	BoundedVec<ContractClause<CollectionId, AttributeKey>, ConstU32<100>>;
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
 /// with a given reward after the duration is complete.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue> {
+pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey> {
 	/// The block number at which the given contract becomes active for a staker to accept. If it
 	/// is not set, the contract activates immediately upon creation.
 	pub activation: Option<BlockNumber>,
@@ -133,10 +131,10 @@ pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, At
 
 	/// The list of conditions to satisfy as staking NFTs. A staker must provide NFTs that meet
 	/// these requirements, which will be locked for the staking duration of the contract.
-	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
+	pub stake_clauses: BoundedClauses<CollectionId, AttributeKey>,
 	/// The list of conditions to satisfy as fee NFTs. A staker must provide NFTs that meet these
 	/// requirements to accept the contract, which is transferred to the contract creator.
-	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey, AttributeValue>,
+	pub fee_clauses: BoundedClauses<CollectionId, AttributeKey>,
 
 	/// The reward of fulfilling the given contract in the form of either tokens or NFTs.
 	pub reward: Reward<Balance, CollectionId, ItemId>,
@@ -150,13 +148,12 @@ pub struct Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, At
 	pub nft_fee_amount: u8,
 }
 
-impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>
-	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey, AttributeValue>
+impl<Balance, CollectionId, ItemId, BlockNumber, AttributeKey>
+	Contract<Balance, CollectionId, ItemId, BlockNumber, AttributeKey>
 where
 	CollectionId: PartialEq,
 	ItemId: PartialEq,
 	AttributeKey: Encode,
-	AttributeValue: Encode + Decode + PartialEq,
 {
 	pub fn evaluate_stakes<AccountId, NftInspector>(
 		&self,
