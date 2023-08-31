@@ -128,7 +128,7 @@ fn rejects_when_pallet_is_locked() {
 fn rejects_out_of_bound_staking_clauses() {
 	ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 		let staking_clauses = (0..MaxStakingClauses::get() + 1)
-			.map(|i| (i as u8, Clause::HasAttribute(RESERVED_COLLECTION_0, i)))
+			.map(|i| (i as u8, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![i as u8])))
 			.collect::<Vec<_>>();
 		assert!(staking_clauses.len() as u32 > MaxStakingClauses::get());
 		assert_noop!(
@@ -149,7 +149,7 @@ fn rejects_out_of_bound_staking_clauses() {
 fn rejects_out_of_bound_fee_clauses() {
 	ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 		let fee_clauses = (0..MaxFeeClauses::get() + 1)
-			.map(|i| (i as u8, Clause::HasAttribute(RESERVED_COLLECTION_0, i)))
+			.map(|i| (i as u8, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![i as u8])))
 			.collect::<Vec<_>>();
 		assert!(fee_clauses.len() as u32 > MaxFeeClauses::get());
 		assert_noop!(

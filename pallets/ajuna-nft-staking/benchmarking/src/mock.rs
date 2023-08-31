@@ -16,12 +16,14 @@
 
 #![cfg(test)]
 
-use frame_support::{parameter_types, traits::AsEnsureOriginWithArg, PalletId};
+use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::{dispatch::TypeInfo, parameter_types, traits::AsEnsureOriginWithArg, PalletId};
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
 use pallet_nfts::PalletFeatures;
+use sp_core::Get;
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
@@ -106,8 +108,6 @@ parameter_types! {
 	pub const AttributeDepositBase: MockBalance = 0;
 	pub const DepositPerByte: MockBalance = 0;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 64;
 	pub const ApprovalsLimit: u32 = 1;
 	pub const ItemAttributesApprovalsLimit: u32 = 10;
 	pub const MaxTips: u32 = 1;
@@ -132,6 +132,18 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 		id.into()
 	}
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<8>;
+pub type ValueLimit = ParameterGet<32>;
 
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -171,8 +183,6 @@ parameter_types! {
 	pub const MaxMetadataLenght: u32 = 100;
 }
 
-pub type AttributeKey = u32;
-
 impl pallet_ajuna_nft_staking::Config for Runtime {
 	type PalletId = NftStakingPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -185,7 +195,8 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type MaxStakingClauses = MaxStakingClauses;
 	type MaxFeeClauses = MaxFeeClauses;
 	type MaxMetadataLength = MaxMetadataLenght;
-	type AttributeKey = AttributeKey;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	pallet_ajuna_nft_staking::runtime_benchmarks_enabled! {
 		type BenchmarkHelper = ();
 	}

@@ -19,10 +19,10 @@ use super::*;
 #[test]
 fn works_with_token_reward() {
 	let stake_clauses = vec![
-		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 1)),
-		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, bounded_vec![4])),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![1])),
+		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![3], bounded_vec![4])),
 	];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, 11))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![11]))];
 	let stake_duration = 4;
 	let reward = 135;
 	let cancellation_fee = 111;
@@ -78,10 +78,10 @@ fn works_with_token_reward() {
 #[test]
 fn works_with_nft_reward() {
 	let stake_clauses = vec![
-		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, 1)),
-		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, 3, bounded_vec![4])),
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![1])),
+		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![3], bounded_vec![4])),
 	];
-	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, 11))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![11]))];
 	let stake_duration = 4;
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let cancellation_fee = 111;

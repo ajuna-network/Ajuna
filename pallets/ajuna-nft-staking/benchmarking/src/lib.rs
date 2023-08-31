@@ -77,7 +77,8 @@ type ContractOf<T> = Contract<
 	CollectionIdOf<T>,
 	<T as NftStakingConfig>::ItemId,
 	<T as frame_system::Config>::BlockNumber,
-	<T as NftStakingConfig>::AttributeKey,
+	<T as NftStakingConfig>::KeyLimit,
+	<T as NftStakingConfig>::ValueLimit,
 >;
 
 type NftCurrencyOf<T> = <T as pallet_nfts::Config>::Currency;
@@ -182,7 +183,7 @@ fn mint_item<T: Config>(owner: &T::AccountId, collection_id: u16, item_id: u16) 
 fn set_attribute<T: Config>(
 	collection_id: u16,
 	item_id: u16,
-	key: u32,
+	key: u8,
 	value: u8,
 ) -> DispatchResult {
 	let collection_id = &T::Helper::collection(collection_id);
@@ -190,7 +191,7 @@ fn set_attribute<T: Config>(
 	<pallet_nfts::Pallet<T> as Mutate<T::AccountId, ItemConfig>>::set_attribute(
 		collection_id,
 		item_id,
-		key.encode().as_slice(),
+		&[key],
 		&[value],
 	)?;
 	Ok(())
@@ -209,7 +210,7 @@ fn stakes_and_fees<T: Config>(
 		let item_id = i as u16;
 		let attr_key = i;
 		mint_item::<T>(who, stake_collection, item_id)?;
-		set_attribute::<T>(stake_collection, item_id, attr_key, ATTRIBUTE_VALUE)?;
+		set_attribute::<T>(stake_collection, item_id, attr_key as u8, ATTRIBUTE_VALUE)?;
 		stakes.push(NftId(
 			CollectionIdOf::<T>::unique_saturated_from(stake_collection),
 			T::BenchmarkHelper::item_id(item_id),
@@ -219,7 +220,7 @@ fn stakes_and_fees<T: Config>(
 		let item_id = i as u16;
 		let attr_key = i;
 		mint_item::<T>(who, fee_collection, item_id)?;
-		set_attribute::<T>(fee_collection, item_id, attr_key, ATTRIBUTE_VALUE)?;
+		set_attribute::<T>(fee_collection, item_id, attr_key as u8, ATTRIBUTE_VALUE)?;
 		fees.push(NftId(
 			CollectionIdOf::<T>::unique_saturated_from(fee_collection),
 			T::BenchmarkHelper::item_id(item_id),
@@ -246,7 +247,7 @@ fn contract_with<T: Config>(
 				target_index: i as u8,
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(stake_collection),
-					T::BenchmarkHelper::contract_key(i),
+					T::BenchmarkHelper::contract_key(i as u8),
 					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
 				),
 			})
@@ -259,7 +260,7 @@ fn contract_with<T: Config>(
 				target_index: (i - num_stake_clauses) as u8,
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(fee_collection),
-					T::BenchmarkHelper::contract_key(i),
+					T::BenchmarkHelper::contract_key(i as u8),
 					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
 				),
 			})
