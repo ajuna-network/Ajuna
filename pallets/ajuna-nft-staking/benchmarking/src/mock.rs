@@ -142,8 +142,8 @@ impl<const N: u32> Get<u32> for ParameterGet<N> {
 	}
 }
 
-pub type KeyLimit = ParameterGet<8>;
-pub type ValueLimit = ParameterGet<32>;
+pub type KeyLimit = ParameterGet<32>;
+pub type ValueLimit = ParameterGet<64>;
 
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;

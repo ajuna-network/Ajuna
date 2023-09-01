@@ -40,9 +40,14 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 type BalanceOf<T> = <CurrencyOf<T> as Currency<AccountIdOf<T>>>::Balance;
 type CurrencyOf<T> = <T as AvatarsConfig>::Currency;
+type KeyLimitOf<T> = <T as AvatarsConfig>::KeyLimit;
+type ValueLimitOf<T> = <T as AvatarsConfig>::ValueLimit;
+
 type CollectionIdOf<T> = <<T as AvatarsConfig>::NftHandler as NftHandler<
 	AccountIdOf<T>,
 	AvatarIdOf<T>,
+	KeyLimitOf<T>,
+	ValueLimitOf<T>,
 	Avatar,
 >>::CollectionId;
 

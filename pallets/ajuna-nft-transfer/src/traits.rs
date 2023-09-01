@@ -3,31 +3,31 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	Parameter,
 };
-use sp_runtime::traits::AtLeast32BitUnsigned;
+use sp_runtime::{traits::AtLeast32BitUnsigned, BoundedVec};
 use sp_std::vec::Vec;
 
 /// Type used to differentiate attribute codes for each item.
-pub type AttributeCode = u16;
+pub type NFTAttribute<N> = BoundedVec<u8, N>;
 
 /// Type to denote an IPFS URL.
 pub type IpfsUrl = Vec<u8>;
 
 /// Marker trait for items that can be converted back and forth into an NFT representation.
-pub trait NftConvertible: Codec {
+pub trait NftConvertible<KL, VL>: Codec {
 	/// Numeric key used to identify this item as an NFT attribute.
-	const ITEM_CODE: AttributeCode;
+	const ITEM_CODE: &'static [u8];
 	/// Numeric key used to identify this item's IPFS URL as an NFT attribute.
-	const IPFS_URL_CODE: AttributeCode;
+	const IPFS_URL_CODE: &'static [u8];
 
 	/// Returns the list of attribute codes associated with this type.
-	fn get_attribute_codes() -> Vec<AttributeCode>;
+	fn get_attribute_codes() -> Vec<NFTAttribute<KL>>;
 
 	/// Returns the list of pairs of attribute code and its encoded attribute.
-	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)>;
+	fn get_encoded_attributes(&self) -> Vec<(NFTAttribute<KL>, NFTAttribute<VL>)>;
 }
 
 /// Trait to define the transformation and bridging of NFT items.
-pub trait NftHandler<Account, ItemId, Item: NftConvertible> {
+pub trait NftHandler<Account, ItemId, KL, VL, Item: NftConvertible<KL, VL>> {
 	type CollectionId: AtLeast32BitUnsigned + Codec + Parameter + MaxEncodedLen;
 
 	/// Consumes the given `item` and its associated identifiers, and stores it as an NFT

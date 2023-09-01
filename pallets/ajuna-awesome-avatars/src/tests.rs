@@ -3256,28 +3256,31 @@ mod nft_transfer {
 					<Nft as Inspect<MockAccountId>>::system_attribute(
 						&CollectionId::<Test>::get().unwrap(),
 						&avatar_id,
-						&<Avatar as NftConvertible>::ITEM_CODE.encode(),
+						&<Avatar as NftConvertible<KeyLimit, ValueLimit>>::ITEM_CODE,
 					)
 					.unwrap(),
 					avatar.encode(),
 				);
 
 				// Ensure attributes encoding
-				for (attribute_code, encoded_attribute) in
-					Avatar::get_attribute_codes().iter().zip([
-						avatar.dna.encode(),
-						avatar.souls.encode(),
-						avatar.rarity().encode(),
-						avatar.force().encode(),
-					]) {
+				for (attribute_code, attribute) in
+					<Avatar as NftConvertible<KeyLimit, ValueLimit>>::get_attribute_codes()
+						.iter()
+						.map(|attr| attr.as_slice())
+						.zip([
+							avatar.dna.to_vec(),
+							avatar.souls.to_le_bytes().to_vec(),
+							avatar.rarity().to_le_bytes().to_vec(),
+							avatar.force().to_le_bytes().to_vec(),
+						]) {
 					assert_eq!(
 						<Nft as Inspect<MockAccountId>>::system_attribute(
 							&CollectionId::<Test>::get().unwrap(),
 							&avatar_id,
-							&attribute_code.encode(),
+							attribute_code,
 						)
 						.unwrap(),
-						encoded_attribute.encode()
+						attribute.as_slice()
 					);
 				}
 
@@ -3419,29 +3422,6 @@ mod nft_transfer {
 				assert_noop!(
 					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
 					pallet_ajuna_nft_transfer::Error::<Test>::EmptyIpfsUrl
-				);
-			});
-	}
-
-	#[test]
-	fn cannot_lock_avatars_above_value_limit() {
-		let value_limit = 3;
-
-		ExtBuilder::default()
-			.seasons(&[(SEASON_ID, Season::default())])
-			.balances(&[(ALICE, 1_000_000_000_000)])
-			.create_nft_collection(true)
-			.value_limit(value_limit)
-			.build()
-			.execute_with(|| {
-				let avatar_id = create_avatars(SEASON_ID, ALICE, 1)[0];
-				let (_, avatar) = Avatars::<Test>::get(avatar_id).unwrap();
-				assert!(avatar.encode().len() > value_limit as usize);
-				assert_ok!(AAvatars::set_service_account(RuntimeOrigin::root(), ALICE));
-				assert_ok!(AAvatars::prepare_avatar(RuntimeOrigin::signed(ALICE), avatar_id));
-				assert_noop!(
-					AAvatars::lock_avatar(RuntimeOrigin::signed(ALICE), avatar_id),
-					pallet_nfts::Error::<Test>::IncorrectData
 				);
 			});
 	}

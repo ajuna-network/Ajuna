@@ -15,7 +15,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{self as pallet_ajuna_nft_transfer};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
+	dispatch::TypeInfo,
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
 	PalletId,
@@ -27,7 +29,7 @@ use frame_system::{
 use pallet_nfts::{PalletFeature, PalletFeatures};
 use sp_runtime::{
 	testing::{Header, TestSignature, H256},
-	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+	traits::{BlakeTwo256, Get, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage,
 };
 
@@ -102,12 +104,22 @@ impl pallet_balances::Config for Test {
 	type MaxFreezes = ();
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<32>;
+pub type ValueLimit = ParameterGet<64>;
+
 parameter_types! {
 	pub const CollectionDeposit: MockBalance = 999;
 	pub const ItemDeposit: MockBalance = 333;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 64;
 	pub const MetadataDepositBase: MockBalance = 1;
 	pub const AttributeDepositBase: MockBalance = 1;
 	pub const DepositPerByte: MockBalance = 1;
@@ -179,6 +191,8 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type CollectionId = MockCollectionId;
 	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHelper = Nft;
 }
 

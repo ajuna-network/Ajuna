@@ -16,7 +16,9 @@
 
 #![cfg(test)]
 
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
+	dispatch::TypeInfo,
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
 	PalletId,
@@ -27,7 +29,7 @@ use frame_system::{
 };
 use sp_runtime::{
 	testing::{Header, H256},
-	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+	traits::{BlakeTwo256, Get, IdentifyAccount, IdentityLookup, Verify},
 	MultiSignature,
 };
 
@@ -109,8 +111,6 @@ parameter_types! {
 	pub const CollectionDeposit: MockBalance = 1;
 	pub const ItemDeposit: MockBalance = 1;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub static MockValueLimit: u32 = 200;
 	pub const MetadataDepositBase: MockBalance = 1;
 	pub const AttributeDepositBase: MockBalance = 1;
 	pub const DepositPerByte: MockBalance = 1;
@@ -140,6 +140,18 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 	}
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<32>;
+pub type ValueLimit = ParameterGet<64>;
+
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = MockCollectionId;
@@ -155,7 +167,7 @@ impl pallet_nfts::Config for Runtime {
 	type DepositPerByte = DepositPerByte;
 	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
-	type ValueLimit = MockValueLimit;
+	type ValueLimit = ValueLimit;
 	type ApprovalsLimit = ApprovalsLimit;
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
@@ -179,6 +191,8 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHandler = NftTransfer;
 	type WeightInfo = ();
 }
@@ -193,6 +207,8 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type CollectionId = MockCollectionId;
 	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHelper = Nft;
 }
 
