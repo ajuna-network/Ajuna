@@ -3256,7 +3256,7 @@ mod nft_transfer {
 					<Nft as Inspect<MockAccountId>>::system_attribute(
 						&CollectionId::<Test>::get().unwrap(),
 						&avatar_id,
-						&<Avatar as NftConvertible<KeyLimit, ValueLimit>>::ITEM_CODE,
+						<Avatar as NftConvertible<KeyLimit, ValueLimit>>::ITEM_CODE,
 					)
 					.unwrap(),
 					avatar.encode(),

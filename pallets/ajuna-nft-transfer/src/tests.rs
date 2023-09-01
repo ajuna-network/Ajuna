@@ -93,7 +93,7 @@ mod store_as_nft {
 					Some(item.encode())
 				);
 				assert_eq!(
-					Nft::system_attribute(&collection_id, &item_id, &MockItem::IPFS_URL_CODE),
+					Nft::system_attribute(&collection_id, &item_id, MockItem::IPFS_URL_CODE),
 					Some(url)
 				);
 				for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {

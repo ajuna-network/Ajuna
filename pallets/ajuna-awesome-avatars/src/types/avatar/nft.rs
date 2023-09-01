@@ -25,7 +25,7 @@ where
 	VL: Get<u32>,
 {
 	const ITEM_CODE: &'static [u8] = b"AVATAR";
-	const IPFS_URL_CODE: &'static [u8] = b"AVATAR_IPFS";
+	const IPFS_URL_CODE: &'static [u8] = b"IPFS_URL";
 
 	fn get_attribute_codes() -> Vec<NFTAttribute<KL>> {
 		vec![

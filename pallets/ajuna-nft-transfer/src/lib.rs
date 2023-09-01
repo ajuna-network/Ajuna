@@ -156,12 +156,7 @@ pub mod pallet {
 						attribute_code.as_slice() != Item::ITEM_CODE,
 						Error::<T>::DuplicateItemCode
 					);
-					T::NftHelper::set_attribute(
-						&collection_id,
-						&item_id,
-						&attribute_code,
-						&attribute,
-					)
+					T::NftHelper::set_attribute(&collection_id, &item_id, attribute_code, attribute)
 				})?;
 
 			NftStatuses::<T>::insert(collection_id, item_id, NftStatus::Stored);
