@@ -116,8 +116,6 @@ parameter_types! {
 	pub const CollectionDeposit: MockBalance = 1;
 	pub const ItemDeposit: MockBalance = 1;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub static MockValueLimit: u32 = 200;
 	pub const MetadataDepositBase: MockBalance = 1;
 	pub const AttributeDepositBase: MockBalance = 1;
 	pub const DepositPerByte: MockBalance = 1;
@@ -147,6 +145,18 @@ impl<CollectionId: From<u16>, ItemId: From<[u8; 32]>>
 	}
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<32>;
+pub type ValueLimit = ParameterGet<64>;
+
 impl pallet_nfts::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = MockCollectionId;
@@ -162,7 +172,7 @@ impl pallet_nfts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
-	type ValueLimit = MockValueLimit;
+	type ValueLimit = ValueLimit;
 	type ApprovalsLimit = ApprovalsLimit;
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
@@ -186,6 +196,8 @@ impl pallet_ajuna_awesome_avatars::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHandler = NftTransfer;
 	type WeightInfo = ();
 }
@@ -200,6 +212,8 @@ impl pallet_ajuna_nft_transfer::Config for Test {
 	type CollectionId = MockCollectionId;
 	type ItemId = H256;
 	type ItemConfig = pallet_nfts::ItemConfig;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHelper = Nft;
 }
 
@@ -211,7 +225,6 @@ pub struct ExtBuilder {
 	balances: Vec<(MockAccountId, MockBalance)>,
 	free_mints: Vec<(MockAccountId, MintCount)>,
 	create_nft_collection: bool,
-	value_limit: u32,
 }
 
 impl Default for ExtBuilder {
@@ -224,7 +237,6 @@ impl Default for ExtBuilder {
 			balances: Default::default(),
 			free_mints: Default::default(),
 			create_nft_collection: Default::default(),
-			value_limit: MockValueLimit::get(),
 		}
 	}
 }
@@ -258,14 +270,8 @@ impl ExtBuilder {
 		self.create_nft_collection = create_nft_collection;
 		self
 	}
-	pub fn value_limit(mut self, value_limit: u32) -> Self {
-		self.value_limit = value_limit;
-		self
-	}
-
 	pub fn build(self) -> sp_io::TestExternalities {
 		MOCK_EXISTENTIAL_DEPOSIT.with(|v| *v.borrow_mut() = self.existential_deposit);
-		MOCK_VALUE_LIMIT.with(|v| *v.borrow_mut() = self.value_limit);
 		let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 		pallet_balances::GenesisConfig::<Test> { balances: self.balances }
 			.assimilate_storage(&mut t)

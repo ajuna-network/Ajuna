@@ -68,6 +68,14 @@ pub mod pallet {
 		/// Type that holds the specific configurations for an item.
 		type ItemConfig: Default + MaxEncodedLen + TypeInfo;
 
+		/// The maximum length of an attribute key.
+		#[pallet::constant]
+		type KeyLimit: Get<u32>;
+
+		/// The maximum length of an attribute value.
+		#[pallet::constant]
+		type ValueLimit: Get<u32>;
+
 		/// An NFT helper for the management of collections and items.
 		type NftHelper: Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>
 			+ Mutate<Self::AccountId, Self::ItemConfig>;
@@ -112,7 +120,9 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config, Item: NftConvertible> NftHandler<T::AccountId, T::ItemId, Item> for Pallet<T> {
+	impl<T: Config, Item: NftConvertible<T::KeyLimit, T::ValueLimit>>
+		NftHandler<T::AccountId, T::ItemId, T::KeyLimit, T::ValueLimit, Item> for Pallet<T>
+	{
 		type CollectionId = T::CollectionId;
 
 		fn store_as_nft(
@@ -124,26 +134,29 @@ pub mod pallet {
 		) -> DispatchResult {
 			let config = T::ItemConfig::default();
 			T::NftHelper::mint_into(&collection_id, &item_id, &owner, &config, false)?;
-			T::NftHelper::set_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE, &item)?;
-
-			ensure!(!ipfs_url.is_empty(), Error::<T>::EmptyIpfsUrl);
-			T::NftHelper::set_typed_attribute(
+			T::NftHelper::set_attribute(
 				&collection_id,
 				&item_id,
-				&Item::IPFS_URL_CODE,
-				&ipfs_url,
+				Item::ITEM_CODE,
+				item.encode().as_slice(),
+			)?;
+
+			ensure!(!ipfs_url.is_empty(), Error::<T>::EmptyIpfsUrl);
+			T::NftHelper::set_attribute(
+				&collection_id,
+				&item_id,
+				Item::IPFS_URL_CODE,
+				ipfs_url.as_slice(),
 			)?;
 
 			item.get_encoded_attributes()
 				.iter()
 				.try_for_each(|(attribute_code, attribute)| {
-					ensure!(attribute_code != &Item::ITEM_CODE, Error::<T>::DuplicateItemCode);
-					T::NftHelper::set_typed_attribute(
-						&collection_id,
-						&item_id,
-						&attribute_code,
-						&attribute,
-					)
+					ensure!(
+						attribute_code.as_slice() != Item::ITEM_CODE,
+						Error::<T>::DuplicateItemCode
+					);
+					T::NftHelper::set_attribute(&collection_id, &item_id, attribute_code, attribute)
 				})?;
 
 			NftStatuses::<T>::insert(collection_id, item_id, NftStatus::Stored);
@@ -162,14 +175,13 @@ pub mod pallet {
 				Error::<T>::NftOutsideOfChain
 			);
 
-			let item =
-				T::NftHelper::system_attribute(&collection_id, &item_id, &Item::ITEM_CODE.encode())
-					.ok_or(Error::<T>::UnknownItem)?;
+			let item = T::NftHelper::system_attribute(&collection_id, &item_id, Item::ITEM_CODE)
+				.ok_or(Error::<T>::UnknownItem)?;
 
-			T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &Item::ITEM_CODE)?;
-			T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &Item::IPFS_URL_CODE)?;
+			T::NftHelper::clear_attribute(&collection_id, &item_id, Item::ITEM_CODE)?;
+			T::NftHelper::clear_attribute(&collection_id, &item_id, Item::IPFS_URL_CODE)?;
 			for attribute_key in Item::get_attribute_codes() {
-				T::NftHelper::clear_typed_attribute(&collection_id, &item_id, &attribute_key)?;
+				T::NftHelper::clear_attribute(&collection_id, &item_id, &attribute_key)?;
 			}
 
 			NftStatuses::<T>::remove(collection_id, item_id);

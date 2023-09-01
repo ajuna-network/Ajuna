@@ -97,9 +97,13 @@ pub mod pallet {
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BlockNumberFor<T>>;
+	pub(crate) type KeyLimitOf<T> = <T as Config>::KeyLimit;
+	pub(crate) type ValueLimitOf<T> = <T as Config>::ValueLimit;
 	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
 		AccountIdOf<T>,
 		AvatarIdOf<T>,
+		KeyLimitOf<T>,
+		ValueLimitOf<T>,
 		Avatar,
 	>>::CollectionId;
 
@@ -120,7 +124,21 @@ pub mod pallet {
 
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
-		type NftHandler: NftHandler<Self::AccountId, Self::Hash, Avatar>;
+		/// The maximum length of an attribute key.
+		#[pallet::constant]
+		type KeyLimit: Get<u32>;
+
+		/// The maximum length of an attribute value.
+		#[pallet::constant]
+		type ValueLimit: Get<u32>;
+
+		type NftHandler: NftHandler<
+			Self::AccountId,
+			Self::Hash,
+			Self::KeyLimit,
+			Self::ValueLimit,
+			Avatar,
+		>;
 
 		type WeightInfo: WeightInfo;
 	}

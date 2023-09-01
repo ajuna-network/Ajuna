@@ -26,10 +26,11 @@ mod proxy_type;
 mod weights;
 pub mod xcm_config;
 
+use codec::{Decode, Encode, MaxEncodedLen};
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT},
@@ -43,7 +44,7 @@ use sp_version::RuntimeVersion;
 
 use frame_support::{
 	construct_runtime,
-	dispatch::DispatchClass,
+	dispatch::{DispatchClass, TypeInfo},
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, Contains, EitherOfDiverse},
 	weights::{
@@ -659,6 +660,8 @@ impl pallet_ajuna_awesome_avatars::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Randomness = Randomness;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHandler = NftTransfer;
 	type WeightInfo = pallet_ajuna_awesome_avatars::weights::AjunaWeight<Runtime>;
 }
@@ -667,8 +670,6 @@ parameter_types! {
 	pub const CollectionDeposit: Balance = 100 * BAJUN;
 	pub const ItemDeposit: Balance = BAJUN / 10;
 	pub const StringLimit: u32 = 128;
-	pub const KeyLimit: u32 = 32;
-	pub const MaxItemEncodedSize: u32 = 200; // TODO: use max bytes for an avatar
 	pub const MetadataDepositBase: Balance = deposit(1, 129);
 	pub const AttributeDepositBase: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
@@ -681,6 +682,18 @@ parameter_types! {
 	// result in benchmark errors as extrinsics are disabled.
 	pub NftFeatures: pallet_nfts::PalletFeatures = pallet_nfts::PalletFeatures::all_enabled();
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ParameterGet<const N: u32>;
+
+impl<const N: u32> Get<u32> for ParameterGet<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub type KeyLimit = ParameterGet<32>;
+pub type ValueLimit = ParameterGet<64>;
 
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -697,7 +710,7 @@ impl pallet_nfts::Config for Runtime {
 	type DepositPerByte = DepositPerByte;
 	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
-	type ValueLimit = MaxItemEncodedSize;
+	type ValueLimit = ValueLimit;
 	type ApprovalsLimit = ApprovalsLimit;
 	type ItemAttributesApprovalsLimit = ItemAttributesApprovalsLimit;
 	type MaxTips = MaxTips;
@@ -721,6 +734,8 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type CollectionId = CollectionId;
 	type ItemId = Hash;
 	type ItemConfig = pallet_nfts::ItemConfig;
+	type KeyLimit = KeyLimit;
+	type ValueLimit = ValueLimit;
 	type NftHelper = Nft;
 }
 

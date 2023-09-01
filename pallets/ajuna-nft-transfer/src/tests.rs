@@ -20,7 +20,7 @@ use frame_support::{
 	assert_err, assert_noop, assert_ok,
 	traits::tokens::nonfungibles_v2::{Create, Inspect},
 };
-use sp_runtime::testing::H256;
+use sp_runtime::{bounded_vec, testing::H256, BoundedVec};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug)]
 struct MockItem {
@@ -35,19 +35,19 @@ impl Default for MockItem {
 	}
 }
 
-impl NftConvertible for MockItem {
-	const ITEM_CODE: AttributeCode = 1;
-	const IPFS_URL_CODE: AttributeCode = 2;
+impl NftConvertible<KeyLimit, ValueLimit> for MockItem {
+	const ITEM_CODE: &'static [u8] = &[1];
+	const IPFS_URL_CODE: &'static [u8] = &[2];
 
-	fn get_attribute_codes() -> Vec<AttributeCode> {
-		vec![111, 222, 333]
+	fn get_attribute_codes() -> Vec<NFTAttribute<KeyLimit>> {
+		vec![bounded_vec![111], bounded_vec![222], bounded_vec![240]]
 	}
 
-	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)> {
+	fn get_encoded_attributes(&self) -> Vec<(NFTAttribute<KeyLimit>, NFTAttribute<ValueLimit>)> {
 		vec![
-			(111, self.field_1.encode()),
-			(222, self.field_2.encode()),
-			(333, self.field_3.encode()),
+			(bounded_vec![111], BoundedVec::try_from(self.field_1.clone()).unwrap()),
+			(bounded_vec![222], BoundedVec::try_from(self.field_2.to_le_bytes().to_vec()).unwrap()),
+			(bounded_vec![240], BoundedVec::try_from(vec![self.field_3 as u8]).unwrap()),
 		]
 	}
 }
@@ -66,6 +66,7 @@ fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 
 mod store_as_nft {
 	use super::*;
+	use sp_runtime::traits::Get;
 
 	#[test]
 	fn can_store_item_successfully() {
@@ -88,21 +89,17 @@ mod store_as_nft {
 				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				assert_eq!(
-					Nft::system_attribute(&collection_id, &item_id, &MockItem::ITEM_CODE.encode()),
+					Nft::system_attribute(&collection_id, &item_id, MockItem::ITEM_CODE),
 					Some(item.encode())
 				);
 				assert_eq!(
-					Nft::system_attribute(
-						&collection_id,
-						&item_id,
-						&MockItem::IPFS_URL_CODE.encode()
-					),
-					Some(url.encode())
+					Nft::system_attribute(&collection_id, &item_id, MockItem::IPFS_URL_CODE),
+					Some(url)
 				);
 				for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
 					assert_eq!(
-						Nft::system_attribute(&collection_id, &item_id, &attribute_code.encode()),
-						Some(encoded_attributes.encode())
+						Nft::system_attribute(&collection_id, &item_id, &attribute_code),
+						Some(encoded_attributes.to_vec())
 					);
 				}
 				assert_eq!(

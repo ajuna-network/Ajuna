@@ -14,32 +14,51 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::{Avatar, ByteConvertible, Force, RarityTier};
-use codec::Encode;
-use pallet_ajuna_nft_transfer::traits::{AttributeCode, NftConvertible};
+use crate::types::Avatar;
+use frame_support::{traits::Get, BoundedVec};
+use pallet_ajuna_nft_transfer::traits::{NFTAttribute, NftConvertible};
 use sp_std::prelude::*;
 
-pub const DNA: AttributeCode = 10;
-pub const SOUL_POINTS: AttributeCode = 11;
-pub const RARITY: AttributeCode = 12;
-pub const FORCE: AttributeCode = 13;
-pub const SEASON_ID: AttributeCode = 14;
+impl<KL, VL> NftConvertible<KL, VL> for Avatar
+where
+	KL: Get<u32>,
+	VL: Get<u32>,
+{
+	const ITEM_CODE: &'static [u8] = b"AVATAR";
+	const IPFS_URL_CODE: &'static [u8] = b"IPFS_URL";
 
-impl NftConvertible for Avatar {
-	const ITEM_CODE: AttributeCode = 0;
-	const IPFS_URL_CODE: AttributeCode = 1;
-
-	fn get_attribute_codes() -> Vec<AttributeCode> {
-		vec![DNA, SOUL_POINTS, RARITY, FORCE, SEASON_ID]
+	fn get_attribute_codes() -> Vec<NFTAttribute<KL>> {
+		vec![
+			BoundedVec::try_from(b"DNA".to_vec()).unwrap(),
+			BoundedVec::try_from(b"SOUL_POINTS".to_vec()).unwrap(),
+			BoundedVec::try_from(b"RARITY".to_vec()).unwrap(),
+			BoundedVec::try_from(b"FORCE".to_vec()).unwrap(),
+			BoundedVec::try_from(b"SEASON_ID".to_vec()).unwrap(),
+		]
 	}
 
-	fn get_encoded_attributes(&self) -> Vec<(AttributeCode, Vec<u8>)> {
+	fn get_encoded_attributes(&self) -> Vec<(NFTAttribute<KL>, NFTAttribute<VL>)> {
 		vec![
-			(DNA, self.dna.clone().encode()),
-			(SOUL_POINTS, self.souls.encode()),
-			(RARITY, RarityTier::from_byte(self.rarity()).encode()),
-			(FORCE, Force::from_byte(self.force()).encode()),
-			(SEASON_ID, self.season_id.encode()),
+			(
+				BoundedVec::try_from(b"DNA".to_vec()).unwrap(),
+				BoundedVec::try_from(self.dna.clone().to_vec()).unwrap(),
+			),
+			(
+				BoundedVec::try_from(b"SOUL_POINTS".to_vec()).unwrap(),
+				BoundedVec::try_from(self.souls.to_le_bytes().to_vec()).unwrap(),
+			),
+			(
+				BoundedVec::try_from(b"RARITY".to_vec()).unwrap(),
+				BoundedVec::try_from(self.rarity().to_le_bytes().to_vec()).unwrap(),
+			),
+			(
+				BoundedVec::try_from(b"FORCE".to_vec()).unwrap(),
+				BoundedVec::try_from(self.force().to_le_bytes().to_vec()).unwrap(),
+			),
+			(
+				BoundedVec::try_from(b"SEASON_ID".to_vec()).unwrap(),
+				BoundedVec::try_from(self.season_id.to_le_bytes().to_vec()).unwrap(),
+			),
 		]
 	}
 }
