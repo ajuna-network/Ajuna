@@ -65,6 +65,7 @@ fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 }
 
 mod store_as_nft {
+	use pallet_nfts::{Collection, Item, ItemDetails};
 	use super::*;
 	use sp_runtime::traits::Get;
 
@@ -109,6 +110,49 @@ mod store_as_nft {
 
 				// check players pay for the item deposit
 				assert_eq!(Balances::free_balance(BOB), 999);
+
+				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
+				));
+			});
+	}
+
+	#[test]
+	fn can_store_item_and_transfer() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, ItemDeposit::get() + 999)])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
+
+				assert_ok!(NftTransfer::store_as_nft(
+					BOB,
+					collection_id,
+					item_id,
+					item.clone(),
+					url.clone()
+				));
+				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
+				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
+				assert_eq!(
+					Nft::system_attribute(&collection_id, &item_id, MockItem::ITEM_CODE),
+					Some(item.encode())
+				);
+				assert_eq!(
+					Nft::system_attribute(&collection_id, &item_id, MockItem::IPFS_URL_CODE),
+					Some(url)
+				);
+
+				assert_ok!(
+					Nft::do_transfer(collection_id, item_id, ALICE, |_, item_details: &mut ItemDetails<_, _, _>| {
+						Ok(())
+					})
+				);
+
+				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 
 				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
 					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
