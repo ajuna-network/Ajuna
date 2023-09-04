@@ -65,7 +65,6 @@ fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 }
 
 mod store_as_nft {
-	use pallet_nfts::{Collection, Item, ItemDetails};
 	use super::*;
 	use sp_runtime::traits::Get;
 
@@ -135,6 +134,11 @@ mod store_as_nft {
 					item.clone(),
 					url.clone()
 				));
+
+				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
+				));
+
 				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				assert_eq!(
@@ -146,16 +150,17 @@ mod store_as_nft {
 					Some(url)
 				);
 
-				assert_ok!(
-					Nft::do_transfer(collection_id, item_id, ALICE, |_, item_details: &mut ItemDetails<_, _, _>| {
-						Ok(())
-					})
-				);
+				assert_ok!(Nft::do_transfer(collection_id, item_id, ALICE, |_, _| { Ok(()) }));
 
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 
-				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
-					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
+				System::assert_last_event(mock::RuntimeEvent::Nft(
+					pallet_nfts::Event::Transferred {
+						collection: collection_id,
+						item: item_id,
+						from: BOB,
+						to: ALICE,
+					},
 				));
 			});
 	}
