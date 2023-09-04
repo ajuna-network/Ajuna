@@ -46,7 +46,10 @@ fn works_with_token_reward() {
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.build()
 		.execute_with(|| {
-			let initial_balance = CurrencyOf::<Test>::free_balance(&BOB);
+			let initial_balance = Balances::free_balance(&BOB);
+			let technical_account_id = Pallet::<Test>::account_id();
+
+			assert_eq!(Balances::free_balance(&technical_account_id), reward_amount);
 
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
 			run_to_block(accepted_at + stake_duration);
@@ -60,6 +63,7 @@ fn works_with_token_reward() {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 			assert_eq!(Balances::free_balance(BOB), initial_balance + reward_amount);
+			assert_eq!(Balances::free_balance(&technical_account_id), 0);
 
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
@@ -129,6 +133,43 @@ fn works_with_nft_reward() {
 				contract_id,
 				reward: contract.reward,
 			}));
+		});
+}
+
+#[test]
+fn rejects_if_token_reward_is_less_than_min_balance() {
+	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4]))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_2, bounded_vec![33]))];
+	let stake_duration = 4;
+	let reward_amount = MockExistentialDeposit::get().saturating_sub(1);
+	let contract = Contract::default()
+		.reward(Reward::Tokens(reward_amount))
+		.stake_duration(stake_duration)
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
+	let contract_id = H256::random();
+
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
+
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.create_contract_with_funds(contract_id, contract)
+		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
+		.build()
+		.execute_with(|| {
+			let technical_account_id = Pallet::<Test>::account_id();
+
+			assert_eq!(Balances::free_balance(&technical_account_id), 0);
+
+			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
+			run_to_block(accepted_at + stake_duration);
+
+			assert_noop!(
+				NftStake::claim(RuntimeOrigin::signed(BOB), contract_id),
+				sp_runtime::TokenError::FundsUnavailable
+			);
 		});
 }
 
