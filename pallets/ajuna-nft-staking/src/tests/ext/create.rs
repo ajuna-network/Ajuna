@@ -68,7 +68,6 @@ fn works_with_nft_reward() {
 
 			let contract_id = H256::random();
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
-
 			assert_ok!(NftStake::create(
 				RuntimeOrigin::signed(ALICE),
 				contract_id,

@@ -514,6 +514,8 @@ pub mod pallet {
 
 		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
 			Contracts::<T>::remove(contract_id);
+			let collection_id = Self::contract_collection_id()?;
+			T::NftHelper::burn(&collection_id, &contract_id, None)?;
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
 		}

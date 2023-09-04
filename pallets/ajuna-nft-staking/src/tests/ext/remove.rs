@@ -27,8 +27,20 @@ fn works() {
 		.build()
 		.execute_with(|| {
 			assert!(Contracts::<Test>::get(contract_id).is_some());
+
+			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+
+			assert_eq!(
+				Nft::owner(contract_collection_id, contract_id),
+				Some(NftStake::account_id())
+			);
+
 			assert_ok!(NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id));
+
 			assert!(Contracts::<Test>::get(contract_id).is_none());
+
+			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
+
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Removed {
 				contract_id,
 			}));
