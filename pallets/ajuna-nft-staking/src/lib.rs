@@ -514,6 +514,8 @@ pub mod pallet {
 
 		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
 			Contracts::<T>::remove(contract_id);
+			let collection_id = Self::contract_collection_id()?;
+			T::NftHelper::burn(&collection_id, &contract_id, None)?;
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 			Ok(())
 		}
@@ -713,8 +715,18 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow)?;
 			ensure!(now >= activation && now <= inactive, Error::<T>::Inactive);
 
+			// ensure ownership, and transfer settings (unlocked) of stake nfts
 			stake_addresses.iter().try_for_each(|NftId(collection_id, contract_id)| {
 				Self::ensure_item_ownership(collection_id, contract_id, who)
+				// check if item can be transfered, item level and collection level
+				// throw meaningful error message
+			})?;
+
+			// ensure ownership, and transfer settings (unlocked) of fee nfts
+			fee_addresses.iter().try_for_each(|NftId(collection_id, contract_id)| {
+				Self::ensure_item_ownership(collection_id, contract_id, who)
+				// check if item can be transfered, item level and collection level
+				// throw meaningful error message
 			})?;
 
 			ensure!(

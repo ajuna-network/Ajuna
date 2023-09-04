@@ -194,7 +194,7 @@ pub mod pallet {
 
 	impl<T: Config> Locker<T::CollectionId, T::ItemId> for Pallet<T> {
 		fn is_locked(collection_id: T::CollectionId, item_id: T::ItemId) -> bool {
-			NftStatuses::<T>::contains_key(collection_id, item_id)
+			matches!(NftStatuses::<T>::get(collection_id, item_id), Some(NftStatus::Uploaded))
 		}
 	}
 }

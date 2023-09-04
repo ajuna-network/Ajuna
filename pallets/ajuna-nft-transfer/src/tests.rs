@@ -117,6 +117,55 @@ mod store_as_nft {
 	}
 
 	#[test]
+	fn can_store_item_and_transfer() {
+		ExtBuilder::default()
+			.balances(&[(ALICE, CollectionDeposit::get() + 999), (BOB, ItemDeposit::get() + 999)])
+			.build()
+			.execute_with(|| {
+				let collection_id = create_collection(ALICE);
+				let item_id = H256::random();
+				let item = MockItem::default();
+				let url = b"ipfs://test".to_vec();
+
+				assert_ok!(NftTransfer::store_as_nft(
+					BOB,
+					collection_id,
+					item_id,
+					item.clone(),
+					url.clone()
+				));
+
+				System::assert_last_event(mock::RuntimeEvent::NftTransfer(
+					crate::Event::ItemStored { collection_id, item_id, owner: BOB },
+				));
+
+				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
+				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
+				assert_eq!(
+					Nft::system_attribute(&collection_id, &item_id, MockItem::ITEM_CODE),
+					Some(item.encode())
+				);
+				assert_eq!(
+					Nft::system_attribute(&collection_id, &item_id, MockItem::IPFS_URL_CODE),
+					Some(url)
+				);
+
+				assert_ok!(Nft::do_transfer(collection_id, item_id, ALICE, |_, _| { Ok(()) }));
+
+				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
+
+				System::assert_last_event(mock::RuntimeEvent::Nft(
+					pallet_nfts::Event::Transferred {
+						collection: collection_id,
+						item: item_id,
+						from: BOB,
+						to: ALICE,
+					},
+				));
+			});
+	}
+
+	#[test]
 	fn cannot_store_empty_ipfs_url() {
 		ExtBuilder::default()
 			.balances(&[(ALICE, CollectionDeposit::get() + ItemDeposit::get() + 999)])
