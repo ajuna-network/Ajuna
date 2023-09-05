@@ -240,7 +240,7 @@ fn rejects_when_contract_is_expired() {
 			run_to_block(accepted_at + stake_duration + claim_duration + 2);
 			assert_noop!(
 				NftStake::cancel(RuntimeOrigin::signed(BOB), contract_id),
-				Error::<Test>::Expired
+				Error::<Test>::Claimable
 			);
 
 			// Regression for happy case, before reaching claim phase.

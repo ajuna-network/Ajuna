@@ -251,8 +251,6 @@ pub mod pallet {
 		Inactive,
 		/// The contract is staking hence cannot be claimed or sniped.
 		Staking,
-		/// The contract is expired hence cannot be claimed.
-		Expired,
 		/// The contract is claimable, so it cannot be cancelled or sniped.
 		Claimable,
 		/// The contract is available, or not yet accepted.
@@ -275,6 +273,8 @@ pub mod pallet {
 		NotSniper,
 		/// The given account attempts to snipe its own contract.
 		CannotSnipeOwnContract,
+		/// Cannot claim contract with unknown owner, only sniping is possible.
+		CannotClaimUnknownContract,
 	}
 
 	#[pallet::call]
@@ -573,28 +573,38 @@ pub mod pallet {
 					T::NftHelper::transfer(&collection_id, &item_id, beneficiary),
 			}?;
 
-			// Return staked items.
-			let contract_owner = Self::contract_owner(&contract_id)?;
-			Self::transfer_items(&Self::staked_items(&contract_id)?, &contract_owner)?;
+			// Return staked items, if the owner is not present the staked items may go to a
+			// different party.
+			let stake_beneficiary = if let Ok(contract_owner) = Self::contract_owner(&contract_id) {
+				// Burn contract NFT.
+				let collection_id = Self::contract_collection_id()?;
+				T::NftHelper::burn(&collection_id, &contract_id, Some(&contract_owner))?;
 
-			// Burn contract NFT.
-			let collection_id = Self::contract_collection_id()?;
-			T::NftHelper::burn(&collection_id, &contract_id, Some(&contract_owner))?;
+				// Retain contract IDs held.
+				let mut contract_ids = Self::contract_ids(&contract_owner)?;
+				contract_ids.retain(|id| id != &contract_id);
+				if contract_ids.is_empty() {
+					ContractIds::<T>::remove(&contract_owner);
+				} else {
+					ContractIds::<T>::insert(&contract_owner, contract_ids);
+				}
+
+				contract_owner
+			} else {
+				match op {
+					Operation::Claim => return Err(Error::<T>::CannotClaimUnknownContract.into()),
+					Operation::Cancel => creator,
+					Operation::Snipe => who.clone(),
+				}
+			};
+
+			Self::transfer_items(&Self::staked_items(&contract_id)?, &stake_beneficiary)?;
 
 			// Clean up storage.
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
-
-			// Retain contract IDs held.
-			let mut contract_ids = Self::contract_ids(&contract_owner)?;
-			contract_ids.retain(|id| id != &contract_id);
-			if contract_ids.is_empty() {
-				ContractIds::<T>::remove(contract_owner);
-			} else {
-				ContractIds::<T>::insert(contract_owner, contract_ids);
-			}
 
 			// Emit events.
 			match op {
@@ -656,12 +666,16 @@ pub mod pallet {
 			who: &T::AccountId,
 			is_snipe: bool,
 		) -> Result<ContractOf<T>, DispatchError> {
-			let owner = Self::contract_owner(contract_id)?;
+			let maybe_owner = Self::contract_owner(contract_id);
 			if is_snipe {
-				ensure!(owner != Self::account_id(), Error::<T>::Available);
-				ensure!(who != &owner, Error::<T>::CannotSnipeOwnContract);
+				// If it's a snipe and the contract has no owner, we don't apply any checks
+				// since it's possible that the original contract NFT was deleted maliciously
+				if let Ok(owner) = maybe_owner {
+					ensure!(owner != Self::account_id(), Error::<T>::Available);
+					ensure!(who != &owner, Error::<T>::CannotSnipeOwnContract);
+				}
 			} else {
-				ensure!(who == &owner, Error::<T>::ContractOwnership);
+				ensure!(who == &maybe_owner?, Error::<T>::ContractOwnership);
 			}
 			let contract = Self::contract(contract_id)?;
 			Ok(contract)
@@ -757,16 +771,13 @@ pub mod pallet {
 
 			match op {
 				Operation::Claim => {
-					ensure!(now <= expiry, Error::<T>::Expired);
 					ensure!(now >= end, Error::<T>::Staking);
 				},
 				Operation::Cancel => {
-					ensure!(now <= expiry, Error::<T>::Expired);
 					ensure!(now < end, Error::<T>::Claimable);
 				},
 				Operation::Snipe => {
-					ensure!(now >= end, Error::<T>::Staking);
-					ensure!(now > expiry, Error::<T>::Claimable);
+					ensure!(now >= expiry, Error::<T>::Claimable);
 				},
 			}
 			Ok(())
