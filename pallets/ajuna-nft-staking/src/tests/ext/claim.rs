@@ -67,8 +67,10 @@ fn works_with_token_reward() {
 
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
+			assert_eq!(Contracts::<Test>::get(contract_id), None);
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
+			assert_eq!(ContractsMetadata::<Test>::get(contract_id), None);
 			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {

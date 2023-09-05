@@ -362,7 +362,7 @@ pub mod pallet {
 			let _ = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_removable(&contract_id)?;
-			Self::remove_contract(contract_id)
+			Self::remove_non_staked_contract(contract_id)
 		}
 
 		/// Accept an available staking contract.
@@ -512,8 +512,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn remove_contract(contract_id: T::ItemId) -> DispatchResult {
+		fn remove_non_staked_contract(contract_id: T::ItemId) -> DispatchResult {
 			Contracts::<T>::remove(contract_id);
+			ContractsMetadata::<T>::remove(contract_id);
 			let collection_id = Self::contract_collection_id()?;
 			T::NftHelper::burn(&collection_id, &contract_id, None)?;
 			Self::deposit_event(Event::<T>::Removed { contract_id });
@@ -584,6 +585,7 @@ pub mod pallet {
 			ContractStakedItems::<T>::remove(contract_id);
 			ContractAccepted::<T>::remove(contract_id);
 			Contracts::<T>::remove(contract_id);
+			ContractsMetadata::<T>::remove(contract_id);
 
 			// Retain contract IDs held.
 			let mut contract_ids = Self::contract_ids(&contract_owner)?;
