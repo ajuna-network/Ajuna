@@ -25,7 +25,8 @@ fn works_with_token_reward() {
 		.execute_with(|| {
 			let initial_balance = CurrencyOf::<Test>::free_balance(ALICE);
 			let reward_amount = 1_000;
-			let mut contract = Contract::default().reward(Reward::Tokens(reward_amount));
+			let mut contract =
+				Contract::default().rewards(bounded_vec![Reward::Tokens(reward_amount)]);
 			let base_reserves = CurrencyOf::<Test>::free_balance(NftStake::account_id());
 
 			let contract_id = H256::random();
@@ -64,7 +65,8 @@ fn works_with_nft_reward() {
 		.execute_with(|| {
 			let collection_id = create_collection(ALICE);
 			let nft_addr = mint_item(&ALICE, &collection_id, &H256::default());
-			let mut contract = Contract::default().reward(Reward::Nft(nft_addr.clone()));
+			let mut contract =
+				Contract::default().rewards(bounded_vec![Reward::Nft(nft_addr.clone())]);
 
 			let contract_id = H256::random();
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
@@ -135,7 +137,7 @@ fn rejects_out_of_bound_staking_clauses() {
 				RuntimeOrigin::signed(ALICE),
 				H256::random(),
 				Contract::default()
-					.reward(Reward::Tokens(1))
+					.rewards(bounded_vec![Reward::Tokens(1)])
 					.stake_clauses(AttributeNamespace::Pallet, staking_clauses),
 				None
 			),
@@ -156,7 +158,7 @@ fn rejects_out_of_bound_fee_clauses() {
 				RuntimeOrigin::signed(ALICE),
 				H256::random(),
 				Contract::default()
-					.reward(Reward::Tokens(1))
+					.rewards(bounded_vec![Reward::Tokens(1)])
 					.fee_clauses(AttributeNamespace::Pallet, fee_clauses),
 				None
 			),
@@ -176,7 +178,7 @@ fn rejects_insufficient_balance() {
 				NftStake::create(
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
-					Contract::default().reward(Reward::Tokens(2_000_000)),
+					Contract::default().rewards(bounded_vec![Reward::Tokens(2_000_000)]),
 					None
 				),
 				pallet_balances::Error::<Test>::InsufficientBalance,
@@ -189,7 +191,7 @@ fn rejects_unowned_nfts() {
 	ExtBuilder::default().set_creator(ALICE).build().execute_with(|| {
 		let collection_id = create_collection(BOB);
 		let nft_addr = mint_item(&BOB, &collection_id, &H256::random());
-		let contract = Contract::default().reward(Reward::Nft(nft_addr));
+		let contract = Contract::default().rewards(bounded_vec![Reward::Nft(nft_addr)]);
 		assert_noop!(
 			NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract, None),
 			Error::<Test>::Ownership

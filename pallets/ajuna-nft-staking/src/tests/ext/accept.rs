@@ -26,7 +26,7 @@ fn works() {
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let stake_duration = 4;
 	let contract = Contract::default()
-		.reward(Reward::Tokens(123))
+		.rewards(bounded_vec![Reward::Tokens(123)])
 		.stake_duration(stake_duration)
 		.stake_amt(3)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
@@ -78,6 +78,9 @@ fn works() {
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), Some(current_block));
 			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract.activation(1)));
 			assert_eq!(ContractIds::<Test>::get(BOB).unwrap().to_vec(), vec![contract_id]);
+
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_staked, 1);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Accepted {
 				by: BOB,
@@ -179,7 +182,7 @@ fn rejects_when_contract_is_already_accepted() {
 	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![2]))];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let contract = Contract::default()
-		.reward(Reward::Tokens(123))
+		.rewards(bounded_vec![Reward::Tokens(123)])
 		.stake_duration(123)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
@@ -271,7 +274,7 @@ fn rejects_unowned_stakes() {
 	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![2]))];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![2]))];
 	let contract = Contract::default()
-		.reward(Reward::Tokens(123))
+		.rewards(bounded_vec![Reward::Tokens(123)])
 		.stake_duration(123)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
@@ -345,7 +348,7 @@ fn rejects_unfulfilling_stakes() {
 		),
 	];
 	let contract = Contract::default()
-		.reward(Reward::Tokens(123))
+		.rewards(bounded_vec![Reward::Tokens(123)])
 		.stake_duration(123)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.stake_amt(4)
@@ -383,7 +386,7 @@ fn rejects_unfulfilling_stakes() {
 fn rejects_unfulfilling_fees() {
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let contract = Contract::default()
-		.reward(Reward::Tokens(123))
+		.rewards(bounded_vec![Reward::Tokens(123)])
 		.stake_duration(123)
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
 		.stake_amt(0);

@@ -28,7 +28,7 @@ fn works_with_token_reward() {
 	let claim_duration = 10;
 	let reward_amount = 135;
 	let contract = Contract::default()
-		.reward(Reward::Tokens(reward_amount))
+		.rewards(bounded_vec![Reward::Tokens(reward_amount)])
 		.stake_duration(stake_duration)
 		.claim_duration(claim_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
@@ -75,10 +75,13 @@ fn works_with_token_reward() {
 			assert_eq!(ContractsMetadata::<Test>::get(contract_id), None);
 			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_claimed, 1);
+
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {
 				by: BOB,
 				contract_id,
-				reward: contract.reward,
+				rewards: contract.rewards,
 			}));
 		});
 }
@@ -94,7 +97,7 @@ fn works_with_nft_reward() {
 	let stake_duration = 8;
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let contract = Contract::default()
-		.reward(Reward::Nft(reward_addr.clone()))
+		.rewards(bounded_vec![Reward::Nft(reward_addr.clone())])
 		.stake_duration(stake_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
@@ -132,10 +135,13 @@ fn works_with_nft_reward() {
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
 			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_claimed, 1);
+
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {
 				by: BOB,
 				contract_id,
-				reward: contract.reward,
+				rewards: contract.rewards,
 			}));
 		});
 }
@@ -147,7 +153,7 @@ fn rejects_if_token_reward_is_less_than_min_balance() {
 	let stake_duration = 4;
 	let reward_amount = MockExistentialDeposit::get().saturating_sub(1);
 	let contract = Contract::default()
-		.reward(Reward::Tokens(reward_amount))
+		.rewards(bounded_vec![Reward::Tokens(reward_amount)])
 		.stake_duration(stake_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());

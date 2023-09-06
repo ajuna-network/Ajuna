@@ -62,6 +62,8 @@ pub mod pallet {
 		<T as Config>::ValueLimit,
 	>;
 	pub type NftIdOf<T> = NftId<CollectionIdOf<T>, ItemIdOf<T>>;
+
+	pub type BoundedRewardsOf<T> = BoundedRewards<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 	pub type RewardOf<T> = Reward<BalanceOf<T>, CollectionIdOf<T>, ItemIdOf<T>>;
 
 	pub(crate) type ContractIdsOf<T> = BoundedVec<ItemIdOf<T>, <T as Config>::MaxContracts>;
@@ -183,6 +185,10 @@ pub mod pallet {
 		StorageMap<_, Identity, T::ItemId, BoundedVec<u8, T::MaxMetadataLength>>;
 
 	#[pallet::storage]
+	pub type ContractsStats<T: Config> =
+		StorageMap<_, Identity, T::AccountId, ContractStats, ValueQuery>;
+
+	#[pallet::storage]
 	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
 
 	#[pallet::storage]
@@ -207,11 +213,11 @@ pub mod pallet {
 		/// A staking contract has been accepted.
 		Accepted { by: T::AccountId, contract_id: T::ItemId },
 		/// A staking contract has been claimed.
-		Claimed { by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
+		Claimed { by: T::AccountId, contract_id: T::ItemId, rewards: BoundedRewardsOf<T> },
 		/// A staking contract has been cancelled.
 		Cancelled { by: T::AccountId, contract_id: T::ItemId },
 		/// A staking contract has been sniped.
-		Sniped { by: T::AccountId, contract_id: T::ItemId, reward: RewardOf<T> },
+		Sniped { by: T::AccountId, contract_id: T::ItemId, rewards: BoundedRewardsOf<T> },
 	}
 
 	/// Error for the treasury pallet.
@@ -461,23 +467,26 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
-			match &contract.reward {
-				Reward::Tokens(amount) => {
-					let imbalance = T::Currency::withdraw(
-						&creator,
-						*amount,
-						WithdrawReasons::TRANSFER,
-						AllowDeath,
-					)?;
-					T::Currency::deposit_creating(&pallet_account_id, imbalance.peek());
-					Ok(())
-				},
-				Reward::Nft(address) => {
-					let NftId(collection_id, item_id) = address;
-					Self::ensure_item_ownership(collection_id, item_id, &creator)?;
-					T::NftHelper::transfer(collection_id, item_id, &pallet_account_id)
-				},
-			}?;
+
+			for reward in &contract.rewards {
+				match reward {
+					Reward::Tokens(amount) => {
+						let imbalance = T::Currency::withdraw(
+							&creator,
+							*amount,
+							WithdrawReasons::TRANSFER,
+							AllowDeath,
+						)?;
+						T::Currency::deposit_creating(&pallet_account_id, imbalance.peek());
+						Ok(())
+					},
+					Reward::Nft(address) => {
+						let NftId(collection_id, item_id) = address;
+						Self::ensure_item_ownership(collection_id, item_id, &creator)?;
+						T::NftHelper::transfer(collection_id, item_id, &pallet_account_id)
+					},
+				}?;
+			}
 
 			// Create a contract NFT.
 			let collection_id = Self::contract_collection_id()?;
@@ -515,9 +524,12 @@ pub mod pallet {
 		fn remove_non_staked_contract(contract_id: T::ItemId) -> DispatchResult {
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
+
 			let collection_id = Self::contract_collection_id()?;
 			T::NftHelper::burn(&collection_id, &contract_id, None)?;
+
 			Self::deposit_event(Event::<T>::Removed { contract_id });
+
 			Ok(())
 		}
 
@@ -546,8 +558,14 @@ pub mod pallet {
 			ContractIds::<T>::try_append(&who, contract_id)
 				.map_err(|_| Error::<T>::MaxContracts)?;
 
+			// Update state
+			ContractsStats::<T>::mutate(&who, |stats| {
+				stats.contracts_staked = stats.contracts_staked.saturating_add(1);
+			});
+
 			// Emit events.
 			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
+
 			Ok(())
 		}
 
@@ -558,7 +576,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Transfer rewards.
 			let creator = Self::creator()?;
-			let Contract { cancel_fee, reward, .. } = Self::contract(&contract_id)?;
+			let Contract { cancel_fee, rewards, .. } = Self::contract(&contract_id)?;
 			let beneficiary = match op {
 				Operation::Claim | Operation::Snipe => &who,
 				Operation::Cancel => {
@@ -566,12 +584,15 @@ pub mod pallet {
 					&creator
 				},
 			};
-			match reward {
-				Reward::Tokens(amount) =>
-					T::Currency::transfer(&Self::account_id(), beneficiary, amount, AllowDeath),
-				Reward::Nft(NftId(collection_id, item_id)) =>
-					T::NftHelper::transfer(&collection_id, &item_id, beneficiary),
-			}?;
+
+			for reward in &rewards {
+				match reward {
+					Reward::Tokens(amount) =>
+						T::Currency::transfer(&Self::account_id(), beneficiary, *amount, AllowDeath),
+					Reward::Nft(NftId(collection_id, item_id)) =>
+						T::NftHelper::transfer(collection_id, item_id, beneficiary),
+				}?;
+			}
 
 			// Return staked items, if the owner is not present the staked items may go to a
 			// different party.
@@ -606,14 +627,29 @@ pub mod pallet {
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
 
-			// Emit events.
+			// Emit events and update stats.
 			match op {
-				Operation::Claim =>
-					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, reward }),
-				Operation::Cancel =>
-					Self::deposit_event(Event::<T>::Cancelled { by: who, contract_id }),
-				Operation::Snipe =>
-					Self::deposit_event(Event::<T>::Sniped { by: who, contract_id, reward }),
+				Operation::Claim => {
+					ContractsStats::<T>::mutate(&who, |stats| {
+						stats.contracts_claimed = stats.contracts_claimed.saturating_add(1);
+					});
+					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, rewards })
+				},
+				Operation::Cancel => {
+					ContractsStats::<T>::mutate(&who, |stats| {
+						stats.contracts_cancelled = stats.contracts_cancelled.saturating_add(1);
+					});
+					Self::deposit_event(Event::<T>::Cancelled { by: who, contract_id })
+				},
+				Operation::Snipe => {
+					ContractsStats::<T>::mutate(&who, |stats| {
+						stats.contracts_sniped = stats.contracts_sniped.saturating_add(1);
+					});
+					ContractsStats::<T>::mutate(&stake_beneficiary, |stats| {
+						stats.contracts_lost = stats.contracts_lost.saturating_add(1);
+					});
+					Self::deposit_event(Event::<T>::Sniped { by: who, contract_id, rewards })
+				},
 			};
 
 			Ok(())
