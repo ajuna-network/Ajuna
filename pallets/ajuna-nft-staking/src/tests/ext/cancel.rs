@@ -27,7 +27,7 @@ fn works_with_token_reward() {
 	let reward = 135;
 	let cancellation_fee = 111;
 	let contract = Contract::default()
-		.reward(Reward::Tokens(reward))
+		.rewards(bounded_vec![Reward::Tokens(reward)])
 		.stake_duration(stake_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
@@ -89,7 +89,7 @@ fn works_with_nft_reward() {
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let cancellation_fee = 111;
 	let contract = Contract::default()
-		.reward(Reward::Nft(reward_addr.clone()))
+		.rewards(bounded_vec![Reward::Nft(reward_addr.clone())])
 		.stake_duration(stake_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
 		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
@@ -164,7 +164,7 @@ fn rejects_when_pallet_is_locked() {
 
 #[test]
 fn rejects_when_contract_is_not_owned() {
-	let contract = Contract::default().reward(Reward::Tokens(1)).stake_duration(2);
+	let contract = Contract::default().rewards(bounded_vec![Reward::Tokens(1)]).stake_duration(2);
 	let contract_id = H256::random();
 	ExtBuilder::default()
 		.set_creator(ALICE)

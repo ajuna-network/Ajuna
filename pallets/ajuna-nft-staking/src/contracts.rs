@@ -27,6 +27,7 @@ pub struct ContractStats {
 	pub contracts_claimed: u32,
 	pub contracts_sniped: u32,
 	pub contracts_cancelled: u32,
+	pub contracts_lost: u32,
 }
 
 /// Attribute namespaces for non-fungible tokens.
@@ -129,8 +130,11 @@ where
 	}
 }
 
-type BoundedClauses<CollectionId, KL, VL> =
+pub(crate) type BoundedClauses<CollectionId, KL, VL> =
 	BoundedVec<ContractClause<CollectionId, KL, VL>, ConstU32<100>>;
+
+pub(crate) type BoundedRewards<Balance, CollectionId, ItemId> =
+	BoundedVec<Reward<Balance, CollectionId, ItemId>, ConstU32<5>>;
 
 /// Specification for a staking contract, in short it's a list of criteria to be fulfilled,
 /// with a given reward after the duration is complete.
@@ -160,8 +164,8 @@ where
 	/// requirements to accept the contract, which is transferred to the contract creator.
 	pub fee_clauses: BoundedClauses<CollectionId, KL, VL>,
 
-	/// The reward of fulfilling the given contract in the form of either tokens or NFTs.
-	pub reward: Reward<Balance, CollectionId, ItemId>,
+	/// The rewards of fulfilling the given contract in the form of either tokens or NFTs.
+	pub rewards: BoundedRewards<Balance, CollectionId, ItemId>,
 	/// The fee required to cancel the given contract. Any staked NFTs for the contract will be
 	/// immediately returned to the staker upon cancellation.
 	pub cancel_fee: Balance,

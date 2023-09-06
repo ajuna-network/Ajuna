@@ -232,7 +232,7 @@ impl Default for ContractOf<Test> {
 			stake_duration: Default::default(),
 			stake_clauses: Default::default(),
 			fee_clauses: Default::default(),
-			reward: Default::default(),
+			rewards: Default::default(),
 			cancel_fee: Default::default(),
 			nft_stake_amount: 1,
 			nft_fee_amount: 1,
@@ -282,8 +282,8 @@ impl ContractOf<Test> {
 			.unwrap();
 		self
 	}
-	pub fn reward(mut self, reward: RewardOf<Test>) -> Self {
-		self.reward = reward;
+	pub fn rewards(mut self, rewards: BoundedRewardsOf<Test>) -> Self {
+		self.rewards = rewards;
 		self
 	}
 	pub fn cancel_fee(mut self, cancel_fee: MockBalance) -> Self {
@@ -482,15 +482,19 @@ pub fn create_collection(account: MockAccountId) -> MockCollectionId {
 
 pub fn create_contract(contract_id: MockItemId, contract: ContractOf<Test>, should_fund: bool) {
 	let creator = Creator::<Test>::get().unwrap();
-	match &contract.reward {
-		Reward::Tokens(amount) =>
-			if should_fund {
-				let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get() + amount);
+	for reward in &contract.rewards {
+		match reward {
+			Reward::Tokens(amount) =>
+				if should_fund {
+					let _ =
+						CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get() + amount);
+				},
+			Reward::Nft(NftId(collection_id, item_id)) => {
+				let _ = mint_item(&creator, collection_id, item_id);
 			},
-		Reward::Nft(NftId(collection_id, item_id)) => {
-			let _ = mint_item(&creator, collection_id, item_id);
-		},
+		}
 	}
+
 	if should_fund {
 		let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
 	}

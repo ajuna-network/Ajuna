@@ -27,7 +27,7 @@ fn works_with_token_reward() {
 	let (stake_duration, claim_duration) = (4, 3);
 	let reward = 135;
 	let contract = Contract::default()
-		.reward(Reward::Tokens(reward))
+		.rewards(bounded_vec![Reward::Tokens(reward)])
 		.stake_duration(stake_duration)
 		.claim_duration(claim_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
@@ -74,10 +74,13 @@ fn works_with_token_reward() {
 			// Check stats
 			assert_eq!(ContractsStats::<Test>::get(CHARLIE).contracts_sniped, 1);
 
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_lost, 1);
+
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Sniped {
 				by: CHARLIE,
 				contract_id,
-				reward: contract.reward,
+				rewards: contract.rewards,
 			}));
 		});
 }
@@ -93,7 +96,7 @@ fn works_with_nft_reward() {
 	let (stake_duration, claim_duration) = (2, 3);
 	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
 	let contract = Contract::default()
-		.reward(Reward::Nft(reward_addr.clone()))
+		.rewards(bounded_vec![Reward::Nft(reward_addr.clone())])
 		.stake_duration(stake_duration)
 		.claim_duration(claim_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
@@ -134,12 +137,12 @@ fn works_with_nft_reward() {
 			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
 			// Check stats
-			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_sniped, 1);
+			assert_eq!(ContractsStats::<Test>::get(CHARLIE).contracts_sniped, 1);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Sniped {
 				by: CHARLIE,
 				contract_id,
-				reward: contract.reward,
+				rewards: contract.rewards,
 			}));
 		});
 }
@@ -303,7 +306,7 @@ fn snipe_with_maliciously_burned_contract_nft() {
 	let (stake_duration, claim_duration) = (4, 3);
 	let reward = 135;
 	let contract = Contract::default()
-		.reward(Reward::Tokens(reward))
+		.rewards(bounded_vec![Reward::Tokens(reward)])
 		.stake_duration(stake_duration)
 		.claim_duration(claim_duration)
 		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
@@ -343,7 +346,7 @@ fn snipe_with_maliciously_burned_contract_nft() {
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Sniped {
 				by: CHARLIE,
 				contract_id,
-				reward: contract.reward,
+				rewards: contract.rewards,
 			}));
 		});
 }
