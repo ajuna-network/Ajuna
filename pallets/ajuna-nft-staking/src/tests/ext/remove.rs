@@ -37,7 +37,8 @@ fn works() {
 
 			assert_ok!(NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id));
 
-			assert!(Contracts::<Test>::get(contract_id).is_none());
+			assert_eq!(Contracts::<Test>::get(contract_id), None);
+			assert_eq!(ContractsMetadata::<Test>::get(contract_id), None);
 
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
 

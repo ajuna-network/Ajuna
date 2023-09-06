@@ -280,7 +280,7 @@ fn rejects_when_contract_is_staking() {
 				run_to_block(accepted_at + n);
 				assert_noop!(
 					NftStake::snipe(RuntimeOrigin::signed(CHARLIE), contract_id),
-					Error::<Test>::Staking
+					Error::<Test>::Claimable
 				);
 			}
 
@@ -291,41 +291,53 @@ fn rejects_when_contract_is_staking() {
 }
 
 #[test]
-fn rejects_when_contract_is_claimable() {
-	let (stake_duration, claim_duration) = (3, 5);
+fn snipe_with_maliciously_burned_contract_nft() {
+	let stake_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4]))];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_2, bounded_vec![33]))];
+	let (stake_duration, claim_duration) = (4, 3);
+	let reward = 135;
+	let contract = Contract::default()
+		.reward(Reward::Tokens(reward))
+		.stake_duration(stake_duration)
+		.claim_duration(claim_duration)
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone());
 	let contract_id = H256::random();
+
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(
-			contract_id,
-			Contract::default()
-				.stake_duration(stake_duration)
-				.claim_duration(claim_duration),
-		)
-		.accept_contract(
-			vec![(BOB, Default::default())],
-			vec![(BOB, Default::default())],
-			contract_id,
-			BOB,
-		)
-		.create_sniper(CHARLIE, Contract::default().stake_duration(10).claim_duration(10))
+		.create_contract_with_funds(contract_id, contract.clone())
+		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
+		.create_sniper(CHARLIE, Contract::default().stake_duration(10).claim_duration(20))
 		.build()
 		.execute_with(|| {
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
+			run_to_block(accepted_at + stake_duration + claim_duration + 1);
 
-			// During claim phase.
-			for n in stake_duration..=(stake_duration + claim_duration) {
-				run_to_block(accepted_at + n);
-				assert_noop!(
-					NftStake::snipe(RuntimeOrigin::signed(CHARLIE), contract_id),
-					Error::<Test>::Claimable
-				);
-			}
+			let contract_collection =
+				ContractCollectionId::<Test>::get().expect("Should get collection");
+			assert_ok!(pallet_nfts::Pallet::<Test>::burn(
+				RuntimeOrigin::signed(BOB),
+				contract_collection,
+				contract_id
+			));
 
-			// Regression for happy case, after expiry.
-			System::set_block_number(accepted_at + stake_duration + claim_duration + 1);
 			assert_ok!(NftStake::snipe(RuntimeOrigin::signed(CHARLIE), contract_id));
+
+			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
+			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
+			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
+			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
+			assert_eq!(ContractIds::<Test>::get(BOB), Some(bounded_vec![contract_id]));
+
+			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Sniped {
+				by: CHARLIE,
+				contract_id,
+				reward: contract.reward,
+			}));
 		});
 }
