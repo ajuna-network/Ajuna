@@ -79,6 +79,9 @@ fn works() {
 			assert_eq!(Contracts::<Test>::get(contract_id), Some(contract.activation(1)));
 			assert_eq!(ContractIds::<Test>::get(BOB).unwrap().to_vec(), vec![contract_id]);
 
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_staked, 1);
+
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Accepted {
 				by: BOB,
 				contract_id,

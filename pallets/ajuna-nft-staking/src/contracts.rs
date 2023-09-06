@@ -21,6 +21,14 @@ use sp_core::Get;
 use sp_runtime::BoundedVec;
 use sp_std::{fmt::Debug, vec::Vec};
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct ContractStats {
+	pub contracts_staked: u32,
+	pub contracts_claimed: u32,
+	pub contracts_sniped: u32,
+	pub contracts_cancelled: u32,
+}
+
 /// Attribute namespaces for non-fungible tokens.
 /// Based on the logic for
 /// https://github.com/paritytech/substrate/blob/polkadot-v0.9.42/frame/nfts/src/types.rs#L326

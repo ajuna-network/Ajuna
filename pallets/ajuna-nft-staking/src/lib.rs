@@ -183,6 +183,10 @@ pub mod pallet {
 		StorageMap<_, Identity, T::ItemId, BoundedVec<u8, T::MaxMetadataLength>>;
 
 	#[pallet::storage]
+	pub type ContractsStats<T: Config> =
+		StorageMap<_, Identity, T::AccountId, ContractStats, ValueQuery>;
+
+	#[pallet::storage]
 	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
 
 	#[pallet::storage]
@@ -515,9 +519,12 @@ pub mod pallet {
 		fn remove_non_staked_contract(contract_id: T::ItemId) -> DispatchResult {
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
+
 			let collection_id = Self::contract_collection_id()?;
 			T::NftHelper::burn(&collection_id, &contract_id, None)?;
+
 			Self::deposit_event(Event::<T>::Removed { contract_id });
+
 			Ok(())
 		}
 
@@ -546,8 +553,14 @@ pub mod pallet {
 			ContractIds::<T>::try_append(&who, contract_id)
 				.map_err(|_| Error::<T>::MaxContracts)?;
 
+			// Update state
+			ContractsStats::<T>::mutate(&who, |stats| {
+				stats.contracts_staked = stats.contracts_staked.saturating_add(1);
+			});
+
 			// Emit events.
 			Self::deposit_event(Event::<T>::Accepted { by: who, contract_id });
+
 			Ok(())
 		}
 
@@ -606,14 +619,26 @@ pub mod pallet {
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
 
-			// Emit events.
+			// Emit events and update stats.
 			match op {
-				Operation::Claim =>
-					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, reward }),
-				Operation::Cancel =>
-					Self::deposit_event(Event::<T>::Cancelled { by: who, contract_id }),
-				Operation::Snipe =>
-					Self::deposit_event(Event::<T>::Sniped { by: who, contract_id, reward }),
+				Operation::Claim => {
+					ContractsStats::<T>::mutate(&who, |stats| {
+						stats.contracts_claimed = stats.contracts_claimed.saturating_add(1);
+					});
+					Self::deposit_event(Event::<T>::Claimed { by: who, contract_id, reward })
+				},
+				Operation::Cancel => {
+					ContractsStats::<T>::mutate(&who, |stats| {
+						stats.contracts_cancelled = stats.contracts_cancelled.saturating_add(1);
+					});
+					Self::deposit_event(Event::<T>::Cancelled { by: who, contract_id })
+				},
+				Operation::Snipe => {
+					ContractsStats::<T>::mutate(&who, |stats| {
+						stats.contracts_sniped = stats.contracts_sniped.saturating_add(1);
+					});
+					Self::deposit_event(Event::<T>::Sniped { by: who, contract_id, reward })
+				},
 			};
 
 			Ok(())

@@ -75,6 +75,9 @@ fn works_with_token_reward() {
 			assert_eq!(ContractsMetadata::<Test>::get(contract_id), None);
 			assert_eq!(ContractIds::<Test>::get(BOB), None);
 
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_claimed, 1);
+
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {
 				by: BOB,
 				contract_id,
@@ -131,6 +134,9 @@ fn works_with_nft_reward() {
 			assert_eq!(ContractAccepted::<Test>::get(contract_id), None);
 			assert_eq!(ContractStakedItems::<Test>::get(contract_id), None);
 			assert_eq!(ContractIds::<Test>::get(BOB), None);
+
+			// Check stats
+			assert_eq!(ContractsStats::<Test>::get(BOB).contracts_claimed, 1);
 
 			System::assert_last_event(RuntimeEvent::NftStake(crate::Event::Claimed {
 				by: BOB,
