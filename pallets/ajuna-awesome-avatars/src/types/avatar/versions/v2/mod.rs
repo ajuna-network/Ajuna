@@ -29,12 +29,12 @@ pub(crate) struct AttributeMapperV2;
 
 impl AttributeMapper for AttributeMapperV2 {
 	fn rarity(target: &Avatar) -> u8 {
-		DnaUtils::read_attribute_raw(target, AvatarAttr::RarityTier).saturating_sub(1)
+		DnaUtils::read_attribute_raw(target, AvatarAttr::RarityTier)
 	}
 
 	fn force(target: &Avatar) -> u8 {
 		// TODO: Determine proper mapping
-		DnaUtils::read_spec_raw(target, SpecIdx::Byte1).saturating_sub(1)
+		DnaUtils::read_spec_raw(target, SpecIdx::Byte1)
 	}
 }
 
