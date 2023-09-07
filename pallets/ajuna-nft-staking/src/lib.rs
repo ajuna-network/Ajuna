@@ -522,6 +522,19 @@ pub mod pallet {
 		}
 
 		fn remove_non_staked_contract(contract_id: T::ItemId) -> DispatchResult {
+			let Contract { rewards, .. } =
+				Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+			let creator = Self::creator()?;
+
+			for reward in &rewards {
+				match reward {
+					Reward::Tokens(amount) =>
+						T::Currency::transfer(&Self::account_id(), &creator, *amount, AllowDeath),
+					Reward::Nft(NftId(collection_id, item_id)) =>
+						T::NftHelper::transfer(collection_id, item_id, &creator),
+				}?;
+			}
+
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
 

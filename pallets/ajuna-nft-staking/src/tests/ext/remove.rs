@@ -19,11 +19,15 @@ use super::*;
 #[test]
 fn works() {
 	let contract_id = H256::random();
+	let reward_amount = 1_000;
 
 	ExtBuilder::default()
 		.set_creator(ALICE)
 		.create_contract_collection()
-		.create_contract_with_funds(contract_id, Contract::default())
+		.create_contract(
+			contract_id,
+			Contract::default().rewards(bounded_vec![Reward::Tokens(reward_amount)]),
+		)
 		.build()
 		.execute_with(|| {
 			assert!(Contracts::<Test>::get(contract_id).is_some());
@@ -35,7 +39,14 @@ fn works() {
 				Some(NftStake::account_id())
 			);
 
+			let creator_balance = Balances::free_balance(ALICE);
+
 			assert_ok!(NftStake::remove(RuntimeOrigin::signed(ALICE), contract_id));
+
+			assert_eq!(
+				Balances::free_balance(ALICE),
+				creator_balance + reward_amount + ItemDeposit::get()
+			);
 
 			assert_eq!(Contracts::<Test>::get(contract_id), None);
 			assert_eq!(ContractsMetadata::<Test>::get(contract_id), None);
