@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::Avatar;
+use crate::types::{Avatar, ByteConvertible, Force, RarityTier};
+use codec::alloc::string::ToString;
 use frame_support::{traits::Get, BoundedVec};
 use pallet_ajuna_nft_transfer::traits::{NFTAttribute, NftConvertible};
+use scale_info::prelude::format;
 use sp_std::prelude::*;
 
 impl<KL, VL> NftConvertible<KL, VL> for Avatar
@@ -41,23 +43,28 @@ where
 		vec![
 			(
 				BoundedVec::try_from(b"DNA".to_vec()).unwrap(),
-				BoundedVec::try_from(self.dna.clone().to_vec()).unwrap(),
+				BoundedVec::try_from(
+					format!("0x{}", hex::encode(self.dna.as_slice())).into_bytes(),
+				)
+				.unwrap(),
 			),
 			(
 				BoundedVec::try_from(b"SOUL_POINTS".to_vec()).unwrap(),
-				BoundedVec::try_from(self.souls.to_le_bytes().to_vec()).unwrap(),
+				BoundedVec::try_from(format!("{}", self.souls).into_bytes()).unwrap(),
 			),
 			(
 				BoundedVec::try_from(b"RARITY".to_vec()).unwrap(),
-				BoundedVec::try_from(self.rarity().to_le_bytes().to_vec()).unwrap(),
+				BoundedVec::try_from(RarityTier::from_byte(self.rarity()).to_string().into_bytes())
+					.unwrap(),
 			),
 			(
 				BoundedVec::try_from(b"FORCE".to_vec()).unwrap(),
-				BoundedVec::try_from(self.force().to_le_bytes().to_vec()).unwrap(),
+				BoundedVec::try_from(Force::from_byte(self.force()).to_string().into_bytes())
+					.unwrap(),
 			),
 			(
 				BoundedVec::try_from(b"SEASON_ID".to_vec()).unwrap(),
-				BoundedVec::try_from(self.season_id.to_le_bytes().to_vec()).unwrap(),
+				BoundedVec::try_from(format!("{}", self.season_id).into_bytes()).unwrap(),
 			),
 		]
 	}

@@ -3268,10 +3268,10 @@ mod nft_transfer {
 						.iter()
 						.map(|attr| attr.as_slice())
 						.zip([
-							avatar.dna.to_vec(),
-							avatar.souls.to_le_bytes().to_vec(),
-							avatar.rarity().to_le_bytes().to_vec(),
-							avatar.force().to_le_bytes().to_vec(),
+							format!("0x{}", hex::encode(avatar.dna.as_slice())).into_bytes(),
+							format!("{}", avatar.souls).into_bytes(),
+							RarityTier::from_byte(avatar.rarity()).to_string().into_bytes(),
+							Force::from_byte(avatar.force()).to_string().into_bytes(),
 						]) {
 					assert_eq!(
 						<Nft as Inspect<MockAccountId>>::system_attribute(

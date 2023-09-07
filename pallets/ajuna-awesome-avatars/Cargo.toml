@@ -16,6 +16,8 @@ codec      = { default-features = false, features = [ "derive", "max-encoded-len
 log        = { default-features = false, version = "0.4.17" }
 scale-info = { default-features = false, features = [ "derive" ], version = "2.1.1" }
 
+hex = { default-features = false, features = ["alloc"], version = "0.4.3" }
+
 pallet-ajuna-nft-transfer = { default-features = false, path = "../ajuna-nft-transfer" }
 
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
@@ -29,7 +31,6 @@ pallet-balances                            = { git = "https://github.com/parityt
 pallet-insecure-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
 pallet-nfts                                = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
 sp-core                                    = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-hex = "0.4.3"
 
 [features]
 default = [ "std" ]
@@ -40,6 +41,7 @@ std = [
     "codec/std",
     "scale-info/std",
     "sp-io/std",
+	"hex/std",
     "pallet-ajuna-nft-transfer/std",
     "frame-support/std",
     "frame-system/std",
