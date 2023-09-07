@@ -54,12 +54,14 @@ where
 			),
 			(
 				BoundedVec::try_from(b"RARITY".to_vec()).unwrap(),
-				BoundedVec::try_from(RarityTier::from_byte(self.rarity()).to_string().into_bytes())
-					.unwrap(),
+				{
+					let rarity_value = RarityTier::from_byte(if self.season_id == 1 { self.rarity() + 1 } else { self.rarity() });
+					BoundedVec::try_from(rarity_value.to_string().to_uppercase().into_bytes()).unwrap()
+				},
 			),
 			(
 				BoundedVec::try_from(b"FORCE".to_vec()).unwrap(),
-				BoundedVec::try_from(Force::from_byte(self.force()).to_string().into_bytes())
+				BoundedVec::try_from(Force::from_byte(self.force()).to_string().to_uppercase().into_bytes())
 					.unwrap(),
 			),
 			(
