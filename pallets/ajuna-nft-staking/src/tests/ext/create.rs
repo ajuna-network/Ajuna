@@ -36,6 +36,7 @@ fn works_with_token_reward() {
 				RuntimeOrigin::signed(ALICE),
 				contract_id,
 				contract.clone(),
+				None,
 				None
 			));
 			contract.activation = Some(System::block_number());
@@ -74,6 +75,7 @@ fn works_with_nft_reward() {
 				RuntimeOrigin::signed(ALICE),
 				contract_id,
 				contract.clone(),
+				None,
 				None
 			));
 			contract.activation = Some(System::block_number());
@@ -102,6 +104,7 @@ fn rejects_non_creator_calls() {
 					RuntimeOrigin::signed(BOB),
 					H256::random(),
 					Contract::default(),
+					None,
 					None
 				),
 				DispatchError::BadOrigin
@@ -118,6 +121,7 @@ fn rejects_when_pallet_is_locked() {
 				RuntimeOrigin::signed(ALICE),
 				H256::random(),
 				Contract::default(),
+				None,
 				None
 			),
 			Error::<Test>::PalletLocked
@@ -139,6 +143,7 @@ fn rejects_out_of_bound_staking_clauses() {
 				Contract::default()
 					.rewards(bounded_vec![Reward::Tokens(1)])
 					.stake_clauses(AttributeNamespace::Pallet, staking_clauses),
+				None,
 				None
 			),
 			Error::<Test>::MaxStakingClauses
@@ -160,6 +165,7 @@ fn rejects_out_of_bound_fee_clauses() {
 				Contract::default()
 					.rewards(bounded_vec![Reward::Tokens(1)])
 					.fee_clauses(AttributeNamespace::Pallet, fee_clauses),
+				None,
 				None
 			),
 			Error::<Test>::MaxFeeClauses
@@ -179,6 +185,7 @@ fn rejects_insufficient_balance() {
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
 					Contract::default().rewards(bounded_vec![Reward::Tokens(2_000_000)]),
+					None,
 					None
 				),
 				pallet_balances::Error::<Test>::InsufficientBalance,
@@ -193,7 +200,7 @@ fn rejects_unowned_nfts() {
 		let nft_addr = mint_item(&BOB, &collection_id, &H256::random());
 		let contract = Contract::default().rewards(bounded_vec![Reward::Nft(nft_addr)]);
 		assert_noop!(
-			NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract, None),
+			NftStake::create(RuntimeOrigin::signed(ALICE), H256::random(), contract, None, None),
 			Error::<Test>::Ownership
 		);
 	});
@@ -207,6 +214,7 @@ fn rejects_when_contract_collection_id_is_not_set() {
 				RuntimeOrigin::signed(ALICE),
 				H256::random(),
 				Contract::default(),
+				None,
 				None
 			),
 			Error::<Test>::UnknownContractCollection
@@ -229,6 +237,7 @@ fn rejects_incorrect_activation() {
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
 					Contract::default().activation(activation),
+					None,
 					None
 				),
 				Error::<Test>::IncorrectActivation
@@ -248,6 +257,7 @@ fn rejects_incorrect_active_duration() {
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
 					Contract::default().active_duration(0),
+					None,
 					None
 				),
 				Error::<Test>::ZeroActiveDuration
@@ -267,6 +277,7 @@ fn rejects_incorrect_claim_duration() {
 					RuntimeOrigin::signed(ALICE),
 					H256::random(),
 					Contract::default().claim_duration(0),
+					None,
 					None
 				),
 				Error::<Test>::ZeroClaimDuration

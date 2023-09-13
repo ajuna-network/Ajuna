@@ -148,6 +148,7 @@ fn create_contract<T: Config>(
 		contract_id,
 		contract,
 		None,
+		None,
 	)
 }
 
@@ -307,7 +308,7 @@ benchmarks! {
 		let rewards: BoundedRewardsOf<T> = bounded_vec![Reward::Tokens(123_u64.unique_saturated_into())];
 		let contract = contract_with::<T>(m, n, rewards, Mode::Staker);
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
-	}: create(RawOrigin::Signed(creator), contract_id, contract, None)
+	}: create(RawOrigin::Signed(creator), contract_id, contract, None, None)
 	verify {
 		assert_last_event::<T>(Event::Created { contract_id })
 	}
@@ -323,7 +324,7 @@ benchmarks! {
 		let contract = contract_with::<T>(m, n, rewards, Mode::Staker);
 		let contract_id = T::BenchmarkHelper::item_id(0_u16);
 		let creator = create_creator::<T>(Some(vec![reward_nft_item]))?;
-	}: create(RawOrigin::Signed(creator), contract_id, contract, None)
+	}: create(RawOrigin::Signed(creator), contract_id, contract, None, None)
 	verify {
 		assert_last_event::<T>(Event::Created { contract_id })
 	}

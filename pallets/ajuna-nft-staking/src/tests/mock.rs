@@ -498,7 +498,7 @@ pub fn create_contract(contract_id: MockItemId, contract: ContractOf<Test>, shou
 	if should_fund {
 		let _ = CurrencyOf::<Test>::deposit_creating(&creator, ItemDeposit::get());
 	}
-	NftStake::create_contract(creator, contract_id, contract, None).unwrap();
+	NftStake::create_contract(creator, contract_id, contract, None, None).unwrap();
 }
 
 pub fn mint_item(
