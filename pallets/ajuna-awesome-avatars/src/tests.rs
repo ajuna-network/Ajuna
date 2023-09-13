@@ -3263,16 +3263,25 @@ mod nft_transfer {
 				);
 
 				// Ensure attributes encoding
-				for (attribute_code, attribute) in
-					<Avatar as NftConvertible<KeyLimit, ValueLimit>>::get_attribute_codes()
-						.iter()
-						.map(|attr| attr.as_slice())
-						.zip([
-							format!("0x{}", hex::encode(avatar.dna.as_slice())).into_bytes(),
-							format!("{}", avatar.souls).into_bytes(),
-							RarityTier::from_byte(avatar.rarity()).to_string().into_bytes(),
-							Force::from_byte(avatar.force()).to_string().into_bytes(),
-						]) {
+				for (attribute_code, attribute) in <Avatar as NftConvertible<
+					KeyLimit,
+					ValueLimit,
+				>>::get_attribute_codes()
+				.iter()
+				.map(|attr| attr.as_slice())
+				.zip([
+					format!("0x{}", hex::encode(avatar.dna.as_slice())).into_bytes(),
+					format!("{}", avatar.souls).into_bytes(),
+					RarityTier::from_byte(if avatar.season_id == 1 {
+						avatar.rarity() + 1
+					} else {
+						avatar.rarity()
+					})
+					.to_string()
+					.to_uppercase()
+					.into_bytes(),
+					Force::from_byte(avatar.force()).to_string().to_uppercase().into_bytes(),
+				]) {
 					assert_eq!(
 						<Nft as Inspect<MockAccountId>>::system_attribute(
 							&CollectionId::<Test>::get().unwrap(),
