@@ -273,6 +273,10 @@ pub mod pallet {
 		InvalidNFTFeeAmount,
 		/// Metadata for the contract is too long.
 		MetadataTooLong,
+		/// NFT attribute key bytes longer than limit.
+		AttributeKeyTooLong,
+		/// NFT attribute value bytes longer than limit.
+		AttributeValueTooLong,
 		/// The given account does not hold any contracts.
 		NotContractHolder,
 		/// The given account does not meet the criteria to be a sniper.
@@ -347,11 +351,12 @@ pub mod pallet {
 			contract_id: T::ItemId,
 			contract: ContractOf<T>,
 			metadata: Option<Str>,
+			contract_attrs: Option<Vec<(Str, Str)>>,
 		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_contract_clauses(&contract)?;
-			Self::create_contract(creator, contract_id, contract, metadata)
+			Self::create_contract(creator, contract_id, contract, metadata, contract_attrs)
 		}
 
 		/// Remove a staking contract.
@@ -464,6 +469,7 @@ pub mod pallet {
 			contract_id: T::ItemId,
 			mut contract: ContractOf<T>,
 			metadata: Option<Str>,
+			contract_attrs: Option<Vec<(Str, Str)>>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
@@ -515,6 +521,26 @@ pub mod pallet {
 				let msg_bytes: BoundedVec<_, _> =
 					msg.into_bytes().try_into().map_err(|_| Error::<T>::MetadataTooLong)?;
 				ContractsMetadata::<T>::insert(contract_id, msg_bytes);
+			}
+
+			if let Some(attrs_vec) = contract_attrs {
+				for (attr_key, attr_value) in attrs_vec.into_iter() {
+					let key_bytes: BoundedVec<_, <T as Config>::KeyLimit> = attr_key
+						.into_bytes()
+						.try_into()
+						.map_err(|_| Error::<T>::AttributeKeyTooLong)?;
+					let value_bytes: BoundedVec<_, <T as Config>::ValueLimit> = attr_value
+						.into_bytes()
+						.try_into()
+						.map_err(|_| Error::<T>::AttributeValueTooLong)?;
+
+					T::NftHelper::set_attribute(
+						&collection_id,
+						&contract_id,
+						&key_bytes,
+						&value_bytes,
+					)?;
+				}
 			}
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
@@ -835,8 +861,14 @@ pub mod pallet {
 		fn ensure_sniper(sniper: &T::AccountId) -> DispatchResult {
 			let contract_ids = Self::contract_ids(sniper).map_err(|_| Error::<T>::NotSniper)?;
 			let now = <frame_system::Pallet<T>>::block_number();
+			let technical_account = Self::account_id();
 
 			for contract_id in contract_ids {
+				// If the contract is part of another contracts stake it cannot be sniped
+				if Self::contract_owner(&contract_id)? == technical_account {
+					return Err(Error::<T>::Staking.into())
+				}
+
 				let Contract { stake_duration, .. } = Self::contract(&contract_id)?;
 				let accepted = Self::contract_accepted(&contract_id)?;
 				let end = accepted.checked_add(&stake_duration).ok_or(ArithmeticError::Overflow)?;
