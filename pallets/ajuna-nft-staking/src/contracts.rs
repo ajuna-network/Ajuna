@@ -92,7 +92,17 @@ where
 	VL: Get<u32>,
 {
 	HasAttribute(CollectionId, Attribute<KL>),
+	HasAllAttributes(CollectionId, BoundedVec<Attribute<KL>, ConstU32<10>>),
+	HasAnyAttributes(CollectionId, BoundedVec<Attribute<KL>, ConstU32<10>>),
 	HasAttributeWithValue(CollectionId, Attribute<KL>, Attribute<VL>),
+	HasAllAttributesWithValues(
+		CollectionId,
+		BoundedVec<(Attribute<KL>, Attribute<VL>), ConstU32<10>>,
+	),
+	HasAnyAttributesWithValues(
+		CollectionId,
+		BoundedVec<(Attribute<KL>, Attribute<VL>), ConstU32<10>>,
+	),
 }
 
 impl<CollectionId, KL, VL> Clause<CollectionId, KL, VL>
@@ -103,29 +113,55 @@ where
 	pub fn evaluate_for<AccountId, NftInspector, ItemId, Fn>(
 		&self,
 		address: &NftId<CollectionId, ItemId>,
-		evaluate_fn: Fn,
+		mut evaluate_fn: Fn,
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 		CollectionId: PartialEq,
 		ItemId: PartialEq,
-		Fn: FnOnce(&CollectionId, &ItemId, &[u8]) -> Option<Vec<u8>>,
+		Fn: FnMut(&CollectionId, &ItemId, &[u8]) -> Option<Vec<u8>>,
 	{
 		let clause_collection_id = match self {
 			Clause::HasAttribute(collection_id, _) => collection_id,
 			Clause::HasAttributeWithValue(collection_id, _, _) => collection_id,
+			Clause::HasAllAttributes(collection_id, _) => collection_id,
+			Clause::HasAnyAttributes(collection_id, _) => collection_id,
+			Clause::HasAllAttributesWithValues(collection_id, _) => collection_id,
+			Clause::HasAnyAttributesWithValues(collection_id, _) => collection_id,
 		};
 		let NftId(collection_id, item_id) = address;
 		clause_collection_id == collection_id &&
 			(match self {
 				Clause::HasAttribute(_, key) =>
 					evaluate_fn(collection_id, item_id, key.as_slice()).is_some(),
+				Clause::HasAllAttributes(_, attributes) => attributes
+					.iter()
+					.all(|key| evaluate_fn(collection_id, item_id, key.as_slice()).is_some()),
+				Clause::HasAnyAttributes(_, attributes) => attributes
+					.iter()
+					.any(|key| evaluate_fn(collection_id, item_id, key.as_slice()).is_some()),
 				Clause::HasAttributeWithValue(_, key, expected_value) =>
 					if let Some(value) = evaluate_fn(collection_id, item_id, key.as_slice()) {
 						expected_value.as_slice().eq(value.as_slice())
 					} else {
 						false
 					},
+				Clause::HasAllAttributesWithValues(_, attributes) =>
+					attributes.iter().all(|(key, expected_value)| {
+						if let Some(value) = evaluate_fn(collection_id, item_id, key.as_slice()) {
+							expected_value.as_slice().eq(value.as_slice())
+						} else {
+							false
+						}
+					}),
+				Clause::HasAnyAttributesWithValues(_, attributes) =>
+					attributes.iter().any(|(key, expected_value)| {
+						if let Some(value) = evaluate_fn(collection_id, item_id, key.as_slice()) {
+							expected_value.as_slice().eq(value.as_slice())
+						} else {
+							false
+						}
+					}),
 			})
 	}
 }
