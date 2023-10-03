@@ -346,4 +346,95 @@ mod test {
 			}
 		});
 	}
+
+	#[test]
+	fn terst_equip_leg_mythical() {
+		ExtBuilder::default().build().execute_with(|| {
+			let mut hash_provider = HashProvider::new_with_bytes([
+				0x9C, 0xB3, 0x42, 0xB4, 0xC6, 0xAB, 0xE7, 0x37, 0x71, 0xB8, 0x92, 0x9C, 0xB3, 0x42,
+				0xB4, 0xC6, 0xAB, 0xE7, 0x37, 0x71, 0xB8, 0x92, 0x9C, 0xB3, 0x42, 0xB4, 0xC6, 0xAB,
+				0xE7, 0x37, 0x71, 0xB8,
+			]);
+			let leader_spec_bytes = [0x00; 16];
+			let leader_progress_array =
+				[0x63, 0x64, 0x61, 0x62, 0x65, 0x65, 0x64, 0x61, 0x62, 0x62, 0x62];
+
+			let leader = {
+				let (id, mut avatar) = create_random_pet(
+					&ALICE,
+					&PetType::FoxishDude,
+					0x0F,
+					leader_spec_bytes,
+					leader_progress_array,
+					100,
+				);
+				avatar.set_rarity(RarityTier::Mythical);
+				(id, avatar)
+			};
+
+			let armor_progress = [
+				EquippableItemType::ArmorBase,
+				EquippableItemType::ArmorComponent1,
+				EquippableItemType::ArmorComponent2,
+				EquippableItemType::ArmorComponent3,
+			];
+
+			let sacrifice_base_hash = [0x00; 32];
+			let sacrifice = create_random_armor_component(
+				sacrifice_base_hash,
+				&ALICE,
+				&PetType::FoxishDude,
+				&SlotType::LegBack,
+				&RarityTier::Legendary,
+				&armor_progress,
+				&(ColorType::ColorD, ColorType::ColorD),
+				&Force::Astral,
+				100,
+				&mut hash_provider,
+			);
+
+			let total_soul_points = leader.1.get_souls() + sacrifice.1.get_souls();
+			assert_eq!(total_soul_points, 200);
+
+			let expected_dna = [
+				0x11, 0x02, 0x06, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x64, 0x61, 0x62, 0x65, 0x65, 0x64,
+				0x61, 0x62, 0x62, 0x62,
+			];
+			assert_eq!(leader.1.get_dna().as_slice(), &expected_dna);
+
+			let expected_dna = [
+				0x41, 0x62, 0x05, 0x01, 0x00, 0xFF, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x55, 0x50, 0x50, 0x50, 0x53, 0x53,
+				0x51, 0x55, 0x54, 0x52,
+			];
+			assert_eq!(sacrifice.1.get_dna().as_slice(), &expected_dna);
+
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader.1, &[&sacrifice.1]),
+				ForgeType::Equip
+			);
+
+			let (leader_output, sacrifice_output) =
+				AvatarCombinator::<Test>::equip_avatars(leader, vec![sacrifice])
+					.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert_eq!(avatar.souls, 200);
+
+				let expected_dna = [
+					0x11, 0x02, 0x06, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F,
+					0xFD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x64, 0x61, 0x62, 0x65,
+					0x65, 0x64, 0x61, 0x62, 0x62, 0x62,
+				];
+				assert_eq!(avatar.dna.as_slice(), expected_dna);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
 }

@@ -234,14 +234,16 @@ impl<T: Config> ForgerV2<T> {
 					if sacrifices.iter().all(|sacrifice| {
 						let equippable_item = sacrifice.get_item_sub_type::<EquippableItemType>();
 						sacrifice.has_type(ItemType::Equippable) &&
-							sacrifice.same_rarity(leader) &&
+							sacrifice.get_rarity() == RarityTier::Legendary &&
 							sacrifice.same_class_type_2(leader) &&
 							(equippable_item.is_armor_base() || equippable_item.is_weapon())
-					}) {
+					}) && leader.get_rarity() >= RarityTier::Legendary
+					{
 						ForgeType::Equip
-					} else if sacrifices.iter().all(|sacrifice| {
-						sacrifice.same_full_type(leader) && sacrifice.same_rarity(leader)
-					}) {
+					} else if leader.get_rarity() != RarityTier::Mythical &&
+						sacrifices.iter().all(|sacrifice| {
+							sacrifice.same_full_type(leader) && sacrifice.same_rarity(leader)
+						}) {
 						ForgeType::Mate
 					} else if sacrifices.iter().all(|sacrifice| {
 						sacrifice.same_item_type(leader) && sacrifice.has_subtype(PetItemType::Egg)
@@ -638,6 +640,25 @@ mod test {
 					ForgeType::Equip
 				);
 
+				// Equip with Mythical
+				let (_, leader) = {
+					let (id, mut leader) = create_random_pet(
+						&ALICE,
+						&PetType::TankyBullwog,
+						0b0001_0001,
+						[0; 16],
+						[0; 11],
+						2,
+					);
+					leader.set_rarity(RarityTier::Mythical);
+
+					(id, leader)
+				};
+				assert_eq!(
+					ForgerV2::<Test>::determine_forge_type(&leader, &sacrifices),
+					ForgeType::Equip
+				);
+
 				// Equip without armor-parts fails
 				let sacrifices_err =
 					[&create_random_material(&ALICE, &MaterialItemType::Polymers, 4).1];
@@ -827,8 +848,43 @@ mod test {
 				ForgeType::Mate
 			);
 
-			// Mate with non-pet fails
+			// Mate Mythical
+			let (_, leader) = {
+				let (id, mut leader) = create_random_pet(
+					&ALICE,
+					&PetType::TankyBullwog,
+					0b0001_0001,
+					[0; 16],
+					[0; 11],
+					2,
+				);
 
+				leader.set_rarity(RarityTier::Mythical);
+
+				(id, leader)
+			};
+			let sacrifices = {
+				let mut avatar = create_random_pet(
+					&ALICE,
+					&PetType::CrazyDude,
+					0b0001_0001,
+					[0; 16],
+					[0; 11],
+					2,
+				)
+				.1;
+
+				avatar.set_rarity(RarityTier::Mythical);
+
+				avatar
+			};
+
+			assert_eq!(
+				ForgerV2::<Test>::determine_forge_type(&leader, &[&sacrifices]),
+				ForgeType::None
+			);
+
+			// Mate with non-pet fails
 			let sacrifices_err =
 				[&create_random_pet_part(&ALICE, &PetType::FoxishDude, &SlotType::Head, 1).1];
 			assert_eq!(
@@ -1218,14 +1274,14 @@ mod test {
 				}
 			}
 
-			assert_eq!(forge_type_map.get(&ForgeType::None).unwrap(), &48203);
+			assert_eq!(forge_type_map.get(&ForgeType::None).unwrap(), &49207);
 			assert_eq!(forge_type_map.get(&ForgeType::Stack).unwrap(), &26687);
 			assert_eq!(forge_type_map.get(&ForgeType::Tinker).unwrap(), &2407);
 			assert_eq!(forge_type_map.get(&ForgeType::Build).unwrap(), &4723);
 			assert_eq!(forge_type_map.get(&ForgeType::Assemble).unwrap(), &5620);
 			assert_eq!(forge_type_map.get(&ForgeType::Breed).unwrap(), &1558);
-			assert_eq!(forge_type_map.get(&ForgeType::Equip).unwrap(), &848);
-			assert_eq!(forge_type_map.get(&ForgeType::Mate).unwrap(), &2122);
+			assert_eq!(forge_type_map.get(&ForgeType::Equip).unwrap(), &94);
+			assert_eq!(forge_type_map.get(&ForgeType::Mate).unwrap(), &1872);
 			assert_eq!(forge_type_map.get(&ForgeType::Feed).unwrap(), &0);
 			assert_eq!(forge_type_map.get(&ForgeType::Glimmer).unwrap(), &0);
 			assert_eq!(forge_type_map.get(&ForgeType::Spark).unwrap(), &7832);
