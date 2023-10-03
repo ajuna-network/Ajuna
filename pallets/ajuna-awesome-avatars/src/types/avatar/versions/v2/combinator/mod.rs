@@ -12,7 +12,6 @@ mod statue;
 mod tinker;
 
 use super::*;
-use sp_std::mem::variant_count;
 
 pub(super) type WrappedForgeItem<T> = (AvatarIdOf<T>, WrappedAvatar);
 

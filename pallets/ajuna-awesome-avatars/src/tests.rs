@@ -2983,7 +2983,7 @@ mod account {
 	#[test]
 	fn upgrade_storage_should_work() {
 		let upgrade_fee = 12_345 as MockBalance;
-		let num_storage_tiers = sp_std::mem::variant_count::<StorageTier>();
+		let num_storage_tiers = 6;
 		let alice_balance = num_storage_tiers as MockBalance * upgrade_fee;
 		let mut treasury_balance = 0;
 		let total_supply = treasury_balance + alice_balance;

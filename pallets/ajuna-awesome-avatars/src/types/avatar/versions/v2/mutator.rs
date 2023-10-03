@@ -221,7 +221,7 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 					ColorType::from_byte(DnaUtils::high_nibble_of(hash_byte)),
 					ColorType::from_byte(DnaUtils::low_nibble_of(hash_byte)),
 				);
-				let force = Force::from_byte(hash_provider.next() % variant_count::<Force>() as u8);
+				let force = Force::from_byte(hash_provider.next() % 7);
 
 				AvatarBuilder::with_base_avatar(base_avatar).try_into_weapon(
 					&pet_type,
@@ -289,7 +289,7 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 					ColorType::from_byte(DnaUtils::high_nibble_of(hash_byte)),
 					ColorType::from_byte(DnaUtils::low_nibble_of(hash_byte)),
 				);
-				let force = Force::from_byte(hash_provider.next() % variant_count::<Force>() as u8);
+				let force = Force::from_byte(hash_provider.next() % 7);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
 					.into_unidentified(color_pair, force, soul_count)

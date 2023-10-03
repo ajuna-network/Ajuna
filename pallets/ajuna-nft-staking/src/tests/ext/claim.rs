@@ -48,10 +48,10 @@ fn works_with_token_reward() {
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.build()
 		.execute_with(|| {
-			let initial_balance = Balances::free_balance(&BOB);
+			let initial_balance = Balances::free_balance(BOB);
 			let technical_account_id = Pallet::<Test>::account_id();
 
-			assert_eq!(Balances::free_balance(&technical_account_id), reward_amount);
+			assert_eq!(Balances::free_balance(technical_account_id), reward_amount);
 
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
 			run_to_block(accepted_at + stake_duration + claim_duration + 1);
@@ -65,7 +65,7 @@ fn works_with_token_reward() {
 				assert_eq!(Nft::owner(collection_id, item_id), Some(ALICE));
 			}
 			assert_eq!(Balances::free_balance(BOB), initial_balance + reward_amount);
-			assert_eq!(Balances::free_balance(&technical_account_id), 0);
+			assert_eq!(Balances::free_balance(technical_account_id), 0);
 
 			let contract_collection_id = ContractCollectionId::<Test>::get().unwrap();
 			assert_eq!(Nft::owner(contract_collection_id, contract_id), None);
@@ -171,7 +171,7 @@ fn rejects_if_token_reward_is_less_than_min_balance() {
 		.execute_with(|| {
 			let technical_account_id = Pallet::<Test>::account_id();
 
-			assert_eq!(Balances::free_balance(&technical_account_id), 0);
+			assert_eq!(Balances::free_balance(technical_account_id), 0);
 
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
 			run_to_block(accepted_at + stake_duration);
