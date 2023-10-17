@@ -267,6 +267,7 @@ fn contract_with<T: Config>(
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap(),
+		burn_fees: false,
 		rewards,
 		cancel_fee: 333_u64.unique_saturated_into(),
 		nft_stake_amount: num_stake_clauses as u8,

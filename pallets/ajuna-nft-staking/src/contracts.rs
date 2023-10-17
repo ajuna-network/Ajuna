@@ -163,6 +163,8 @@ where
 	/// The list of conditions to satisfy as fee NFTs. A staker must provide NFTs that meet these
 	/// requirements to accept the contract, which is transferred to the contract creator.
 	pub fee_clauses: BoundedClauses<CollectionId, KL, VL>,
+	/// If true the fees are burned instead of being transferred to the creator.
+	pub burn_fees: bool,
 
 	/// The rewards of fulfilling the given contract in the form of either tokens or NFTs.
 	pub rewards: BoundedRewards<Balance, CollectionId, ItemId>,
