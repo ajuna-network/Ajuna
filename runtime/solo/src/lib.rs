@@ -22,12 +22,9 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	construct_runtime,
-	dispatch::TypeInfo,
-	parameter_types,
-	traits::{AsEnsureOriginWithArg, Contains},
+	construct_runtime, parameter_types,
+	traits::{AsEnsureOriginWithArg, ConstBool, Contains},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		IdentityFee, Weight,
@@ -41,6 +38,8 @@ use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_transaction_payment::CurrencyAdapter;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata};
@@ -63,7 +62,7 @@ mod impls;
 mod types;
 
 use ajuna_primitives::{
-	AccountId, AccountPublic, AssetId, Balance, BlockNumber, CollectionId, Hash, Index, Moment,
+	AccountId, AccountPublic, AssetId, Balance, BlockNumber, CollectionId, Hash, Moment, Nonce,
 	Signature,
 };
 pub use consts::currency;
@@ -137,10 +136,6 @@ impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	/// The aggregated dispatch type that is available for extrinsics.
 	type RuntimeCall = RuntimeCall;
-	/// The index type for storing how many extrinsics an account has signed.
-	type Index = Index;
-	/// The index type for blocks.
-	type BlockNumber = BlockNumber;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
 	/// The hashing algorithm used.
@@ -149,8 +144,6 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = AccountIdLookup<AccountId, ()>;
-	/// The header type.
-	type Header = Header;
 	/// The ubiquitous event type.
 	type RuntimeEvent = RuntimeEvent;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -177,16 +170,22 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 	/// The maximum number of consumers allowed on a single account.
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	/// The Nonce value type
+	type Nonce = Nonce;
+	/// The Block provider type
+	type Block = Block;
 }
 
 parameter_types! {
 	pub const MaxAuthorities: u32 = 32;
+	pub const MaxNominators: u32 = 10;
 }
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type MaxAuthorities = MaxAuthorities;
 	type DisabledValidators = ();
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -196,6 +195,7 @@ impl pallet_grandpa::Config for Runtime {
 	type MaxAuthorities = MaxAuthorities;
 	type MaxSetIdSessionEntries = frame_support::traits::ConstU64<0>;
 	type EquivocationReportSystem = ();
+	type MaxNominators = MaxNominators;
 }
 
 parameter_types! {
@@ -225,10 +225,10 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = ArbitraryUpperBound;
 	type MaxReserves = ArbitraryUpperBound;
 	type ReserveIdentifier = [u8; 8];
-	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -253,7 +253,7 @@ impl pallet_assets::Config for Runtime {
 	type Balance = Balance;
 	type RemoveItemsLimit = frame_support::traits::ConstU32<1000>;
 	type AssetId = AssetId;
-	type AssetIdParameter = codec::Compact<u32>;
+	type AssetIdParameter = parity_scale_codec::Compact<u32>;
 	type Currency = Balances;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ForceOrigin = EnsureRoot<AccountId>;
@@ -397,7 +397,7 @@ where
 		call: RuntimeCall,
 		public: <Signature as sp_runtime::traits::Verify>::Signer,
 		account: AccountId,
-		nonce: Index,
+		nonce: Nonce,
 	) -> Option<(
 		RuntimeCall,
 		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
@@ -450,6 +450,7 @@ where
 impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -677,10 +678,7 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = ajuna_primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
+	pub struct Runtime
 	{
 		System: frame_system = 0,
 		Timestamp: pallet_timestamp = 1,
@@ -893,8 +891,8 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
-		fn account_nonce(account: AccountId) -> Index {
+	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce> for Runtime {
+		fn account_nonce(account: AccountId) -> Nonce {
 			System::account_nonce(account)
 		}
 	}
@@ -942,7 +940,8 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch, TrackedStorageKey};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
+			use sp_storage::TrackedStorageKey;
 			use baseline::Pallet as BaselineBench;
 
 			use frame_system_benchmarking::Pallet as SystemBench;

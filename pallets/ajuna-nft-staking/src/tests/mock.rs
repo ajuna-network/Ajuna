@@ -19,14 +19,11 @@ use frame_support::{
 	parameter_types,
 	traits::{tokens::nonfungibles_v2::Create, AsEnsureOriginWithArg, ConstU16, ConstU64, Hooks},
 };
-use frame_system::{
-	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot, EnsureSigned,
-};
-use pallet_nfts::{ItemConfig, PalletFeatures};
+use frame_system::{EnsureRoot, EnsureSigned};
+use pallet_nfts::{CollectionSettings, ItemConfig, ItemSettings, PalletFeatures};
 use sp_core::bounded_vec;
 use sp_runtime::{
-	testing::{Header, TestSignature, H256},
+	testing::{TestSignature, H256},
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage,
 };
@@ -34,9 +31,9 @@ use sp_runtime::{
 pub type MockSignature = TestSignature;
 pub type MockAccountPublic = <MockSignature as Verify>::Signer;
 pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
-pub type MockBlockNumber = u64;
+pub type MockBlock = frame_system::mocking::MockBlock<Test>;
+pub type MockNonce = u64;
 pub type MockBalance = u64;
-pub type MockIndex = u64;
 
 pub type CurrencyOf<T> = <T as Config>::Currency;
 pub type NftHelperOf<T> = <T as Config>::NftHelper;
@@ -51,11 +48,7 @@ pub const RESERVED_COLLECTION_2: MockCollectionId = 2;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = MockBlock<Test>,
-		NodeBlock = MockBlock<Test>,
-		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
-	{
+	pub struct Test {
 		System: frame_system,
 		Balances: pallet_balances,
 		Nft: pallet_nfts,
@@ -69,13 +62,10 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = MockIndex;
-	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = MockAccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type DbWeight = ();
@@ -88,6 +78,8 @@ impl frame_system::Config for Test {
 	type SS58Prefix = ConstU16<42>;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type Nonce = MockNonce;
+	type Block = MockBlock;
 }
 
 parameter_types! {
@@ -104,10 +96,10 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
+	type RuntimeHoldReason = ();
 }
 
 pub type MockCollectionId = u32;
@@ -197,7 +189,7 @@ parameter_types! {
 }
 
 pub type CollectionConfig =
-	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
+	pallet_nfts::CollectionConfig<MockBalance, BlockNumberFor<Test>, MockCollectionId>;
 
 impl pallet_nft_staking::Config for Test {
 	type PalletId = NftStakingPalletId;
@@ -240,19 +232,19 @@ impl Default for ContractOf<Test> {
 	}
 }
 impl ContractOf<Test> {
-	pub fn activation(mut self, activation: MockBlockNumber) -> Self {
+	pub fn activation(mut self, activation: BlockNumberFor<Test>) -> Self {
 		self.activation = Some(activation);
 		self
 	}
-	pub fn active_duration(mut self, active_duration: MockBlockNumber) -> Self {
+	pub fn active_duration(mut self, active_duration: BlockNumberFor<Test>) -> Self {
 		self.active_duration = active_duration;
 		self
 	}
-	pub fn claim_duration(mut self, claim_duration: MockBlockNumber) -> Self {
+	pub fn claim_duration(mut self, claim_duration: BlockNumberFor<Test>) -> Self {
 		self.claim_duration = claim_duration;
 		self
 	}
-	pub fn stake_duration(mut self, stake_duration: MockBlockNumber) -> Self {
+	pub fn stake_duration(mut self, stake_duration: BlockNumberFor<Test>) -> Self {
 		self.stake_duration = stake_duration;
 		self
 	}
@@ -388,8 +380,8 @@ impl ExtBuilder {
 		contract_id: MockItemId,
 		by: MockAccountId,
 	) -> Self {
-		self = self.mint_stakes(stakes);
-		self = self.mint_fees(fees);
+		self.stakes = stakes;
+		self.fees = fees;
 		self.accept_contract = Some((contract_id, by));
 		self
 	}
@@ -398,7 +390,7 @@ impl ExtBuilder {
 		self
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
-		let config = GenesisConfig {
+		let config = RuntimeGenesisConfig {
 			system: Default::default(),
 			balances: BalancesConfig { balances: self.balances },
 		};
@@ -476,7 +468,8 @@ impl ExtBuilder {
 
 pub fn create_collection(account: MockAccountId) -> MockCollectionId {
 	let _ = CurrencyOf::<Test>::deposit_creating(&account, CollectionDeposit::get() + 999);
-	let config = CollectionConfig::default();
+	let config =
+		CollectionConfig { settings: CollectionSettings::all_enabled(), ..Default::default() };
 	NftHelperOf::<Test>::create_collection(&account, &account, &config).unwrap()
 }
 
@@ -507,7 +500,7 @@ pub fn mint_item(
 	item_id: &MockItemId,
 ) -> NftIdOf<Test> {
 	let _ = CurrencyOf::<Test>::deposit_creating(owner, ItemDeposit::get() + 999);
-	let config = pallet_nfts::ItemConfig::default();
+	let config = pallet_nfts::ItemConfig { settings: ItemSettings::all_enabled() };
 	NftHelperOf::<Test>::mint_into(collection_id, item_id, owner, &config, false).unwrap();
 	NftId(*collection_id, *item_id)
 }

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::*;
-use codec::alloc::string::ToString;
+use parity_scale_codec::alloc::string::ToString;
 use sp_std::{fmt, ops::Range, prelude::*};
 
 #[derive(Encode, Clone, Debug, Default, PartialEq)]

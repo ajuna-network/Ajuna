@@ -20,23 +20,26 @@ use super::{
 };
 use core::{marker::PhantomData, ops::ControlFlow};
 use frame_support::{
-	log, match_types, parameter_types,
+	match_types, parameter_types,
 	traits::{ConstU32, Everything, Nothing, ProcessMessageError},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
-use polkadot_parachain::primitives::Sibling;
+use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
-use xcm::latest::prelude::*;
-use xcm_builder::{
+use staging_xcm::latest::prelude::*;
+use staging_xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowTopLevelPaidExecutionFrom,
 	CreateMatcher, CurrencyAdapter, EnsureXcmOrigin, FixedWeightBounds, IsConcrete, MatchXcm,
 	NativeAsset, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32,
 	SovereignSignedViaLocation, TakeWeightCredit, UsingComponents, WithComputedOrigin,
 };
-use xcm_executor::{traits::ShouldExecute, XcmExecutor};
+use staging_xcm_executor::{
+	traits::{Properties, ShouldExecute},
+	XcmExecutor,
+};
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
@@ -123,10 +126,10 @@ where
 		origin: &MultiLocation,
 		message: &mut [Instruction<RuntimeCall>],
 		max_weight: Weight,
-		weight_credit: &mut Weight,
+		properties: &mut Properties,
 	) -> Result<(), ProcessMessageError> {
-		Deny::should_execute(origin, message, max_weight, weight_credit)?;
-		Allow::should_execute(origin, message, max_weight, weight_credit)
+		Deny::should_execute(origin, message, max_weight, properties)?;
+		Allow::should_execute(origin, message, max_weight, properties)
 	}
 }
 
@@ -137,7 +140,7 @@ impl ShouldExecute for DenyReserveTransferToRelayChain {
 		origin: &MultiLocation,
 		message: &mut [Instruction<RuntimeCall>],
 		_max_weight: Weight,
-		_weight_credit: &mut Weight,
+		_properties: &mut Properties,
 	) -> Result<(), ProcessMessageError> {
 		message.matcher().match_next_inst_while(
 			|_| true,
@@ -191,7 +194,7 @@ pub type Barrier = DenyThenTry<
 >;
 
 pub struct XcmConfig;
-impl xcm_executor::Config for XcmConfig {
+impl staging_xcm_executor::Config for XcmConfig {
 	type RuntimeCall = RuntimeCall;
 	type XcmSender = XcmRouter;
 	// How to withdraw and deposit an asset.
@@ -217,6 +220,7 @@ impl xcm_executor::Config for XcmConfig {
 	type UniversalAliases = Nothing;
 	type CallDispatcher = RuntimeCall;
 	type SafeCallFilter = Everything;
+	type Aliasers = Nothing;
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
@@ -264,6 +268,8 @@ impl pallet_xcm::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type ReachableDest = ReachableDest;
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type MaxRemoteLockConsumers = ConstU32<0>;
+	type RemoteLockConsumerIdentifier = ();
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

@@ -17,28 +17,24 @@
 use crate::{self as pallet_ajuna_awesome_avatars, types::*, *};
 use frame_support::{
 	parameter_types,
-	traits::{
-		tokens::nonfungibles_v2::Create, AsEnsureOriginWithArg, ConstU16, ConstU64, GenesisBuild,
-		Hooks,
-	},
+	traits::{tokens::nonfungibles_v2::Create, AsEnsureOriginWithArg, ConstU16, ConstU64, Hooks},
 	PalletId,
 };
-use frame_system::{
-	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot, EnsureSigned,
-};
+use frame_system::{EnsureRoot, EnsureSigned};
 pub(crate) use sp_runtime::testing::H256;
 use sp_runtime::{
-	testing::{Header, TestSignature},
+	testing::TestSignature,
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+	BuildStorage,
 };
 
+pub type MockBlock = frame_system::mocking::MockBlock<Test>;
 pub type MockSignature = TestSignature;
 pub type MockAccountPublic = <MockSignature as Verify>::Signer;
 pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
 pub type MockBlockNumber = u64;
 pub type MockBalance = u64;
-pub type MockIndex = u64;
+pub type MockNonce = u64;
 pub type MockCollectionId = u32;
 
 pub const ALICE: MockAccountId = 1;
@@ -49,11 +45,7 @@ pub const DAVE: MockAccountId = 4;
 pub const SEASON_ID: SeasonId = 1;
 
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = MockBlock<Test>,
-		NodeBlock = MockBlock<Test>,
-		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
-	{
+	pub struct Test {
 		System: frame_system,
 		Balances: pallet_balances,
 		Randomness: pallet_insecure_randomness_collective_flip,
@@ -70,13 +62,10 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = MockIndex;
-	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = MockAccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -88,6 +77,8 @@ impl frame_system::Config for Test {
 	type SS58Prefix = ConstU16<42>;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type Nonce = MockNonce;
+	type Block = MockBlock;
 }
 
 parameter_types! {
@@ -104,10 +95,10 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
@@ -272,7 +263,8 @@ impl ExtBuilder {
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		MOCK_EXISTENTIAL_DEPOSIT.with(|v| *v.borrow_mut() = self.existential_deposit);
-		let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+
+		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 		pallet_balances::GenesisConfig::<Test> { balances: self.balances }
 			.assimilate_storage(&mut t)
 			.unwrap();

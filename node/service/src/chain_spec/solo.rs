@@ -17,13 +17,13 @@
 use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
-	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GenesisConfig,
-	GrandpaConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
+	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GrandpaConfig,
+	RuntimeGenesisConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<RuntimeGenesisConfig>;
 
 pub fn development_config(chain_type: ChainType) -> Result<ChainSpec, String> {
 	let properties = chain_spec_properties("AJUN", 12, 42);
@@ -76,7 +76,7 @@ struct Config {
 	vesting: VestingConfig,
 }
 
-fn development_config_genesis() -> GenesisConfig {
+fn development_config_genesis() -> RuntimeGenesisConfig {
 	let accounts = get_well_known_accounts();
 	let (aura_authorities, grandpa_authorities) = [accounts.alice_authority].into_iter().unzip();
 
@@ -92,7 +92,7 @@ fn development_config_genesis() -> GenesisConfig {
 
 	compose_genesis_config(Config {
 		aura: AuraConfig { authorities: aura_authorities },
-		grandpa: GrandpaConfig { authorities: grandpa_authorities },
+		grandpa: GrandpaConfig { authorities: grandpa_authorities, ..Default::default() },
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		council: CouncilConfig {
 			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
@@ -132,7 +132,7 @@ fn development_config_genesis() -> GenesisConfig {
 	})
 }
 
-fn testnet_config_genesis() -> GenesisConfig {
+fn testnet_config_genesis() -> RuntimeGenesisConfig {
 	use hex_literal::hex;
 	use sp_core::crypto::UncheckedInto;
 
@@ -157,6 +157,7 @@ fn testnet_config_genesis() -> GenesisConfig {
 					1,
 				),
 			],
+			..Default::default()
 		},
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		council: CouncilConfig::default(),
@@ -182,12 +183,12 @@ fn testnet_config_genesis() -> GenesisConfig {
 }
 
 // Composes config with defaults to return initial storage state for FRAME modules.
-fn compose_genesis_config(config: Config) -> GenesisConfig {
+fn compose_genesis_config(config: Config) -> RuntimeGenesisConfig {
 	let wasm_binary = WASM_BINARY.expect(
 		"Development wasm binary is not available. Please rebuild with SKIP_WASM_BUILD disabled.",
 	);
 	let Config { aura, grandpa, sudo, council, balances, assets, vesting } = config;
-	GenesisConfig {
+	RuntimeGenesisConfig {
 		// overridden config
 		aura,
 		grandpa,
@@ -197,7 +198,7 @@ fn compose_genesis_config(config: Config) -> GenesisConfig {
 		assets,
 		vesting,
 		// default config
-		system: SystemConfig { code: wasm_binary.to_vec() },
+		system: SystemConfig { code: wasm_binary.to_vec(), ..Default::default() },
 		transaction_payment: Default::default(),
 		council_membership: Default::default(),
 		treasury: Default::default(),

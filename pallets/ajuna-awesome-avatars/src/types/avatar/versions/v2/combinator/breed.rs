@@ -5,7 +5,7 @@ impl<T: Config> AvatarCombinator<T> {
 		input_leader: WrappedForgeItem<T>,
 		input_sacrifices: Vec<WrappedForgeItem<T>>,
 		hash_provider: &mut HashProvider<T, 32>,
-		block_number: T::BlockNumber,
+		block_number: BlockNumberFor<T>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
 		let ((leader_id, mut input_leader), sacrifices) = Self::match_avatars(
 			input_leader,

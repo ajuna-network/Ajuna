@@ -23,8 +23,9 @@ path              = "src/ajuna.rs"
 required-features = [ "ajuna" ]
 
 [dependencies]
-ajuna-cli     = { path = "cli" }
-ajuna-service = { path = "service" }
+# Ajuna
+ajuna-cli     = { workspace = true }
+ajuna-service = { workspace = true }
 
 [features]
 default = [ "solo" ]

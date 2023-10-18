@@ -16,16 +16,19 @@
 
 use std::sync::Arc;
 
-use ajuna_primitives::{AccountId, Balance, Block, Index};
-use jsonrpsee::RpcModule;
+use ajuna_primitives::{AccountId, Balance, Nonce};
+
+use sc_client_api::AuxStore;
+pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 
-pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
+/// A type representing all RPC extensions.
+pub type RpcExtension = jsonrpsee::RpcModule<()>;
 
-/// Full client dependencies.
+/// Full client dependencies
 pub struct FullDeps<C, P> {
 	/// The client instance to use.
 	pub client: Arc<C>,
@@ -35,32 +38,31 @@ pub struct FullDeps<C, P> {
 	pub deny_unsafe: DenyUnsafe,
 }
 
-/// Instantiate all full RPC extensions.
-pub fn create_full<C, P>(
+/// Instantiate all RPC extensions.
+pub fn create_full<C, P, B>(
 	deps: FullDeps<C, P>,
-) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
+) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
-	C: ProvideRuntimeApi<Block>,
-	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError> + 'static,
-	C: Send + Sync + 'static,
-	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
-	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
-	C::Api: BlockBuilder<Block>,
-	P: TransactionPool + 'static,
+	C: ProvideRuntimeApi<B>
+		+ HeaderBackend<B>
+		+ AuxStore
+		+ HeaderMetadata<B, Error = BlockChainError>
+		+ Send
+		+ Sync
+		+ 'static,
+	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<B, Balance>,
+	C::Api: substrate_frame_rpc_system::AccountNonceApi<B, AccountId, Nonce>,
+	C::Api: BlockBuilder<B>,
+	P: TransactionPool + Sync + Send + 'static,
+	B: sp_api::BlockT + Sync + Send + 'static,
 {
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
-	let mut module = RpcModule::new(());
+	let mut module = RpcExtension::new(());
 	let FullDeps { client, pool, deny_unsafe } = deps;
 
 	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
 	module.merge(TransactionPayment::new(client).into_rpc())?;
-
-	// Extend this RPC with a custom API by using the following syntax.
-	// `YourRpcStruct` should have a reference to a client, which is needed
-	// to call into the runtime.
-	// `module.merge(YourRpcTrait::into_rpc(YourRpcStruct::new(ReferenceToClient, ...)))?;`
-
 	Ok(module)
 }

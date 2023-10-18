@@ -66,6 +66,15 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(Weight::from_parts(0, 2554).saturating_mul(b.into()))
 	}
+
+	fn add_invulnerable(_b: u32, _c: u32) -> Weight {
+		todo!()
+	}
+
+	fn remove_invulnerable(_b: u32) -> Weight {
+		todo!()
+	}
+
 	/// Storage: CollatorSelection DesiredCandidates (r:0 w:1)
 	/// Proof: CollatorSelection DesiredCandidates (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
 	fn set_desired_candidates() -> Weight {

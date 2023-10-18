@@ -57,7 +57,7 @@ pub mod pallet {
 		BalanceOf<T>,
 		CollectionIdOf<T>,
 		ItemIdOf<T>,
-		<T as frame_system::Config>::BlockNumber,
+		BlockNumberFor<T>,
 		<T as Config>::KeyLimit,
 		<T as Config>::ValueLimit,
 	>;
@@ -189,7 +189,7 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, ContractStats, ValueQuery>;
 
 	#[pallet::storage]
-	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, T::BlockNumber>;
+	pub type ContractAccepted<T: Config> = StorageMap<_, Identity, T::ItemId, BlockNumberFor<T>>;
 
 	#[pallet::storage]
 	pub type ContractStakedItems<T: Config> = StorageMap<_, Identity, T::ItemId, StakedItemsOf<T>>;
@@ -916,7 +916,7 @@ pub mod pallet {
 				ContractStakedItems::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			Ok(items)
 		}
-		fn contract_accepted(contract_id: &T::ItemId) -> Result<T::BlockNumber, DispatchError> {
+		fn contract_accepted(contract_id: &T::ItemId) -> Result<BlockNumberFor<T>, DispatchError> {
 			let accepted_block =
 				ContractAccepted::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
 			Ok(accepted_block)

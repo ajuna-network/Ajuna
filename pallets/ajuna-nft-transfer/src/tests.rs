@@ -15,11 +15,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{mock::*, traits::*, Error, *};
-use codec::{Decode, Encode};
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
 	traits::tokens::nonfungibles_v2::{Create, Inspect},
 };
+use frame_system::pallet_prelude::BlockNumberFor;
+use parity_scale_codec::{Decode, Encode};
 use sp_runtime::{bounded_vec, testing::H256, BoundedVec};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug)]
@@ -36,8 +37,8 @@ impl Default for MockItem {
 }
 
 impl NftConvertible<KeyLimit, ValueLimit> for MockItem {
-	const ITEM_CODE: &'static [u8] = &[1];
-	const IPFS_URL_CODE: &'static [u8] = &[2];
+	const ITEM_CODE: &'static [u8] = &[11];
+	const IPFS_URL_CODE: &'static [u8] = &[21];
 
 	fn get_attribute_codes() -> Vec<NFTAttribute<KeyLimit>> {
 		vec![bounded_vec![111], bounded_vec![222], bounded_vec![240]]
@@ -53,7 +54,7 @@ impl NftConvertible<KeyLimit, ValueLimit> for MockItem {
 }
 
 type CollectionConfig =
-	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
+	pallet_nfts::CollectionConfig<MockBalance, BlockNumberFor<Test>, MockCollectionId>;
 
 fn create_collection(organizer: MockAccountId) -> MockCollectionId {
 	<Test as Config>::NftHelper::create_collection(

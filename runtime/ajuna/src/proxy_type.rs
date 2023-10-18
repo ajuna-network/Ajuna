@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use codec::{Decode, Encode};
-use frame_support::{pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebug};
+use frame_support::{pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebugNoBound};
+use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 use crate::RuntimeCall;
@@ -30,7 +30,7 @@ use crate::RuntimeCall;
 	PartialOrd,
 	Encode,
 	Decode,
-	RuntimeDebug,
+	RuntimeDebugNoBound,
 	MaxEncodedLen,
 	TypeInfo,
 )]

@@ -162,9 +162,9 @@ impl OldAvatar {
 pub struct OldSeason<T: Config> {
 	pub name: BoundedVec<u8, ConstU32<100>>,
 	pub description: BoundedVec<u8, ConstU32<1_000>>,
-	pub early_start: T::BlockNumber,
-	pub start: T::BlockNumber,
-	pub end: T::BlockNumber,
+	pub early_start: BlockNumberFor<T>,
+	pub start: BlockNumberFor<T>,
+	pub end: BlockNumberFor<T>,
 	pub max_tier_forges: u32,
 	pub max_variations: u8,
 	pub max_components: u8,
@@ -174,12 +174,12 @@ pub struct OldSeason<T: Config> {
 	pub single_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub batch_mint_probs: BoundedVec<RarityPercent, ConstU32<5>>,
 	pub base_prob: RarityPercent,
-	pub per_period: T::BlockNumber,
+	pub per_period: BlockNumberFor<T>,
 	pub periods: u16,
 }
 
 impl<T: Config> OldSeason<T> {
-	fn migrate_to_v5(self) -> Season<T::BlockNumber, BalanceOf<T>> {
+	fn migrate_to_v5(self) -> Season<BlockNumberFor<T>, BalanceOf<T>> {
 		Season {
 			name: self.name,
 			description: self.description,
@@ -220,7 +220,7 @@ impl<T: Config> OldSeason<T> {
 pub struct OldAccountInfo<T: Config> {
 	pub free_mints: MintCount,
 	pub storage_tier: StorageTier,
-	pub stats: Stats<T::BlockNumber>,
+	pub stats: Stats<BlockNumberFor<T>>,
 }
 
 #[frame_support::storage_alias]
@@ -304,7 +304,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 
 				(
 					(account_id, PlayerConfig { free_mints }),
-					(season_id, PlayerSeasonConfig::<T::BlockNumber> { storage_tier, stats }),
+					(season_id, PlayerSeasonConfig::<BlockNumberFor<T>> { storage_tier, stats }),
 				)
 			})
 			.collect::<Vec<_>>();
@@ -346,7 +346,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
 		assert_eq!(Pallet::<T>::on_chain_storage_version(), 5);
 		assert!(CurrentSeasonStatus::<T>::get().season_id > Zero::zero());
 

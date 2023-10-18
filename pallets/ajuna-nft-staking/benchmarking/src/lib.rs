@@ -27,7 +27,7 @@ use frame_support::{
 		Currency, Get,
 	},
 };
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use pallet_ajuna_nft_staking::{
 	BenchmarkHelper as NftStakingBenchmarkHelper, Config as NftStakingConfig, *,
 };
@@ -67,8 +67,6 @@ pub struct Pallet<T: Config>(pallet_ajuna_nft_staking::Pallet<T>);
 pub trait Config: NftStakingConfig + pallet_nfts::Config + pallet_balances::Config {}
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-
 type CurrencyOf<T> = <T as NftStakingConfig>::Currency;
 type BalanceOf<T> = <CurrencyOf<T> as Currency<AccountIdOf<T>>>::Balance;
 type CollectionIdOf<T> = <T as NftStakingConfig>::CollectionId;
@@ -77,7 +75,7 @@ type ContractOf<T> = Contract<
 	BalanceOf<T>,
 	CollectionIdOf<T>,
 	<T as NftStakingConfig>::ItemId,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	<T as NftStakingConfig>::KeyLimit,
 	<T as NftStakingConfig>::ValueLimit,
 >;
@@ -88,7 +86,7 @@ type NftCollectionIdOf<T> = <T as pallet_nfts::Config>::CollectionId;
 type CollectionDeposit<T> = <T as pallet_nfts::Config>::CollectionDeposit;
 type ItemDeposit<T> = <T as pallet_nfts::Config>::ItemDeposit;
 type CollectionConfigOf<T> =
-	pallet_nfts::CollectionConfig<NftBalanceOf<T>, BlockNumberOf<T>, NftCollectionIdOf<T>>;
+	pallet_nfts::CollectionConfig<NftBalanceOf<T>, BlockNumberFor<T>, NftCollectionIdOf<T>>;
 
 fn account<T: Config>(name: &'static str) -> T::AccountId {
 	let account = frame_benchmarking::account(name, Default::default(), Default::default());
@@ -212,7 +210,7 @@ fn stakes_and_fees<T: Config>(
 		let item_id = i as u16;
 		let attr_key = i;
 		mint_item::<T>(who, stake_collection, item_id)?;
-		set_attribute::<T>(stake_collection, item_id, attr_key as u8, ATTRIBUTE_VALUE)?;
+		set_attribute::<T>(stake_collection, item_id, (attr_key as u8) * 3, ATTRIBUTE_VALUE)?;
 		stakes.push(NftId(
 			CollectionIdOf::<T>::unique_saturated_from(stake_collection),
 			T::BenchmarkHelper::item_id(item_id),
@@ -222,7 +220,7 @@ fn stakes_and_fees<T: Config>(
 		let item_id = i as u16;
 		let attr_key = i;
 		mint_item::<T>(who, fee_collection, item_id)?;
-		set_attribute::<T>(fee_collection, item_id, attr_key as u8, ATTRIBUTE_VALUE)?;
+		set_attribute::<T>(fee_collection, item_id, (attr_key as u8) * 3, ATTRIBUTE_VALUE)?;
 		fees.push(NftId(
 			CollectionIdOf::<T>::unique_saturated_from(fee_collection),
 			T::BenchmarkHelper::item_id(item_id),
@@ -249,7 +247,7 @@ fn contract_with<T: Config>(
 				target_index: i as u8,
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(stake_collection),
-					T::BenchmarkHelper::contract_key(i as u8),
+					T::BenchmarkHelper::contract_key((i as u8) * 3),
 					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
 				),
 			})
@@ -262,7 +260,7 @@ fn contract_with<T: Config>(
 				target_index: (i - num_stake_clauses) as u8,
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(fee_collection),
-					T::BenchmarkHelper::contract_key(i as u8),
+					T::BenchmarkHelper::contract_key((i as u8) * 3),
 					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
 				),
 			})

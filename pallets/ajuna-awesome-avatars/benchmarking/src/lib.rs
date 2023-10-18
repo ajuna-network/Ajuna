@@ -20,18 +20,19 @@
 
 mod mock;
 
-use frame_benchmarking::{benchmarks, vec};
+use frame_benchmarking::benchmarks;
 use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult},
 	traits::{Currency, Get},
 };
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use pallet_ajuna_awesome_avatars::{types::*, Config as AvatarsConfig, Pallet as AAvatars, *};
 use pallet_ajuna_nft_transfer::traits::NftHandler;
 use sp_runtime::{
 	traits::{Saturating, StaticLookup, UniqueSaturatedFrom, UniqueSaturatedInto, Zero},
 	BoundedVec,
 };
+use sp_std::vec;
 
 pub struct Pallet<T: Config>(pallet_ajuna_awesome_avatars::Pallet<T>);
 pub trait Config: AvatarsConfig + pallet_nfts::Config + pallet_balances::Config {}
@@ -56,7 +57,7 @@ type NftCollectionConfigOf<T> =
 		<<T as pallet_nfts::Config>::Currency as Currency<
 			<T as frame_system::Config>::AccountId,
 		>>::Balance,
-		<T as frame_system::Config>::BlockNumber,
+		BlockNumberFor<T>,
 		<T as pallet_nfts::Config>::CollectionId,
 	>;
 
@@ -81,9 +82,9 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 			Season {
 				name: [u8::MAX; 100].to_vec().try_into().unwrap(),
 				description: [u8::MAX; 1_000].to_vec().try_into().unwrap(),
-				early_start: T::BlockNumber::from((i * 10 + 1) as u32),
-				start: T::BlockNumber::from((i * 10 + 5) as u32),
-				end: T::BlockNumber::from((i * 10 + 10) as u32),
+				early_start: BlockNumberFor::<T>::from((i * 10 + 1) as u32),
+				start: BlockNumberFor::<T>::from((i * 10 + 5) as u32),
+				end: BlockNumberFor::<T>::from((i * 10 + 10) as u32),
 				max_tier_forges: u32::MAX,
 				max_variations: 15,
 				max_components: 16,
@@ -102,7 +103,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 				single_mint_probs: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 				batch_mint_probs: vec![40, 30, 15, 10, 5].try_into().unwrap(),
 				base_prob: 0,
-				per_period: T::BlockNumber::from(10_u32),
+				per_period: BlockNumberFor::<T>::from(10_u32),
 				periods: 12,
 				trade_filters: BoundedVec::default(),
 				fee: Fee {
@@ -425,9 +426,9 @@ benchmarks! {
 		let season = Season {
 			name: [u8::MAX; 100].to_vec().try_into().unwrap(),
 			description: [u8::MAX; 1_000].to_vec().try_into().unwrap(),
-			early_start: T::BlockNumber::from(u32::MAX - 2),
-			start: T::BlockNumber::from(u32::MAX - 1),
-			end: T::BlockNumber::from(u32::MAX),
+			early_start: BlockNumberFor::<T>::from(u32::MAX - 2),
+			start: BlockNumberFor::<T>::from(u32::MAX - 1),
+			end: BlockNumberFor::<T>::from(u32::MAX),
 			max_tier_forges: u32::MAX,
 			max_variations: 15,
 			max_components: 16,
@@ -446,7 +447,7 @@ benchmarks! {
 			single_mint_probs: vec![70, 20, 5, 4, 1].try_into().unwrap(),
 			batch_mint_probs: vec![40, 30, 15, 10, 5].try_into().unwrap(),
 			base_prob: 99,
-			per_period: T::BlockNumber::from(1_u32),
+			per_period: BlockNumberFor::<T>::from(1_u32),
 			periods: u16::MAX,
 			trade_filters: BoundedVec::default(),
 			fee: Fee {
@@ -476,7 +477,7 @@ benchmarks! {
 		let config = GlobalConfig {
 			mint: MintConfig {
 				open: true,
-				cooldown: T::BlockNumber::from(u32::MAX),
+				cooldown: BlockNumberFor::<T>::from(u32::MAX),
 				free_mint_fee_multiplier: MintCount::MAX,
 			},
 			forge: ForgeConfig { open: true },

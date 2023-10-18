@@ -3,7 +3,7 @@ use crate::{
 	types::{Avatar, Dna, DnaEncoding, SeasonId, SoulCount},
 	ByteConvertible, Config, Force, Ranged, RarityTier,
 };
-//use frame_support::traits::Len;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::{traits::Hash, SaturatedConversion};
 use sp_std::{
 	cmp::Ordering,
@@ -1246,7 +1246,7 @@ impl DnaUtils {
 	pub fn current_period<T: Config>(
 		current_phase: u32,
 		total_phases: u32,
-		block_number: T::BlockNumber,
+		block_number: BlockNumberFor<T>,
 	) -> u32 {
 		block_number
 			.div(current_phase.into())
