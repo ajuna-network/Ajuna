@@ -24,7 +24,6 @@ sc-consensus-aura       = { workspace = true }
 sc-consensus-grandpa    = { workspace = true }
 sc-executor             = { workspace = true }
 sc-keystore             = { workspace = true }
-sc-network              = { workspace = true }
 sc-offchain             = { workspace = true }
 sc-service              = { workspace = true }
 sc-telemetry            = { workspace = true }
@@ -38,6 +37,7 @@ sp-runtime              = { workspace = true }
 sp-timestamp            = { workspace = true }
 
 pallet-transaction-payment-rpc = { workspace = true, optional = true }
+sc-network                     = { workspace = true, optional = true }
 sc-network-sync                = { workspace = true, optional = true }
 sc-rpc                         = { workspace = true, optional = true }
 sc-sysinfo                     = { workspace = true, optional = true }
@@ -84,6 +84,7 @@ ajuna = [ "ajuna-runtime", "para" ]
 bajun = [ "bajun-runtime", "para" ]
 para = [
     "pallet-transaction-payment-rpc",
+    "sc-network",
     "sc-network-sync",
     "sc-rpc",
     "sc-sysinfo",

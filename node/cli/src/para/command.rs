@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #![allow(deprecated)]
+#![allow(unreachable_code)]
 
 use crate::para::cli::{Cli, RelayChainCli, Subcommand};
 use ajuna_primitives::Block;
@@ -233,7 +234,6 @@ pub fn run() -> Result<()> {
 					return cmd.run::<Block>(&*config.chain_spec, &*partials.client)
 				}
 				#[cfg(feature = "bajun")]
-				#[allow(unreachable_code)]
 				{
 					let partials =
 						service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&config)?;
