@@ -99,7 +99,7 @@ std = [
     "parity-scale-codec/std",
     "log/std",
     "scale-info/std",
-    "serde",
+    "serde/std",
     "ajuna-primitives/std",
     "cumulus-pallet-aura-ext/std",
     "cumulus-pallet-dmp-queue/std",
