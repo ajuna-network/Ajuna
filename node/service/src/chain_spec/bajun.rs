@@ -21,11 +21,11 @@ use sc_service::ChainType;
 use sp_core::sr25519;
 use sp_runtime::traits::Zero;
 
-pub type ChainSpec = sc_service::GenericChainSpec<bajun_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<bajun_runtime::RuntimeGenesisConfig, Extensions>;
 
 const SS58_FORMAT: u32 = 1337;
 const PARA_ID: u32 = 2119;
-const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
+const SAFE_XCM_VERSION: u32 = staging_xcm::prelude::XCM_VERSION;
 
 pub fn development_config() -> ChainSpec {
 	let mut properties = sc_chain_spec::Properties::new();
@@ -126,12 +126,13 @@ pub fn local_testnet_config() -> ChainSpec {
 fn testnet_genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
 	endowed_accounts: Vec<AccountId>,
-) -> bajun_runtime::GenesisConfig {
-	bajun_runtime::GenesisConfig {
+) -> bajun_runtime::RuntimeGenesisConfig {
+	bajun_runtime::RuntimeGenesisConfig {
 		system: bajun_runtime::SystemConfig {
 			code: bajun_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
+			..Default::default()
 		},
 		balances: bajun_runtime::BalancesConfig {
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
@@ -144,7 +145,10 @@ fn testnet_genesis(
 		council: bajun_runtime::CouncilConfig::default(),
 		council_membership: Default::default(),
 		treasury: Default::default(),
-		parachain_info: bajun_runtime::ParachainInfoConfig { parachain_id: PARA_ID.into() },
+		parachain_info: bajun_runtime::ParachainInfoConfig {
+			parachain_id: PARA_ID.into(),
+			..Default::default()
+		},
 		collator_selection: bajun_runtime::CollatorSelectionConfig {
 			invulnerables: invulnerables.iter().cloned().map(|(acc, _)| acc).collect(),
 			candidacy_bond: Zero::zero(),
@@ -167,7 +171,10 @@ fn testnet_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
-		polkadot_xcm: bajun_runtime::PolkadotXcmConfig { safe_xcm_version: Some(SAFE_XCM_VERSION) },
+		polkadot_xcm: bajun_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+			..Default::default()
+		},
 		awesome_avatars: Default::default(),
 	}
 }

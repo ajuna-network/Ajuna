@@ -14,31 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#![allow(deprecated)]
+
 use crate::para::cli::{Cli, RelayChainCli, Subcommand};
+use ajuna_primitives::Block;
 #[cfg(feature = "ajuna")]
 use ajuna_service::{
-	ajuna_runtime::{self, Block as AjunaBlock, RuntimeApi as AjunaRuntimeApi},
+	ajuna_runtime::{Block as AjunaBlock, RuntimeApi as AjunaRuntimeApi},
 	para::AjunaRuntimeExecutor,
 };
 #[cfg(feature = "bajun")]
 use ajuna_service::{
-	bajun_runtime::{self, Block as BajunBlock, RuntimeApi as BajunRuntimeApi},
+	bajun_runtime::{Block as BajunBlock, RuntimeApi as BajunRuntimeApi},
 	para::BajunRuntimeExecutor,
 };
 use ajuna_service::{chain_spec, para as service};
-use codec::Encode;
-use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
-use log::{info, warn};
+use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
-	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+	NetworkParams, Result, SharedParams, SubstrateCli,
 };
 use sc_service::config::{BasePath, PrometheusConfig};
-use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::traits::{AccountIdConversion, Block as BlockT};
-use std::{net::SocketAddr, path::PathBuf};
+use sp_runtime::traits::AccountIdConversion;
+use std::path::PathBuf;
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	if cfg!(feature = "bajun") {
@@ -102,19 +102,6 @@ impl SubstrateCli for Cli {
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		load_spec(id)
 	}
-
-	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		#[cfg(feature = "ajuna")]
-		if cfg!(feature = "ajuna") {
-			return &ajuna_runtime::VERSION
-		}
-		#[cfg(feature = "bajun")]
-		{
-			&bajun_runtime::VERSION
-		}
-		#[cfg(not(feature = "bajun"))]
-		panic!("No runtime feature (bajun, ajuna) is enabled")
-	}
 }
 
 impl SubstrateCli for RelayChainCli {
@@ -148,10 +135,6 @@ impl SubstrateCli for RelayChainCli {
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
-	}
-
-	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		polkadot_cli::Cli::native_runtime_version(chain_spec)
 	}
 }
 
@@ -242,18 +225,23 @@ pub fn run() -> Result<()> {
 		},
 		Some(Subcommand::ExportGenesisState(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
-			let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
-			let state_version = Cli::native_runtime_version(&spec).state_version();
-			#[cfg(feature = "ajuna")]
-			if cfg!(feature = "ajuna") {
-				return runner.sync_run(|_config| cmd.run::<AjunaBlock>(&*spec, state_version))
-			}
-			#[cfg(feature = "bajun")]
-			{
-				runner.sync_run(|_config| cmd.run::<BajunBlock>(&*spec, state_version))
-			}
-			#[cfg(not(feature = "bajun"))]
-			panic!("No runtime feature (bajun, ajuna) is enabled")
+			runner.sync_run(|config| {
+				#[cfg(feature = "ajuna")]
+				{
+					let partials =
+						service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor>(&config)?;
+					return cmd.run::<Block>(&*config.chain_spec, &*partials.client)
+				}
+				#[cfg(feature = "bajun")]
+				#[allow(unreachable_code)]
+				{
+					let partials =
+						service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&config)?;
+					cmd.run::<Block>(&*config.chain_spec, &*partials.client)
+				}
+				#[cfg(not(feature = "bajun"))]
+				panic!("No runtime feature (bajun, ajuna) is enabled")
+			})
 		},
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
@@ -270,13 +258,11 @@ pub fn run() -> Result<()> {
 					if cfg!(feature = "runtime-benchmarks") {
 						match &runner.config().chain_spec {
 							#[cfg(feature = "ajuna")]
-							spec if spec.id().starts_with("ajuna") => runner.sync_run(|config| {
-								cmd.run::<AjunaBlock, AjunaRuntimeExecutor>(config)
-							}),
+							spec if spec.id().starts_with("ajuna") =>
+								runner.sync_run(|config| cmd.run::<AjunaBlock, ()>(config)),
 							#[cfg(feature = "bajun")]
-							spec if spec.id().starts_with("bajun") => runner.sync_run(|config| {
-								cmd.run::<BajunBlock, BajunRuntimeExecutor>(config)
-							}),
+							spec if spec.id().starts_with("bajun") =>
+								runner.sync_run(|config| cmd.run::<BajunBlock, ()>(config)),
 							_ => panic!("No runtime feature (bajun, ajuna) is enabled"),
 						}
 					} else {
@@ -381,28 +367,9 @@ pub fn run() -> Result<()> {
 				let id = ParaId::from(para_id);
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(&id);
-
-				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
-
-				let genesis_state = match &config.chain_spec {
-					#[cfg(feature = "ajuna")]
-					spec if spec.id().starts_with("ajuna") => {
-						let block: AjunaBlock =
-							generate_genesis_block(&*config.chain_spec, state_version)
-								.map_err(|e| format!("{:?}", e))?;
-						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
-					},
-
-					#[cfg(feature = "bajun")]
-					spec if spec.id().starts_with("bajun") => {
-						let block: BajunBlock =
-							generate_genesis_block(&*config.chain_spec, state_version)
-								.map_err(|e| format!("{:?}", e))?;
-						format!("0x{:?}", HexDisplay::from(&block.header().encode()))
-					},
-					_ => panic!("No runtime feature (bajun, ajuna) is enabled"),
-				};
+					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(
+						&id,
+					);
 
 				let tokio_handle = config.tokio_handle.clone();
 				let polkadot_config =
@@ -411,12 +378,7 @@ pub fn run() -> Result<()> {
 
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
-				info!("Parachain genesis state: {}", genesis_state);
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
-
-				if !collator_options.relay_chain_rpc_urls.is_empty() && cli.relay_chain_args.is_empty() {
-					warn!("Detected relay chain node arguments together with --relay-chain-rpc-url. This command starts a minimal Polkadot node that only uses a network-related subset of all relay chain CLI options.");
-				}
 
 				match &config.chain_spec {
 					#[cfg(feature = "ajuna")]
@@ -455,12 +417,8 @@ impl DefaultConfigurationValues for RelayChainCli {
 		30334
 	}
 
-	fn rpc_ws_listen_port() -> u16 {
+	fn rpc_listen_port() -> u16 {
 		9945
-	}
-
-	fn rpc_http_listen_port() -> u16 {
-		9934
 	}
 
 	fn prometheus_listen_port() -> u16 {
@@ -490,18 +448,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 			.shared_params()
 			.base_path()?
 			.or_else(|| self.base_path.clone().map(Into::into)))
-	}
-
-	fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_http(default_listen_port)
-	}
-
-	fn rpc_ipc(&self) -> Result<Option<String>> {
-		self.base.base.rpc_ipc()
-	}
-
-	fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_ws(default_listen_port)
 	}
 
 	fn prometheus_config(
@@ -545,10 +491,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 
 	fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
 		self.base.base.rpc_methods()
-	}
-
-	fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
-		self.base.base.rpc_ws_max_connections()
 	}
 
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {

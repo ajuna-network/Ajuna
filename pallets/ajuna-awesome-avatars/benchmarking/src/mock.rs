@@ -16,39 +16,31 @@
 
 #![cfg(test)]
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::TypeInfo,
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
 	PalletId,
 };
-use frame_system::{
-	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot, EnsureSigned,
-};
+use frame_system::{EnsureRoot, EnsureSigned};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_runtime::{
-	testing::{Header, H256},
+	testing::H256,
 	traits::{BlakeTwo256, Get, IdentifyAccount, IdentityLookup, Verify},
-	MultiSignature,
+	BuildStorage, MultiSignature,
 };
 
 pub type MockSignature = MultiSignature;
 pub type MockAccountPublic = <MockSignature as Verify>::Signer;
 pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
-pub type MockBlockNumber = u64;
+pub type MockBlock = frame_system::mocking::MockBlock<Runtime>;
 pub type MockBalance = u64;
-pub type MockIndex = u64;
 pub type MockCollectionId = u32;
 
 impl crate::Config for Runtime {}
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = MockBlock<Runtime>,
-		NodeBlock = MockBlock<Runtime>,
-		UncheckedExtrinsic = MockUncheckedExtrinsic<Runtime>,
-	{
+	pub struct Runtime {
 		System: frame_system,
 		Balances: pallet_balances,
 		Randomness: pallet_insecure_randomness_collective_flip,
@@ -65,13 +57,10 @@ impl frame_system::Config for Runtime {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = MockIndex;
-	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = MockAccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -83,6 +72,8 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = ConstU16<42>;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type Nonce = u32;
+	type Block = MockBlock;
 }
 
 parameter_types! {
@@ -99,10 +90,10 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
@@ -213,6 +204,6 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let t = frame_system::GenesisConfig::default().build_storage::<Runtime>().unwrap();
+	let t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
 	sp_io::TestExternalities::new(t)
 }

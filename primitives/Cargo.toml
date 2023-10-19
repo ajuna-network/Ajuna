@@ -8,12 +8,21 @@ repository.workspace = true
 version.workspace    = true
 
 [dependencies]
-sp-core    = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+# Substrate
+parachains-common   = { workspace = true }
+sp-core             = { workspace = true }
+sp-runtime          = { workspace = true }
+staging-xcm-builder = { workspace = true }
 
 [features]
 default = [ "std" ]
 std = [
+    "parachains-common/std",
     "sp-core/std",
     "sp-runtime/std",
+    "staging-xcm-builder/std",
+]
+runtime-benchmarks = [
+    "sp-runtime/runtime-benchmarks",
+    "staging-xcm-builder/runtime-benchmarks",
 ]

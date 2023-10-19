@@ -38,8 +38,10 @@ pub mod governance {
 }
 
 pub mod proxy {
-	use codec::{Decode, Encode};
-	use frame_support::{pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebug};
+	use frame_support::{
+		pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebugNoBound,
+	};
+	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
 
 	/// Proxy type enum lists the type of calls that are supported by the proxy
@@ -54,7 +56,7 @@ pub mod proxy {
 		MaxEncodedLen,
 		Decode,
 		Encode,
-		RuntimeDebug,
+		RuntimeDebugNoBound,
 		TypeInfo,
 	)]
 	pub enum ProxyType {

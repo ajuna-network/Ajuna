@@ -240,7 +240,7 @@ impl<T: Config> ForgerV1<T> {
 	fn forge_probability(
 		target: &Avatar,
 		season: &SeasonOf<T>,
-		now: &T::BlockNumber,
+		now: &BlockNumberFor<T>,
 		matches: u8,
 	) -> u8 {
 		let period_multiplier = Self::forge_multiplier(target, season, now);
@@ -250,7 +250,7 @@ impl<T: Config> ForgerV1<T> {
 				period_multiplier
 	}
 
-	fn forge_multiplier(target: &Avatar, season: &SeasonOf<T>, now: &T::BlockNumber) -> u8 {
+	fn forge_multiplier(target: &Avatar, season: &SeasonOf<T>, now: &BlockNumberFor<T>) -> u8 {
 		let current_period = season.current_period(now).saturating_add(1);
 		let last_variation = AttributeMapperV1::force(target) as u16;
 		let max_variations = season.max_variations as u16;

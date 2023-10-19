@@ -8,16 +8,19 @@ repository.workspace = true
 version.workspace    = true
 
 [dependencies]
-ajuna-primitives = { path = "../primitives" }
+# General
+jsonrpsee = { workspace = true, features = [ "server" ] }
 
-jsonrpsee = { version = "0.16.2", features = [ "server" ] }
+# Substrate
+pallet-transaction-payment-rpc = { workspace = true }
+sc-client-api                  = { workspace = true }
+sc-rpc                         = { workspace = true }
+sc-rpc-api                     = { workspace = true }
+sc-transaction-pool-api        = { workspace = true }
+sp-api                         = { workspace = true }
+sp-block-builder               = { workspace = true }
+sp-blockchain                  = { workspace = true }
+substrate-frame-rpc-system     = { workspace = true }
 
-pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sc-client-api                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sc-rpc                         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sc-rpc-api                     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sc-transaction-pool-api        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-api                         = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-block-builder               = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-blockchain                  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-substrate-frame-rpc-system     = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+# Ajuna
+ajuna-primitives = { workspace = true }

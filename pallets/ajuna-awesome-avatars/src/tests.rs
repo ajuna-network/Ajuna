@@ -933,7 +933,7 @@ mod minting {
 			.mint_fee(fees.clone());
 		let season_2 = Season::default().early_start(23).start(35).end(40).max_components(17);
 
-		let expected_nonce_increment = 1 as MockIndex;
+		let expected_nonce_increment = 1 as MockNonce;
 		let mint_cooldown = 1;
 
 		let mut initial_balance = fees.one + fees.three + fees.six + MockExistentialDeposit::get();
@@ -3175,8 +3175,9 @@ mod account {
 
 mod nft_transfer {
 	use super::*;
-	use frame_support::{bounded_vec, traits::tokens::nonfungibles_v2::Inspect};
+	use frame_support::traits::tokens::nonfungibles_v2::Inspect;
 	use pallet_ajuna_nft_transfer::traits::NftConvertible;
+	use sp_runtime::bounded_vec;
 
 	#[test]
 	fn set_collection_id_works() {

@@ -121,7 +121,7 @@ pub mod pallet {
 
 		type Currency: Currency<Self::AccountId>;
 
-		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+		type Randomness: Randomness<Self::Hash, BlockNumberFor<Self>>;
 
 		/// The maximum length of an attribute key.
 		#[pallet::constant]
@@ -192,7 +192,7 @@ pub mod pallet {
 		T::AccountId,
 		Identity,
 		SeasonId,
-		PlayerSeasonConfig<T::BlockNumber>,
+		PlayerSeasonConfig<BlockNumberFor<T>>,
 		ValueQuery,
 	>;
 
@@ -215,7 +215,6 @@ pub mod pallet {
 		_phantom: sp_std::marker::PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig { _phantom: Default::default() }
@@ -223,7 +222,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			CurrentSeasonStatus::<T>::put(SeasonStatus {
 				season_id: 1,
@@ -435,8 +434,8 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(now: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
 			let current_season_id = CurrentSeasonStatus::<T>::get().season_id;
 			let mut weight = T::DbWeight::get().reads(1);
 
@@ -1495,7 +1494,7 @@ pub mod pallet {
 
 		fn start_season(
 			weight: &mut Weight,
-			block_number: T::BlockNumber,
+			block_number: BlockNumberFor<T>,
 			season_id: SeasonId,
 			season: &SeasonOf<T>,
 		) {
@@ -1516,7 +1515,11 @@ pub mod pallet {
 			}
 		}
 
-		fn finish_season(weight: &mut Weight, block_number: T::BlockNumber, season_id: SeasonId) {
+		fn finish_season(
+			weight: &mut Weight,
+			block_number: BlockNumberFor<T>,
+			season_id: SeasonId,
+		) {
 			let next_season_id = season_id.saturating_add(1);
 
 			CurrentSeasonStatus::<T>::mutate(|status| {

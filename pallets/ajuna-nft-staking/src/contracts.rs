@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{tokens::nonfungibles_v2::Inspect, ConstU32};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::Get;
 use sp_runtime::BoundedVec;

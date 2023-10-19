@@ -15,20 +15,17 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{self as pallet_ajuna_nft_transfer};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::TypeInfo,
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
 	PalletId,
 };
-use frame_system::{
-	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot, EnsureSigned,
-};
+use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::{PalletFeature, PalletFeatures};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_runtime::{
-	testing::{Header, TestSignature, H256},
+	testing::{TestSignature, H256},
 	traits::{BlakeTwo256, Get, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage,
 };
@@ -36,7 +33,7 @@ use sp_runtime::{
 pub type MockSignature = TestSignature;
 pub type MockAccountPublic = <MockSignature as Verify>::Signer;
 pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
-pub type MockBlockNumber = u64;
+pub type MockBlock = frame_system::mocking::MockBlock<Test>;
 pub type MockBalance = u64;
 pub type MockCollectionId = u32;
 
@@ -45,11 +42,7 @@ pub const BOB: MockAccountId = 2;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = MockBlock<Test>,
-		NodeBlock = MockBlock<Test>,
-		UncheckedExtrinsic = MockUncheckedExtrinsic<Test>,
-	{
+	pub struct Test {
 		System: frame_system,
 		Nft: pallet_nfts,
 		Balances: pallet_balances,
@@ -64,13 +57,10 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = u64;
-	type BlockNumber = MockBlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = MockAccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -82,6 +72,8 @@ impl frame_system::Config for Test {
 	type SS58Prefix = ConstU16<42>;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type Nonce = u32;
+	type Block = MockBlock;
 }
 
 parameter_types! {
@@ -98,10 +90,10 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
+	type RuntimeHoldReason = ();
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]
@@ -208,7 +200,7 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		let config = GenesisConfig {
+		let config = RuntimeGenesisConfig {
 			system: Default::default(),
 			balances: BalancesConfig { balances: self.balances },
 		};
