@@ -13,7 +13,7 @@ async-trait = { workspace = true }
 hex-literal = { workspace = true }
 futures     = { workspace = true }
 jsonrpsee   = { workspace = true, features = [ "server" ] }
-serde       = { workspace = true, features = [ "derive" ] }C
+serde       = { workspace = true, features = [ "derive" ] }
 
 # Parity codec
 parity-scale-codec = { workspace = true }
@@ -86,8 +86,8 @@ bajun-runtime      = { workspace = true, optional = true }
 [features]
 default = [ "solo" ]
 
-ajuna = [ "ajuna-runtime", "para" ]
-bajun = [ "bajun-runtime", "para" ]
+ajuna = [ "ajuna-runtime", "para", "ajuna-runtime/experimental" ]
+bajun = [ "bajun-runtime", "para", "bajun-runtime/experimental" ]
 para = [
     "pallet-transaction-payment-rpc",
     "sc-network",
@@ -106,9 +106,11 @@ para = [
     "polkadot-service/default",
     "staging-xcm",
     "cumulus-client-cli",
+    "cumulus-client-collator",
     "cumulus-client-consensus-aura",
     "cumulus-client-consensus-common",
     "cumulus-client-consensus-proposer",
+    "cumulus-client-consensus-relay-chain",
     "cumulus-client-network",
     "cumulus-client-service",
     "cumulus-primitives-core",

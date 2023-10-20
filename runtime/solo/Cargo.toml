@@ -156,3 +156,5 @@ std = [
     "pallet-ajuna-nft-staking/std",
     "pallet-ajuna-nft-transfer/std",
 ]
+
+experimental = [ "pallet-aura/experimental" ]
