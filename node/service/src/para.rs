@@ -16,32 +16,40 @@
 
 #![allow(deprecated)]
 
-use std::{sync::Arc, time::Duration};
+use std::{marker::PhantomData, sync::Arc, time::Duration};
 
-use ajuna_primitives::{AccountId, Balance, Block, Index as Nonce};
+use ajuna_primitives::{AccountId, Balance, Block, Hash, Index as Nonce};
 use cumulus_client_cli::CollatorOptions;
-use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::{
-	ParachainBlockImport as TParachainBlockImport, ParachainConsensus,
-};
+use cumulus_client_collator::service::CollatorService;
+use cumulus_client_consensus_aura::collators::lookahead::{self as aura, Params as AuraParams};
+use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
+use cumulus_client_consensus_proposer::Proposer;
+use cumulus_client_consensus_relay_chain::Verifier as RelayChainVerifier;
 use cumulus_client_service::{
-	build_network, build_relay_chain_interface, prepare_node_config, start_collator,
-	start_full_node, BuildNetworkParams, CollatorSybilResistance, StartCollatorParams,
-	StartFullNodeParams,
+	build_network, build_relay_chain_interface, prepare_node_config, start_relay_chain_tasks,
+	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartRelayChainTasksParams,
 };
-use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::RelayChainInterface;
+use cumulus_primitives_core::{
+	relay_chain::{CollatorPair, ValidationCode},
+	ParaId,
+};
+use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
+use parity_scale_codec::Codec;
 use sc_client_api::Backend;
-use sc_consensus::ImportQueue;
+use sc_consensus::{
+	import_queue::{BasicQueue, Verifier as VerifierT},
+	BlockImportParams, ImportQueue,
+};
 use sc_executor::{
 	HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
 };
-use sc_network::NetworkBlock;
+use sc_network::{config::FullNetworkConfiguration, NetworkBlock};
 use sc_network_sync::SyncingService;
 use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
-use sp_api::ConstructRuntimeApi;
+use sp_api::{ApiExt, ConstructRuntimeApi, HeaderT};
+use sp_consensus_aura::AuraApi;
 use sp_keystore::KeystorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
@@ -91,8 +99,9 @@ type ParachainBlockImport<RuntimeApi, Executor> =
 /// Use this macro if you don't actually need the full service, but just the builder in order to
 /// be able to perform chain operations.
 #[allow(clippy::type_complexity)]
-pub fn new_partial<RuntimeApi, Executor>(
+pub fn new_partial<RuntimeApi, Executor, BIQ>(
 	config: &Configuration,
+	build_import_queue: BIQ,
 ) -> Result<
 	PartialComponents<
 		ParachainClient<RuntimeApi, Executor>,
@@ -123,6 +132,13 @@ where
 		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>,
 	sc_client_api::StateBackendFor<ParachainBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	BIQ: FnOnce(
+		Arc<ParachainClient<RuntimeApi, Executor>>,
+		ParachainBlockImport<RuntimeApi, Executor>,
+		&Configuration,
+		Option<TelemetryHandle>,
+		&TaskManager,
+	) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -195,12 +211,122 @@ where
 	})
 }
 
-/// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
-///
-/// This is the actual implementation that is abstract over the executor and the runtime api.
-#[sc_tracing::logging::prefix_logs_with("Parachain")]
-#[allow(clippy::too_many_arguments)]
-async fn start_node_impl<RuntimeApi, Executor>(
+enum BuildOnAccess<R> {
+	Uninitialized(Option<Box<dyn FnOnce() -> R + Send + Sync>>),
+	Initialized(R),
+}
+
+impl<R> BuildOnAccess<R> {
+	fn get_mut(&mut self) -> &mut R {
+		loop {
+			match self {
+				Self::Uninitialized(f) => {
+					*self = Self::Initialized((f.take().unwrap())());
+				},
+				Self::Initialized(ref mut r) => return r,
+			}
+		}
+	}
+}
+
+struct Verifier<Client, AuraId> {
+	client: Arc<Client>,
+	aura_verifier: BuildOnAccess<Box<dyn VerifierT<Block>>>,
+	relay_chain_verifier: Box<dyn VerifierT<Block>>,
+	_phantom: PhantomData<AuraId>,
+}
+
+#[async_trait::async_trait]
+impl<Client, AuraId> VerifierT<Block> for Verifier<Client, AuraId>
+where
+	Client: sp_api::ProvideRuntimeApi<Block> + Send + Sync,
+	Client::Api: AuraApi<Block, AuraId>,
+	AuraId: Send + Sync + Codec,
+{
+	async fn verify(
+		&mut self,
+		block_import: BlockImportParams<Block>,
+	) -> Result<BlockImportParams<Block>, String> {
+		if self
+			.client
+			.runtime_api()
+			.has_api::<dyn AuraApi<Block, AuraId>>(*block_import.header.parent_hash())
+			.unwrap_or(false)
+		{
+			self.aura_verifier.get_mut().verify(block_import).await
+		} else {
+			self.relay_chain_verifier.verify(block_import).await
+		}
+	}
+}
+
+/// Build the import queue for Aura-based runtimes.
+pub fn aura_build_import_queue<RuntimeApi, Executor>(
+	client: Arc<ParachainClient<RuntimeApi, Executor>>,
+	block_import: ParachainBlockImport<RuntimeApi, Executor>,
+	config: &Configuration,
+	telemetry_handle: Option<TelemetryHandle>,
+	task_manager: &TaskManager,
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>
+where
+	RuntimeApi:
+		ConstructRuntimeApi<Block, ParachainClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::Metadata<Block>
+		+ sp_session::SessionKeys<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
+	let client2 = client.clone();
+
+	let aura_verifier = move || {
+		let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client2).unwrap();
+
+		Box::new(cumulus_client_consensus_aura::build_verifier::<
+			sp_consensus_aura::sr25519::AuthorityPair,
+			_,
+			_,
+			_,
+		>(cumulus_client_consensus_aura::BuildVerifierParams {
+			client: client2.clone(),
+			create_inherent_data_providers: move |_, _| async move {
+				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+				let slot =
+					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+				Ok((slot, timestamp))
+			},
+			telemetry: telemetry_handle,
+		})) as Box<_>
+	};
+
+	let relay_chain_verifier =
+		Box::new(RelayChainVerifier::new(client.clone(), |_, _| async { Ok(()) })) as Box<_>;
+
+	let verifier = Verifier {
+		client,
+		relay_chain_verifier,
+		aura_verifier: BuildOnAccess::Uninitialized(Some(Box::new(aura_verifier))),
+		_phantom: PhantomData,
+	};
+
+	let registry = config.prometheus_registry();
+	let spawner = task_manager.spawn_essential_handle();
+
+	Ok(BasicQueue::new(verifier, Box::new(block_import), None, &spawner, registry))
+}
+
+/// Start an aura powered parachain node which uses the lookahead collator to support async backing.
+/// This node is basic in the sense that its runtime api doesn't include common contents such as
+/// transaction payment. Used for aura glutton.
+pub async fn start_lookahead_parachain_node<RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
@@ -217,22 +343,155 @@ where
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
+		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>
 		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+		+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
+		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
+	start_parachain_lookahead_node_impl::<RuntimeApi, Executor, _, _>(
+		parachain_config,
+		polkadot_config,
+		collator_options,
+		CollatorSybilResistance::Resistant, // Aura
+		para_id,
+		aura_build_import_queue::<RuntimeApi, Executor>,
+		|client,
+		 block_import,
+		 prometheus_registry,
+		 telemetry,
+		 task_manager,
+		 relay_chain_interface,
+		 transaction_pool,
+		 sync_oracle,
+		 keystore,
+		 relay_chain_slot_duration,
+		 para_id,
+		 collator_key,
+		 overseer_handle,
+		 announce_block,
+		 backend| {
+			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool,
+				prometheus_registry,
+				telemetry,
+			);
+			let proposer = Proposer::new(proposer_factory);
+
+			let collator_service = CollatorService::new(
+				client.clone(),
+				Arc::new(task_manager.spawn_handle()),
+				announce_block,
+				client.clone(),
+			);
+
+			let params = AuraParams {
+				create_inherent_data_providers: move |_, ()| async move { Ok(()) },
+				block_import,
+				para_client: client.clone(),
+				para_backend: backend,
+				relay_client: relay_chain_interface,
+				code_hash_provider: move |block_hash| {
+					client.code_at(block_hash).ok().map(ValidationCode).map(|c| c.hash())
+				},
+				sync_oracle,
+				keystore,
+				collator_key,
+				para_id,
+				overseer_handle,
+				slot_duration,
+				relay_chain_slot_duration,
+				proposer,
+				collator_service,
+				authoring_duration: Duration::from_millis(1500),
+			};
+
+			let fut = aura::run::<
+				Block,
+				sp_consensus_aura::sr25519::AuthorityPair,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+			>(params);
+			task_manager.spawn_essential_handle().spawn("aura", None, fut);
+
+			Ok(())
+		},
+		hwbench,
+	)
+	.await
+}
+
+/// Start a parachain node, with lookahead implementation.
+#[sc_tracing::logging::prefix_logs_with("Parachain")]
+async fn start_parachain_lookahead_node_impl<RuntimeApi, Executor, BIQ, SC>(
+	parachain_config: Configuration,
+	polkadot_config: Configuration,
+	collator_options: CollatorOptions,
+	sybil_resistance_level: CollatorSybilResistance,
+	para_id: ParaId,
+	build_import_queue: BIQ,
+	start_consensus: SC,
+	hwbench: Option<sc_sysinfo::HwBench>,
+) -> sc_service::error::Result<(TaskManager, Arc<ParachainClient<RuntimeApi, Executor>>)>
+where
+	RuntimeApi:
+		ConstructRuntimeApi<Block, ParachainClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::Metadata<Block>
+		+ sp_session::SessionKeys<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ cumulus_primitives_core::CollectCollationInfo<Block>
+		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
 		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>,
-	sc_client_api::StateBackendFor<ParachainBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
+	BIQ: FnOnce(
+		Arc<ParachainClient<RuntimeApi, Executor>>,
+		ParachainBlockImport<RuntimeApi, Executor>,
+		&Configuration,
+		Option<TelemetryHandle>,
+		&TaskManager,
+	) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>,
+	SC: FnOnce(
+		Arc<ParachainClient<RuntimeApi, Executor>>,
+		ParachainBlockImport<RuntimeApi, Executor>,
+		Option<&Registry>,
+		Option<TelemetryHandle>,
+		&TaskManager,
+		Arc<dyn RelayChainInterface>,
+		Arc<sc_transaction_pool::FullPool<Block, ParachainClient<RuntimeApi, Executor>>>,
+		Arc<SyncingService<Block>>,
+		KeystorePtr,
+		Duration,
+		ParaId,
+		CollatorPair,
+		OverseerHandle,
+		Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
+		Arc<ParachainBackend>,
+	) -> Result<(), sc_service::Error>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
-	let params = new_partial::<RuntimeApi, Executor>(&parachain_config)?;
+	let params = new_partial::<RuntimeApi, Executor, BIQ>(&parachain_config, build_import_queue)?;
 	let (block_import, mut telemetry, telemetry_worker_handle) = params.other;
-	let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
-	let mut task_manager = params.task_manager;
 
+	let mut task_manager = params.task_manager;
 	let (relay_chain_interface, collator_key) = build_relay_chain_interface(
 		polkadot_config,
 		&parachain_config,
@@ -244,11 +503,11 @@ where
 	.await
 	.map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
 
-	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue_service = params.import_queue.service();
+	let net_config = FullNetworkConfiguration::new(&parachain_config.network);
 
 	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		build_network(BuildNetworkParams {
@@ -260,7 +519,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			relay_chain_interface: relay_chain_interface.clone(),
 			import_queue: params.import_queue,
-			sybil_resistance_level: CollatorSybilResistance::Resistant,
+			sybil_resistance_level,
 		})
 		.await?;
 
@@ -309,8 +568,8 @@ where
 		task_manager: &mut task_manager,
 		config: parachain_config,
 		keystore: params.keystore_container.keystore(),
-		backend,
-		network: network.clone(),
+		backend: backend.clone(),
+		network,
 		sync_service: sync_service.clone(),
 		system_rpc_tx,
 		tx_handler_controller,
@@ -341,8 +600,25 @@ where
 		.overseer_handle()
 		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
 
+	start_relay_chain_tasks(StartRelayChainTasksParams {
+		client: client.clone(),
+		announce_block: announce_block.clone(),
+		para_id,
+		relay_chain_interface: relay_chain_interface.clone(),
+		task_manager: &mut task_manager,
+		da_recovery_profile: if validator {
+			DARecoveryProfile::Collator
+		} else {
+			DARecoveryProfile::FullNode
+		},
+		import_queue: import_queue_service,
+		relay_chain_slot_duration,
+		recovery_handle: Box::new(overseer_handle.clone()),
+		sync_service: sync_service.clone(),
+	})?;
+
 	if validator {
-		let parachain_consensus = build_consensus(
+		start_consensus(
 			client.clone(),
 			block_import,
 			prometheus_registry.as_ref(),
@@ -350,219 +626,18 @@ where
 			&task_manager,
 			relay_chain_interface.clone(),
 			transaction_pool,
-			sync_service.clone(),
+			sync_service,
 			params.keystore_container.keystore(),
-			force_authoring,
+			relay_chain_slot_duration,
 			para_id,
+			collator_key.expect("Command line arguments do not allow this. qed"),
+			overseer_handle,
+			announce_block,
+			backend.clone(),
 		)?;
-
-		let spawner = task_manager.spawn_handle();
-		let params = StartCollatorParams {
-			para_id,
-			block_status: client.clone(),
-			announce_block,
-			client: client.clone(),
-			task_manager: &mut task_manager,
-			relay_chain_interface,
-			spawner,
-			parachain_consensus,
-			import_queue: import_queue_service,
-			collator_key: collator_key.expect("Command line arguments do not allow this. qed"),
-			relay_chain_slot_duration,
-			recovery_handle: Box::new(overseer_handle),
-			sync_service,
-		};
-
-		start_collator(params).await?;
-	} else {
-		let params = StartFullNodeParams {
-			client: client.clone(),
-			announce_block,
-			task_manager: &mut task_manager,
-			para_id,
-			relay_chain_interface,
-			relay_chain_slot_duration,
-			import_queue: import_queue_service,
-			recovery_handle: Box::new(overseer_handle),
-			sync_service,
-		};
-
-		start_full_node(params)?;
 	}
 
 	start_network.start_network();
 
 	Ok((task_manager, client))
-}
-
-/// Build the import queue for the parachain runtime.
-pub fn build_import_queue<RuntimeApi, Executor>(
-	client: Arc<ParachainClient<RuntimeApi, Executor>>,
-	block_import: ParachainBlockImport<RuntimeApi, Executor>,
-	config: &Configuration,
-	telemetry: Option<TelemetryHandle>,
-	task_manager: &TaskManager,
-) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>
-where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, ParachainClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
-		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
-{
-	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
-	cumulus_client_consensus_aura::import_queue::<
-		sp_consensus_aura::sr25519::AuthorityPair,
-		_,
-		_,
-		_,
-		_,
-		_,
-	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import,
-		client,
-		create_inherent_data_providers: move |_, _| async move {
-			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-
-			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-					*timestamp,
-					slot_duration,
-				);
-
-			Ok((slot, timestamp))
-		},
-		registry: config.prometheus_registry(),
-		spawner: &task_manager.spawn_essential_handle(),
-		telemetry,
-	})
-	.map_err(Into::into)
-}
-
-fn build_consensus<RuntimeApi, Executor>(
-	client: Arc<ParachainClient<RuntimeApi, Executor>>,
-	block_import: ParachainBlockImport<RuntimeApi, Executor>,
-	prometheus_registry: Option<&Registry>,
-	telemetry: Option<TelemetryHandle>,
-	task_manager: &TaskManager,
-	relay_chain_interface: Arc<dyn RelayChainInterface>,
-	transaction_pool: Arc<
-		sc_transaction_pool::FullPool<Block, ParachainClient<RuntimeApi, Executor>>,
-	>,
-	sync_oracle: Arc<SyncingService<Block>>,
-	keystore: KeystorePtr,
-	force_authoring: bool,
-	para_id: ParaId,
-) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>
-where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, ParachainClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
-		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
-{
-	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
-	let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
-		task_manager.spawn_handle(),
-		client.clone(),
-		transaction_pool,
-		prometheus_registry,
-		telemetry.clone(),
-	);
-
-	let params = BuildAuraConsensusParams {
-		proposer_factory,
-		create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
-			let relay_chain_interface = relay_chain_interface.clone();
-			async move {
-				let parachain_inherent =
-					cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
-						relay_parent,
-						&relay_chain_interface,
-						&validation_data,
-						para_id,
-					)
-					.await;
-				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-
-				let slot =
-					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						*timestamp,
-						slot_duration,
-					);
-
-				let parachain_inherent = parachain_inherent.ok_or_else(|| {
-					Box::<dyn std::error::Error + Send + Sync>::from(
-						"Failed to create parachain inherent",
-					)
-				})?;
-				Ok((slot, timestamp, parachain_inherent))
-			}
-		},
-		block_import,
-		para_client: client,
-		backoff_authoring_blocks: Option::<()>::None,
-		sync_oracle,
-		keystore,
-		force_authoring,
-		slot_duration,
-		// We got around 500ms for proposing
-		block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
-		// And a maximum of 750ms if slots are skipped
-		max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-		telemetry,
-	};
-
-	Ok(AuraConsensus::build::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(params))
-}
-
-/// Start a parachain node.
-pub async fn start_parachain_node<RuntimeApi, Executor>(
-	parachain_config: Configuration,
-	polkadot_config: Configuration,
-	collator_options: CollatorOptions,
-	para_id: ParaId,
-	hwbench: Option<sc_sysinfo::HwBench>,
-) -> sc_service::error::Result<(TaskManager, Arc<ParachainClient<RuntimeApi, Executor>>)>
-where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, ParachainClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
-		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-		+ sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
-{
-	start_node_impl::<RuntimeApi, Executor>(
-		parachain_config,
-		polkadot_config,
-		collator_options,
-		para_id,
-		hwbench,
-	)
-	.await
 }
