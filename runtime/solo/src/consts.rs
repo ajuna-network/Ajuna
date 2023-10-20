@@ -34,14 +34,14 @@ pub mod time {
 	/// up by `pallet_aura` to implement `fn slot_duration()`.
 	///
 	/// Change this to adjust the block time.
-	pub const BLOCK_TIME_MS: Moment = 6_000;
+	pub const MILLISECS_PER_BLOCK: Moment = 6_000;
 
 	// NOTE: Currently it is not possible to change the slot duration after the chain has started.
 	//       Attempting to do so will brick block production.
-	pub const SLOT_DURATION: Moment = BLOCK_TIME_MS;
+	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
 	// Time is measured by number of blocks.
-	pub const MINUTES: BlockNumber = 60_000 / (BLOCK_TIME_MS as BlockNumber);
+	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 	pub const HOURS: BlockNumber = 60 * MINUTES;
 	pub const DAYS: BlockNumber = 24 * HOURS;
 }
