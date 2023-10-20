@@ -9,10 +9,14 @@ version.workspace    = true
 
 [dependencies]
 # General
+async-trait = { workspace = true }
 hex-literal = { workspace = true }
 futures     = { workspace = true }
 jsonrpsee   = { workspace = true, features = [ "server" ] }
 serde       = { workspace = true, features = [ "derive" ] }
+
+# Parity codec
+parity-scale-codec = { workspace = true }
 
 # Substrate
 frame-benchmarking      = { workspace = true }
@@ -61,9 +65,11 @@ cumulus-client-collator                 = { workspace = true, optional = true }
 cumulus-client-consensus-aura           = { workspace = true, optional = true }
 cumulus-client-consensus-common         = { workspace = true, optional = true }
 cumulus-client-consensus-proposer       = { workspace = true, optional = true }
+cumulus-client-consensus-relay-chain    = { workspace = true, optional = true }
 cumulus-client-network                  = { workspace = true, optional = true }
 cumulus-client-service                  = { workspace = true, optional = true }
 cumulus-primitives-core                 = { workspace = true, optional = true }
+cumulus-primitives-aura                 = { workspace = true, optional = true }
 cumulus-primitives-parachain-inherent   = { workspace = true, optional = true }
 cumulus-relay-chain-inprocess-interface = { workspace = true, optional = true }
 cumulus-relay-chain-interface           = { workspace = true, optional = true }
@@ -80,8 +86,8 @@ bajun-runtime      = { workspace = true, optional = true }
 [features]
 default = [ "solo" ]
 
-ajuna = [ "ajuna-runtime", "para" ]
-bajun = [ "bajun-runtime", "para" ]
+ajuna = [ "ajuna-runtime", "para", "ajuna-runtime/experimental" ]
+bajun = [ "bajun-runtime", "para", "bajun-runtime/experimental" ]
 para = [
     "pallet-transaction-payment-rpc",
     "sc-network",
@@ -100,19 +106,22 @@ para = [
     "polkadot-service/default",
     "staging-xcm",
     "cumulus-client-cli",
+    "cumulus-client-collator",
     "cumulus-client-consensus-aura",
     "cumulus-client-consensus-common",
     "cumulus-client-consensus-proposer",
+    "cumulus-client-consensus-relay-chain",
     "cumulus-client-network",
     "cumulus-client-service",
     "cumulus-primitives-core",
+    "cumulus-primitives-aura",
     "cumulus-primitives-parachain-inherent",
     "cumulus-relay-chain-inprocess-interface",
     "cumulus-relay-chain-interface",
     "cumulus-relay-chain-minimal-node",
     "cumulus-relay-chain-rpc-interface",
 ]
-solo = [ "ajuna-solo-runtime" ]
+solo = [ "ajuna-solo-runtime", "sc-network" ]
 
 kusama-native   = [ "polkadot-service/kusama-native" ]
 polkadot-native = [ "polkadot-service/polkadot-native" ]

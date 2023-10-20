@@ -144,10 +144,16 @@ macro_rules! construct_async_run {
 		let runner = $cli.create_runner($cmd)?;
 		runner.async_run(|$config| {
 			#[cfg(feature = "bajun")]
-            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&$config)?;
+            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
+				&$config,
+				service::aura_build_import_queue::<BajunRuntimeApi, BajunRuntimeExecutor>
+			)?;
 
 			#[cfg(feature = "ajuna")]
-            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor>(&$config)?;
+            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+				&$config,
+				service::aura_build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>
+			)?;
 
             let task_manager = $components.task_manager;
             { $( $code )* }.map(|v| (v, task_manager))
@@ -160,10 +166,16 @@ macro_rules! construct_sync_run {
 		let runner = $cli.create_runner($cmd)?;
 		runner.sync_run(|$config| {
 			#[cfg(feature = "bajun")]
-            let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&$config)?;
+			let $components = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
+				&$config,
+				service::aura_build_import_queue::<BajunRuntimeApi, BajunRuntimeExecutor>
+			)?;
 
 			#[cfg(feature = "ajuna")]
-            let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor>(&$config)?;
+			let $components = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+				&$config,
+				service::aura_build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>
+			)?;
 
             { $( $code )* }
 		})
@@ -229,14 +241,18 @@ pub fn run() -> Result<()> {
 			runner.sync_run(|config| {
 				#[cfg(feature = "ajuna")]
 				{
-					let partials =
-						service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor>(&config)?;
+					let partials = service::new_partial::<AjunaRuntimeApi, AjunaRuntimeExecutor, _>(
+						&config,
+						service::aura_build_import_queue::<AjunaRuntimeApi, AjunaRuntimeExecutor>,
+					)?;
 					return cmd.run::<Block>(&*config.chain_spec, &*partials.client)
 				}
 				#[cfg(feature = "bajun")]
 				{
-					let partials =
-						service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor>(&config)?;
+					let partials = service::new_partial::<BajunRuntimeApi, BajunRuntimeExecutor, _>(
+						&config,
+						service::aura_build_import_queue::<BajunRuntimeApi, BajunRuntimeExecutor>,
+					)?;
 					cmd.run::<Block>(&*config.chain_spec, &*partials.client)
 				}
 				#[cfg(not(feature = "bajun"))]
@@ -383,25 +399,19 @@ pub fn run() -> Result<()> {
 				match &config.chain_spec {
 					#[cfg(feature = "ajuna")]
 					spec if spec.id().starts_with("ajuna") =>
-						service::start_parachain_node::<AjunaRuntimeApi, AjunaRuntimeExecutor>(
-							config,
-							polkadot_config,
-							collator_options,
-							id,
-							hwbench,
-						)
+						service::start_lookahead_parachain_node::<
+							AjunaRuntimeApi,
+							AjunaRuntimeExecutor,
+						>(config, polkadot_config, collator_options, id, hwbench)
 						.await
 						.map(|r| r.0)
 						.map_err(Into::into),
 					#[cfg(feature = "bajun")]
 					spec if spec.id().starts_with("bajun") =>
-						service::start_parachain_node::<BajunRuntimeApi, BajunRuntimeExecutor>(
-							config,
-							polkadot_config,
-							collator_options,
-							id,
-							hwbench,
-						)
+						service::start_lookahead_parachain_node::<
+							BajunRuntimeApi,
+							BajunRuntimeExecutor,
+						>(config, polkadot_config, collator_options, id, hwbench)
 						.await
 						.map(|r| r.0)
 						.map_err(Into::into),
