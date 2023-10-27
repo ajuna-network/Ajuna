@@ -372,6 +372,73 @@ mod test {
 	}
 
 	#[test]
+	fn test_flask_glow_3() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x3F, 0x83, 0x25, 0x3B, 0xA9, 0x24, 0xF2, 0xF6, 0xB5, 0xA9, 0x37, 0x15, 0x25, 0x2C,
+				0x04, 0xFC, 0xEC, 0x45, 0xC1, 0x4D, 0x86, 0xE7, 0x96, 0xE5, 0x20, 0x5D, 0x8B, 0x39,
+				0xB0, 0x54, 0xFB, 0x62,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let hash_base = [
+				[
+					0x41, 0x11, 0x04, 0x01, 0x00, 0x0f, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x40, 0x52, 0x40, 0x55,
+					0x43, 0x44, 0x44, 0x44, 0x45, 0x40,
+				],
+				[
+					0x35, 0x00, 0x04, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x43, 0x43, 0x41, 0x41,
+					0x43, 0x43, 0x43, 0x43, 0x43, 0x42,
+				],
+			];
+
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 623;
+				WrappedAvatar::new(avatar)
+			};
+
+			let leader = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[0]), Some(unit_fn));
+			let sac_1 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[1]), Some(unit_fn));
+
+			let leader_progress_array = leader.1.get_progress();
+			let sacrifice_progress_array = sac_1.1.get_progress();
+
+			let total_soul_points = leader.1.get_souls() + sac_1.1.get_souls();
+
+			assert!(DnaUtils::is_progress_match(
+				leader_progress_array,
+				sacrifice_progress_array,
+				MATCH_ALGO_START_RARITY.as_byte()
+			)
+			.is_some());
+
+			let (leader_output, sacrifice_output) =
+				AvatarCombinator::<Test>::flask_avatars(leader, vec![sac_1], &mut hash_provider)
+					.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert_eq!(avatar.souls, total_soul_points);
+
+				let expected_dna = [
+					0x41, 0x11, 0x04, 0x01, 0x00, 0x0F, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x40, 0x52, 0x50, 0x55,
+					0x43, 0x54, 0x44, 0x44, 0x45, 0x40,
+				];
+				assert_eq!(avatar.dna.as_slice(), &expected_dna);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
 	fn test_flask_fail() {
 		ExtBuilder::default().build().execute_with(|| {
 			let forge_hash = [
