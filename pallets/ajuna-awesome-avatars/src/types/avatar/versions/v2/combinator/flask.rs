@@ -46,13 +46,16 @@ impl<T: Config> AvatarCombinator<T> {
 					leader.set_spec(SpecIdx::Byte2, leader_spec_byte_2 | flask_spec_byte_2);
 				} else if flask_essence_type == EssenceItemType::GlowFlask {
 					leader
-						.set_spec(SpecIdx::Byte2, (leader_spec_byte_2 & 0x0F) | flask_spec_byte_1);
+						.set_spec(SpecIdx::Byte2, (leader_spec_byte_2 & 0x08) | flask_spec_byte_1);
 				}
 
 				let mut index = matches.remove(0) as usize;
 				leader_progress_array[index] += 0x10;
 
-				let glimmer_chance = if glimmer_count > 8 { 8 } else { glimmer_count };
+				let glimmer_chance = {
+					let eff_glimmer_count = if glimmer_count > 8 { 8 } else { glimmer_count };
+					80 + eff_glimmer_count * 15
+				};
 				let matches_count = if matches.len() > MAX_FLASK_PROGRESS {
 					MAX_FLASK_PROGRESS
 				} else {
@@ -60,7 +63,7 @@ impl<T: Config> AvatarCombinator<T> {
 				};
 
 				for i in 0..matches_count {
-					if hash_provider.hash[i + 1] < (80 + glimmer_chance * 15) as u8 {
+					if hash_provider.hash[i + 1] < glimmer_chance as u8 {
 						index = matches.remove(0) as usize;
 						leader_progress_array[index] += 0x10;
 					}
@@ -429,7 +432,7 @@ mod test {
 				let expected_dna = [
 					0x41, 0x11, 0x04, 0x01, 0x00, 0x0F, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x40, 0x52, 0x50, 0x55,
-					0x43, 0x54, 0x44, 0x44, 0x45, 0x40,
+					0x43, 0x54, 0x54, 0x44, 0x45, 0x40,
 				];
 				assert_eq!(avatar.dna.as_slice(), &expected_dna);
 			} else {
