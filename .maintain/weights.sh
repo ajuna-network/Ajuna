@@ -28,7 +28,7 @@ if [ "${RUNTIME}" == "bajun" ]; then
 fi
 
 cd "$(git rev-parse --show-toplevel)" || exit
-cargo build-"${RUNTIME}"-benchmarks
+cargo build-"${RUNTIME}"-benchmarks --features "experimental"
 
 for PALLET in "${PALLETS[@]}"; do
   ./target/release/"${RUNTIME}"-para benchmark pallet \
