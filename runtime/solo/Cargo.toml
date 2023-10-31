@@ -76,7 +76,7 @@ pallet-ajuna-nft-staking     = { workspace = true }
 pallet-ajuna-nft-transfer    = { workspace = true }
 
 [features]
-default = [ "std" ]
+default = [ "std", "experimental" ]
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
