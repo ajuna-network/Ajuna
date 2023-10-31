@@ -89,7 +89,7 @@ orml-vesting = { workspace = true }
 ajuna-primitives = { workspace = true }
 
 [features]
-default = [ "std" ]
+default = [ "std", "experimental" ]
 std = [
     "parity-scale-codec/std",
     "log/std",

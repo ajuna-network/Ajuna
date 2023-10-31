@@ -95,7 +95,7 @@ pallet-ajuna-awesome-avatars-benchmarking = { path = "../../pallets/ajuna-awesom
 pallet-ajuna-nft-transfer                 = { workspace = true }
 
 [features]
-default = [ "std" ]
+default = [ "std", "experimental" ]
 std = [
     "parity-scale-codec/std",
     "log/std",
