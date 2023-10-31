@@ -86,9 +86,11 @@ bajun-runtime      = { workspace = true, optional = true }
 [features]
 default = [ "solo" ]
 
-ajuna = [ "ajuna-runtime", "para", "ajuna-runtime/experimental" ]
-bajun = [ "bajun-runtime", "para", "bajun-runtime/experimental" ]
+ajuna = [ "ajuna-runtime", "para" ]
+bajun = [ "bajun-runtime", "para" ]
 para = [
+    "ajuna-runtime?/experimental",
+    "bajun-runtime?/experimental",
     "pallet-transaction-payment-rpc",
     "sc-network",
     "sc-network-sync",
