@@ -83,7 +83,7 @@ pub fn local_testnet_config() -> ChainSpec {
 
 	ChainSpec::from_genesis(
 		"Bajun Local Testnet",
-		"local_testnet",
+		"bajun_local_testnet",
 		ChainType::Local,
 		move || {
 			testnet_genesis(
