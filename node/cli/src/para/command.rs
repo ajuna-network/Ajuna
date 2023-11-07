@@ -394,6 +394,7 @@ pub fn run() -> Result<()> {
 
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
+				info!("Chain spec: {:?}", &config.chain_spec);
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
 				match &config.chain_spec {
