@@ -105,13 +105,15 @@ jobs:
 
       - name: Install try-runtime tool
         run: |
-          pushd try-runtime-tests
+          cd try-runtime-tests
           wget -q "https://github.com/paritytech/try-runtime-cli/releases/download/${{ env.TRY_RUNTIME_VER }}/try-runtime-x86_64-unknown-linux-musl"
           chmod +x try-runtime-x86_64-unknown-linux-musl && mv try-runtime-x86_64-unknown-linux-musl try-runtime
           ./try-runtime --version
 
       - name: Run try-runtime checks
-        run: ./try-runtime --runtime=runtime.wasm --wasm-execution=compiled on-runtime-upgrade --checks "try-state" live --uri=${{ matrix.uri }}
+        run: |
+          cd try-runtime-tests
+          ./try-runtime --runtime=runtime.wasm --wasm-execution=compiled on-runtime-upgrade --checks "try-state" live --uri=${{ matrix.uri }}
 
   release-check-zombienet:
     if: startsWith(github.ref, 'refs/heads/release')
@@ -133,14 +135,15 @@ jobs:
 
       - name: Setup zombienet binaries
         run: |
-          pushd zombienet-tests/bin
+          cd zombienet-tests/bin
           wget -q "https://github.com/paritytech/zombienet/releases/download/${{ env.ZOMBIENET_VERSION }}/zombienet-linux-x64"
           chmod +x zombienet-linux-x64
           mv zombienet-linux-x64 zombienet
-          ./zombienet setup polkadot -y
+          ./zombienet setup polkadot -y || :
+          ./zombienet version
 
       - name: Copy network config and tests
-        run: popd && cp .maintain/zombienet-* zombienet-tests/
+        run: cp .maintain/zombienet-* zombienet-tests/
 
       - name: Build and copy collator binary to zombienet binaries
         run: |
