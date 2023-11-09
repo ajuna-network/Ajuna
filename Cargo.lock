@@ -1127,6 +1127,8 @@ dependencies = [
  "pallet-ajuna-awesome-avatars",
  "pallet-ajuna-awesome-avatars-benchmarking",
  "pallet-ajuna-nft-transfer",
+ "pallet-ajuna-wildcard",
+ "pallet-assets",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -6627,6 +6629,24 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-ajuna-wildcard"
+version = "0.1.28"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-assets",
+ "pallet-balances",
+ "pallet-nfts",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]
