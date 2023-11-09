@@ -34,7 +34,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult,
+	ApplyExtrinsicResult, SaturatedConversion,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -79,6 +79,7 @@ use ajuna_primitives::{
 	AccountId, AccountPublic, AssetId, Balance, BlockNumber, CollectionId, Hash, Header, Nonce,
 	Signature,
 };
+use pallet_ajuna_wildcard::{OnMappingRequest, WideId};
 use pallet_nfts::Call as NftsCall;
 
 /// The address format for describing accounts.
@@ -801,8 +802,25 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 
 parameter_types! {
 	pub const WildcardPalletId: PalletId = PalletId(*b"aj/wdcrd");
+	pub const ChainId: u16 = 2000;
 	pub const NativeAssetId: AssetId = 0;
 	pub const ChallengeBalance: Balance = 10 * MICRO_BAJUN;
+}
+
+pub struct OnMappingRequestImpl;
+
+impl OnMappingRequest<AssetId, CollectionId, Hash> for OnMappingRequestImpl {
+	fn on_fungible_asset_mapping(id: WideId) -> AssetId {
+		AssetId::from_le_bytes([id[30], id[31], 0x00, 0x00]).saturated_into::<AssetId>()
+	}
+
+	fn on_non_fungible_collection_mapping(id: WideId) -> CollectionId {
+		CollectionId::from_le_bytes([id[30], id[31], 0x00, 0x00]).saturated_into::<CollectionId>()
+	}
+
+	fn on_non_fungible_item_mapping(id: WideId) -> Hash {
+		Hash::from_slice(id.as_bytes())
+	}
 }
 
 pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
@@ -816,9 +834,10 @@ impl pallet_ajuna_wildcard::Config for Runtime {
 	type NonFungibles = Nft;
 	type CollectionId = CollectionId;
 	type ItemId = Hash;
+	type OnMappingRequest = OnMappingRequestImpl;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type Time = Timestamp;
-	type ChainId = parachain_info::Pallet<Runtime>;
+	type ChainId = ChainId;
 	type AssetId = AssetId;
 	type NativeTokenAssetId = NativeAssetId;
 	type ChallengeMinBalance = ChallengeBalance;

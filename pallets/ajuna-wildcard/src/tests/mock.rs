@@ -231,6 +231,23 @@ parameter_types! {
 pub type CollectionConfig =
 	pallet_nfts::CollectionConfig<MockBalance, MockBlockNumber, MockCollectionId>;
 
+pub struct MockOnMappingRequest;
+
+impl OnMappingRequest<MockAssetId, MockCollectionId, MockItemId> for MockOnMappingRequest {
+	fn on_fungible_asset_mapping(id: WideId) -> MockAssetId {
+		MockAssetId::from_le_bytes([id[30], id[31], 0x00, 0x00]).saturated_into::<MockAssetId>()
+	}
+
+	fn on_non_fungible_collection_mapping(id: WideId) -> MockCollectionId {
+		MockCollectionId::from_le_bytes([id[30], id[31], 0x00, 0x00])
+			.saturated_into::<MockCollectionId>()
+	}
+
+	fn on_non_fungible_item_mapping(id: WideId) -> MockItemId {
+		MockItemId::from_le_bytes([id[30], id[31], 0x00, 0x00]).saturated_into::<MockItemId>()
+	}
+}
+
 impl pallet_wildcard::Config for Test {
 	type PalletId = WildcardPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -242,6 +259,7 @@ impl pallet_wildcard::Config for Test {
 	type NonFungibles = Nft;
 	type CollectionId = MockCollectionId;
 	type ItemId = MockItemId;
+	type OnMappingRequest = MockOnMappingRequest;
 	type Time = Timestamp;
 	type ChainId = ChainId;
 	type NativeTokenAssetId = NativeAssetId;

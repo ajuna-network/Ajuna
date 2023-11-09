@@ -6643,6 +6643,7 @@ dependencies = [
  "pallet-nfts",
  "pallet-timestamp",
  "parity-scale-codec",
+ "polkadot-parachain-primitives",
  "scale-info",
  "sp-core",
  "sp-io",

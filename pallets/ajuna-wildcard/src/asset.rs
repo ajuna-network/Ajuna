@@ -1,5 +1,12 @@
 use frame_support::pallet_prelude::*;
+use polkadot_parachain_primitives::primitives::Id as ParaId;
 use sp_core::sp_std::vec::Vec;
+
+pub trait OnMappingRequest<AssetId, CollectionId, ItemId> {
+	fn on_fungible_asset_mapping(id: WideId) -> AssetId;
+	fn on_non_fungible_collection_mapping(id: WideId) -> CollectionId;
+	fn on_non_fungible_item_mapping(id: WideId) -> ItemId;
+}
 
 pub type WideId = sp_core::H256;
 

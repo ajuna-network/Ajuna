@@ -122,6 +122,7 @@ std = [
     "pallet-ajuna-awesome-avatars/std",
     "pallet-ajuna-awesome-avatars-benchmarking?/std",
     "pallet-ajuna-nft-transfer/std",
+    "pallet-ajuna-wildcard/std",
     "pallet-assets/std",
     "pallet-aura/std",
     "pallet-authorship/std",
@@ -193,6 +194,7 @@ runtime-benchmarks = [
     "cumulus-pallet-xcmp-queue/runtime-benchmarks",
     "pallet-ajuna-awesome-avatars-benchmarking/runtime-benchmarks",
     "pallet-ajuna-nft-transfer/runtime-benchmarks",
+    "pallet-ajuna-wildcard/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -205,6 +207,7 @@ try-runtime = [
     "frame-system/try-runtime",
     "frame-try-runtime/try-runtime",
     "orml-vesting/try-runtime",
+    "pallet-assets/try-runtime",
     "pallet-aura/try-runtime",
     "pallet-authorship/try-runtime",
     "pallet-balances/try-runtime",
@@ -228,6 +231,7 @@ try-runtime = [
     "parachain-info/try-runtime",
     "pallet-ajuna-awesome-avatars/try-runtime",
     "pallet-ajuna-nft-transfer/try-runtime",
+    "pallet-ajuna-wildcard/try-runtime",
 ]
 
 experimental = [ "pallet-aura/experimental" ]

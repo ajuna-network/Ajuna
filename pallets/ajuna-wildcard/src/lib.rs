@@ -7,6 +7,8 @@ mod tests;
 
 pub use pallet::*;
 
+pub use asset::{OnMappingRequest, WideId};
+
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
@@ -20,7 +22,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use sp_core::sp_std;
-use sp_runtime::traits::{AccountIdConversion, SaturatedConversion, Verify, Zero};
+use sp_runtime::traits::{AccountIdConversion, SaturatedConversion, Verify};
 
 use asset::*;
 
@@ -36,7 +38,6 @@ pub mod pallet {
 			Mutate as MutateNonFungibles, Transfer,
 		},
 	};
-	use sp_runtime::traits::AtLeast32BitUnsigned;
 
 	pub(crate) type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
 
@@ -189,7 +190,7 @@ pub mod pallet {
 
 		type Currency: ReservableCurrency<Self::AccountId>;
 
-		type AssetId: Member + Parameter + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
+		type AssetId: Member + Parameter + Clone + MaybeSerializeDeserialize + MaxEncodedLen;
 
 		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::AssetId, Balance = BalanceOf<Self>>
 			+ fungibles::Create<Self::AccountId>
@@ -212,8 +213,10 @@ pub mod pallet {
 			+ nonfungibles_v2::Mutate<Self::AccountId, Self::ItemConfig>
 			+ nonfungibles_v2::Transfer<Self::AccountId>;
 
-		type CollectionId: Member + Parameter + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
-		type ItemId: Member + Parameter + Copy + MaxEncodedLen + AtLeast32BitUnsigned;
+		type CollectionId: Member + Parameter + MaxEncodedLen + Copy;
+		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
+
+		type OnMappingRequest: OnMappingRequest<Self::AssetId, Self::CollectionId, Self::ItemId>;
 
 		type Time: Time;
 
@@ -600,15 +603,10 @@ pub mod pallet {
 					let asset_id = if let Some(asset_id) = AssetIdMapping::<T>::get(mapping_key) {
 						asset_id
 					} else if is_native {
-						let asset_id = u32::from_le_bytes([
-							asset.primary_id[30],
-							asset.primary_id[31],
-							0x00,
-							0x00,
-						])
-						.saturated_into::<AssetIdOf<T>>();
+						let asset_id =
+							T::OnMappingRequest::on_fungible_asset_mapping(asset.primary_id);
 
-						AssetIdMapping::<T>::insert(mapping_key, asset_id);
+						AssetIdMapping::<T>::insert(mapping_key, asset_id.clone());
 
 						asset_id
 					} else {
@@ -618,7 +616,7 @@ pub mod pallet {
 					};
 
 					let converted_asset =
-						Asset { origin: asset.origin, kind: AssetKind::Fungible(asset_id) };
+						Asset { origin: asset.origin, kind: AssetKind::Fungible(asset_id.clone()) };
 
 					// For noew we assume qty to be u32
 					let asset_bytes_1 = <&[u8; 16]>::try_from(&asset.secondary_id[0..16]).unwrap();
@@ -632,7 +630,7 @@ pub mod pallet {
 						return Err(Error::<T>::InvalidInput.into())
 					}
 
-					let value = if is_native && asset_id.is_zero() {
+					let value = if is_native && asset_id.eq(&T::NativeTokenAssetId::get()) {
 						DepositValueKind::Fungible(DepositValue::Token(asset_qty))
 					} else {
 						DepositValueKind::Fungible(DepositValue::Asset(asset_qty))
@@ -641,40 +639,31 @@ pub mod pallet {
 					Ok((converted_asset, value))
 				},
 				AssetType::NonFungible => {
-					let collection_id =
-						if let Some(collection_id) = CollectionIdMapping::<T>::get(mapping_key) {
-							collection_id
-						} else if is_native {
-							let collection_id = u32::from_le_bytes([
-								asset.primary_id[30],
-								asset.primary_id[31],
-								0x00,
-								0x00,
-							])
-							.saturated_into::<CollectionIdOf<T>>();
+					let collection_id = if let Some(collection_id) =
+						CollectionIdMapping::<T>::get(mapping_key)
+					{
+						collection_id
+					} else if is_native {
+						let collection_id = T::OnMappingRequest::on_non_fungible_collection_mapping(
+							asset.primary_id,
+						);
 
-							CollectionIdMapping::<T>::insert(mapping_key, collection_id);
+						CollectionIdMapping::<T>::insert(mapping_key, collection_id);
 
-							collection_id
-						} else {
-							// Mapping should have been defined at withdraw
-							// TODO: Update error code
-							return Err(Error::<T>::UnknownDeposit.into())
-						};
+						collection_id
+					} else {
+						// Mapping should have been defined at withdraw
+						// TODO: Update error code
+						return Err(Error::<T>::UnknownDeposit.into())
+					};
 
 					let mapping_item_key = (asset.origin, asset.asset_type, asset.secondary_id);
 
 					let item_id = if let Some(item_id) = ItemIdMapping::<T>::get(mapping_item_key) {
 						item_id
 					} else if is_native {
-						// TODO: Maybe use a generated id?
-						let item_id = u32::from_le_bytes([
-							asset.secondary_id[30],
-							asset.secondary_id[31],
-							0x00,
-							0x00,
-						])
-						.saturated_into::<ItemIdOf<T>>();
+						let item_id =
+							T::OnMappingRequest::on_non_fungible_item_mapping(asset.secondary_id);
 
 						ItemIdMapping::<T>::insert(mapping_item_key, item_id);
 
@@ -746,16 +735,9 @@ pub mod pallet {
 				let asset_id = if let Some(asset_id) = AssetIdMapping::<T>::get(mapping_key) {
 					asset_id
 				} else if !is_native {
-					// TODO: Maybe use a generated id?
-					let asset_id = u32::from_le_bytes([
-						proof.primary_id[30],
-						proof.primary_id[31],
-						0x00,
-						0x00,
-					])
-					.saturated_into::<AssetIdOf<T>>();
+					let asset_id = T::OnMappingRequest::on_fungible_asset_mapping(proof.primary_id);
 
-					AssetIdMapping::<T>::insert(mapping_key, asset_id);
+					AssetIdMapping::<T>::insert(mapping_key, asset_id.clone());
 
 					asset_id
 				} else {
@@ -765,7 +747,7 @@ pub mod pallet {
 				};
 
 				let converted_asset =
-					Asset { origin: proof.origin, kind: AssetKind::Fungible(asset_id) };
+					Asset { origin: proof.origin, kind: AssetKind::Fungible(asset_id.clone()) };
 
 				let asset_bytes_1 = <&[u8; 16]>::try_from(&proof.secondary_id[0..16]).unwrap();
 				let asset_qty =
@@ -778,7 +760,7 @@ pub mod pallet {
 					return Err(Error::<T>::InvalidInput.into())
 				}
 
-				let value = if is_native && asset_id.is_zero() {
+				let value = if is_native && asset_id == T::NativeTokenAssetId::get() {
 					DepositValueKind::Fungible(DepositValue::Token(asset_qty))
 				} else {
 					DepositValueKind::Fungible(DepositValue::Asset(asset_qty))
@@ -813,14 +795,8 @@ pub mod pallet {
 				let item_id = if let Some(item_id) = ItemIdMapping::<T>::get(mapping_item_key) {
 					item_id
 				} else if !is_native {
-					// TODO: Maybe use a generated id?
-					let item_id = u32::from_le_bytes([
-						proof.secondary_id[30],
-						proof.secondary_id[31],
-						0x00,
-						0x00,
-					])
-					.saturated_into::<ItemIdOf<T>>();
+					let item_id =
+						T::OnMappingRequest::on_non_fungible_item_mapping(proof.secondary_id);
 
 					ItemIdMapping::<T>::insert(mapping_item_key, item_id);
 
@@ -910,15 +886,21 @@ pub mod pallet {
 						_ => Err(Error::<T>::InvalidInput),
 					}?;
 
-					T::Fungibles::transfer(*asset_id, who, &reserve_account, *amount, Expendable)
-						.map(|_| ())
+					T::Fungibles::transfer(
+						asset_id.clone(),
+						who,
+						&reserve_account,
+						*amount,
+						Expendable,
+					)
+					.map(|_| ())
 				}
 			} else {
 				let amount = match value {
 					DepositValueKind::Fungible(DepositValue::Asset(value)) => Ok(value),
 					_ => Err(Error::<T>::InvalidInput),
 				}?;
-				T::Fungibles::burn_from(*asset_id, who, *amount, Exact, Polite).map(|_| ())
+				T::Fungibles::burn_from(asset_id.clone(), who, *amount, Exact, Polite).map(|_| ())
 			}
 		}
 
@@ -953,7 +935,8 @@ pub mod pallet {
 						_ => Err(Error::<T>::InvalidInput),
 					}?;
 
-					let available_balance = T::Fungibles::balance(*asset_id, &reserve_account);
+					let available_balance =
+						T::Fungibles::balance(asset_id.clone(), &reserve_account);
 
 					ensure!(
 						withdrawal_amount <= &available_balance,
@@ -961,7 +944,7 @@ pub mod pallet {
 					);
 
 					T::Fungibles::transfer(
-						*asset_id,
+						asset_id.clone(),
 						&reserve_account,
 						who,
 						*withdrawal_amount,
@@ -975,16 +958,16 @@ pub mod pallet {
 					_ => Err(Error::<T>::InvalidInput),
 				}?;
 
-				if !T::Fungibles::asset_exists(*asset_id) {
+				if !T::Fungibles::asset_exists(asset_id.clone()) {
 					T::Fungibles::create(
-						*asset_id,
+						asset_id.clone(),
 						reserve_account,
 						false,
 						1_u32.saturated_into(),
 					)?;
 				}
 
-				T::Fungibles::mint_into(*asset_id, who, *withdrawal_amount).map(|_| ())
+				T::Fungibles::mint_into(asset_id.clone(), who, *withdrawal_amount).map(|_| ())
 			}
 		}
 
