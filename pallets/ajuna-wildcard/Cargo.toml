@@ -21,9 +21,6 @@ scale-info         = { workspace = true, features = [ "derive" ] }
 sp-core            = { workspace = true }
 sp-runtime         = { workspace = true }
 
-# Polkadot (wasm)
-polkadot-parachain-primitives = { workspace = true }
-
 [dev-dependencies]
 pallet-assets    = { workspace = true }
 pallet-balances  = { workspace = true }

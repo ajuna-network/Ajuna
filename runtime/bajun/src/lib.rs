@@ -800,9 +800,16 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type NftHelper = Nft;
 }
 
+pub struct GetChainId;
+
+impl Get<u16> for GetChainId {
+	fn get() -> u16 {
+		u32::from(parachain_info::Pallet::<Runtime>::parachain_id()) as u16
+	}
+}
+
 parameter_types! {
 	pub const WildcardPalletId: PalletId = PalletId(*b"aj/wdcrd");
-	pub const ChainId: u16 = 2000;
 	pub const NativeAssetId: AssetId = 0;
 	pub const ChallengeBalance: Balance = 10 * MICRO_BAJUN;
 }
@@ -837,7 +844,7 @@ impl pallet_ajuna_wildcard::Config for Runtime {
 	type OnMappingRequest = OnMappingRequestImpl;
 	type ItemConfig = pallet_nfts::ItemConfig;
 	type Time = Timestamp;
-	type ChainId = ChainId;
+	type ChainId = GetChainId;
 	type AssetId = AssetId;
 	type NativeTokenAssetId = NativeAssetId;
 	type ChallengeMinBalance = ChallengeBalance;

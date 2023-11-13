@@ -1,5 +1,4 @@
 use frame_support::pallet_prelude::*;
-use polkadot_parachain_primitives::primitives::Id as ParaId;
 use sp_core::sp_std::vec::Vec;
 
 pub trait OnMappingRequest<AssetId, CollectionId, ItemId> {
