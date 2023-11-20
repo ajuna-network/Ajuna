@@ -71,7 +71,7 @@ pub fn development_config() -> ChainSpec {
 		Some("bajun-dev"),
 		None,
 		Some(properties),
-		Extensions { relay_chain: "rococo-local".into(), para_id: PARA_ID },
+		Extensions { relay_chain: "rococo-local".into(), para_id: PARA_ID, bad_blocks: None },
 	)
 }
 
@@ -119,7 +119,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		Some("bajun-local"),
 		None,
 		Some(properties),
-		Extensions { relay_chain: "rococo-local".into(), para_id: PARA_ID },
+		Extensions { relay_chain: "rococo-local".into(), para_id: PARA_ID, bad_blocks: None },
 	)
 }
 
