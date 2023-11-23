@@ -76,6 +76,81 @@ jobs:
       - name: Check wasm build
         run: cargo check --all-features --all-targets --release -p ${{ matrix.runtime }}-runtime
 
+  release-check-try-runtime:
+    if: startsWith(github.ref, 'refs/heads/release')
+    needs: [release-check]
+    name: Check release in try-runtime
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [bajun]
+        include:
+          - runtime: bajun
+            uri: "ws://rpc-rococo.bajun.network:9944"
+    env:
+      TRY_RUNTIME_VER: v0.3.5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create testing directories
+        run: mkdir -p try-runtime-tests
+
+      - name: Build try-runtime compatible binary
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          cargo build-${{ matrix.runtime }} --features try-runtime
+          cp target/release/wbuild/${{ matrix.runtime }}-runtime/${{ matrix.runtime }}_runtime.compact.compressed.wasm try-runtime-tests/runtime.wasm
+
+      - name: Install try-runtime tool
+        run: |
+          pushd try-runtime-tests
+          wget -q "https://github.com/paritytech/try-runtime-cli/releases/download/${{ env.TRY_RUNTIME_VER }}/try-runtime-x86_64-unknown-linux-musl"
+          chmod +x try-runtime-x86_64-unknown-linux-musl && mv try-runtime-x86_64-unknown-linux-musl try-runtime
+          ./try-runtime --version
+
+      - name: Run try-runtime checks
+        run: ./try-runtime --runtime=runtime.wasm --wasm-execution=compiled on-runtime-upgrade --checks "try-state" live --uri=${{ matrix.uri }}
+
+  release-check-zombienet:
+    if: startsWith(github.ref, 'refs/heads/release')
+    needs: [release-check, release-check-try-runtime]
+    name: Check release in zombienet
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [bajun, ajuna]
+    env:
+      ZOMBIENET_VERSION: v1.3.79
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create testing directories
+        run: mkdir -p zombienet-tests/bin
+
+      - name: Setup zombienet binaries
+        run: |
+          pushd zombienet-tests/bin
+          wget -q "https://github.com/paritytech/zombienet/releases/download/${{ env.ZOMBIENET_VERSION }}/zombienet-linux-x64"
+          chmod +x zombienet-linux-x64
+          mv zombienet-linux-x64 zombienet
+          ./zombienet setup polkadot -y
+
+      - name: Copy network config and tests
+        run: popd && cp .maintain/zombienet-* zombienet-tests/
+
+      - name: Build and copy collator binary to zombienet binaries
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          cargo build-${{ matrix.runtime }}
+          cp target/release/${{ matrix.runtime }}-para zombienet-tests/bin/collator
+
+      - name: Run zombienet tests
+        run: ./zombienet-tests/bin/zombienet -l "text" -p native test ./zombienet-tests/zombienet-tests.zndsl
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest

@@ -83,7 +83,7 @@ pub fn local_testnet_config() -> ChainSpec {
 
 	ChainSpec::from_genesis(
 		"Ajuna Local Testnet",
-		"local_testnet",
+		"ajuna_local_testnet",
 		ChainType::Local,
 		move || {
 			testnet_genesis(

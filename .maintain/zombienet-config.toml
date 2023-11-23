@@ -1,0 +1,32 @@
+[settings]
+timeout = 120
+
+[relaychain]
+default_command = "./zombienet-tests/bin/polkadot"
+default_args = [ "-lparachain=debug" ]
+chain = "rococo-local"
+
+[[relaychain.nodes]]
+name = "alice"
+validator = true
+ws_port = 9944
+
+[[relaychain.nodes]]
+name = "bob"
+validator = true
+
+[[parachains]]
+id = 2000
+addToGenesis = true
+cumulus_based = true
+
+[parachains.collator]
+name = "ajuna-collator"
+command = "./zombienet-tests/bin/collator"
+ws_port = 9955
+rpc_port = 9956
+
+[types.Header]
+number = "u64"
+parent_hash = "Hash"
+post_state = "Hash"

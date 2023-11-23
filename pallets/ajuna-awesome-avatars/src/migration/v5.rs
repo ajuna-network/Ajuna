@@ -339,7 +339,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		} else {
 			log::info!(
 				target: LOG_TARGET,
-				"Migration did not execute. This probably should be removed"
+				"Migration for v5 did not execute. This probably should be removed"
 			);
 			T::DbWeight::get().reads(1)
 		}
@@ -347,84 +347,100 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
-		assert_eq!(Pallet::<T>::on_chain_storage_version(), 5);
-		assert!(CurrentSeasonStatus::<T>::get().season_id > Zero::zero());
+		let current_version = Pallet::<T>::current_storage_version();
+		let onchain_version = Pallet::<T>::on_chain_storage_version();
 
-		let mut avatar_ids_from_avatars = Avatars::<T>::iter_keys().collect::<Vec<_>>();
-		avatar_ids_from_avatars.sort();
-		avatar_ids_from_avatars.dedup();
+		if onchain_version == 4 && current_version == 5 {
+			assert_eq!(Pallet::<T>::on_chain_storage_version(), 5);
+			assert!(CurrentSeasonStatus::<T>::get().season_id > Zero::zero());
 
-		let mut avatar_ids_from_owners = Owners::<T>::iter_values().flatten().collect::<Vec<_>>();
-		avatar_ids_from_owners.sort();
-		avatar_ids_from_owners.dedup();
+			let mut avatar_ids_from_avatars = Avatars::<T>::iter_keys().collect::<Vec<_>>();
+			avatar_ids_from_avatars.sort();
+			avatar_ids_from_avatars.dedup();
 
-		// There are 12,976 avatars as of 27/06/2023. But the exact number could be smaller as
-		// avatars are forged away. We estimate there should be at least 10,000.
-		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_avatars.len() <= 12_976);
-		assert!(avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_owners.len() <= 12_976);
-		assert_eq!(avatar_ids_from_avatars, avatar_ids_from_owners);
+			let mut avatar_ids_from_owners =
+				Owners::<T>::iter_values().flatten().collect::<Vec<_>>();
+			avatar_ids_from_owners.sort();
+			avatar_ids_from_owners.dedup();
 
-		// There are 1,245 owners of avatars in storage as of 27/06/2023. But the exact number could
-		// change as avatars are traded between accounts.
-		// We estimate there should be between 1,200 and 2,000 accounts.
-		let mut owners_season_ids = Owners::<T>::iter_keys()
-			.filter(|(owner, season_id)| !Owners::<T>::get(owner, season_id).is_empty())
-			.map(|(_owner, season_id)| season_id)
-			.collect::<Vec<SeasonId>>();
-		assert!(owners_season_ids.len() > 1_200 && owners_season_ids.len() < 2_000);
+			// There are 12,976 avatars as of 27/06/2023. But the exact number could be smaller as
+			// avatars are forged away. We estimate there should be at least 10,000.
+			assert!(
+				avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_avatars.len() <= 12_976
+			);
+			assert!(
+				avatar_ids_from_avatars.len() > 10_000 && avatar_ids_from_owners.len() <= 12_976
+			);
+			assert_eq!(avatar_ids_from_avatars, avatar_ids_from_owners);
 
-		// Check all owners are migrated with season ID of 1.
-		owners_season_ids.sort();
-		owners_season_ids.dedup();
-		assert_eq!(owners_season_ids.len(), 1);
-		assert_eq!(owners_season_ids, vec![1]);
+			// There are 1,245 owners of avatars in storage as of 27/06/2023. But the exact number
+			// could change as avatars are traded between accounts.
+			// We estimate there should be between 1,200 and 2,000 accounts.
+			let mut owners_season_ids = Owners::<T>::iter_keys()
+				.filter(|(owner, season_id)| !Owners::<T>::get(owner, season_id).is_empty())
+				.map(|(_owner, season_id)| season_id)
+				.collect::<Vec<SeasonId>>();
+			assert!(owners_season_ids.len() > 1_200 && owners_season_ids.len() < 2_000);
 
-		// Check owner configs
-		let player_configs_account_ids = PlayerConfigs::<T>::iter_keys().collect::<Vec<_>>();
-		let mut player_season_configs_season_ids = PlayerSeasonConfigs::<T>::iter_keys()
-			.map(|(_, season_id)| season_id)
-			.collect::<Vec<_>>();
-		assert!(
-			player_configs_account_ids.len() > 1_200 && player_configs_account_ids.len() < 2_000
-		);
-		assert!(
-			player_season_configs_season_ids.len() > 1_200 &&
-				player_season_configs_season_ids.len() < 2_000
-		);
-		player_season_configs_season_ids.sort();
-		player_season_configs_season_ids.dedup();
-		assert_eq!(player_season_configs_season_ids.len(), 1);
-		assert_eq!(player_season_configs_season_ids, vec![1]);
+			// Check all owners are migrated with season ID of 1.
+			owners_season_ids.sort();
+			owners_season_ids.dedup();
+			assert_eq!(owners_season_ids.len(), 1);
+			assert_eq!(owners_season_ids, vec![1]);
 
-		// There are 869 avatars in trade as of 27/06/2023. But the exact number could change. we
-		// estimate between 800 and 1,000 avatars to be in trade.
-		let mut trade_season_ids = Trade::<T>::iter_keys()
-			.map(|(season_id, _avatar_id)| season_id)
-			.collect::<Vec<SeasonId>>();
-		assert!(trade_season_ids.len() > 800 && trade_season_ids.len() < 1_000);
+			// Check owner configs
+			let player_configs_account_ids = PlayerConfigs::<T>::iter_keys().collect::<Vec<_>>();
+			let mut player_season_configs_season_ids = PlayerSeasonConfigs::<T>::iter_keys()
+				.map(|(_, season_id)| season_id)
+				.collect::<Vec<_>>();
+			assert!(
+				player_configs_account_ids.len() > 1_200 &&
+					player_configs_account_ids.len() < 2_000
+			);
+			assert!(
+				player_season_configs_season_ids.len() > 1_200 &&
+					player_season_configs_season_ids.len() < 2_000
+			);
+			player_season_configs_season_ids.sort();
+			player_season_configs_season_ids.dedup();
+			assert_eq!(player_season_configs_season_ids.len(), 1);
+			assert_eq!(player_season_configs_season_ids, vec![1]);
 
-		// Check all trades are migrated with season ID of 1.
-		trade_season_ids.sort();
-		trade_season_ids.dedup();
-		assert_eq!(trade_season_ids.len(), 1);
-		assert_eq!(trade_season_ids, vec![1]);
+			// There are 869 avatars in trade as of 27/06/2023. But the exact number could change.
+			// we estimate between 800 and 1,000 avatars to be in trade.
+			let mut trade_season_ids = Trade::<T>::iter_keys()
+				.map(|(season_id, _avatar_id)| season_id)
+				.collect::<Vec<SeasonId>>();
+			assert!(trade_season_ids.len() > 800 && trade_season_ids.len() < 1_000);
 
-		// Check all migrated avatars are of version 1.
-		assert!(Avatars::<T>::iter_values()
-			.all(|(_account, avatar)| avatar.encoding == DnaEncoding::V1));
+			// Check all trades are migrated with season ID of 1.
+			trade_season_ids.sort();
+			trade_season_ids.dedup();
+			assert_eq!(trade_season_ids.len(), 1);
+			assert_eq!(trade_season_ids, vec![1]);
 
-		assert!(Seasons::<T>::get(1).unwrap().trade_filters.is_empty());
+			// Check all migrated avatars are of version 1.
+			assert!(Avatars::<T>::iter_values()
+				.all(|(_account, avatar)| avatar.encoding == DnaEncoding::V1));
 
-		// Check migrated season fees.
-		let Season { fee, .. } = Seasons::<T>::get(1).unwrap();
-		assert_eq!(fee.mint.one, 550_000_000_000_u64.unique_saturated_into());
-		assert_eq!(fee.mint.three, 500_000_000_000_u64.unique_saturated_into());
-		assert_eq!(fee.mint.six, 450_000_000_000_u64.unique_saturated_into());
-		assert_eq!(fee.transfer_avatar, 1_000_000_000_000_u64.unique_saturated_into());
-		assert_eq!(fee.buy_minimum, 1_000_000_000_u64.unique_saturated_into());
-		assert_eq!(fee.buy_percent, 1);
-		assert_eq!(fee.upgrade_storage, 1_000_000_000_000_u64.unique_saturated_into());
-		assert_eq!(fee.prepare_avatar, 5_000_000_000_000_u64.unique_saturated_into());
+			assert!(Seasons::<T>::get(1).unwrap().trade_filters.is_empty());
+
+			// Check migrated season fees.
+			let Season { fee, .. } = Seasons::<T>::get(1).unwrap();
+			assert_eq!(fee.mint.one, 550_000_000_000_u64.unique_saturated_into());
+			assert_eq!(fee.mint.three, 500_000_000_000_u64.unique_saturated_into());
+			assert_eq!(fee.mint.six, 450_000_000_000_u64.unique_saturated_into());
+			assert_eq!(fee.transfer_avatar, 1_000_000_000_000_u64.unique_saturated_into());
+			assert_eq!(fee.buy_minimum, 1_000_000_000_u64.unique_saturated_into());
+			assert_eq!(fee.buy_percent, 1);
+			assert_eq!(fee.upgrade_storage, 1_000_000_000_000_u64.unique_saturated_into());
+			assert_eq!(fee.prepare_avatar, 5_000_000_000_000_u64.unique_saturated_into());
+		} else {
+			log::info!(
+				target: LOG_TARGET,
+				"Migration post upgrade v5 did not execute. This probably should be removed"
+			);
+		}
 
 		Ok(())
 	}
