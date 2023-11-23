@@ -460,14 +460,16 @@ parameter_types! {
 	pub const MinVestedTransfer: Balance = 100 * MICRO_AJUN;
 }
 
+type RelayChainBlockData = cumulus_pallet_parachain_system::RelaychainDataProvider<Runtime>;
+
 impl orml_vesting::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type MinVestedTransfer = MinVestedTransfer;
 	type VestedTransferOrigin = EnsureSigned<AccountId>;
-	type MaxVestingSchedules = frame_support::traits::ConstU32<100>;
-	type BlockNumberProvider = System;
 	type WeightInfo = ();
+	type MaxVestingSchedules = frame_support::traits::ConstU32<100>;
+	type BlockNumberProvider = RelayChainBlockData;
 }
 
 parameter_types! {
