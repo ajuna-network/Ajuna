@@ -34,7 +34,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult,
+	ApplyExtrinsicResult, SaturatedConversion,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -76,8 +76,10 @@ use staging_xcm::latest::prelude::BodyId;
 use staging_xcm_executor::XcmExecutor;
 
 use ajuna_primitives::{
-	AccountId, AccountPublic, Balance, BlockNumber, CollectionId, Hash, Header, Nonce, Signature,
+	AccountId, AccountPublic, AssetId, Balance, BlockNumber, CollectionId, Hash, Header, Nonce,
+	Signature,
 };
+use pallet_ajuna_wildcard::{OnMappingRequest, WideId};
 use pallet_nfts::Call as NftsCall;
 
 /// The address format for describing accounts.
@@ -744,6 +746,46 @@ impl pallet_nfts::Config for Runtime {
 }
 
 parameter_types! {
+	pub const AssetDeposit: Balance = 1_000 * MICRO_BAJUN;
+	pub const AssetAccountDeposit: Balance = 1_000 * MICRO_BAJUN;
+	pub const ApprovalDeposit: Balance = 100 * MICRO_BAJUN;
+	pub const MetadataDepositPerByte: Balance = 10 * NANO_BAJUN;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct AssetHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl<AssetId: From<u32>> pallet_assets::BenchmarkHelper<AssetId> for AssetHelper {
+	fn create_asset_id_parameter(id: u32) -> AssetId {
+		id.into()
+	}
+}
+
+impl pallet_assets::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type RemoveItemsLimit = frame_support::traits::ConstU32<1000>;
+	type AssetId = AssetId;
+	type AssetIdParameter = parity_scale_codec::Compact<AssetId>;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type AssetAccountDeposit = AssetAccountDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = frame_support::traits::ConstU32<20>;
+	type Freezer = ();
+	type Extra = ();
+	type CallbackHandle = ();
+	type WeightInfo = ();
+	pallet_assets::runtime_benchmarks_enabled! {
+		type BenchmarkHelper = AssetHelper;
+	}
+}
+
+parameter_types! {
 	pub const NftTransferPalletId: PalletId = PalletId(*b"aj/nfttr");
 }
 
@@ -756,6 +798,56 @@ impl pallet_ajuna_nft_transfer::Config for Runtime {
 	type KeyLimit = KeyLimit;
 	type ValueLimit = ValueLimit;
 	type NftHelper = Nft;
+}
+
+pub struct GetChainId;
+
+impl Get<u16> for GetChainId {
+	fn get() -> u16 {
+		u32::from(parachain_info::Pallet::<Runtime>::parachain_id()) as u16
+	}
+}
+
+parameter_types! {
+	pub const WildcardPalletId: PalletId = PalletId(*b"aj/wdcrd");
+	pub const NativeAssetId: AssetId = 0;
+	pub const ChallengeBalance: Balance = 10 * MICRO_BAJUN;
+}
+
+pub struct OnMappingRequestImpl;
+
+impl OnMappingRequest<AssetId, CollectionId, Hash> for OnMappingRequestImpl {
+	fn on_fungible_asset_mapping(id: WideId) -> AssetId {
+		AssetId::from_le_bytes([id[30], id[31], 0x00, 0x00]).saturated_into::<AssetId>()
+	}
+
+	fn on_non_fungible_collection_mapping(id: WideId) -> CollectionId {
+		CollectionId::from_le_bytes([id[30], id[31], 0x00, 0x00]).saturated_into::<CollectionId>()
+	}
+
+	fn on_non_fungible_item_mapping(id: WideId) -> Hash {
+		Hash::from_slice(id.as_bytes())
+	}
+}
+
+pub type CollectionConfig = pallet_nfts::CollectionConfig<Balance, BlockNumber, CollectionId>;
+
+impl pallet_ajuna_wildcard::Config for Runtime {
+	type PalletId = WildcardPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type Fungibles = Assets;
+	type CollectionConfig = CollectionConfig;
+	type NonFungibles = Nft;
+	type CollectionId = CollectionId;
+	type ItemId = Hash;
+	type OnMappingRequest = OnMappingRequestImpl;
+	type ItemConfig = pallet_nfts::ItemConfig;
+	type Time = Timestamp;
+	type ChainId = GetChainId;
+	type AssetId = AssetId;
+	type NativeTokenAssetId = NativeAssetId;
+	type ChallengeMinBalance = ChallengeBalance;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -804,7 +896,9 @@ construct_runtime!(
 
 		// Indexes 60-69 should be reserved for NFT related pallets
 		Nft: pallet_nfts = 60,
-		NftTransfer: pallet_ajuna_nft_transfer = 61,
+		Assets: pallet_assets = 61,
+		NftTransfer: pallet_ajuna_nft_transfer = 62,
+		Wildcard: pallet_ajuna_wildcard = 63,
 	}
 );
 
@@ -832,6 +926,7 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_ajuna_awesome_avatars, AwesomeAvatarsBench::<Runtime>]
 		[pallet_nfts, Nft]
+		[pallet_assets, Assets]
 	);
 }
 

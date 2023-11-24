@@ -175,6 +175,7 @@ fn testnet_genesis(
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 			..Default::default()
 		},
+		assets: Default::default(),
 		awesome_avatars: Default::default(),
 	}
 }
