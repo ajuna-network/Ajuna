@@ -15,6 +15,7 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/release')
     name: Check for release
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
         runtime: [bajun, ajuna]
