@@ -411,7 +411,7 @@ pub mod pallet {
 			let staker = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_contract(Operation::Cancel, &contract_id, &staker)?;
-			Self::process_contract(Operation::Cancel, contract_id, staker)
+			Self::process_contract(Operation::Cancel, contract_id, staker, None)
 		}
 
 		/// Claim a fulfilled staking contract.
@@ -424,11 +424,15 @@ pub mod pallet {
 				.max(T::WeightInfo::claim_nft_reward())
 		)]
 		#[pallet::call_index(7)]
-		pub fn claim(origin: OriginFor<T>, contract_id: T::ItemId) -> DispatchResult {
+		pub fn claim(
+			origin: OriginFor<T>,
+			contract_id: T::ItemId,
+			reward_beneficiary: Option<T::AccountId>,
+		) -> DispatchResult {
 			let claimer = ensure_signed(origin)?;
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_contract(Operation::Claim, &contract_id, &claimer)?;
-			Self::process_contract(Operation::Claim, contract_id, claimer)
+			Self::process_contract(Operation::Claim, contract_id, claimer, reward_beneficiary)
 		}
 
 		/// Snipe someone's claimable contract.
@@ -448,7 +452,7 @@ pub mod pallet {
 			Self::ensure_pallet_unlocked()?;
 			Self::ensure_sniper(&sniper)?;
 			Self::ensure_contract(Operation::Snipe, &contract_id, &sniper)?;
-			Self::process_contract(Operation::Snipe, contract_id, sniper)?;
+			Self::process_contract(Operation::Snipe, contract_id, sniper, None)?;
 			Ok(())
 		}
 	}
@@ -612,12 +616,14 @@ pub mod pallet {
 			op: Operation,
 			contract_id: T::ItemId,
 			who: T::AccountId,
+			reward_beneficiary: Option<T::AccountId>,
 		) -> DispatchResult {
 			// Transfer rewards.
 			let creator = Self::creator()?;
 			let Contract { cancel_fee, rewards, .. } = Self::contract(&contract_id)?;
 			let beneficiary = match op {
-				Operation::Claim | Operation::Snipe => &who,
+				Operation::Claim => reward_beneficiary.as_ref().unwrap_or(&who),
+				Operation::Snipe => &who,
 				Operation::Cancel => {
 					T::Currency::transfer(&who, &creator, cancel_fee, AllowDeath)?;
 					&creator
