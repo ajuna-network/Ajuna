@@ -261,6 +261,8 @@ pub mod pallet {
 		Claimable,
 		/// The contract is available, or not yet accepted.
 		Available,
+		/// Contract doesn't allow sniping.
+		UnSnipeable,
 		/// The number of the given account's contracts exceeds maximum allowed.
 		MaxContracts,
 		/// The number of the given contract's staking clauses exceeds maximum allowed.
@@ -837,7 +839,7 @@ pub mod pallet {
 			contract_id: &T::ItemId,
 			who: &T::AccountId,
 		) -> DispatchResult {
-			let Contract { claim_duration, stake_duration, .. } =
+			let Contract { claim_duration, stake_duration, is_snipeable, .. } =
 				Self::ensure_contract_ownership(contract_id, who, op == Operation::Snipe)?;
 			let now = <frame_system::Pallet<T>>::block_number();
 			let accepted = Self::contract_accepted(contract_id)?;
@@ -852,6 +854,7 @@ pub mod pallet {
 					ensure!(now < end, Error::<T>::Claimable);
 				},
 				Operation::Snipe => {
+					ensure!(is_snipeable, Error::<T>::UnSnipeable);
 					ensure!(now >= expiry, Error::<T>::Claimable);
 				},
 			}

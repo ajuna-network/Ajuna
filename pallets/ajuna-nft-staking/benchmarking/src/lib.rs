@@ -271,6 +271,7 @@ fn contract_with<T: Config>(
 		cancel_fee: 333_u64.unique_saturated_into(),
 		nft_stake_amount: num_stake_clauses as u8,
 		nft_fee_amount: num_fee_clauses as u8,
+		is_snipeable: true,
 	}
 }
 

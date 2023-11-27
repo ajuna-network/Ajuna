@@ -228,6 +228,7 @@ impl Default for ContractOf<Test> {
 			cancel_fee: Default::default(),
 			nft_stake_amount: 1,
 			nft_fee_amount: 1,
+			is_snipeable: true,
 		}
 	}
 }
@@ -288,6 +289,10 @@ impl ContractOf<Test> {
 	}
 	pub fn fee_amt(mut self, fee_amount: u8) -> Self {
 		self.nft_fee_amount = fee_amount;
+		self
+	}
+	pub fn is_snipeable(mut self, is_snipeable: bool) -> Self {
+		self.is_snipeable = is_snipeable;
 		self
 	}
 }

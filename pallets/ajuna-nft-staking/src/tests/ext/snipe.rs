@@ -350,3 +350,43 @@ fn snipe_with_maliciously_burned_contract_nft() {
 			}));
 		});
 }
+
+#[test]
+fn rejects_sniping_an_unsnipeable_contract() {
+	let stake_clauses = vec![
+		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
+		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![5])),
+		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, bounded_vec![6], bounded_vec![7])),
+	];
+	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![12]))];
+	let (stake_duration, claim_duration) = (2, 3);
+	let reward_addr = NftId(RESERVED_COLLECTION_2, H256::random());
+	let contract = Contract::default()
+		.rewards(bounded_vec![Reward::Nft(reward_addr)])
+		.stake_duration(stake_duration)
+		.claim_duration(claim_duration)
+		.stake_clauses(AttributeNamespace::Pallet, stake_clauses.clone())
+		.fee_clauses(AttributeNamespace::Pallet, fee_clauses.clone())
+		.is_snipeable(false);
+	let contract_id = H256::random();
+
+	let stakes = MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
+	let fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
+
+	ExtBuilder::default()
+		.set_creator(ALICE)
+		.create_contract_collection()
+		.create_contract_with_funds(contract_id, contract)
+		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
+		.create_sniper(CHARLIE, Contract::default().stake_duration(10).claim_duration(20))
+		.build()
+		.execute_with(|| {
+			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
+			run_to_block(accepted_at + stake_duration + claim_duration + 1);
+
+			assert_noop!(
+				NftStake::snipe(RuntimeOrigin::signed(CHARLIE), contract_id),
+				Error::<Test>::UnSnipeable
+			);
+		});
+}
