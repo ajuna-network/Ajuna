@@ -174,6 +174,9 @@ where
 	pub nft_stake_amount: u8,
 	/// Amount of NFT to fee for the contract.
 	pub nft_fee_amount: u8,
+
+	/// Can the contract be sniped by a third party?
+	pub is_snipeable: bool,
 }
 
 impl<Balance, CollectionId, ItemId, BlockNumber, KL, VL>
