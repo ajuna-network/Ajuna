@@ -46,13 +46,16 @@ impl<T: Config> AvatarCombinator<T> {
 					leader.set_spec(SpecIdx::Byte2, leader_spec_byte_2 | flask_spec_byte_2);
 				} else if flask_essence_type == EssenceItemType::GlowFlask {
 					leader
-						.set_spec(SpecIdx::Byte2, (leader_spec_byte_2 & 0x0F) | flask_spec_byte_1);
+						.set_spec(SpecIdx::Byte2, (leader_spec_byte_2 & 0x08) | flask_spec_byte_1);
 				}
 
 				let mut index = matches.remove(0) as usize;
 				leader_progress_array[index] += 0x10;
 
-				let glimmer_chance = if glimmer_count > 8 { 8 } else { glimmer_count };
+				let glimmer_chance = {
+					let eff_glimmer_count = if glimmer_count > 8 { 8 } else { glimmer_count };
+					80 + eff_glimmer_count * 15
+				};
 				let matches_count = if matches.len() > MAX_FLASK_PROGRESS {
 					MAX_FLASK_PROGRESS
 				} else {
@@ -60,7 +63,7 @@ impl<T: Config> AvatarCombinator<T> {
 				};
 
 				for i in 0..matches_count {
-					if hash_provider.hash[i + 1] < (80 + glimmer_chance * 15) as u8 {
+					if hash_provider.hash[i + 1] < glimmer_chance as u8 {
 						index = matches.remove(0) as usize;
 						leader_progress_array[index] += 0x10;
 					}
@@ -365,6 +368,73 @@ mod test {
 
 				let spec_byte_2 = DnaUtils::read_spec_raw(&avatar, SpecIdx::Byte2);
 				assert_eq!(spec_byte_2, 0b0000_1110_u8);
+			} else {
+				panic!("LeaderForgeOutput should have been Forged!")
+			}
+		});
+	}
+
+	#[test]
+	fn test_flask_glow_3() {
+		ExtBuilder::default().build().execute_with(|| {
+			let forge_hash = [
+				0x3F, 0x83, 0x25, 0x3B, 0xA9, 0x24, 0xF2, 0xF6, 0xB5, 0xA9, 0x37, 0x15, 0x25, 0x2C,
+				0x04, 0xFC, 0xEC, 0x45, 0xC1, 0x4D, 0x86, 0xE7, 0x96, 0xE5, 0x20, 0x5D, 0x8B, 0x39,
+				0xB0, 0x54, 0xFB, 0x62,
+			];
+			let mut hash_provider = HashProvider::new_with_bytes(forge_hash);
+
+			let hash_base = [
+				[
+					0x41, 0x11, 0x04, 0x01, 0x00, 0x0f, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x40, 0x52, 0x40, 0x55,
+					0x43, 0x44, 0x44, 0x44, 0x45, 0x40,
+				],
+				[
+					0x35, 0x00, 0x04, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x43, 0x43, 0x41, 0x41,
+					0x43, 0x43, 0x43, 0x43, 0x43, 0x42,
+				],
+			];
+
+			let unit_fn = |avatar: Avatar| {
+				let mut avatar = avatar;
+				avatar.souls = 623;
+				WrappedAvatar::new(avatar)
+			};
+
+			let leader = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[0]), Some(unit_fn));
+			let sac_1 = create_random_avatar::<Test, _>(&ALICE, Some(hash_base[1]), Some(unit_fn));
+
+			let leader_progress_array = leader.1.get_progress();
+			let sacrifice_progress_array = sac_1.1.get_progress();
+
+			let total_soul_points = leader.1.get_souls() + sac_1.1.get_souls();
+
+			assert!(DnaUtils::is_progress_match(
+				leader_progress_array,
+				sacrifice_progress_array,
+				MATCH_ALGO_START_RARITY.as_byte()
+			)
+			.is_some());
+
+			let (leader_output, sacrifice_output) =
+				AvatarCombinator::<Test>::flask_avatars(leader, vec![sac_1], &mut hash_provider)
+					.expect("Should succeed in forging");
+
+			assert_eq!(sacrifice_output.len(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_consumed(output)).count(), 1);
+			assert_eq!(sacrifice_output.iter().filter(|output| is_forged(output)).count(), 0);
+
+			if let LeaderForgeOutput::Forged((_, avatar), _) = leader_output {
+				assert_eq!(avatar.souls, total_soul_points);
+
+				let expected_dna = [
+					0x41, 0x11, 0x04, 0x01, 0x00, 0x0F, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x40, 0x52, 0x50, 0x55,
+					0x43, 0x54, 0x54, 0x44, 0x45, 0x40,
+				];
+				assert_eq!(avatar.dna.as_slice(), &expected_dna);
 			} else {
 				panic!("LeaderForgeOutput should have been Forged!")
 			}
