@@ -21,7 +21,14 @@ fn works() {
 	let stake_clauses = vec![
 		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
 		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![5])),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![6], bounded_vec![7])),
+		(
+			2,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_2,
+				bounded_vec![6],
+				AttributeValue::Equal(bounded_vec![7]),
+			),
+		),
 	];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![123]))];
 	let stake_duration = 4;
@@ -335,7 +342,7 @@ fn rejects_unfulfilling_stakes() {
 			Clause::HasAttributeWithValue(
 				RESERVED_COLLECTION_1,
 				bounded_vec![12],
-				bounded_vec![34],
+				AttributeValue::Equal(bounded_vec![34]),
 			),
 		),
 		(
@@ -343,7 +350,7 @@ fn rejects_unfulfilling_stakes() {
 			Clause::HasAttributeWithValue(
 				RESERVED_COLLECTION_1,
 				bounded_vec![56],
-				bounded_vec![78],
+				AttributeValue::Equal(bounded_vec![78]),
 			),
 		),
 	];
@@ -359,7 +366,7 @@ fn rejects_unfulfilling_stakes() {
 		MockMints::from(MockClauses(stake_clauses.into_iter().map(|(_, c)| c).collect()));
 	stakes.iter_mut().for_each(|(_, key, value)| {
 		key.try_insert(0, 1).expect("Should insert");
-		value.try_insert(0, 1).expect("Should insert");
+		value.mutate_value().try_insert(0, 1).expect("Should insert");
 	});
 	let stake_addresses = stakes.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 
@@ -395,7 +402,7 @@ fn rejects_unfulfilling_fees() {
 	let mut fees = MockMints::from(MockClauses(fee_clauses.into_iter().map(|(_, c)| c).collect()));
 	fees.iter_mut().for_each(|(_, key, value)| {
 		key.try_insert(0, 1).expect("Should insert");
-		value.try_insert(0, 1).expect("Should insert");
+		value.mutate_value().try_insert(0, 1).expect("Should insert");
 	});
 	let fee_addresses = fees.clone().into_iter().map(|(addr, _, _)| addr).collect::<Vec<_>>();
 

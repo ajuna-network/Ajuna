@@ -20,7 +20,14 @@ use super::*;
 fn works_with_token_reward() {
 	let stake_clauses = vec![
 		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![12])),
-		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![3], bounded_vec![4])),
+		(
+			1,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_2,
+				bounded_vec![3],
+				AttributeValue::Equal(bounded_vec![4]),
+			),
+		),
 	];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![11]))];
 	let stake_duration = 4;
@@ -84,7 +91,14 @@ fn works_with_token_reward() {
 fn works_with_nft_reward() {
 	let stake_clauses = vec![
 		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![12])),
-		(1, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![3], bounded_vec![4])),
+		(
+			1,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_2,
+				bounded_vec![3],
+				AttributeValue::Equal(bounded_vec![4]),
+			),
+		),
 	];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![11]))];
 	let stake_duration = 4;
