@@ -57,6 +57,9 @@ pub mod pallet {
 		NftAddress<<T as Config>::CollectionId, <T as Config>::ItemId>;
 
 	#[pallet::storage]
+	pub type Administrator<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
+	#[pallet::storage]
 	pub type StartTime<T: Config> = StorageValue<_, MomentOf<T>, OptionQuery>;
 
 	#[pallet::storage]
@@ -112,6 +115,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		AdministratorNotSet,
+		AccountIsNotAdministrator,
 		InvalidInput,
 		UnknownDeposit,
 		InsufficientReserveFunds,
@@ -136,6 +141,14 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		AdministratorSet {
+			administrator: T::AccountId,
+		},
+		ParametersSet {
+			start_time: Option<MomentOf<T>>,
+			epoch_duration: Option<MomentOf<T>>,
+			signer_key: Option<sp_core::sr25519::Public>,
+		},
 		AssetDeposit {
 			epoch: EpochNumber,
 			depositor: T::AccountId,
@@ -229,8 +242,59 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Set a administrator account.
+		///
+		/// This call allows setting an account to act as an administrator. It must be called with
+		/// root privilege.
 		#[pallet::weight({10_000})]
 		#[pallet::call_index(0)]
+		pub fn set_administrator(
+			origin: OriginFor<T>,
+			administrator: T::AccountId,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			Administrator::<T>::put(&administrator);
+
+			Self::deposit_event(Event::AdministratorSet { administrator });
+			Ok(())
+		}
+
+		#[pallet::weight({10_000})]
+		#[pallet::call_index(1)]
+		pub fn set_parameters(
+			origin: OriginFor<T>,
+			start_time: Option<MomentOf<T>>,
+			epoch_duration: Option<MomentOf<T>>,
+			signer_key: Option<sp_core::sr25519::Public>,
+		) -> DispatchResult {
+			let admin = Administrator::<T>::get();
+			ensure!(admin.is_some(), Error::<T>::AdministratorNotSet);
+
+			let account = ensure_signed(origin)?;
+			ensure!(admin.unwrap() == account, Error::<T>::AccountIsNotAdministrator);
+
+			if let Some(start_time) = start_time {
+				StartTime::<T>::put(start_time);
+			}
+
+			if let Some(epoch_duration) = epoch_duration {
+				EpochDuration::<T>::put(epoch_duration);
+			}
+
+			if let Some(signer_key) = signer_key {
+				SignerKey::<T>::put(signer_key);
+			}
+
+			Self::deposit_event(Event::ParametersSet {
+				start_time: StartTime::<T>::get(),
+				epoch_duration: EpochDuration::<T>::get(),
+				signer_key: SignerKey::<T>::get(),
+			});
+			Ok(())
+		}
+
+		#[pallet::weight({10_000})]
+		#[pallet::call_index(2)]
 		pub fn deposit(origin: OriginFor<T>, asset_deposit: AssetDeposit) -> DispatchResult {
 			ensure!(!Frozen::<T>::exists(), Error::<T>::PalletFrozen);
 
@@ -264,7 +328,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(1)]
+		#[pallet::call_index(3)]
 		pub fn withdraw(
 			origin: OriginFor<T>,
 			balance_proof: BalanceProof,
@@ -296,7 +360,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(2)]
+		#[pallet::call_index(4)]
 		pub fn withdraw_frozen(
 			origin: OriginFor<T>,
 			balance_proof: BalanceProof,
@@ -336,7 +400,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(3)]
+		#[pallet::call_index(5)]
 		pub fn refund_frozen(origin: OriginFor<T>) -> DispatchResult {
 			let withdrawer = ensure_signed(origin)?;
 
@@ -381,7 +445,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(4)]
+		#[pallet::call_index(6)]
 		pub fn challenge(origin: OriginFor<T>) -> DispatchResult {
 			let challenger = ensure_signed(origin)?;
 
@@ -409,7 +473,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(5)]
+		#[pallet::call_index(7)]
 		pub fn respond_challenge(
 			origin: OriginFor<T>,
 			balance_proof: BalanceProof,
@@ -447,7 +511,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(6)]
+		#[pallet::call_index(8)]
 		pub fn freeze(origin: OriginFor<T>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -465,7 +529,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(7)]
+		#[pallet::call_index(9)]
 		pub fn propagate_freeze(
 			origin: OriginFor<T>,
 			freeze_proof: FreezeProof,
@@ -504,7 +568,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight({10_000})]
-		#[pallet::call_index(8)]
+		#[pallet::call_index(10)]
 		pub fn respond_zero_challenge(
 			origin: OriginFor<T>,
 			zero_proof: ZeroBalanceProof,
