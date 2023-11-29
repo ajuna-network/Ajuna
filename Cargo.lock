@@ -408,6 +408,7 @@ dependencies = [
  "log",
  "orml-vesting",
  "pallet-ajuna-awesome-avatars",
+ "pallet-ajuna-battle-mogs",
  "pallet-ajuna-nft-staking",
  "pallet-ajuna-nft-transfer",
  "pallet-asset-tx-payment",

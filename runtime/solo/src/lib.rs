@@ -680,6 +680,13 @@ impl pallet_ajuna_nft_staking::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_ajuna_battle_mogs::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type Randomness = Randomness;
+	type WeightInfo = ();
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -709,6 +716,7 @@ construct_runtime!(
 		Nft: pallet_nfts = 24,
 		NftTransfer: pallet_ajuna_nft_transfer = 25,
 		NftStaking: pallet_ajuna_nft_staking = 26,
+		BattleMogs: pallet_ajuna_battle_mogs = 27,
 	}
 );
 
