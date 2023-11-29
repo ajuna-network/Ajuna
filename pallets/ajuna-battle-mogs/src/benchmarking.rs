@@ -222,5 +222,5 @@ benchmarks! {
 		assert_eq!(Pallet::<T>::all_mogwais_count(), 3_u64);
 	}
 
-	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
+	impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder.build(), crate::mock::Test);
 }
