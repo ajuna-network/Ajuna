@@ -165,6 +165,7 @@ ajuna-solo-runtime                        = { path = "runtime/solo" }
 bajun-runtime                             = { path = "runtime/bajun" }
 # Ajuna Pallets
 pallet-ajuna-awesome-avatars              = { path = "pallets/ajuna-awesome-avatars", default-features = false }
+pallet-ajuna-battle-mogs                  = { path = "pallets/ajuna-battle-mogs", default-features = false }
 pallet-ajuna-awesome-avatars-benchmarking = { path = "pallets/ajuna-awesome-avatars/benchmarking", default-features = false }
 pallet-ajuna-nft-transfer                 = { path = "pallets/ajuna-nft-transfer", default-features = false }
 pallet-ajuna-nft-staking                  = { path = "pallets/ajuna-nft-staking", default-features = false }
