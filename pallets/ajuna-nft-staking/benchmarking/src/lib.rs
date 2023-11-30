@@ -453,7 +453,7 @@ benchmarks! {
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
 		accept_contract::<T>(m, n, by.clone(), contract_id, Mode::Staker)?;
-	}: claim(RawOrigin::Signed(by.clone()), contract_id)
+	}: claim(RawOrigin::Signed(by.clone()), contract_id, None)
 	verify {
 		assert_last_event::<T>(Event::Claimed { by, contract_id, rewards })
 	}
@@ -475,7 +475,7 @@ benchmarks! {
 		let by = account::<T>("staker");
 		create_collections::<T>(&by, 2)?;
 		accept_contract::<T>(m, n, by.clone(), contract_id, Mode::Staker)?;
-	}: claim(RawOrigin::Signed(by.clone()), contract_id)
+	}: claim(RawOrigin::Signed(by.clone()), contract_id, None)
 	verify {
 		assert_last_event::<T>(Event::Claimed { by, contract_id, rewards })
 	}
