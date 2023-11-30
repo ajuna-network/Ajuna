@@ -21,7 +21,14 @@ fn works_with_token_reward() {
 	let stake_clauses = vec![
 		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
 		(1, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![5])),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_2, bounded_vec![6], bounded_vec![7])),
+		(
+			2,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_2,
+				bounded_vec![6],
+				AttributeValue::Equal(bounded_vec![7]),
+			),
+		),
 	];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_2, bounded_vec![33]))];
 	let stake_duration = 4;
@@ -91,7 +98,14 @@ fn works_with_nft_reward() {
 	let stake_clauses = vec![
 		(0, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![4])),
 		(1, Clause::HasAttribute(RESERVED_COLLECTION_0, bounded_vec![5])),
-		(2, Clause::HasAttributeWithValue(RESERVED_COLLECTION_1, bounded_vec![6], bounded_vec![7])),
+		(
+			2,
+			Clause::HasAttributeWithValue(
+				RESERVED_COLLECTION_1,
+				bounded_vec![6],
+				AttributeValue::Equal(bounded_vec![7]),
+			),
+		),
 	];
 	let fee_clauses = vec![(0, Clause::HasAttribute(RESERVED_COLLECTION_1, bounded_vec![12]))];
 	let stake_duration = 8;

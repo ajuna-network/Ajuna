@@ -248,7 +248,7 @@ fn contract_with<T: Config>(
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(stake_collection),
 					T::BenchmarkHelper::contract_key((i as u8) * 3),
-					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
+					AttributeValue::Equal(T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE)),
 				),
 			})
 			.collect::<Vec<_>>()
@@ -261,7 +261,7 @@ fn contract_with<T: Config>(
 				clause: Clause::HasAttributeWithValue(
 					CollectionIdOf::<T>::unique_saturated_from(fee_collection),
 					T::BenchmarkHelper::contract_key((i as u8) * 3),
-					T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE),
+					AttributeValue::Equal(T::BenchmarkHelper::contract_value(ATTRIBUTE_VALUE)),
 				),
 			})
 			.collect::<Vec<_>>()
