@@ -171,9 +171,10 @@ impl<T: Config> ForgerV1<T> {
 						matches += 1;
 						matched_components.extend(matching_components.iter());
 					}
-
-					souls.saturating_accrue(other.souls)
 				}
+
+				souls.saturating_accrue(other.souls);
+
 				Ok((matched_components, matches, souls))
 			},
 		)
