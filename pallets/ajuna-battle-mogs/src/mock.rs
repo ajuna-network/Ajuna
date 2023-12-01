@@ -36,14 +36,14 @@ pub const BOB: MockAccountId = 2;
 pub const CHARLIE: MockAccountId = 3;
 
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+frame_support::construct_runtime! {
 	pub struct Test {
 		System: frame_system,
 		Randomness: pallet_insecure_randomness_collective_flip,
 		Balances: pallet_balances,
 		BattleMogs: pallet_battle_mogs,
 	}
-);
+}
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;

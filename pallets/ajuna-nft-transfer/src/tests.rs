@@ -90,16 +90,16 @@ mod store_as_nft {
 				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				assert_eq!(
-					Nft::system_attribute(&collection_id, &item_id, MockItem::ITEM_CODE),
+					Nft::system_attribute(&collection_id, Some(&item_id), MockItem::ITEM_CODE),
 					Some(item.encode())
 				);
 				assert_eq!(
-					Nft::system_attribute(&collection_id, &item_id, MockItem::IPFS_URL_CODE),
+					Nft::system_attribute(&collection_id, Some(&item_id), MockItem::IPFS_URL_CODE),
 					Some(url)
 				);
 				for (attribute_code, encoded_attributes) in item.get_encoded_attributes() {
 					assert_eq!(
-						Nft::system_attribute(&collection_id, &item_id, &attribute_code),
+						Nft::system_attribute(&collection_id, Some(&item_id), &attribute_code),
 						Some(encoded_attributes.to_vec())
 					);
 				}
@@ -143,11 +143,11 @@ mod store_as_nft {
 				assert_eq!(Nft::collection_owner(collection_id), Some(ALICE));
 				assert_eq!(Nft::owner(collection_id, item_id), Some(BOB));
 				assert_eq!(
-					Nft::system_attribute(&collection_id, &item_id, MockItem::ITEM_CODE),
+					Nft::system_attribute(&collection_id, Some(&item_id), MockItem::ITEM_CODE),
 					Some(item.encode())
 				);
 				assert_eq!(
-					Nft::system_attribute(&collection_id, &item_id, MockItem::IPFS_URL_CODE),
+					Nft::system_attribute(&collection_id, Some(&item_id), MockItem::IPFS_URL_CODE),
 					Some(url)
 				);
 
@@ -262,13 +262,13 @@ mod recover_from_nft {
 				assert!(NftStatuses::<Test>::get(collection_id, item_id).is_none());
 				assert!(Nft::system_attribute(
 					&collection_id,
-					&item_id,
+					Some(&item_id),
 					&MockItem::ITEM_CODE.encode()
 				)
 				.is_none());
 				assert!(Nft::system_attribute(
 					&collection_id,
-					&item_id,
+					Some(&item_id),
 					&MockItem::IPFS_URL_CODE.encode()
 				)
 				.is_none());

@@ -125,8 +125,6 @@ para = [
 ]
 solo = [ "ajuna-solo-runtime", "sc-network" ]
 
-kusama-native   = [ "polkadot-service/kusama-native" ]
-polkadot-native = [ "polkadot-service/polkadot-native" ]
 rococo-native   = [ "polkadot-service/rococo-native" ]
 
 runtime-benchmarks = [

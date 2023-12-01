@@ -372,6 +372,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 parameter_types! {
@@ -691,8 +692,8 @@ impl pallet_preimage::Config for Runtime {
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
-construct_runtime!(
-	pub struct Runtime
+construct_runtime! {
+	pub enum Runtime
 	{
 		// System support stuff.
 		System: frame_system = 0,
@@ -730,7 +731,7 @@ construct_runtime!(
 		Council: pallet_collective::<Instance2> = 42,
 		CouncilMembership: pallet_membership::<Instance2> = 43,
 	}
-);
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

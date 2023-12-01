@@ -47,14 +47,14 @@ pub const RESERVED_COLLECTION_1: MockCollectionId = 1;
 pub const RESERVED_COLLECTION_2: MockCollectionId = 2;
 
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+frame_support::construct_runtime! {
 	pub struct Test {
 		System: frame_system,
 		Balances: pallet_balances,
 		Nft: pallet_nfts,
 		NftStake: pallet_nft_staking,
 	}
-);
+}
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -100,6 +100,7 @@ impl pallet_balances::Config for Test {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 pub type MockCollectionId = u32;

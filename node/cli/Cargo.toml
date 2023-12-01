@@ -78,8 +78,6 @@ para = [
 ]
 solo = [ "ajuna-service/solo" ]
 
-kusama-native   = [ "polkadot-cli/kusama-native" ]
-polkadot-native = [ "polkadot-cli/polkadot-native" ]
 rococo-native   = [ "polkadot-cli/rococo-native" ]
 
 runtime-benchmarks = [

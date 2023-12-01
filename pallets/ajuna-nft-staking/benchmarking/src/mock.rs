@@ -38,14 +38,14 @@ pub type MockCollectionId = u32;
 impl crate::Config for Runtime {}
 
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
-	pub struct Runtime {
+frame_support::construct_runtime! {
+	pub enum Runtime {
 		System: frame_system,
 		Balances: pallet_balances,
 		Nft: pallet_nfts,
 		NftStake: pallet_ajuna_nft_staking,
 	}
-);
+}
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -91,6 +91,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 parameter_types! {

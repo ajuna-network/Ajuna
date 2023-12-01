@@ -75,8 +75,10 @@ where
 		ItemId: PartialEq,
 	{
 		let evaluate_fn = match self.namespace {
-			AttributeNamespace::Pallet => NftInspector::system_attribute,
-			AttributeNamespace::CollectionOwner => NftInspector::attribute,
+			AttributeNamespace::Pallet =>
+				|collection, item, key| NftInspector::system_attribute(collection, Some(item), key),
+			AttributeNamespace::CollectionOwner =>
+				|collection, item, key| NftInspector::attribute(collection, item, key),
 		};
 
 		self.clause
@@ -156,16 +158,16 @@ where
 	KL: Get<u32>,
 	VL: Get<u32>,
 {
-	pub fn evaluate_for<AccountId, NftInspector, ItemId, Fn>(
-		&self,
-		address: &NftId<CollectionId, ItemId>,
+	pub fn evaluate_for<'a, AccountId, NftInspector, ItemId, Fn>(
+		&'a self,
+		address: &'a NftId<CollectionId, ItemId>,
 		mut evaluate_fn: Fn,
 	) -> bool
 	where
 		NftInspector: Inspect<AccountId, CollectionId = CollectionId, ItemId = ItemId>,
 		CollectionId: PartialEq,
 		ItemId: PartialEq,
-		Fn: FnMut(&CollectionId, &ItemId, &[u8]) -> Option<Vec<u8>>,
+		Fn: FnMut(&'a CollectionId, &'a ItemId, &'a [u8]) -> Option<Vec<u8>>,
 	{
 		let clause_collection_id = match self {
 			Clause::HasAttribute(collection_id, _) => collection_id,

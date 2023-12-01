@@ -41,14 +41,14 @@ pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
 
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+frame_support::construct_runtime! {
 	pub struct Test {
 		System: frame_system,
 		Nft: pallet_nfts,
 		Balances: pallet_balances,
 		NftTransfer: pallet_ajuna_nft_transfer,
 	}
-);
+}
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -94,6 +94,7 @@ impl pallet_balances::Config for Test {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, MaxEncodedLen, TypeInfo)]

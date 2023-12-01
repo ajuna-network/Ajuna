@@ -231,6 +231,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -688,8 +689,8 @@ impl pallet_ajuna_battle_mogs::Config for Runtime {
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
-construct_runtime!(
-	pub struct Runtime
+construct_runtime! {
+	pub enum Runtime
 	{
 		System: frame_system = 0,
 		Timestamp: pallet_timestamp = 1,
@@ -718,7 +719,7 @@ construct_runtime!(
 		NftStaking: pallet_ajuna_nft_staking = 26,
 		BattleMogs: pallet_ajuna_battle_mogs = 27,
 	}
-);
+}
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;

@@ -175,8 +175,9 @@ pub mod pallet {
 				Error::<T>::NftOutsideOfChain
 			);
 
-			let item = T::NftHelper::system_attribute(&collection_id, &item_id, Item::ITEM_CODE)
-				.ok_or(Error::<T>::UnknownItem)?;
+			let item =
+				T::NftHelper::system_attribute(&collection_id, Some(&item_id), Item::ITEM_CODE)
+					.ok_or(Error::<T>::UnknownItem)?;
 
 			T::NftHelper::clear_attribute(&collection_id, &item_id, Item::ITEM_CODE)?;
 			T::NftHelper::clear_attribute(&collection_id, &item_id, Item::IPFS_URL_CODE)?;

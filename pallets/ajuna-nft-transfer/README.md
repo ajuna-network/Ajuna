@@ -52,7 +52,7 @@ impl pallet_nfts::Config for Runtime {
 and include it in your `construct_runtime!` macro:
 
 ```rust
-construct_runtime!(
+construct_runtime! {
     pub enum Runtime where
         Block = Block,
         NodeBlock = Block,

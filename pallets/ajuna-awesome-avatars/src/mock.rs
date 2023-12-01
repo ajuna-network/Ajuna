@@ -44,7 +44,7 @@ pub const DAVE: MockAccountId = 4;
 
 pub const SEASON_ID: SeasonId = 1;
 
-frame_support::construct_runtime!(
+frame_support::construct_runtime! {
 	pub struct Test {
 		System: frame_system,
 		Balances: pallet_balances,
@@ -53,7 +53,7 @@ frame_support::construct_runtime!(
 		AAvatars: pallet_ajuna_awesome_avatars,
 		NftTransfer: pallet_ajuna_nft_transfer,
 	}
-);
+}
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -99,6 +99,7 @@ impl pallet_balances::Config for Test {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}

@@ -39,8 +39,8 @@ pub type MockCollectionId = u32;
 
 impl crate::Config for Runtime {}
 
-frame_support::construct_runtime!(
-	pub struct Runtime {
+frame_support::construct_runtime! {
+	pub enum Runtime {
 		System: frame_system,
 		Balances: pallet_balances,
 		Randomness: pallet_insecure_randomness_collective_flip,
@@ -48,7 +48,7 @@ frame_support::construct_runtime!(
 		AAvatars: pallet_ajuna_awesome_avatars,
 		NftTransfer: pallet_ajuna_nft_transfer,
 	}
-);
+}
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -94,6 +94,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxHolds = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type RuntimeFreezeReason = ();
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}

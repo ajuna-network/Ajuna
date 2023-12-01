@@ -80,7 +80,7 @@ cumulus-primitives-core             = { workspace = true }
 cumulus-primitives-timestamp        = { workspace = true }
 cumulus-primitives-utility          = { workspace = true }
 pallet-collator-selection           = { workspace = true }
-parachain-info                      = { workspace = true }
+staging-parachain-info          = { workspace = true }
 
 # ORML
 orml-vesting = { workspace = true }
@@ -130,7 +130,7 @@ std = [
     "pallet-transaction-payment/std",
     "pallet-utility/std",
     "pallet-xcm/std",
-    "parachain-info/std",
+    "staging-parachain-info/std",
     "polkadot-parachain-primitives/std",
     "polkadot-runtime-common/std",
     "sp-api/std",
@@ -205,7 +205,7 @@ try-runtime = [
     "pallet-treasury/try-runtime",
     "pallet-utility/try-runtime",
     "pallet-xcm/try-runtime",
-    "parachain-info/try-runtime",
+    "staging-parachain-info/try-runtime",
 ]
 
 experimental = [ "pallet-aura/experimental" ]
