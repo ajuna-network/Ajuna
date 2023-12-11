@@ -153,7 +153,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("ajuna"),
 	impl_name: create_runtime_str!("ajuna"),
 	authoring_version: 1,
-	spec_version: 126,
+	spec_version: 127,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,

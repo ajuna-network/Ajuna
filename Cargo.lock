@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-cli"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "ajuna-service",
@@ -146,7 +146,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-node"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-cli",
  "ajuna-service",
@@ -154,7 +154,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-primitives"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "parachains-common",
  "sp-core",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-rpc"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "jsonrpsee",
@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-runtime"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -251,7 +251,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-service"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "ajuna-rpc",
@@ -319,7 +319,7 @@ dependencies = [
 
 [[package]]
 name = "ajuna-solo-runtime"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "frame-benchmarking",
@@ -991,7 +991,7 @@ dependencies = [
 
 [[package]]
 name = "bajun-runtime"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "cumulus-pallet-aura-ext",
@@ -6087,7 +6087,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-awesome-avatars"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6107,7 +6107,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-awesome-avatars-benchmarking"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6129,7 +6129,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-battle-mogs"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "ajuna-primitives",
  "frame-benchmarking",
@@ -6147,7 +6147,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-nft-staking"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6164,7 +6164,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-nft-staking-benchmarking"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6183,7 +6183,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ajuna-nft-transfer"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "frame-support",
  "frame-system",
