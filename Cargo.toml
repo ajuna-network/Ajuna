@@ -151,7 +151,7 @@ parachains-common                       = { git = "https://github.com/paritytech
 parachain-info                          = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 
 # ORML
-orml-vesting = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "26b6fd59ab71429604a81c99ac093d20982c5459", default-features = false }
+orml-vesting = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "b3694e631df7f1ca16b1973122937753fcdee9d4", default-features = false }
 
 # Ajuna
 ajuna-cli        = { path = "node/cli", default-features = false }
