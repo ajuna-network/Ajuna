@@ -183,7 +183,7 @@ mod fungible_native {
 
 				assert_noop!(
 					Wildcard::withdraw(RuntimeOrigin::signed(ALICE), proof_err, signature),
-					Error::<Test>::InvalidInput
+					Error::<Test>::NativeAssetMappingNotFound
 				);
 
 				let invalid_signature = sp_core::sr25519::Signature([34; 64]);
@@ -306,7 +306,7 @@ mod fungible_native {
 
 			assert_noop!(
 				Wildcard::withdraw(RuntimeOrigin::signed(ALICE), proof_err, signature),
-				Error::<Test>::InvalidInput
+				Error::<Test>::NativeAssetMappingNotFound
 			);
 		});
 	}
@@ -422,7 +422,7 @@ mod fungible_foreign {
 
 			assert_noop!(
 				Wildcard::withdraw(RuntimeOrigin::signed(ALICE), proof_err, signature),
-				Error::<Test>::InvalidInput
+				Error::<Test>::NativeAssetMappingNotFound
 			);
 
 			let proof = BalanceProof {
@@ -526,7 +526,7 @@ mod non_fungible {
 
 			assert_noop!(
 				Wildcard::withdraw(RuntimeOrigin::signed(ALICE), proof_err, signature),
-				Error::<Test>::InvalidInput
+				Error::<Test>::NativeAssetMappingNotFound
 			);
 
 			let proof = BalanceProof::using_deposit(&deposit, now, ALICE, true, 0);

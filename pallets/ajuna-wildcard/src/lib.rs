@@ -115,26 +115,67 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Pallet administrator account not set, the account needs to be present before adjusting
+		/// parameters.
 		AdministratorNotSet,
+		/// Tried to change pallet parameters using a non-admin account.
 		AccountIsNotAdministrator,
-		InvalidInput,
-		UnknownDeposit,
+		/// Failed to decode account identifier from the BalanceProof/ZeroProof input.
+		FailedToDecodeAccount,
+		/// The fungible asset's quantity from the AssetDeposit input cannot fit in a u128.
+		FungibleAssetQuantityOverflow,
+		/// The mapping for a native asset's identifiers cannot be located during asset withdrawal.
+		NativeAssetMappingNotFound,
+		/// The mapping for a foreign asset's identifiers cannot be located during asset deposit.
+		NonNativeAssetMappingNotFound,
+		/// The asset type found in the BalanceProof/ZeroProof input could not be mapped to any
+		/// know type.
+		UnknownAssetTypeInProof,
+		/// Tried to mutate a fungible asset's deposit using a non fungible asset's data.
+		InvalidFungibleDepositMutation,
+		/// Tried to reserve a fungible asset using a non fungible asset's data.
+		ReservedFungibleWithNonFungibleValue,
+		/// Tried to undo a reserve of a fungible asset using a non fungible asset's data.
+		UnreservedFungibleWithNonFungibleValue,
+		/// Tried to a reserve a non fungible asset that has no owner data.
+		ReserveNonFungibleWithoutOwner,
+		/// The padding for the native fungible asset doesn't match the expect padding value.
+		InvalidNativeFungiblePadding,
+		/// The padding for the native non-fungible asset doesn't match the expect padding value.
+		InvalidNativeNonFungiblePadding,
+		/// The amount of reserved fungible asset funds is lower than the requested withdrawal.
 		InsufficientReserveFunds,
+		/// The balance proof origin identifier doesn't match the expected chain identifier.
 		BalanceProofWrongOriginNetwork,
+		/// The exit flag is not properly set.
 		BadExitFlag,
+		/// The public signer key cannot be found, set it before trying to validate signatures.
 		MissingPublicKey,
+		/// The signature doesn't match the expected value.
 		BadSignature,
+		/// The pallet's StartTime or EpochDuration parameters have not been set.
 		TimeNotSet,
+		/// Withdrawal is not in the proper sequence with previous withdrawals.
 		WithdrawNotInline,
+		/// The balance proof is still not finalize, so it cannot be used until later.
 		NonFinalizedBalanceProof,
+		/// The owner of the non-fungible asset is not the same that wants to reserve it.
 		ItemNotOwned,
+		/// This epoch has already been challenged previously.
 		AlreadyChallengedEpoch,
+		/// The epoch number is not correct.
 		InvalidEpochNumber,
+		/// The challenger account doesn't have enough free balance to perform the challenging.
 		InsufficientChallengeBalance,
+		/// The balance proof chunk index doesn't match the expected challenge index.
 		WrongChunkRespondedChallenge,
+		/// The balance proof key doesn't match any active challenge.
 		WronglyRespondedChallenge,
+		/// There are not active challenges, so there's no reason to freeze the pallet.
 		NothingToFreeze,
+		/// The pallet is not frozen for withdrawals.
 		NotFrozen,
+		/// The pallet is frozen, so deposits and withdrawals are blocked.
 		PalletFrozen,
 	}
 
@@ -482,7 +523,7 @@ pub mod pallet {
 			let _ = ensure_signed(origin)?;
 
 			let challenger = T::AccountId::decode(&mut &balance_proof.account[..])
-				.map_err(|_| Error::<T>::InvalidInput)?;
+				.map_err(|_| Error::<T>::FailedToDecodeAccount)?;
 
 			let challenge_key = (balance_proof.epoch, challenger.clone());
 
@@ -577,7 +618,7 @@ pub mod pallet {
 			let _ = ensure_signed(origin)?;
 
 			let challenger = T::AccountId::decode(&mut &zero_proof.account[..])
-				.map_err(|_| Error::<T>::InvalidInput)?;
+				.map_err(|_| Error::<T>::FailedToDecodeAccount)?;
 
 			let challenge_key = (zero_proof.epoch, challenger.clone());
 
@@ -642,11 +683,11 @@ pub mod pallet {
 			match asset.asset_type {
 				AssetType::Fungible => ensure!(
 					cmp_fn(asset_id_padding, NATIVE_FUNGIBLE_PAD.as_slice()),
-					Error::<T>::InvalidInput
+					Error::<T>::InvalidNativeFungiblePadding
 				),
 				AssetType::NonFungible => ensure!(
 					cmp_fn(asset_id_padding, NATIVE_NON_FUNGIBLE_PAD.as_slice()),
-					Error::<T>::InvalidInput
+					Error::<T>::InvalidNativeNonFungiblePadding
 				),
 			}
 
@@ -675,14 +716,12 @@ pub mod pallet {
 						asset_id
 					} else {
 						// Mapping should have been defined at withdraw
-						// TODO: Update error code
-						return Err(Error::<T>::UnknownDeposit.into())
+						return Err(Error::<T>::NonNativeAssetMappingNotFound.into())
 					};
 
 					let converted_asset =
 						Asset { origin: asset.origin, kind: AssetKind::Fungible(asset_id.clone()) };
 
-					// For noew we assume qty to be u32
 					let asset_bytes_1 = <&[u8; 16]>::try_from(&asset.secondary_id[0..16]).unwrap();
 					let asset_qty =
 						u128::from_le_bytes(*asset_bytes_1).saturated_into::<BalanceOf<T>>();
@@ -691,7 +730,7 @@ pub mod pallet {
 					let asset_check = u128::from_le_bytes(*asset_bytes_2);
 
 					if asset_check > 0 {
-						return Err(Error::<T>::InvalidInput.into())
+						return Err(Error::<T>::FungibleAssetQuantityOverflow.into())
 					}
 
 					let value = if is_native && asset_id.eq(&T::NativeTokenAssetId::get()) {
@@ -717,8 +756,7 @@ pub mod pallet {
 						collection_id
 					} else {
 						// Mapping should have been defined at withdraw
-						// TODO: Update error code
-						return Err(Error::<T>::UnknownDeposit.into())
+						return Err(Error::<T>::NonNativeAssetMappingNotFound.into())
 					};
 
 					let mapping_item_key = (asset.origin, asset.asset_type, asset.secondary_id);
@@ -734,8 +772,7 @@ pub mod pallet {
 						item_id
 					} else {
 						// Mapping should have been defined at withdraw
-						// TODO: Update error code
-						return Err(Error::<T>::UnknownDeposit.into())
+						return Err(Error::<T>::NonNativeAssetMappingNotFound.into())
 					};
 
 					let converted_asset = Asset {
@@ -806,8 +843,7 @@ pub mod pallet {
 					asset_id
 				} else {
 					// Mapping should have been defined at deposit
-					// TODO: Update error code
-					return Err(Error::<T>::InvalidInput.into())
+					return Err(Error::<T>::NativeAssetMappingNotFound.into())
 				};
 
 				let converted_asset =
@@ -821,7 +857,7 @@ pub mod pallet {
 				let asset_check = u128::from_le_bytes(*asset_bytes_2);
 
 				if asset_check > 0 {
-					return Err(Error::<T>::InvalidInput.into())
+					return Err(Error::<T>::FungibleAssetQuantityOverflow.into())
 				}
 
 				let value = if is_native && asset_id == T::NativeTokenAssetId::get() {
@@ -848,9 +884,8 @@ pub mod pallet {
 
 						collection_id
 					} else {
-						// Mapping should have been defined at withdraw
-						// TODO: Update error code
-						return Err(Error::<T>::InvalidInput.into())
+						// Mapping should have been defined at deposit
+						return Err(Error::<T>::NativeAssetMappingNotFound.into())
 					};
 
 				let mapping_item_key =
@@ -866,9 +901,8 @@ pub mod pallet {
 
 					item_id
 				} else {
-					// Mapping should have been defined at withdraw
-					// TODO: Update error code
-					return Err(Error::<T>::InvalidInput.into())
+					// Mapping should have been defined at deposit
+					return Err(Error::<T>::NativeAssetMappingNotFound.into())
 				};
 
 				let converted_asset = Asset {
@@ -878,7 +912,7 @@ pub mod pallet {
 
 				Ok((converted_asset, DepositValueKind::NonFungible))
 			} else {
-				Err(Error::<T>::InvalidInput)
+				Err(Error::<T>::UnknownAssetTypeInProof)
 			}?;
 
 			let epoch_number = Self::calculate_epoch_number_from(T::Time::now())?;
@@ -905,7 +939,7 @@ pub mod pallet {
 								Deposits::<T>::insert((epoch, depositor, asset), &deposit_value);
 								Ok(())
 							},
-							_ => Err(Error::<T>::InvalidInput),
+							_ => Err(Error::<T>::InvalidFungibleDepositMutation),
 						}?;
 					}
 					if let DepositValueKind::Fungible(DepositValue::Asset(ref mut existing_value)) =
@@ -917,7 +951,7 @@ pub mod pallet {
 								Deposits::<T>::insert((epoch, depositor, asset), &deposit_value);
 								Ok(())
 							},
-							_ => Err(Error::<T>::InvalidInput),
+							_ => Err(Error::<T>::InvalidFungibleDepositMutation),
 						}?;
 					}
 				},
@@ -940,14 +974,14 @@ pub mod pallet {
 				if Self::is_native_chain_token(asset_id) {
 					let amount = match value {
 						DepositValueKind::Fungible(DepositValue::Token(value)) => Ok(value),
-						_ => Err(Error::<T>::InvalidInput),
+						_ => Err(Error::<T>::ReservedFungibleWithNonFungibleValue),
 					}?;
 
 					T::Currency::transfer(who, &reserve_account, *amount, AllowDeath)
 				} else {
 					let amount = match value {
 						DepositValueKind::Fungible(DepositValue::Asset(value)) => Ok(value),
-						_ => Err(Error::<T>::InvalidInput),
+						_ => Err(Error::<T>::ReservedFungibleWithNonFungibleValue),
 					}?;
 
 					T::Fungibles::transfer(
@@ -962,7 +996,7 @@ pub mod pallet {
 			} else {
 				let amount = match value {
 					DepositValueKind::Fungible(DepositValue::Asset(value)) => Ok(value),
-					_ => Err(Error::<T>::InvalidInput),
+					_ => Err(Error::<T>::ReservedFungibleWithNonFungibleValue),
 				}?;
 				T::Fungibles::burn_from(asset_id.clone(), who, *amount, Exact, Polite).map(|_| ())
 			}
@@ -982,7 +1016,7 @@ pub mod pallet {
 				if Self::is_native_chain_token(asset_id) {
 					let withdrawal_amount = match value {
 						DepositValueKind::Fungible(DepositValue::Token(v)) => Ok(v),
-						_ => Err(Error::<T>::InvalidInput),
+						_ => Err(Error::<T>::UnreservedFungibleWithNonFungibleValue),
 					}?;
 
 					let available_balance = T::Currency::free_balance(&reserve_account);
@@ -996,7 +1030,7 @@ pub mod pallet {
 				} else {
 					let withdrawal_amount = match value {
 						DepositValueKind::Fungible(DepositValue::Asset(v)) => Ok(v),
-						_ => Err(Error::<T>::InvalidInput),
+						_ => Err(Error::<T>::UnreservedFungibleWithNonFungibleValue),
 					}?;
 
 					let available_balance =
@@ -1019,7 +1053,7 @@ pub mod pallet {
 			} else {
 				let withdrawal_amount = match value {
 					DepositValueKind::Fungible(DepositValue::Asset(v)) => Ok(v),
-					_ => Err(Error::<T>::InvalidInput),
+					_ => Err(Error::<T>::UnreservedFungibleWithNonFungibleValue),
 				}?;
 
 				if !T::Fungibles::asset_exists(asset_id.clone()) {
@@ -1045,7 +1079,7 @@ pub mod pallet {
 
 			let item_owner = T::NonFungibles::owner(collection_id, item_id);
 
-			ensure!(item_owner.is_some(), Error::<T>::InvalidInput);
+			ensure!(item_owner.is_some(), Error::<T>::ReserveNonFungibleWithoutOwner);
 			ensure!(item_owner.as_ref() == Some(who), Error::<T>::ItemNotOwned);
 
 			if Self::is_native(asset_origin) {
