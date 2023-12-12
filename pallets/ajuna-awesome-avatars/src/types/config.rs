@@ -81,10 +81,23 @@ pub struct ForgeConfig {
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub enum FreeMintTransferMode {
+	#[default]
+	Open,
+	WhitelistOnly,
+	Closed,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
 pub struct TransferConfig {
 	pub open: bool,
 	pub free_mint_transfer_fee: MintCount,
 	pub min_free_mint_transfer: MintCount,
+}
+
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
+pub struct FreemintTransferConfig {
+	pub mode: FreeMintTransferMode,
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Debug, Default, PartialEq)]
@@ -102,6 +115,7 @@ pub struct GlobalConfig<BlockNumber> {
 	pub mint: MintConfig<BlockNumber>,
 	pub forge: ForgeConfig,
 	pub transfer: TransferConfig,
+	pub freemint_transfer: FreemintTransferConfig,
 	pub trade: TradeConfig,
 	pub nft_transfer: NftTransferConfig,
 }

@@ -2394,6 +2394,93 @@ mod transferring {
 	}
 
 	#[test]
+	fn transfer_free_mints_should_reject_when_transfer_blocked() {
+		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
+			.free_mints(&[(ALICE, 11), (BOB, 11)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), ALICE));
+
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.freemint_transfer.mode = FreeMintTransferMode::Closed;
+				});
+
+				SeasonStats::<Test>::mutate(1, BOB, |stats| {
+					stats.minted = 1;
+					stats.forged = 1;
+				});
+
+				assert_noop!(
+					AAvatars::transfer_free_mints(RuntimeOrigin::signed(BOB), ALICE, 2),
+					Error::<Test>::FreeMintTransferClosed
+				);
+
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.freemint_transfer.mode = FreeMintTransferMode::Open;
+				});
+
+				assert_eq!(PlayerConfigs::<Test>::get(ALICE).free_mints, 11);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 11);
+
+				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(BOB), ALICE, 2));
+
+				assert_eq!(PlayerConfigs::<Test>::get(ALICE).free_mints, 13);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 8);
+			});
+	}
+
+	#[test]
+	fn transfer_free_mints_should_reject_when_not_in_whitelist() {
+		ExtBuilder::default()
+			.seasons(&[(1, Season::default())])
+			.free_mints(&[(ALICE, 11), (BOB, 11)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(AAvatars::set_organizer(RuntimeOrigin::root(), ALICE));
+
+				GlobalConfigs::<Test>::mutate(|config| {
+					config.freemint_transfer.mode = FreeMintTransferMode::WhitelistOnly;
+				});
+
+				SeasonStats::<Test>::mutate(1, BOB, |stats| {
+					stats.minted = 1;
+					stats.forged = 1;
+				});
+
+				assert_noop!(
+					AAvatars::transfer_free_mints(RuntimeOrigin::signed(BOB), ALICE, 2),
+					Error::<Test>::FreeMintTransferClosed
+				);
+
+				assert_ok!(AAvatars::modify_freemint_whitelist(
+					RuntimeOrigin::signed(ALICE),
+					BOB,
+					WhitelistOperation::AddAccount
+				));
+
+				assert_eq!(PlayerConfigs::<Test>::get(ALICE).free_mints, 11);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 11);
+
+				assert_ok!(AAvatars::transfer_free_mints(RuntimeOrigin::signed(BOB), ALICE, 2));
+
+				assert_eq!(PlayerConfigs::<Test>::get(ALICE).free_mints, 13);
+				assert_eq!(PlayerConfigs::<Test>::get(BOB).free_mints, 8);
+
+				assert_ok!(AAvatars::modify_freemint_whitelist(
+					RuntimeOrigin::signed(ALICE),
+					BOB,
+					WhitelistOperation::RemoveAccount
+				));
+
+				assert_noop!(
+					AAvatars::transfer_free_mints(RuntimeOrigin::signed(BOB), ALICE, 2),
+					Error::<Test>::FreeMintTransferClosed
+				);
+			});
+	}
+
+	#[test]
 	fn transfer_free_mints_should_reject_when_amount_is_lower_than_minimum_allowed() {
 		ExtBuilder::default()
 			.seasons(&[(1, Season::default())])

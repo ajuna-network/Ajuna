@@ -482,9 +482,12 @@ benchmarks! {
 			},
 			forge: ForgeConfig { open: true },
 			transfer: TransferConfig {
-				open:true,
+				open: true,
 				free_mint_transfer_fee: MintCount::MAX,
 				min_free_mint_transfer: MintCount::MAX,
+			},
+			freemint_transfer: FreemintTransferConfig {
+				mode: FreeMintTransferMode::Open,
 			},
 			trade: TradeConfig { open: true },
 			nft_transfer: NftTransferConfig { open: true },
