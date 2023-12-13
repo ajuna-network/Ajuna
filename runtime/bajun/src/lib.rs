@@ -78,7 +78,7 @@ use staging_xcm_executor::XcmExecutor;
 use ajuna_primitives::{
 	AccountId, AccountPublic, Balance, BlockNumber, CollectionId, Hash, Header, Nonce, Signature,
 };
-use pallet_nfts::Call as NftsCall;
+use pallet_nfts::{AttributeNamespace, Call as NftsCall};
 
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
@@ -258,7 +258,15 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(call: &RuntimeCall) -> bool {
-		!matches!(call, RuntimeCall::Nft(NftsCall::set_attribute { .. }))
+		match call {
+			RuntimeCall::Nft(NftsCall::set_attribute { namespace, .. })
+				if namespace == &AttributeNamespace::CollectionOwner =>
+				true,
+			RuntimeCall::Nft(NftsCall::set_attribute { namespace, .. })
+				if namespace != &AttributeNamespace::CollectionOwner =>
+				false,
+			_ => true,
+		}
 	}
 }
 
