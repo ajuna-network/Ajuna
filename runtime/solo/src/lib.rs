@@ -753,7 +753,7 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-type Migrations = (pallet_ajuna_awesome_avatars::migration::v5::MigrateToV5<Runtime>,);
+type Migrations = (pallet_ajuna_awesome_avatars::migration::v6::MigrateToV6<Runtime>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
