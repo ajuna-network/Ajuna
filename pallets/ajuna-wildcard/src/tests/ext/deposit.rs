@@ -54,7 +54,7 @@ mod fungible_native {
 	}
 
 	#[test]
-	fn test_token_error_invalid_input() {
+	fn test_token_error_invalid_padding() {
 		ExtBuilder::default().build().execute_with(|| {
 			let asset_deposit = AssetDeposit {
 				origin: CHAIN_ID,
@@ -65,7 +65,7 @@ mod fungible_native {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::InvalidNativeFungiblePadding
 			);
 		});
 	}
@@ -242,7 +242,7 @@ mod fungible_foreign {
 	}
 
 	#[test]
-	fn test_error_invalid_input() {
+	fn test_error_invalid_padding() {
 		ExtBuilder::default().build().execute_with(|| {
 			let asset_deposit = AssetDeposit {
 				origin: FOREIGN_CHAIN_ID,
@@ -253,7 +253,7 @@ mod fungible_foreign {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::InvalidNativeFungiblePadding
 			);
 		});
 	}
@@ -345,7 +345,7 @@ mod non_fungible {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::ReserveNonFungibleWithoutOwner
 			);
 
 			let (primary_id, secondary_id) = generate_native_non_fungible_wide_id(3, 1);
@@ -359,7 +359,7 @@ mod non_fungible {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::InvalidNativeFungiblePadding
 			);
 		});
 	}
@@ -484,7 +484,7 @@ mod non_fungible {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::ReserveNonFungibleWithoutOwner
 			);
 
 			let collection_id = create_collection(&ALICE);
@@ -505,7 +505,7 @@ mod non_fungible {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::ReserveNonFungibleWithoutOwner
 			);
 		});
 	}
@@ -568,7 +568,7 @@ mod non_fungible {
 
 			assert_noop!(
 				Wildcard::deposit(RuntimeOrigin::signed(ALICE), asset_deposit),
-				Error::<Test>::InvalidInput
+				Error::<Test>::ReserveNonFungibleWithoutOwner
 			);
 		});
 	}
