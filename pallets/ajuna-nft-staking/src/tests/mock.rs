@@ -224,6 +224,7 @@ impl Default for ContractOf<Test> {
 			stake_duration: Default::default(),
 			stake_clauses: Default::default(),
 			fee_clauses: Default::default(),
+			burn_fees: Default::default(),
 			rewards: Default::default(),
 			cancel_fee: Default::default(),
 			nft_stake_amount: 1,

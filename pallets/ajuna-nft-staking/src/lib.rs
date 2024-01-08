@@ -185,6 +185,14 @@ pub mod pallet {
 		StorageMap<_, Identity, T::ItemId, BoundedVec<u8, T::MaxMetadataLength>>;
 
 	#[pallet::storage]
+	pub type ContractsAttributes<T: Config> = StorageMap<
+		_,
+		Identity,
+		T::ItemId,
+		BoundedVec<BoundedVec<u8, <T as Config>::KeyLimit>, ConstU32<10>>,
+	>;
+
+	#[pallet::storage]
 	pub type ContractsStats<T: Config> =
 		StorageMap<_, Identity, T::AccountId, ContractStats, ValueQuery>;
 
@@ -353,7 +361,7 @@ pub mod pallet {
 			contract_id: T::ItemId,
 			contract: ContractOf<T>,
 			metadata: Option<Str>,
-			contract_attrs: Option<Vec<(Str, Str)>>,
+			contract_attrs: Option<BoundedVec<(Str, Str), ConstU32<10>>>,
 		) -> DispatchResult {
 			let creator = Self::ensure_creator(origin)?;
 			Self::ensure_pallet_unlocked()?;
@@ -475,7 +483,7 @@ pub mod pallet {
 			contract_id: T::ItemId,
 			mut contract: ContractOf<T>,
 			metadata: Option<Str>,
-			contract_attrs: Option<Vec<(Str, Str)>>,
+			contract_attrs: Option<BoundedVec<(Str, Str), ConstU32<10>>>,
 		) -> DispatchResult {
 			// Lock contract rewards in pallet account.
 			let pallet_account_id = Self::account_id();
@@ -530,23 +538,38 @@ pub mod pallet {
 			}
 
 			if let Some(attrs_vec) = contract_attrs {
-				for (attr_key, attr_value) in attrs_vec.into_iter() {
-					let key_bytes: BoundedVec<_, <T as Config>::KeyLimit> = attr_key
-						.into_bytes()
-						.try_into()
-						.map_err(|_| Error::<T>::AttributeKeyTooLong)?;
-					let value_bytes: BoundedVec<_, <T as Config>::ValueLimit> = attr_value
-						.into_bytes()
-						.try_into()
-						.map_err(|_| Error::<T>::AttributeValueTooLong)?;
+				let coded_attrs_vec = attrs_vec
+					.into_iter()
+					.map(|(attr_key, attr_value)| {
+						let key_bytes: BoundedVec<u8, <T as Config>::KeyLimit> = attr_key
+							.into_bytes()
+							.try_into()
+							.map_err(|_| Error::<T>::AttributeKeyTooLong)?;
+						let value_bytes: BoundedVec<u8, <T as Config>::ValueLimit> = attr_value
+							.into_bytes()
+							.try_into()
+							.map_err(|_| Error::<T>::AttributeValueTooLong)?;
+						Ok((key_bytes, value_bytes))
+					})
+					.collect::<Result<Vec<_>, Error<T>>>()?;
 
+				for (attr_key, attr_value) in coded_attrs_vec.clone().into_iter() {
 					T::NftHelper::set_attribute(
 						&collection_id,
 						&contract_id,
-						&key_bytes,
-						&value_bytes,
+						&attr_key,
+						&attr_value,
 					)?;
 				}
+
+				let contract_attrs: BoundedVec<_, ConstU32<10>> = coded_attrs_vec
+					.into_iter()
+					.map(|(attr_key, _)| attr_key)
+					.collect::<Vec<_>>()
+					.try_into()
+					.unwrap();
+
+				ContractsAttributes::<T>::insert(contract_id, contract_attrs);
 			}
 
 			Self::deposit_event(Event::<T>::Created { contract_id });
@@ -570,8 +593,7 @@ pub mod pallet {
 			Contracts::<T>::remove(contract_id);
 			ContractsMetadata::<T>::remove(contract_id);
 
-			let collection_id = Self::contract_collection_id()?;
-			T::NftHelper::burn(&collection_id, &contract_id, None)?;
+			Self::burn_and_clear_contract_attributes(&contract_id, None)?;
 
 			Self::deposit_event(Event::<T>::Removed { contract_id });
 
@@ -588,7 +610,17 @@ pub mod pallet {
 			let contract_address = NftId(Self::contract_collection_id()?, contract_id);
 			Self::transfer_items(&[contract_address], &who)?;
 			Self::transfer_items(stake_addresses, &Self::account_id())?;
-			Self::transfer_items(fee_addresses, &Self::creator()?)?;
+
+			let Contract { burn_fees, .. } =
+				Contracts::<T>::get(contract_id).ok_or(Error::<T>::UnknownContract)?;
+
+			if burn_fees {
+				for NftId(collection_id, item_id) in fee_addresses {
+					T::NftHelper::burn(collection_id, item_id, None)?;
+				}
+			} else {
+				Self::transfer_items(fee_addresses, &Self::creator()?)?;
+			}
 
 			// Record staked NFTs' addresses.
 			let bounded_stakes = StakedItemsOf::<T>::try_from(stake_addresses.to_vec())
@@ -645,8 +677,7 @@ pub mod pallet {
 			// different party.
 			let stake_beneficiary = if let Ok(contract_owner) = Self::contract_owner(&contract_id) {
 				// Burn contract NFT.
-				let collection_id = Self::contract_collection_id()?;
-				T::NftHelper::burn(&collection_id, &contract_id, Some(&contract_owner))?;
+				Self::burn_and_clear_contract_attributes(&contract_id, Some(&contract_owner))?;
 
 				// Retain contract IDs held.
 				let mut contract_ids = Self::contract_ids(&contract_owner)?;
@@ -933,6 +964,24 @@ pub mod pallet {
 		fn contract_ids(who: &T::AccountId) -> Result<ContractIdsOf<T>, DispatchError> {
 			let contract_ids = ContractIds::<T>::get(who).ok_or(Error::<T>::NotContractHolder)?;
 			Ok(contract_ids)
+		}
+		fn burn_and_clear_contract_attributes(
+			contract_id: &T::ItemId,
+			contract_owner: Option<&T::AccountId>,
+		) -> Result<(), DispatchError> {
+			let collection_id = Self::contract_collection_id()?;
+			T::NftHelper::burn(&collection_id, contract_id, contract_owner)?;
+			if let Some(attributes) = ContractsAttributes::<T>::take(contract_id) {
+				for attribute in attributes.into_iter() {
+					T::NftHelper::clear_attribute(
+						&collection_id,
+						contract_id,
+						attribute.as_slice(),
+					)?;
+				}
+			}
+
+			Ok(())
 		}
 	}
 }
