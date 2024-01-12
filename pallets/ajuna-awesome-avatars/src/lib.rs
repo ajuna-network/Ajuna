@@ -163,7 +163,8 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<T::AccountId, ConstU32<3>>, ValueQuery>;
 
 	#[pallet::storage]
-	pub type CurrentSeasonStatus<T: Config> = StorageValue<_, SeasonStatus, ValueQuery>;
+	pub type CurrentSeasonStatus<T: Config> =
+		StorageMap<_, Identity, SeasonId, SeasonStatus, ValueQuery>;
 
 	/// Storage for the seasons.
 	#[pallet::storage]
@@ -238,13 +239,16 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
-			CurrentSeasonStatus::<T>::put(SeasonStatus {
-				season_id: 1,
-				early: Default::default(),
-				active: Default::default(),
-				early_ended: Default::default(),
-				max_tier_avatars: Default::default(),
-			});
+			CurrentSeasonStatus::<T>::insert(
+				1,
+				SeasonStatus {
+					season_id: 1,
+					early: Default::default(),
+					active: Default::default(),
+					early_ended: Default::default(),
+					max_tier_avatars: Default::default(),
+				},
+			);
 			GlobalConfigs::<T>::put(GlobalConfig {
 				mint: MintConfig { open: true, cooldown: 5_u8.into(), free_mint_fee_multiplier: 1 },
 				forge: ForgeConfig { open: true },
@@ -454,26 +458,6 @@ pub mod pallet {
 		WhitelistedAccountsLimitReached,
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
-			let current_season_id = CurrentSeasonStatus::<T>::get().season_id;
-			let mut weight = T::DbWeight::get().reads(1);
-
-			if let Some(current_season) = Seasons::<T>::get(current_season_id) {
-				weight.saturating_accrue(T::DbWeight::get().reads(1));
-
-				if now <= current_season.end {
-					Self::start_season(&mut weight, now, current_season_id, &current_season);
-				} else {
-					Self::finish_season(&mut weight, now, current_season_id);
-				}
-			}
-
-			weight
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Issue a new avatar.
@@ -488,9 +472,13 @@ pub mod pallet {
 			T::WeightInfo::mint_normal(n)
 				.max(T::WeightInfo::mint_free(n))
 		})]
-		pub fn mint(origin: OriginFor<T>, mint_option: MintOption) -> DispatchResult {
+		pub fn mint(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			mint_option: MintOption,
+		) -> DispatchResult {
 			let player = ensure_signed(origin)?;
-			Self::do_mint(&player, &mint_option)
+			Self::do_mint(&player, &season_id, &mint_option)
 		}
 
 		/// Forge an avatar.
@@ -558,6 +546,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			to: T::AccountId,
 			how_many: MintCount,
+			season_id: SeasonId,
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			ensure!(from != to, Error::<T>::CannotTransferToSelf);
@@ -578,7 +567,6 @@ pub mod pallet {
 				FreeMintTransferMode::Open => Ok(()),
 			}?;
 
-			let (season_id, _) = Self::current_season_with_id()?;
 			let SeasonInfo { minted, forged } = SeasonStats::<T>::get(season_id, &from);
 			ensure!(minted > 0 && forged > 0, Error::<T>::CannotTransferFromInactiveAccount);
 
@@ -660,7 +648,11 @@ pub mod pallet {
 		/// Weight: `O(1)`
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::buy(MaxAvatarsPerPlayer::get()))]
-		pub fn buy(origin: OriginFor<T>, avatar_id: AvatarIdOf<T>) -> DispatchResult {
+		pub fn buy(
+			origin: OriginFor<T>,
+			season_id: SeasonId,
+			avatar_id: AvatarIdOf<T>,
+		) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
 			let GlobalConfig { trade, .. } = GlobalConfigs::<T>::get();
 			ensure!(trade.open, Error::<T>::TradeClosed);
@@ -670,7 +662,7 @@ pub mod pallet {
 			T::Currency::transfer(&buyer, &seller, price, AllowDeath)?;
 
 			let avatar = Self::ensure_ownership(&seller, &avatar_id)?;
-			let (current_season_id, Season { fee, .. }) = Self::current_season_with_id()?;
+			let Season { fee, .. } = Self::seasons(&season_id)?;
 			let trade_fee = fee.buy_minimum.max(
 				price.saturating_mul(fee.buy_percent.unique_saturated_into()) /
 					MAX_PERCENTAGE.unique_saturated_into(),
@@ -681,10 +673,10 @@ pub mod pallet {
 			Self::do_transfer_avatar(&seller, &buyer, &avatar.season_id, &avatar_id)?;
 			Trade::<T>::remove(avatar.season_id, avatar_id);
 
-			PlayerSeasonConfigs::<T>::mutate(&buyer, current_season_id, |config| {
+			PlayerSeasonConfigs::<T>::mutate(&buyer, season_id, |config| {
 				config.stats.trade.bought.saturating_inc()
 			});
-			PlayerSeasonConfigs::<T>::mutate(&seller, current_season_id, |config| {
+			PlayerSeasonConfigs::<T>::mutate(&seller, season_id, |config| {
 				config.stats.trade.sold.saturating_inc()
 			});
 
@@ -697,9 +689,6 @@ pub mod pallet {
 		/// * If called with a value in the **beneficiary** parameter, that account will receive the
 		///   upgrade
 		/// instead of the caller.
-		/// * If the **in_season** parameter contains a value, this will set which specific season
-		/// will the storage be upgraded for, if no value is set then the current season will be the
-		/// one for which the storage will be upgraded.
 		///
 		/// In all cases the upgrade fees are **paid by the caller**.
 		///
@@ -710,17 +699,11 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(
 			origin: OriginFor<T>,
+			season_id: SeasonId,
 			beneficiary: Option<AccountIdOf<T>>,
-			in_season: Option<SeasonId>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			let (season_id, Season { fee, .. }) = {
-				if let Some(season_id) = in_season {
-					(season_id, Self::seasons(&season_id)?)
-				} else {
-					Self::current_season_with_id()?
-				}
-			};
+			let Season { fee, .. } = Self::seasons(&season_id)?;
 			let account_to_upgrade = beneficiary.unwrap_or_else(|| caller.clone());
 
 			let storage_tier =
@@ -796,11 +779,9 @@ pub mod pallet {
 			let treasurer = Treasurer::<T>::get(season_id).ok_or(Error::<T>::UnknownTreasurer)?;
 			ensure!(maybe_treasurer == treasurer, DispatchError::BadOrigin);
 
-			let (current_season_id, season) = Self::current_season_with_id()?;
+			let season = Self::seasons(&season_id)?;
 			ensure!(
-				season_id < current_season_id ||
-					(season_id == current_season_id &&
-						<frame_system::Pallet<T>>::block_number() > season.end),
+				<frame_system::Pallet<T>>::block_number() > season.end,
 				Error::<T>::CannotClaimDuringSeason
 			);
 
@@ -1151,14 +1132,18 @@ pub mod pallet {
 		}
 
 		/// Mint a new avatar.
-		pub(crate) fn do_mint(player: &T::AccountId, mint_option: &MintOption) -> DispatchResult {
-			let (season_id, season) = Self::current_season_with_id()?;
+		pub(crate) fn do_mint(
+			player: &T::AccountId,
+			season_id: &SeasonId,
+			mint_option: &MintOption,
+		) -> DispatchResult {
+			let season = Self::seasons(season_id)?;
 
-			Self::ensure_for_mint(player, &season_id, mint_option)?;
+			Self::ensure_for_mint(player, season_id, mint_option)?;
 
 			let generated_avatar_ids = match season.mint_logic {
-				LogicGeneration::First => MinterV1::<T>::mint(player, &season_id, mint_option),
-				LogicGeneration::Second => MinterV2::<T>::mint(player, &season_id, mint_option),
+				LogicGeneration::First => MinterV1::<T>::mint(player, season_id, mint_option),
+				LogicGeneration::Second => MinterV2::<T>::mint(player, season_id, mint_option),
 			}?;
 
 			let GlobalConfig { mint, .. } = GlobalConfigs::<T>::get();
@@ -1166,7 +1151,7 @@ pub mod pallet {
 				MintPayment::Normal => {
 					let fee = season.fee.mint.fee_for(&mint_option.pack_size);
 					T::Currency::withdraw(player, fee, WithdrawReasons::FEE, AllowDeath)?;
-					Self::deposit_into_treasury(&season_id, fee);
+					Self::deposit_into_treasury(season_id, fee);
 				},
 				MintPayment::Free => {
 					let fee = (mint_option.pack_size.as_mint_count())
@@ -1193,7 +1178,7 @@ pub mod pallet {
 					stats
 						.mint
 						.seasons_participated
-						.try_insert(season_id)
+						.try_insert(*season_id)
 						.map_err(|_| Error::<T>::IncorrectSeasonId)?;
 					Ok(())
 				},
@@ -1285,20 +1270,6 @@ pub mod pallet {
 			})
 		}
 
-		fn current_season_with_id() -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
-			let mut current_status = CurrentSeasonStatus::<T>::get();
-			let season = match Seasons::<T>::get(current_status.season_id) {
-				Some(season) if current_status.is_in_season() => season,
-				_ => {
-					if current_status.season_id > 1 {
-						current_status.season_id.saturating_dec();
-					}
-					Self::seasons(&current_status.season_id)?
-				},
-			};
-			Ok((current_status.season_id, season))
-		}
-
 		fn season_with_id_for(avatar: &Avatar) -> Result<(SeasonId, SeasonOf<T>), DispatchError> {
 			let season_id = avatar.season_id;
 			let season = Self::seasons(&season_id)?;
@@ -1331,7 +1302,10 @@ pub mod pallet {
 				ensure!(current_block >= last_block + mint.cooldown, Error::<T>::MintCooldown);
 			}
 
-			let SeasonStatus { active, early, early_ended, .. } = CurrentSeasonStatus::<T>::get();
+			Self::evaluate_season_start(current_block, season_id)?;
+
+			let SeasonStatus { active, early, early_ended, .. } =
+				CurrentSeasonStatus::<T>::get(season_id);
 			let free_mints = PlayerConfigs::<T>::get(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
 			let is_free_mint = mint_option.payment == MintPayment::Free;
@@ -1339,7 +1313,7 @@ pub mod pallet {
 			ensure!(active || early && (is_whitelisted || is_free_mint), Error::<T>::SeasonClosed);
 
 			let mint_count = mint_option.pack_size.as_mint_count();
-			let (_, Season { fee, .. }) = Self::current_season_with_id()?;
+			let Season { fee, .. } = Self::seasons(season_id)?;
 			match mint_option.payment {
 				MintPayment::Normal => {
 					let fee = fee.mint.fee_for(&mint_option.pack_size);
@@ -1356,6 +1330,9 @@ pub mod pallet {
 			let current_count = Owners::<T>::get(player, season_id).len() as u16;
 			let max_count = player_season_config.storage_tier as u16;
 			ensure!(current_count + mint_count <= max_count, Error::<T>::MaxOwnershipReached);
+
+			Self::evaluate_season_end(current_block, season_id)?;
+
 			Ok(())
 		}
 
@@ -1426,10 +1403,13 @@ pub mod pallet {
 					let max_tier = season.max_tier() as u8;
 
 					if prev_leader_tier != max_tier && after_leader_tier == max_tier {
-						CurrentSeasonStatus::<T>::mutate(|status| {
+						CurrentSeasonStatus::<T>::mutate(season_id, |status| {
 							status.max_tier_avatars.saturating_inc();
 							if status.max_tier_avatars == season.max_tier_forges {
 								status.early_ended = true;
+								status.active = false;
+
+								Self::deposit_event(Event::SeasonFinished(*season_id));
 							}
 						});
 					}
@@ -1565,49 +1545,48 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn start_season(
-			weight: &mut Weight,
-			block_number: BlockNumberFor<T>,
-			season_id: SeasonId,
-			season: &SeasonOf<T>,
-		) {
-			let is_current_season_active = CurrentSeasonStatus::<T>::get().active;
-			weight.saturating_accrue(T::DbWeight::get().reads(1));
+		fn evaluate_season_start(
+			current_block: BlockNumberFor<T>,
+			season_id: &SeasonId,
+		) -> DispatchResult {
+			let season = Self::seasons(season_id)?;
+			let SeasonStatus { early_ended, .. } = CurrentSeasonStatus::<T>::get(season_id);
 
-			if !is_current_season_active {
-				CurrentSeasonStatus::<T>::mutate(|status| {
-					status.early = season.is_early(block_number);
-					status.active = season.is_active(block_number);
+			if current_block <= season.end && !early_ended {
+				// We have to start the season
+				CurrentSeasonStatus::<T>::mutate(season_id, |status| {
+					status.season_id = *season_id;
+					status.early = season.is_early(current_block);
+					let already_active = status.active;
+					status.active = season.is_active(current_block);
 
-					if season.is_active(block_number) {
-						Self::deposit_event(Event::SeasonStarted(season_id));
+					if !already_active && season.is_active(current_block) {
+						Self::deposit_event(Event::SeasonStarted(*season_id));
 					}
 				});
-
-				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
+
+			Ok(())
 		}
 
-		fn finish_season(
-			weight: &mut Weight,
-			block_number: BlockNumberFor<T>,
-			season_id: SeasonId,
-		) {
-			let next_season_id = season_id.saturating_add(1);
+		fn evaluate_season_end(
+			current_block: BlockNumberFor<T>,
+			season_id: &SeasonId,
+		) -> DispatchResult {
+			let season = Self::seasons(season_id)?;
+			let SeasonStatus { early, active, .. } = CurrentSeasonStatus::<T>::get(season_id);
 
-			CurrentSeasonStatus::<T>::mutate(|status| {
-				status.season_id = next_season_id;
-				status.early = false;
-				status.active = false;
-				status.early_ended = false;
-				status.max_tier_avatars = Zero::zero();
-			});
-			Self::deposit_event(Event::SeasonFinished(season_id));
-			weight.saturating_accrue(T::DbWeight::get().writes(1));
+			if (active || early) && current_block > season.end {
+				// We have to finish the season
+				CurrentSeasonStatus::<T>::mutate(season_id, |status| {
+					status.active = false;
+					status.early = false;
+				});
 
-			if let Some(next_season) = Seasons::<T>::get(next_season_id) {
-				Self::start_season(weight, block_number, next_season_id, &next_season);
+				Self::deposit_event(Event::SeasonFinished(*season_id));
 			}
+
+			Ok(())
 		}
 
 		fn avatars(avatar_id: &AvatarIdOf<T>) -> Result<(T::AccountId, Avatar), DispatchError> {

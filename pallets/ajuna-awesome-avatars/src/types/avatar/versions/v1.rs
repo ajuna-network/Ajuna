@@ -453,6 +453,7 @@ mod test {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
+					season_id,
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
@@ -554,6 +555,7 @@ mod test {
 				run_to_block(season.start);
 				assert_ok!(AAvatars::mint(
 					RuntimeOrigin::signed(BOB),
+					season_id,
 					MintOption {
 						pack_size: MintPackSize::Six,
 						payment: MintPayment::Free,
