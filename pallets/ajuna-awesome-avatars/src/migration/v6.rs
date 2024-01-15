@@ -122,9 +122,22 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV6<T> {
 				old_config.map(|old| old.migrate_to_v6())
 			});
 
+			for season_id in Seasons::<T>::iter_keys() {
+				CurrentSeasonStatuses::<T>::insert(
+					season_id,
+					SeasonStatus {
+						season_id,
+						early: false,
+						active: false,
+						early_ended: false,
+						max_tier_avatars: 0,
+					},
+				);
+			}
+
 			current_version.put::<Pallet<T>>();
 			log::info!(target: LOG_TARGET, "Upgraded storage to version {:?}", current_version);
-			T::DbWeight::get().reads_writes(1, 1)
+			T::DbWeight::get().reads_writes(3, 3)
 		} else {
 			log::info!(
 				target: LOG_TARGET,

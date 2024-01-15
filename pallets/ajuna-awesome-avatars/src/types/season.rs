@@ -30,11 +30,6 @@ pub struct SeasonStatus {
 	pub early_ended: bool,
 	pub max_tier_avatars: u32,
 }
-impl SeasonStatus {
-	pub(crate) fn is_in_season(&self) -> bool {
-		self.early || self.active || self.early_ended
-	}
-}
 
 pub type RarityPercent = u8;
 pub type SacrificeCount = u8;
@@ -342,45 +337,6 @@ mod test {
 		pub fn mint_logic(mut self, logic: LogicGeneration) -> Self {
 			self.mint_logic = logic;
 			self
-		}
-	}
-
-	impl SeasonStatus {
-		fn early(mut self, early: bool) -> Self {
-			self.early = early;
-			self
-		}
-		fn active(mut self, active: bool) -> Self {
-			self.active = active;
-			self
-		}
-		fn early_ended(mut self, early_ended: bool) -> Self {
-			self.early_ended = early_ended;
-			self
-		}
-	}
-
-	#[test]
-	fn is_in_season_works() {
-		assert!(!SeasonStatus {
-			season_id: 123,
-			early: false,
-			active: false,
-			early_ended: false,
-			max_tier_avatars: 0
-		}
-		.is_in_season());
-
-		for season_status in [
-			SeasonStatus::default().early(true).active(false).early_ended(false),
-			SeasonStatus::default().early(false).active(true).early_ended(false),
-			SeasonStatus::default().early(false).active(false).early_ended(true),
-			SeasonStatus::default().early(false).active(true).early_ended(true),
-			SeasonStatus::default().early(true).active(false).early_ended(true),
-			SeasonStatus::default().early(true).active(true).early_ended(false),
-			SeasonStatus::default().early(true).active(true).early_ended(true),
-		] {
-			assert!(season_status.is_in_season());
 		}
 	}
 
