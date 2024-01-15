@@ -123,7 +123,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV6<T> {
 			});
 
 			for season_id in Seasons::<T>::iter_keys() {
-				CurrentSeasonStatus::<T>::insert(
+				CurrentSeasonStatuses::<T>::insert(
 					season_id,
 					SeasonStatus {
 						season_id,

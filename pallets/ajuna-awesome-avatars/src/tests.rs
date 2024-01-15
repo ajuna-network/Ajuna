@@ -736,7 +736,7 @@ mod minting {
 				for n in 0..season.early_start {
 					run_to_block(n);
 					assert_eq!(
-						CurrentSeasonStatus::<Test>::get(SEASON_ID),
+						CurrentSeasonStatuses::<Test>::get(SEASON_ID),
 						SeasonStatus {
 							season_id: 1,
 							active: false,
@@ -762,7 +762,7 @@ mod minting {
 					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &normal_mint));
 					assert_ok!(AAvatars::ensure_for_mint(&ALICE, &SEASON_ID, &free_mint));
 
-					assert!(CurrentSeasonStatus::<Test>::get(SEASON_ID).early);
+					assert!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).early);
 
 					// For non-whitelisted accounts, only free mint is available (but will fail due
 					// to insufficient free mint balance).
@@ -787,13 +787,13 @@ mod minting {
 						Error::<Test>::InsufficientFreeMints
 					);
 
-					assert!(CurrentSeasonStatus::<Test>::get(SEASON_ID).active);
+					assert!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).active);
 				}
 
 				// At premature end, only free mint is available for all accounts.
 				for n in season.start..=season.end {
 					run_to_block(n);
-					CurrentSeasonStatus::<Test>::mutate(SEASON_ID, |status| {
+					CurrentSeasonStatuses::<Test>::mutate(SEASON_ID, |status| {
 						status.early_ended = true
 					});
 					assert_noop!(
@@ -811,7 +811,7 @@ mod minting {
 						Error::<Test>::InsufficientFreeMints
 					);
 
-					CurrentSeasonStatus::<Test>::mutate(SEASON_ID, |status| {
+					CurrentSeasonStatuses::<Test>::mutate(SEASON_ID, |status| {
 						status.early_ended = false
 					});
 				}
@@ -824,7 +824,7 @@ mod minting {
 				for n in season.end + 2..(season.end + 5) {
 					run_to_block(n);
 					assert_eq!(
-						CurrentSeasonStatus::<Test>::get(SEASON_ID),
+						CurrentSeasonStatuses::<Test>::get(SEASON_ID),
 						SeasonStatus {
 							season_id: SEASON_ID,
 							active: false,
@@ -880,7 +880,7 @@ mod minting {
 					let season_id = 1;
 
 					System::set_block_number(1);
-					CurrentSeasonStatus::<Test>::mutate(SEASON_ID, |status| {
+					CurrentSeasonStatuses::<Test>::mutate(SEASON_ID, |status| {
 						status.season_id = season_id
 					});
 					SeasonStats::<Test>::mutate(1, ALICE, |info| info.minted = 0);
@@ -902,7 +902,7 @@ mod minting {
 					}
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
-					assert!(!CurrentSeasonStatus::<Test>::get(SEASON_ID).active);
+					assert!(!CurrentSeasonStatuses::<Test>::get(SEASON_ID).active);
 
 					// single mint
 					run_to_block(season_1.start);
@@ -938,7 +938,7 @@ mod minting {
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
-					assert!(CurrentSeasonStatus::<Test>::get(SEASON_ID).active);
+					assert!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).active);
 					assert_eq!(
 						PlayerSeasonConfigs::<Test>::get(ALICE, season_id).stats.mint.first,
 						season_1.start
@@ -986,7 +986,7 @@ mod minting {
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
-					assert!(CurrentSeasonStatus::<Test>::get(SEASON_ID).active);
+					assert!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).active);
 					System::assert_last_event(mock::RuntimeEvent::AAvatars(
 						crate::Event::AvatarsMinted {
 							avatar_ids: Owners::<Test>::get(ALICE, SEASON_ID)[1..=3].to_vec(),
@@ -1028,7 +1028,7 @@ mod minting {
 					assert_eq!(System::account_nonce(ALICE), expected_nonce);
 					assert_eq!(Owners::<Test>::get(ALICE, SEASON_ID).len(), owned_avatar_count);
 					assert_eq!(SeasonStats::<Test>::get(1, ALICE).minted, season_minted_count);
-					assert!(CurrentSeasonStatus::<Test>::get(SEASON_ID).active);
+					assert!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).active);
 					System::assert_last_event(mock::RuntimeEvent::AAvatars(
 						crate::Event::AvatarsMinted {
 							avatar_ids: Owners::<Test>::get(ALICE, SEASON_ID)[4..=9].to_vec(),
@@ -1107,7 +1107,7 @@ mod minting {
 					assert_eq!(seasons_participated.into_iter().collect::<Vec<_>>(), vec![1]);
 
 					// current season minted count resets
-					assert_eq!(CurrentSeasonStatus::<Test>::get(2).season_id, 2);
+					assert_eq!(CurrentSeasonStatuses::<Test>::get(2).season_id, 2);
 					assert_eq!(SeasonStats::<Test>::get(2, ALICE).minted, 0);
 
 					// check for minted avatars
@@ -1434,7 +1434,7 @@ mod forging {
 		let mut avatar = Avatar::default().season_id(SEASON_ID).dna(dna);
 		avatar.souls = with_souls;
 		if avatar.rarity() == RarityTier::Legendary as u8 {
-			CurrentSeasonStatus::<Test>::mutate(SEASON_ID, |status| status.max_tier_avatars += 1);
+			CurrentSeasonStatuses::<Test>::mutate(SEASON_ID, |status| status.max_tier_avatars += 1);
 		}
 
 		let avatar_id = H256::random();
@@ -1711,14 +1711,14 @@ mod forging {
 				);
 
 				// force highest tier mint and assert for associated checks
-				assert_eq!(CurrentSeasonStatus::<Test>::get(SEASON_ID).max_tier_avatars, 0);
+				assert_eq!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).max_tier_avatars, 0);
 				assert_dna(
 					&leader_id,
 					&[0x53, 0x52, 0x52, 0x52, 0x51, 0x51, 0x54, 0x51],
 					Some(&[0x53, 0x52, 0x52, 0x52, 0x51, 0x51, 0x25, 0x22]),
 				);
-				assert_eq!(CurrentSeasonStatus::<Test>::get(SEASON_ID).max_tier_avatars, 1);
-				assert!(CurrentSeasonStatus::<Test>::get(SEASON_ID).early_ended);
+				assert_eq!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).max_tier_avatars, 1);
+				assert!(CurrentSeasonStatuses::<Test>::get(SEASON_ID).early_ended);
 				assert_noop!(
 					AAvatars::mint(
 						RuntimeOrigin::signed(BOB),
@@ -1738,8 +1738,8 @@ mod forging {
 
 				// trigger season end and assert for associated checks
 				run_to_block(season.end + 1);
-				assert_eq!(CurrentSeasonStatus::<Test>::get(2).max_tier_avatars, 0);
-				assert!(!CurrentSeasonStatus::<Test>::get(2).early_ended);
+				assert_eq!(CurrentSeasonStatuses::<Test>::get(2).max_tier_avatars, 0);
+				assert!(!CurrentSeasonStatuses::<Test>::get(2).early_ended);
 
 				// check stats for season 2
 				assert_eq!(SeasonStats::<Test>::get(2, BOB).forged, 0);
@@ -1773,7 +1773,7 @@ mod forging {
 
 				// `max_tier_avatars` increases when a legendary is forged
 				assert_eq!(
-					CurrentSeasonStatus::<Test>::get(SEASON_ID).max_tier_avatars,
+					CurrentSeasonStatuses::<Test>::get(SEASON_ID).max_tier_avatars,
 					max_tier_avatars
 				);
 				assert_ok!(AAvatars::forge(
@@ -1783,7 +1783,7 @@ mod forging {
 				));
 				max_tier_avatars += 1;
 				assert_eq!(
-					CurrentSeasonStatus::<Test>::get(SEASON_ID).max_tier_avatars,
+					CurrentSeasonStatuses::<Test>::get(SEASON_ID).max_tier_avatars,
 					max_tier_avatars
 				);
 				assert_eq!(Owners::<Test>::get(BOB, SEASON_ID).len(), 4 - 3);
@@ -1797,7 +1797,7 @@ mod forging {
 				];
 				max_tier_avatars += 4;
 				assert_eq!(
-					CurrentSeasonStatus::<Test>::get(SEASON_ID).max_tier_avatars,
+					CurrentSeasonStatuses::<Test>::get(SEASON_ID).max_tier_avatars,
 					max_tier_avatars
 				);
 
@@ -1808,7 +1808,7 @@ mod forging {
 					legendary_avatar_ids[1..].to_vec()
 				));
 				assert_eq!(
-					CurrentSeasonStatus::<Test>::get(SEASON_ID).max_tier_avatars,
+					CurrentSeasonStatuses::<Test>::get(SEASON_ID).max_tier_avatars,
 					max_tier_avatars
 				);
 				assert_eq!(Owners::<Test>::get(BOB, SEASON_ID).len(), (4 - 3) + (4 - 3));
@@ -2174,7 +2174,7 @@ mod forging {
 
 				let owned_avatars = Owners::<Test>::get(ALICE, 1);
 
-				CurrentSeasonStatus::<Test>::mutate(SEASON_ID, |status| {
+				CurrentSeasonStatuses::<Test>::mutate(SEASON_ID, |status| {
 					status.season_id = 123;
 					status.active = true;
 				});

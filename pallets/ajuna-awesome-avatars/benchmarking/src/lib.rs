@@ -70,7 +70,7 @@ fn account<T: Config>(name: &'static str) -> T::AccountId {
 fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 	for i in 0..n {
 		let season_id = (i + 1) as SeasonId;
-		CurrentSeasonStatus::<T>::insert(
+		CurrentSeasonStatuses::<T>::insert(
 			season_id,
 			SeasonStatus {
 				season_id,
@@ -127,7 +127,7 @@ fn create_seasons<T: Config>(n: usize) -> Result<(), &'static str> {
 		);
 	}
 	frame_system::Pallet::<T>::set_block_number(
-		Seasons::<T>::get(CurrentSeasonStatus::<T>::get(1).season_id).unwrap().start,
+		Seasons::<T>::get(CurrentSeasonStatuses::<T>::get(1).season_id).unwrap().start,
 	);
 	Ok(())
 }
@@ -149,7 +149,7 @@ fn create_avatars<T: Config>(name: &'static str, n: u32) -> Result<(), &'static 
 		config.nft_transfer.open = true;
 	});
 
-	let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+	let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 	PlayerSeasonConfigs::<T>::mutate(&player, season_id, |config| {
 		config.stats.mint.last = Zero::zero();
 		config.storage_tier = StorageTier::Max;
@@ -201,7 +201,7 @@ fn create_service_account_and_prepare_avatar<T: Config>(
 	avatar_id: &AvatarIdOf<T>,
 ) -> Result<T::AccountId, DispatchError> {
 	let service_account = create_service_account::<T>();
-	let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get(1).season_id).unwrap();
+	let season = Seasons::<T>::get(CurrentSeasonStatuses::<T>::get(1).season_id).unwrap();
 	CurrencyOf::<T>::make_free_balance_be(player, season.fee.prepare_avatar);
 	AAvatars::<T>::prepare_avatar(RawOrigin::Signed(player.clone()).into(), *avatar_id)?;
 	Ok(service_account)
@@ -226,7 +226,7 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), 1, mint_option)
 	verify {
 		let n = n as usize;
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_ids = Owners::<T>::get(caller, season_id)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
@@ -237,7 +237,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let caller = account::<T>(name);
-		let season = Seasons::<T>::get(CurrentSeasonStatus::<T>::get(1).season_id).unwrap();
+		let season = Seasons::<T>::get(CurrentSeasonStatuses::<T>::get(1).season_id).unwrap();
 		let mint_fee = season.fee.mint.fee_for(&MintPackSize::Six);
 		CurrencyOf::<T>::make_free_balance_be(&caller, mint_fee);
 
@@ -246,7 +246,7 @@ benchmarks! {
 	}: mint(RawOrigin::Signed(caller.clone()), 1, mint_option)
 	verify {
 		let n = n as usize;
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_ids = Owners::<T>::get(caller, season_id)[n..(n + 6)].to_vec();
 		assert_last_event::<T>(Event::AvatarsMinted { avatar_ids })
 	}
@@ -257,7 +257,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_ids = Owners::<T>::get(&player, season_id);
 		let avatar_id = avatar_ids[0];
 		let (_owner, original_avatar) = Avatars::<T>::get(avatar_id).unwrap();
@@ -283,7 +283,7 @@ benchmarks! {
 		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>("from", MaxAvatarsPerPlayer::get())?;
 		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&from, season_id)[n as usize - 1];
 
 		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
@@ -299,7 +299,7 @@ benchmarks! {
 		let n in 1 .. MaxAvatarsPerPlayer::get();
 		create_avatars::<T>("organizer", MaxAvatarsPerPlayer::get())?;
 		create_avatars::<T>("to", MaxAvatarsPerPlayer::get() - n)?;
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&organizer, season_id)[n as usize - 1];
 
 		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
@@ -316,7 +316,7 @@ benchmarks! {
 		let GlobalConfig { transfer, .. } = GlobalConfigs::<T>::get();
 		let free_mint_transfer_fee = transfer.free_mint_transfer_fee;
 		let how_many = MintCount::MAX - free_mint_transfer_fee as MintCount;
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		SeasonStats::<T>::mutate(season_id, &from, |stats| {
 			stats.minted = 1;
 			stats.forged = 1;
@@ -331,7 +331,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&caller, season_id)[0];
 		let price = BalanceOf::<T>::unique_saturated_from(u128::MAX);
 	}: _(RawOrigin::Signed(caller), avatar_id, price)
@@ -343,7 +343,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, MaxAvatarsPerPlayer::get())?;
 		let caller = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&caller, season_id)[0];
 		Trade::<T>::insert(season_id, avatar_id, BalanceOf::<T>::unique_saturated_from(u128::MAX));
 	}: _(RawOrigin::Signed(caller), avatar_id)
@@ -363,7 +363,7 @@ benchmarks! {
 		CurrencyOf::<T>::make_free_balance_be(&buyer, sell_fee + trade_fee);
 		CurrencyOf::<T>::make_free_balance_be(&seller, sell_fee);
 
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&seller, season_id)[0];
 		Trade::<T>::insert(season_id, avatar_id, sell_fee);
 	}: _(RawOrigin::Signed(buyer.clone()), 1, avatar_id)
@@ -374,7 +374,7 @@ benchmarks! {
 	upgrade_storage {
 		create_seasons::<T>(1)?;
 		let player = account::<T>("player");
-		let current_season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let current_season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let season = Seasons::<T>::get(current_season_id).unwrap();
 		CurrencyOf::<T>::make_free_balance_be(&player, season.fee.upgrade_storage);
 	}: _(RawOrigin::Signed(player.clone()), 1, None)
@@ -524,7 +524,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_ids = Owners::<T>::get(&player, season_id);
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
@@ -549,7 +549,7 @@ benchmarks! {
 		create_avatars::<T>(name, n)?;
 
 		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_ids = Owners::<T>::get(&player, season_id);
 		let avatar_id = avatar_ids[avatar_ids.len() - 1];
 
@@ -580,7 +580,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let _ = create_service_account::<T>();
 		let Season { fee, .. } = Seasons::<T>::get(season_id).unwrap();
@@ -594,7 +594,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let _ = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 	}: _(RawOrigin::Signed(player), avatar_id)
@@ -606,7 +606,7 @@ benchmarks! {
 		let name = "player";
 		create_avatars::<T>(name, 1)?;
 		let player = account::<T>(name);
-		let season_id = CurrentSeasonStatus::<T>::get(1).season_id;
+		let season_id = CurrentSeasonStatuses::<T>::get(1).season_id;
 		let avatar_id = Owners::<T>::get(&player, season_id)[0];
 		let service_account = create_service_account_and_prepare_avatar::<T>(&player, &avatar_id)?;
 		let url = IpfsUrl::try_from(b"ipfs://".to_vec()).unwrap();

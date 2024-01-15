@@ -163,7 +163,7 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<T::AccountId, ConstU32<3>>, ValueQuery>;
 
 	#[pallet::storage]
-	pub type CurrentSeasonStatus<T: Config> =
+	pub type CurrentSeasonStatuses<T: Config> =
 		StorageMap<_, Identity, SeasonId, SeasonStatus, ValueQuery>;
 
 	/// Storage for the seasons.
@@ -239,7 +239,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
-			CurrentSeasonStatus::<T>::insert(
+			CurrentSeasonStatuses::<T>::insert(
 				1,
 				SeasonStatus {
 					season_id: 1,
@@ -1305,7 +1305,7 @@ pub mod pallet {
 			Self::evaluate_season_start(current_block, season_id)?;
 
 			let SeasonStatus { active, early, early_ended, .. } =
-				CurrentSeasonStatus::<T>::get(season_id);
+				CurrentSeasonStatuses::<T>::get(season_id);
 			let free_mints = PlayerConfigs::<T>::get(player).free_mints;
 			let is_whitelisted = free_mints > Zero::zero();
 			let is_free_mint = mint_option.payment == MintPayment::Free;
@@ -1403,7 +1403,7 @@ pub mod pallet {
 					let max_tier = season.max_tier() as u8;
 
 					if prev_leader_tier != max_tier && after_leader_tier == max_tier {
-						CurrentSeasonStatus::<T>::mutate(season_id, |status| {
+						CurrentSeasonStatuses::<T>::mutate(season_id, |status| {
 							status.max_tier_avatars.saturating_inc();
 							if status.max_tier_avatars == season.max_tier_forges {
 								status.early_ended = true;
@@ -1550,11 +1550,11 @@ pub mod pallet {
 			season_id: &SeasonId,
 		) -> DispatchResult {
 			let season = Self::seasons(season_id)?;
-			let SeasonStatus { early_ended, .. } = CurrentSeasonStatus::<T>::get(season_id);
+			let SeasonStatus { early_ended, .. } = CurrentSeasonStatuses::<T>::get(season_id);
 
 			if current_block <= season.end && !early_ended {
 				// We have to start the season
-				CurrentSeasonStatus::<T>::mutate(season_id, |status| {
+				CurrentSeasonStatuses::<T>::mutate(season_id, |status| {
 					status.season_id = *season_id;
 					status.early = season.is_early(current_block);
 					let already_active = status.active;
@@ -1574,11 +1574,11 @@ pub mod pallet {
 			season_id: &SeasonId,
 		) -> DispatchResult {
 			let season = Self::seasons(season_id)?;
-			let SeasonStatus { early, active, .. } = CurrentSeasonStatus::<T>::get(season_id);
+			let SeasonStatus { early, active, .. } = CurrentSeasonStatuses::<T>::get(season_id);
 
 			if (active || early) && current_block > season.end {
 				// We have to finish the season
-				CurrentSeasonStatus::<T>::mutate(season_id, |status| {
+				CurrentSeasonStatuses::<T>::mutate(season_id, |status| {
 					status.active = false;
 					status.early = false;
 				});
