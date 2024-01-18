@@ -1,0 +1,37 @@
+[package]
+description = "Ajuna Network pallet used to handle account affiliates"
+name        = "pallet-ajuna-affiliate"
+
+authors.workspace    = true
+edition.workspace    = true
+homepage.workspace   = true
+repository.workspace = true
+version.workspace    = true
+
+[package.metadata.docs.rs]
+targets = [ "x86_64-unknown-linux-gnu" ]
+
+[dependencies]
+# Substrate (wasm)
+frame-support                              = { workspace = true }
+frame-system                               = { workspace = true }
+parity-scale-codec                         = { workspace = true, features = [ "derive", "max-encoded-len" ] }
+scale-info                                 = { workspace = true, features = [ "derive" ] }
+sp-runtime                                 = { workspace = true }
+sp-std                                     = { workspace = true }
+
+[dev-dependencies]
+pallet-balances = { workspace = true }
+sp-io           = { workspace = true }
+
+[features]
+default = [ "std" ]
+std = [
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-balances/std",
+    "sp-runtime/std",
+]
+try-runtime = [ "frame-support/try-runtime" ]
