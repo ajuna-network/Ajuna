@@ -163,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("bajun"),
 	impl_name: create_runtime_str!("bajun"),
 	authoring_version: 1,
-	spec_version: 129,
+	spec_version: 130,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -213,7 +213,7 @@ const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 
 /// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
 /// into the relay chain.
-const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
+const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
 /// How many parachain blocks are processed by the relay chain per parent. Limits the
 /// number of blocks authored per slot.
 const BLOCK_PROCESSING_VELOCITY: u32 = 1;
