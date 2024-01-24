@@ -17,15 +17,11 @@
 use crate::{self as pallet_ajuna_affiliates};
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU16, ConstU64},
-	PalletId,
+	traits::{ConstU16, ConstU64},
 };
-use frame_system::{EnsureRoot, EnsureSigned};
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
 use sp_runtime::{
 	testing::{TestSignature, H256},
-	traits::{BlakeTwo256, Get, IdentifyAccount, IdentityLookup, Verify},
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage,
 };
 
@@ -34,10 +30,12 @@ pub type MockAccountPublic = <MockSignature as Verify>::Signer;
 pub type MockAccountId = <MockAccountPublic as IdentifyAccount>::AccountId;
 pub type MockBlock = frame_system::mocking::MockBlock<Test>;
 pub type MockBalance = u64;
-pub type MockCollectionId = u32;
 
 pub const ALICE: MockAccountId = 1;
 pub const BOB: MockAccountId = 2;
+pub const CHARLIE: MockAccountId = 3;
+pub const DAVE: MockAccountId = 4;
+pub const EDWARD: MockAccountId = 5;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -96,13 +94,11 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const AffiliateMaxLevel: u32 = 2;
-	pub const AffiliateLimit: u32 = 10;
 }
 
 impl pallet_ajuna_affiliates::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type AffiliateMaxLevel = AffiliateMaxLevel;
-	type AffiliateLimit = AffiliateLimit;
 }
 
 #[derive(Default)]

@@ -171,7 +171,7 @@ mod test {
 			if let LeaderForgeOutput::Consumed(_) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");
@@ -260,7 +260,7 @@ mod test {
 			if let LeaderForgeOutput::Consumed(_) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");
@@ -334,7 +334,7 @@ mod test {
 
 			let minted_blueprint = sacrifice_output
 				.into_iter()
-				.filter(|output| is_minted(output))
+				.filter(is_minted)
 				.collect::<Vec<ForgeOutput<Test>>>()
 				.pop()
 				.expect("Should have 1 element!");
@@ -550,7 +550,7 @@ mod test {
 			if let LeaderForgeOutput::Consumed(_) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");
@@ -660,7 +660,7 @@ mod test {
 			if let LeaderForgeOutput::Forged((_, _), _) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");

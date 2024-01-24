@@ -118,7 +118,7 @@ impl<T: Config> AvatarCombinator<T> {
 			})
 			.transpose()?;
 
-		Ok((leader_output, other_output.into_iter().chain(additional_output.into_iter()).collect()))
+		Ok((leader_output, other_output.into_iter().chain(additional_output).collect()))
 	}
 }
 
