@@ -33,9 +33,12 @@ use traits::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use sp_runtime::ArithmeticError;
 
 	pub type AffiliatedAccountsOf<T> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::AffiliateMaxLevel>;
+
+	pub type PayoutRuleOf<T> = PayoutRule<<T as Config>::AffiliateMaxLevel>;
 
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
@@ -68,7 +71,7 @@ pub mod pallet {
 	/// Stores the affiliate logic rules
 	#[pallet::storage]
 	pub type AffiliateRules<T: Config> =
-		StorageMap<_, Blake2_128Concat, ExtrinsicId, u8, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, RuleId, PayoutRuleOf<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -82,15 +85,10 @@ pub mod pallet {
 			to: T::AccountId,
 		},
 		RuleAdded {
-			extrinsic_id: ExtrinsicId,
+			rule_id: RuleId,
 		},
 		RuleCleared {
-			extrinsic_id: ExtrinsicId,
-		},
-		RuleExecuted {
-			extrinsic_id: ExtrinsicId,
-			account: T::AccountId,
-			beneficiary: T::AccountId,
+			rule_id: RuleId,
 		},
 	}
 
@@ -112,8 +110,6 @@ pub mod pallet {
 		CannotAffiliateBlocked,
 		/// The given extrinsic identifier is already paired with an affiliate rule
 		ExtrinsicAlreadyHasRule,
-		/// The given extrinsic identifier doesn't have any rule associated with it
-		MissingRuleForExtrinsic,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -122,10 +118,7 @@ pub mod pallet {
 			affiliatee: T::AccountId,
 		) -> DispatchResult {
 			let accounts = {
-				let mut accounts_vec = match Affiliatees::<T>::take(&affiliator) {
-					Some(accounts) => accounts,
-					None => AffiliatedAccountsOf::<T>::new(),
-				};
+				let mut accounts_vec = Affiliatees::<T>::take(&affiliator).unwrap_or_default();
 
 				Self::try_add_account_to(&mut accounts_vec, affiliator.clone())?;
 
@@ -133,11 +126,14 @@ pub mod pallet {
 			};
 
 			Affiliatees::<T>::insert(affiliatee, accounts);
-			Affiliators::<T>::mutate(&affiliator, |state| {
-				state.affiliates = state.affiliates.saturating_add(1);
-			});
+			Affiliators::<T>::try_mutate(&affiliator, |state| {
+				state.affiliates = state
+					.affiliates
+					.checked_add(1)
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
-			Ok(())
+				Ok(())
+			})
 		}
 
 		fn try_add_account_to(
@@ -155,7 +151,7 @@ pub mod pallet {
 
 	impl<T: Config> AffiliateInspector<AccountIdOf<T>> for Pallet<T> {
 		fn get_affiliator_chain_for(account: &AccountIdOf<T>) -> Option<Vec<AccountIdOf<T>>> {
-			Affiliatees::<T>::get(account).map(|accounts| accounts.to_vec())
+			Affiliatees::<T>::get(account).map(|accounts| accounts.into_inner())
 		}
 
 		fn get_affiliate_count_for(account: &AccountIdOf<T>) -> u32 {
@@ -219,54 +215,47 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn clear_affiliation_for(account: &AccountIdOf<T>) {
-			if let Some(mut affiliate_chain) = Affiliatees::<T>::take(account) {
-				if let Some(affiliator) = affiliate_chain.pop() {
-					Affiliators::<T>::mutate(&affiliator, |state| {
-						state.affiliates = state.affiliates.saturating_sub(1);
-					});
-				}
-			}
+		fn try_clear_affiliation_for(account: &AccountIdOf<T>) -> DispatchResult {
+			Affiliatees::<T>::take(account)
+				.and_then(|mut affiliate_chain| affiliate_chain.pop())
+				.map_or_else(
+					|| Ok(()),
+					|affiliator| {
+						Affiliators::<T>::try_mutate(&affiliator, |state| {
+							state.affiliates = state
+								.affiliates
+								.checked_sub(1)
+								.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow))?;
+
+							Ok(())
+						})
+					},
+				)
 		}
 	}
 
-	impl<T: Config> RuleInspector for Pallet<T> {
-		fn get_rule_for(extrinsic_id: ExtrinsicId) -> Option<u8> {
-			AffiliateRules::<T>::get(extrinsic_id)
+	impl<T: Config> RuleInspector<T::AffiliateMaxLevel> for Pallet<T> {
+		fn get_rule_for(rule_id: RuleId) -> Option<PayoutRuleOf<T>> {
+			AffiliateRules::<T>::get(rule_id)
 		}
 	}
 
-	impl<T: Config> RuleMutator<AccountIdOf<T>> for Pallet<T> {
-		fn try_add_rule_for(extrinsic_id: ExtrinsicId, rule: u8) -> DispatchResult {
+	impl<T: Config> RuleMutator<AccountIdOf<T>, T::AffiliateMaxLevel> for Pallet<T> {
+		fn try_add_rule_for(rule_id: RuleId, rule: PayoutRuleOf<T>) -> DispatchResult {
 			ensure!(
-				!AffiliateRules::<T>::contains_key(extrinsic_id),
+				!AffiliateRules::<T>::contains_key(rule_id),
 				Error::<T>::ExtrinsicAlreadyHasRule
 			);
-			AffiliateRules::<T>::insert(extrinsic_id, rule);
-			Self::deposit_event(Event::RuleAdded { extrinsic_id });
+			AffiliateRules::<T>::insert(rule_id, rule);
+			Self::deposit_event(Event::RuleAdded { rule_id });
 
 			Ok(())
 		}
 
-		fn clear_rule_for(extrinsic_id: ExtrinsicId) {
-			AffiliateRules::<T>::remove(extrinsic_id);
+		fn clear_rule_for(rule_id: RuleId) {
+			AffiliateRules::<T>::remove(rule_id);
 
-			Self::deposit_event(Event::RuleCleared { extrinsic_id });
-		}
-
-		fn try_execute_rule_for(
-			extrinsic_id: ExtrinsicId,
-			_account: &AccountIdOf<T>,
-		) -> DispatchResult {
-			let _rule = {
-				let maybe_rule = AffiliateRules::<T>::get(extrinsic_id);
-				ensure!(maybe_rule.is_some(), Error::<T>::MissingRuleForExtrinsic);
-				maybe_rule.unwrap()
-			};
-
-			// TODO: Do something with the rule
-
-			Ok(())
+			Self::deposit_event(Event::RuleCleared { rule_id });
 		}
 	}
 }

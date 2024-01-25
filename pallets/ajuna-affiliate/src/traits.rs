@@ -25,33 +25,30 @@ pub trait AffiliateMutator<AccountId> {
 	/// Marks an account as [AffiliatableStatus::Blocked]
 	fn mark_account_as_blocked(account: &AccountId);
 
+	/// Attempts to add an affiliate link between affiliate and account
 	fn try_add_affiliate_to(account: &AccountId, affiliate: &AccountId) -> DispatchResult;
 
-	fn clear_affiliation_for(account: &AccountId);
+	/// Attempts to remove the affiliate link from account
+	fn try_clear_affiliation_for(account: &AccountId) -> DispatchResult;
 }
 
-pub type PalletIndex = u32;
-pub type CallIndex = u8;
+pub type RuleId = u8;
 
-pub type ExtrinsicId = (PalletIndex, CallIndex);
+pub type PayoutRule<N> = BoundedVec<u8, N>;
 
-pub trait RuleInspector {
-	/// Gets the data for a given 'extrinsic_id' mapped rule, or
+pub trait RuleInspector<N> {
+	/// Gets the rule data for a given 'extrinsic_id' mapped rule, or
 	/// None if no rule is associated with the given 'extrinsic_id'
-	fn get_rule_for(extrinsic_id: ExtrinsicId) -> Option<u8>;
+	fn get_rule_for(rule_id: RuleId) -> Option<PayoutRule<N>>;
 }
 
-pub trait RuleMutator<AccountId> {
+pub trait RuleMutator<AccountId, N> {
 	/// Tries to add a rule for 'extrinsic_id', fails to do so
 	/// if there's already a rule present.
-	fn try_add_rule_for(extrinsic_id: ExtrinsicId, rule: u8) -> DispatchResult;
+	fn try_add_rule_for(rule_id: RuleId, rule: PayoutRule<N>) -> DispatchResult;
 
 	/// Removes the rule mapping for 'extrinsic_id'
-	fn clear_rule_for(extrinsic_id: ExtrinsicId);
-
-	/// Tries to execute the rule associated with 'extrinsic_id', will fail
-	/// if no rule is associated with it, or if rule payout is not possible.
-	fn try_execute_rule_for(extrinsic_id: ExtrinsicId, account: &AccountId) -> DispatchResult;
+	fn clear_rule_for(rule_id: RuleId);
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Debug, Default, Copy, Clone, PartialEq)]
@@ -64,6 +61,6 @@ pub enum AffiliatableStatus {
 
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Debug, Default, Copy, Clone, PartialEq)]
 pub struct AffiliatorState {
-	pub(crate) status: AffiliatableStatus,
-	pub(crate) affiliates: u32,
+	pub status: AffiliatableStatus,
+	pub affiliates: u32,
 }
