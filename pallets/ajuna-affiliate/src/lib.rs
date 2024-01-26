@@ -35,20 +35,25 @@ pub mod pallet {
 	use super::*;
 	use sp_runtime::ArithmeticError;
 
-	pub type AffiliatedAccountsOf<T> =
-		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config>::AffiliateMaxLevel>;
+	pub type AffiliatedAccountsOf<T, I> =
+		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config<I>>::AffiliateMaxLevel>;
 
-	pub type PayoutRuleOf<T> = PayoutRule<<T as Config>::AffiliateMaxLevel>;
+	pub type PayoutRuleOf<T, I> = PayoutRule<<T as Config<I>>::AffiliateMaxLevel>;
 
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+	/// The current storage version.
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
 	#[pallet::pallet]
-	pub struct Pallet<T>(_);
+	#[pallet::storage_version(STORAGE_VERSION)]
+	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config {
 		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self, I>>
+			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The maximum depth of the affiliate relation chain,
 		#[pallet::constant]
@@ -58,24 +63,24 @@ pub mod pallet {
 	/// Stores the affiliated accounts from the perspectives of the affiliatee
 	#[pallet::storage]
 	#[pallet::getter(fn affiliatees)]
-	pub type Affiliatees<T: Config> =
-		StorageMap<_, Identity, T::AccountId, AffiliatedAccountsOf<T>, OptionQuery>;
+	pub type Affiliatees<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Identity, T::AccountId, AffiliatedAccountsOf<T, I>, OptionQuery>;
 
 	/// Store affiliators aka accounts that have affilatees and earn rewards from them.
 	/// Such accounts can't be affiliatees anymore.
 	#[pallet::storage]
 	#[pallet::getter(fn affiliators)]
-	pub type Affiliators<T: Config> =
+	pub type Affiliators<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, T::AccountId, AffiliatorState, ValueQuery>;
 
 	/// Stores the affiliate logic rules
 	#[pallet::storage]
-	pub type AffiliateRules<T: Config> =
-		StorageMap<_, Blake2_128Concat, RuleId, PayoutRuleOf<T>, OptionQuery>;
+	pub type AffiliateRules<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Blake2_128Concat, RuleId, PayoutRuleOf<T, I>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
+	pub enum Event<T: Config<I>, I: 'static = ()> {
 		/// An organizer has been set.
 		OrganizerSet {
 			organizer: T::AccountId,
@@ -93,7 +98,7 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
+	pub enum Error<T, I = ()> {
 		/// There is no account set as the organizer
 		OrganizerNotSet,
 		/// An account cannot affiliate itself
@@ -112,21 +117,21 @@ pub mod pallet {
 		ExtrinsicAlreadyHasRule,
 	}
 
-	impl<T: Config> Pallet<T> {
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		fn add_new_affiliate_to(
 			affiliator: T::AccountId,
 			affiliatee: T::AccountId,
 		) -> DispatchResult {
 			let accounts = {
-				let mut accounts_vec = Affiliatees::<T>::take(&affiliator).unwrap_or_default();
+				let mut accounts_vec = Affiliatees::<T, I>::take(&affiliator).unwrap_or_default();
 
 				Self::try_add_account_to(&mut accounts_vec, affiliator.clone())?;
 
 				accounts_vec
 			};
 
-			Affiliatees::<T>::insert(affiliatee, accounts);
-			Affiliators::<T>::try_mutate(&affiliator, |state| {
+			Affiliatees::<T, I>::insert(affiliatee, accounts);
+			Affiliators::<T, I>::try_mutate(&affiliator, |state| {
 				state.affiliates = state
 					.affiliates
 					.checked_add(1)
@@ -137,7 +142,7 @@ pub mod pallet {
 		}
 
 		fn try_add_account_to(
-			accounts: &mut AffiliatedAccountsOf<T>,
+			accounts: &mut AffiliatedAccountsOf<T, I>,
 			account: T::AccountId,
 		) -> DispatchResult {
 			if accounts.len() == T::AffiliateMaxLevel::get() as usize {
@@ -145,26 +150,26 @@ pub mod pallet {
 			}
 			accounts
 				.try_insert(0, account)
-				.map_err(|_| Error::<T>::CannotAffiliateMoreAccounts.into())
+				.map_err(|_| Error::<T, I>::CannotAffiliateMoreAccounts.into())
 		}
 	}
 
-	impl<T: Config> AffiliateInspector<AccountIdOf<T>> for Pallet<T> {
+	impl<T: Config<I>, I: 'static> AffiliateInspector<AccountIdOf<T>> for Pallet<T, I> {
 		fn get_affiliator_chain_for(account: &AccountIdOf<T>) -> Option<Vec<AccountIdOf<T>>> {
-			Affiliatees::<T>::get(account).map(|accounts| accounts.into_inner())
+			Affiliatees::<T, I>::get(account).map(|accounts| accounts.into_inner())
 		}
 
 		fn get_affiliate_count_for(account: &AccountIdOf<T>) -> u32 {
-			Affiliators::<T>::get(account).affiliates
+			Affiliators::<T, I>::get(account).affiliates
 		}
 	}
 
-	impl<T: Config> AffiliateMutator<AccountIdOf<T>> for Pallet<T> {
+	impl<T: Config<I>, I: 'static> AffiliateMutator<AccountIdOf<T>> for Pallet<T, I> {
 		fn try_mark_account_as_affiliatable(account: &AccountIdOf<T>) -> DispatchResult {
-			Affiliators::<T>::try_mutate(account, |state| {
+			Affiliators::<T, I>::try_mutate(account, |state| {
 				ensure!(
 					state.status != AffiliatableStatus::Blocked,
-					Error::<T>::CannotAffiliateBlocked
+					Error::<T, I>::CannotAffiliateBlocked
 				);
 
 				state.status = AffiliatableStatus::Affiliatable;
@@ -174,13 +179,13 @@ pub mod pallet {
 		}
 
 		fn force_mark_account_as_affiliatable(account: &AccountIdOf<T>) {
-			Affiliators::<T>::mutate(account, |state| {
+			Affiliators::<T, I>::mutate(account, |state| {
 				state.status = AffiliatableStatus::Affiliatable;
 			});
 		}
 
 		fn mark_account_as_blocked(account: &AccountIdOf<T>) {
-			Affiliators::<T>::mutate(account, |state| {
+			Affiliators::<T, I>::mutate(account, |state| {
 				state.status = AffiliatableStatus::Blocked;
 			});
 		}
@@ -189,20 +194,23 @@ pub mod pallet {
 			account: &AccountIdOf<T>,
 			affiliate: &AccountIdOf<T>,
 		) -> DispatchResult {
-			ensure!(account != affiliate, Error::<T>::CannotAffiliateSelf);
+			ensure!(account != affiliate, Error::<T, I>::CannotAffiliateSelf);
 
-			let affiliate_state = Affiliators::<T>::get(affiliate);
-			ensure!(affiliate_state.affiliates == 0, Error::<T>::CannotAffiliateExistingAffiliator);
-
+			let affiliate_state = Affiliators::<T, I>::get(affiliate);
 			ensure!(
-				!Affiliatees::<T>::contains_key(affiliate),
-				Error::<T>::CannotAffiliateAlreadyAffiliatedAccount
+				affiliate_state.affiliates == 0,
+				Error::<T, I>::CannotAffiliateExistingAffiliator
 			);
 
-			let affiliator_state = Affiliators::<T>::get(account);
+			ensure!(
+				!Affiliatees::<T, I>::contains_key(affiliate),
+				Error::<T, I>::CannotAffiliateAlreadyAffiliatedAccount
+			);
+
+			let affiliator_state = Affiliators::<T, I>::get(account);
 			ensure!(
 				affiliator_state.status == AffiliatableStatus::Affiliatable,
-				Error::<T>::CannotAffiliateToAccount
+				Error::<T, I>::CannotAffiliateToAccount
 			);
 
 			Self::add_new_affiliate_to(account.clone(), affiliate.clone())?;
@@ -216,12 +224,12 @@ pub mod pallet {
 		}
 
 		fn try_clear_affiliation_for(account: &AccountIdOf<T>) -> DispatchResult {
-			Affiliatees::<T>::take(account)
+			Affiliatees::<T, I>::take(account)
 				.and_then(|mut affiliate_chain| affiliate_chain.pop())
 				.map_or_else(
 					|| Ok(()),
 					|affiliator| {
-						Affiliators::<T>::try_mutate(&affiliator, |state| {
+						Affiliators::<T, I>::try_mutate(&affiliator, |state| {
 							state.affiliates = state
 								.affiliates
 								.checked_sub(1)
@@ -234,26 +242,26 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> RuleInspector<T::AffiliateMaxLevel> for Pallet<T> {
-		fn get_rule_for(rule_id: RuleId) -> Option<PayoutRuleOf<T>> {
-			AffiliateRules::<T>::get(rule_id)
+	impl<T: Config<I>, I: 'static> RuleInspector<T::AffiliateMaxLevel> for Pallet<T, I> {
+		fn get_rule_for(rule_id: RuleId) -> Option<PayoutRuleOf<T, I>> {
+			AffiliateRules::<T, I>::get(rule_id)
 		}
 	}
 
-	impl<T: Config> RuleMutator<AccountIdOf<T>, T::AffiliateMaxLevel> for Pallet<T> {
-		fn try_add_rule_for(rule_id: RuleId, rule: PayoutRuleOf<T>) -> DispatchResult {
+	impl<T: Config<I>, I: 'static> RuleMutator<AccountIdOf<T>, T::AffiliateMaxLevel> for Pallet<T, I> {
+		fn try_add_rule_for(rule_id: RuleId, rule: PayoutRuleOf<T, I>) -> DispatchResult {
 			ensure!(
-				!AffiliateRules::<T>::contains_key(rule_id),
-				Error::<T>::ExtrinsicAlreadyHasRule
+				!AffiliateRules::<T, I>::contains_key(rule_id),
+				Error::<T, I>::ExtrinsicAlreadyHasRule
 			);
-			AffiliateRules::<T>::insert(rule_id, rule);
+			AffiliateRules::<T, I>::insert(rule_id, rule);
 			Self::deposit_event(Event::RuleAdded { rule_id });
 
 			Ok(())
 		}
 
 		fn clear_rule_for(rule_id: RuleId) {
-			AffiliateRules::<T>::remove(rule_id);
+			AffiliateRules::<T, I>::remove(rule_id);
 
 			Self::deposit_event(Event::RuleCleared { rule_id });
 		}

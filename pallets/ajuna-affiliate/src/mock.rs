@@ -42,7 +42,8 @@ frame_support::construct_runtime!(
 	pub struct Test {
 		System: frame_system = 0,
 		Balances: pallet_balances = 1,
-		Affiliates: pallet_ajuna_affiliates = 2,
+		AffiliatesAlpha: pallet_ajuna_affiliates::<Instance1> = 2,
+		AffiliatesBeta: pallet_ajuna_affiliates::<Instance2> = 3,
 	}
 );
 
@@ -96,7 +97,14 @@ parameter_types! {
 	pub const AffiliateMaxLevel: u32 = 2;
 }
 
-impl pallet_ajuna_affiliates::Config for Test {
+type AffiliatesInstance1 = pallet_ajuna_affiliates::Instance1;
+impl pallet_ajuna_affiliates::Config<AffiliatesInstance1> for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type AffiliateMaxLevel = AffiliateMaxLevel;
+}
+
+type AffiliatesInstance2 = pallet_ajuna_affiliates::Instance2;
+impl pallet_ajuna_affiliates::Config<AffiliatesInstance2> for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type AffiliateMaxLevel = AffiliateMaxLevel;
 }
