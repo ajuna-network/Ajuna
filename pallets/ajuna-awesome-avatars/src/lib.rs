@@ -90,16 +90,16 @@ pub mod pallet {
 	use super::*;
 	use sp_std::collections::vec_deque::VecDeque;
 
-	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	pub(crate) type AccountIdFor<T> = <T as frame_system::Config>::AccountId;
 	pub(crate) type SeasonOf<T> = Season<BlockNumberFor<T>, BalanceOf<T>>;
-	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
+	pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdFor<T>>>::Balance;
 	pub(crate) type AvatarIdOf<T> = <T as frame_system::Config>::Hash;
 	pub(crate) type BoundedAvatarIdsOf<T> = BoundedVec<AvatarIdOf<T>, MaxAvatarsPerPlayer>;
 	pub(crate) type GlobalConfigOf<T> = GlobalConfig<BlockNumberFor<T>>;
 	pub(crate) type KeyLimitOf<T> = <T as Config>::KeyLimit;
 	pub(crate) type ValueLimitOf<T> = <T as Config>::ValueLimit;
 	pub(crate) type CollectionIdOf<T> = <<T as Config>::NftHandler as NftHandler<
-		AccountIdOf<T>,
+		AccountIdFor<T>,
 		AvatarIdOf<T>,
 		KeyLimitOf<T>,
 		ValueLimitOf<T>,
@@ -710,7 +710,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::upgrade_storage())]
 		pub fn upgrade_storage(
 			origin: OriginFor<T>,
-			beneficiary: Option<AccountIdOf<T>>,
+			beneficiary: Option<AccountIdFor<T>>,
 			in_season: Option<SeasonId>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -1052,7 +1052,7 @@ pub mod pallet {
 		#[pallet::weight({1000})]
 		pub fn modify_freemint_whitelist(
 			origin: OriginFor<T>,
-			account: AccountIdOf<T>,
+			account: AccountIdFor<T>,
 			operation: WhitelistOperation,
 		) -> DispatchResult {
 			let _ = Self::ensure_organizer(origin)?;
@@ -1413,7 +1413,7 @@ pub mod pallet {
 		}
 
 		fn process_leader_forge_output(
-			player: &AccountIdOf<T>,
+			player: &AccountIdFor<T>,
 			season_id: &SeasonId,
 			season: &SeasonOf<T>,
 			input_leader: ForgeItem<T>,
@@ -1449,7 +1449,7 @@ pub mod pallet {
 		}
 
 		fn process_other_forge_outputs(
-			player: &AccountIdOf<T>,
+			player: &AccountIdFor<T>,
 			season_id: &SeasonId,
 			other_outputs: Vec<ForgeOutput<T>>,
 		) -> DispatchResult {
@@ -1487,7 +1487,7 @@ pub mod pallet {
 		}
 
 		fn update_forging_statistics_for_player(
-			player: &AccountIdOf<T>,
+			player: &AccountIdFor<T>,
 			season_id: SeasonId,
 		) -> DispatchResult {
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -1517,7 +1517,7 @@ pub mod pallet {
 		}
 
 		fn try_add_avatar_to(
-			player: &AccountIdOf<T>,
+			player: &AccountIdFor<T>,
 			season_id: &SeasonId,
 			avatar_id: AvatarIdOf<T>,
 			avatar: Avatar,
@@ -1529,7 +1529,7 @@ pub mod pallet {
 		}
 
 		fn remove_avatar_from(
-			player: &AccountIdOf<T>,
+			player: &AccountIdFor<T>,
 			season_id: &SeasonId,
 			avatar_id: &AvatarIdOf<T>,
 		) {

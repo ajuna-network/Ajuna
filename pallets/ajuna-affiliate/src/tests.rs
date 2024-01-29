@@ -9,10 +9,10 @@ mod add_rule {
 	fn add_rule_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleOf::<Test, Instance1>::default();
+			let rule = PayoutRuleFor::<Test, Instance1>::default();
 
 			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance1>>::AffiliateMaxLevel,
 			>>::try_add_rule_for(rule_id, rule.clone()));
 
@@ -28,16 +28,16 @@ mod add_rule {
 	fn cannot_add_rule_to_already_marked_extrinsic() {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleOf::<Test, Instance1>::default();
+			let rule = PayoutRuleFor::<Test, Instance1>::default();
 			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance1>>::AffiliateMaxLevel,
 			>>::try_add_rule_for(rule_id, rule));
 
-			let rule_2 = PayoutRuleOf::<Test, Instance1>::default();
+			let rule_2 = PayoutRuleFor::<Test, Instance1>::default();
 			assert_noop!(
 				<AffiliatesAlpha as RuleMutator<
-					AccountIdOf<Test>,
+					AccountIdFor<Test>,
 					<Test as Config<Instance1>>::AffiliateMaxLevel,
 				>>::try_add_rule_for(rule_id, rule_2),
 				Error::<Test, Instance1>::ExtrinsicAlreadyHasRule
@@ -53,10 +53,10 @@ mod clear_rule {
 	fn clear_rule_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleOf::<Test, Instance1>::default();
+			let rule = PayoutRuleFor::<Test, Instance1>::default();
 
 			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance1>>::AffiliateMaxLevel,
 			>>::try_add_rule_for(rule_id, rule.clone()));
 
@@ -67,7 +67,7 @@ mod clear_rule {
 			assert_eq!(AffiliateRules::<Test, Instance1>::get(rule_id), Some(rule));
 
 			<AffiliatesAlpha as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance1>>::AffiliateMaxLevel,
 			>>::clear_rule_for(rule_id);
 
@@ -85,7 +85,7 @@ mod clear_rule {
 			let rule_id = 0;
 
 			<AffiliatesAlpha as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance1>>::AffiliateMaxLevel,
 			>>::clear_rule_for(rule_id);
 
@@ -108,7 +108,7 @@ mod affiliate_to {
 			Affiliators::<Test, Instance1>::insert(BOB, state);
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				)
 			);
@@ -133,7 +133,7 @@ mod affiliate_to {
 
 			// First step on the chain BOB <- ALICE
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				)
 			);
@@ -147,7 +147,7 @@ mod affiliate_to {
 
 			// Second step on the chain BOB <- ALICE <- CHARLIE
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&ALICE, &CHARLIE
 				)
 			);
@@ -164,7 +164,7 @@ mod affiliate_to {
 
 			// Third step on the chain BOB <- ALICE <- CHARLIE <- DAVE
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&CHARLIE, &DAVE
 				)
 			);
@@ -181,7 +181,7 @@ mod affiliate_to {
 
 			// Fourth step on the chain BOB <- ALICE <- CHARLIE <- DAVE <- EDWARD
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&DAVE, &EDWARD
 				)
 			);
@@ -202,7 +202,7 @@ mod affiliate_to {
 	fn affiliate_to_rejects_with_self_account() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&ALICE, &ALICE
 				),
 				Error::<Test, Instance1>::CannotAffiliateSelf
@@ -218,16 +218,16 @@ mod affiliate_to {
 			Affiliators::<Test, Instance1>::insert(ALICE, state);
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				)
 			);
 
 			assert_noop!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&ALICE, &BOB
 				),
-				Error::<Test, Instance1>::CannotAffiliateExistingAffiliator
+				Error::<Test, Instance1>::CannotAffiliateToExistingAffiliator
 			);
 		});
 	}
@@ -240,13 +240,13 @@ mod affiliate_to {
 			Affiliators::<Test, Instance1>::insert(CHARLIE, state);
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				)
 			);
 
 			assert_noop!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&CHARLIE, &ALICE
 				),
 				Error::<Test, Instance1>::CannotAffiliateAlreadyAffiliatedAccount
@@ -258,10 +258,10 @@ mod affiliate_to {
 	fn affiliate_to_rejects_with_unaffiliable_account() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_noop!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				),
-				Error::<Test, Instance1>::CannotAffiliateToAccount
+				Error::<Test, Instance1>::TargetAccountIsNotAffiliatable
 			);
 		});
 	}
@@ -274,10 +274,10 @@ mod affiliate_to {
 			});
 
 			assert_noop!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				),
-				Error::<Test, Instance1>::CannotAffiliateToAccount
+				Error::<Test, Instance1>::TargetAccountIsNotAffiliatable
 			);
 		});
 	}
@@ -293,7 +293,7 @@ mod clear_affiliation {
 			Affiliators::<Test, Instance1>::insert(BOB, state);
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				)
 			);
@@ -306,7 +306,7 @@ mod clear_affiliation {
 			assert_eq!(Affiliatees::<Test, Instance1>::get(ALICE), Some(bounded_vec![BOB]));
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_clear_affiliation_for(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_clear_affiliation_for(
 					&ALICE
 				)
 			);
@@ -322,7 +322,7 @@ mod clear_affiliation {
 			assert_eq!(Affiliatees::<Test, Instance1>::get(ALICE), None);
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_clear_affiliation_for(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_clear_affiliation_for(
 					&ALICE
 				)
 			);
@@ -343,7 +343,7 @@ mod multi_instance_tests {
 			Affiliators::<Test, Instance1>::insert(BOB, state_alpha);
 
 			assert_ok!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&BOB, &ALICE
 				)
 			);
@@ -366,15 +366,15 @@ mod multi_instance_tests {
 			// Trying to affiliate to ALICE on AffiliatesAlpha will fail since
 			// she is not Affiliatable there
 			assert_noop!(
-				<AffiliatesAlpha as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesAlpha as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&ALICE, &CHARLIE
 				),
-				Error::<Test, Instance1>::CannotAffiliateToAccount
+				Error::<Test, Instance1>::TargetAccountIsNotAffiliatable
 			);
 
 			// In AffiliatesBeta it works as expected
 			assert_ok!(
-				<AffiliatesBeta as AffiliateMutator<AccountIdOf<Test>>>::try_add_affiliate_to(
+				<AffiliatesBeta as AffiliateMutator<AccountIdFor<Test>>>::try_add_affiliate_to(
 					&ALICE, &CHARLIE
 				)
 			);
@@ -392,10 +392,10 @@ mod multi_instance_tests {
 	fn rule_in_one_instance_doesnt_affect_other_instance() {
 		ExtBuilder::default().balances(&[(ALICE, 1_000_000)]).build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleOf::<Test, Instance1>::default();
+			let rule = PayoutRuleFor::<Test, Instance1>::default();
 
 			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance1>>::AffiliateMaxLevel,
 			>>::try_add_rule_for(rule_id, rule.clone()));
 
@@ -409,7 +409,7 @@ mod multi_instance_tests {
 			assert_eq!(AffiliateRules::<Test, Instance2>::get(rule_id), None);
 
 			<AffiliatesBeta as RuleMutator<
-				AccountIdOf<Test>,
+				AccountIdFor<Test>,
 				<Test as Config<Instance2>>::AffiliateMaxLevel,
 			>>::clear_rule_for(rule_id);
 

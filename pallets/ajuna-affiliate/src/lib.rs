@@ -38,9 +38,9 @@ pub mod pallet {
 	pub type AffiliatedAccountsOf<T, I> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config<I>>::AffiliateMaxLevel>;
 
-	pub type PayoutRuleOf<T, I> = PayoutRule<<T as Config<I>>::AffiliateMaxLevel>;
+	pub type PayoutRuleFor<T, I> = PayoutRule<<T as Config<I>>::AffiliateMaxLevel>;
 
-	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	pub type AccountIdFor<T> = <T as frame_system::Config>::AccountId;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -76,7 +76,7 @@ pub mod pallet {
 	/// Stores the affiliate logic rules
 	#[pallet::storage]
 	pub type AffiliateRules<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Blake2_128Concat, RuleId, PayoutRuleOf<T, I>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, RuleId, PayoutRuleFor<T, I>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -104,13 +104,13 @@ pub mod pallet {
 		/// An account cannot affiliate itself
 		CannotAffiliateSelf,
 		/// The account is not allowed to receive affiliates
-		CannotAffiliateToAccount,
+		TargetAccountIsNotAffiliatable,
 		/// This account has reached the affiliate limit
 		CannotAffiliateMoreAccounts,
 		/// This account has already been affiliated by another affiliator
 		CannotAffiliateAlreadyAffiliatedAccount,
 		/// This account is already an affiliator, so it cannot affiliate to another account
-		CannotAffiliateExistingAffiliator,
+		CannotAffiliateToExistingAffiliator,
 		/// The account is blocked, so it cannot be affiliated to
 		CannotAffiliateBlocked,
 		/// The given extrinsic identifier is already paired with an affiliate rule
@@ -122,13 +122,9 @@ pub mod pallet {
 			affiliator: T::AccountId,
 			affiliatee: T::AccountId,
 		) -> DispatchResult {
-			let accounts = {
-				let mut accounts_vec = Affiliatees::<T, I>::take(&affiliator).unwrap_or_default();
+			let mut accounts = Affiliatees::<T, I>::take(&affiliator).unwrap_or_default();
 
-				Self::try_add_account_to(&mut accounts_vec, affiliator.clone())?;
-
-				accounts_vec
-			};
+			Self::try_add_account_to(&mut accounts, affiliator.clone())?;
 
 			Affiliatees::<T, I>::insert(affiliatee, accounts);
 			Affiliators::<T, I>::try_mutate(&affiliator, |state| {
@@ -154,18 +150,18 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config<I>, I: 'static> AffiliateInspector<AccountIdOf<T>> for Pallet<T, I> {
-		fn get_affiliator_chain_for(account: &AccountIdOf<T>) -> Option<Vec<AccountIdOf<T>>> {
+	impl<T: Config<I>, I: 'static> AffiliateInspector<AccountIdFor<T>> for Pallet<T, I> {
+		fn get_affiliator_chain_for(account: &AccountIdFor<T>) -> Option<Vec<AccountIdFor<T>>> {
 			Affiliatees::<T, I>::get(account).map(|accounts| accounts.into_inner())
 		}
 
-		fn get_affiliate_count_for(account: &AccountIdOf<T>) -> u32 {
+		fn get_affiliate_count_for(account: &AccountIdFor<T>) -> u32 {
 			Affiliators::<T, I>::get(account).affiliates
 		}
 	}
 
-	impl<T: Config<I>, I: 'static> AffiliateMutator<AccountIdOf<T>> for Pallet<T, I> {
-		fn try_mark_account_as_affiliatable(account: &AccountIdOf<T>) -> DispatchResult {
+	impl<T: Config<I>, I: 'static> AffiliateMutator<AccountIdFor<T>> for Pallet<T, I> {
+		fn try_mark_account_as_affiliatable(account: &AccountIdFor<T>) -> DispatchResult {
 			Affiliators::<T, I>::try_mutate(account, |state| {
 				ensure!(
 					state.status != AffiliatableStatus::Blocked,
@@ -178,28 +174,28 @@ pub mod pallet {
 			})
 		}
 
-		fn force_mark_account_as_affiliatable(account: &AccountIdOf<T>) {
+		fn force_mark_account_as_affiliatable(account: &AccountIdFor<T>) {
 			Affiliators::<T, I>::mutate(account, |state| {
 				state.status = AffiliatableStatus::Affiliatable;
 			});
 		}
 
-		fn mark_account_as_blocked(account: &AccountIdOf<T>) {
+		fn mark_account_as_blocked(account: &AccountIdFor<T>) {
 			Affiliators::<T, I>::mutate(account, |state| {
 				state.status = AffiliatableStatus::Blocked;
 			});
 		}
 
 		fn try_add_affiliate_to(
-			account: &AccountIdOf<T>,
-			affiliate: &AccountIdOf<T>,
+			account: &AccountIdFor<T>,
+			affiliate: &AccountIdFor<T>,
 		) -> DispatchResult {
 			ensure!(account != affiliate, Error::<T, I>::CannotAffiliateSelf);
 
 			let affiliate_state = Affiliators::<T, I>::get(affiliate);
 			ensure!(
 				affiliate_state.affiliates == 0,
-				Error::<T, I>::CannotAffiliateExistingAffiliator
+				Error::<T, I>::CannotAffiliateToExistingAffiliator
 			);
 
 			ensure!(
@@ -210,7 +206,7 @@ pub mod pallet {
 			let affiliator_state = Affiliators::<T, I>::get(account);
 			ensure!(
 				affiliator_state.status == AffiliatableStatus::Affiliatable,
-				Error::<T, I>::CannotAffiliateToAccount
+				Error::<T, I>::TargetAccountIsNotAffiliatable
 			);
 
 			Self::add_new_affiliate_to(account.clone(), affiliate.clone())?;
@@ -223,7 +219,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn try_clear_affiliation_for(account: &AccountIdOf<T>) -> DispatchResult {
+		fn try_clear_affiliation_for(account: &AccountIdFor<T>) -> DispatchResult {
 			Affiliatees::<T, I>::take(account)
 				.and_then(|mut affiliate_chain| affiliate_chain.pop())
 				.map_or_else(
@@ -243,13 +239,13 @@ pub mod pallet {
 	}
 
 	impl<T: Config<I>, I: 'static> RuleInspector<T::AffiliateMaxLevel> for Pallet<T, I> {
-		fn get_rule_for(rule_id: RuleId) -> Option<PayoutRuleOf<T, I>> {
+		fn get_rule_for(rule_id: RuleId) -> Option<PayoutRuleFor<T, I>> {
 			AffiliateRules::<T, I>::get(rule_id)
 		}
 	}
 
-	impl<T: Config<I>, I: 'static> RuleMutator<AccountIdOf<T>, T::AffiliateMaxLevel> for Pallet<T, I> {
-		fn try_add_rule_for(rule_id: RuleId, rule: PayoutRuleOf<T, I>) -> DispatchResult {
+	impl<T: Config<I>, I: 'static> RuleMutator<AccountIdFor<T>, T::AffiliateMaxLevel> for Pallet<T, I> {
+		fn try_add_rule_for(rule_id: RuleId, rule: PayoutRuleFor<T, I>) -> DispatchResult {
 			ensure!(
 				!AffiliateRules::<T, I>::contains_key(rule_id),
 				Error::<T, I>::ExtrinsicAlreadyHasRule

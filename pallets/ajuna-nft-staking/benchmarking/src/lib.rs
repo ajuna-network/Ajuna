@@ -66,9 +66,9 @@ impl Mode {
 pub struct Pallet<T: Config>(pallet_ajuna_nft_staking::Pallet<T>);
 pub trait Config: NftStakingConfig + pallet_nfts::Config + pallet_balances::Config {}
 
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type AccountIdFor<T> = <T as frame_system::Config>::AccountId;
 type CurrencyOf<T> = <T as NftStakingConfig>::Currency;
-type BalanceOf<T> = <CurrencyOf<T> as Currency<AccountIdOf<T>>>::Balance;
+type BalanceOf<T> = <CurrencyOf<T> as Currency<AccountIdFor<T>>>::Balance;
 type CollectionIdOf<T> = <T as NftStakingConfig>::CollectionId;
 type ItemIdOf<T> = <T as NftStakingConfig>::ItemId;
 type ContractOf<T> = Contract<
@@ -81,7 +81,7 @@ type ContractOf<T> = Contract<
 >;
 
 type NftCurrencyOf<T> = <T as pallet_nfts::Config>::Currency;
-type NftBalanceOf<T> = <NftCurrencyOf<T> as Currency<AccountIdOf<T>>>::Balance;
+type NftBalanceOf<T> = <NftCurrencyOf<T> as Currency<AccountIdFor<T>>>::Balance;
 type NftCollectionIdOf<T> = <T as pallet_nfts::Config>::CollectionId;
 type CollectionDeposit<T> = <T as pallet_nfts::Config>::CollectionDeposit;
 type ItemDeposit<T> = <T as pallet_nfts::Config>::ItemDeposit;
