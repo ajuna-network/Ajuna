@@ -38,8 +38,6 @@ pub mod pallet {
 	pub type AffiliatedAccountsOf<T, I> =
 		BoundedVec<<T as frame_system::Config>::AccountId, <T as Config<I>>::AffiliateMaxLevel>;
 
-	pub type PayoutRuleFor<T, I> = PayoutRule<<T as Config<I>>::AffiliateMaxLevel>;
-
 	pub type AccountIdFor<T> = <T as frame_system::Config>::AccountId;
 
 	/// The current storage version.
@@ -54,6 +52,12 @@ pub mod pallet {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self, I>>
 			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// The rule identifier type at runtime.
+		type RuleIdentifier: Parameter + MaxEncodedLen;
+
+		/// The rule type at runtime.
+		type RuntimeRule: Parameter + MaxEncodedLen;
 
 		/// The maximum depth of the affiliate relation chain,
 		#[pallet::constant]
@@ -76,7 +80,7 @@ pub mod pallet {
 	/// Stores the affiliate logic rules
 	#[pallet::storage]
 	pub type AffiliateRules<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Blake2_128Concat, RuleId, PayoutRuleFor<T, I>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::RuleIdentifier, T::RuntimeRule, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -90,10 +94,10 @@ pub mod pallet {
 			to: T::AccountId,
 		},
 		RuleAdded {
-			rule_id: RuleId,
+			rule_id: T::RuleIdentifier,
 		},
 		RuleCleared {
-			rule_id: RuleId,
+			rule_id: T::RuleIdentifier,
 		},
 	}
 
@@ -238,26 +242,26 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config<I>, I: 'static> RuleInspector<T::AffiliateMaxLevel> for Pallet<T, I> {
-		fn get_rule_for(rule_id: RuleId) -> Option<PayoutRuleFor<T, I>> {
+	impl<T: Config<I>, I: 'static> RuleInspector<T::RuleIdentifier, T::RuntimeRule> for Pallet<T, I> {
+		fn get_rule_for(rule_id: T::RuleIdentifier) -> Option<T::RuntimeRule> {
 			AffiliateRules::<T, I>::get(rule_id)
 		}
 	}
 
-	impl<T: Config<I>, I: 'static> RuleMutator<AccountIdFor<T>, T::AffiliateMaxLevel> for Pallet<T, I> {
-		fn try_add_rule_for(rule_id: RuleId, rule: PayoutRuleFor<T, I>) -> DispatchResult {
+	impl<T: Config<I>, I: 'static> RuleMutator<T::RuleIdentifier, T::RuntimeRule> for Pallet<T, I> {
+		fn try_add_rule_for(rule_id: T::RuleIdentifier, rule: T::RuntimeRule) -> DispatchResult {
 			ensure!(
-				!AffiliateRules::<T, I>::contains_key(rule_id),
+				!AffiliateRules::<T, I>::contains_key(rule_id.clone()),
 				Error::<T, I>::ExtrinsicAlreadyHasRule
 			);
-			AffiliateRules::<T, I>::insert(rule_id, rule);
+			AffiliateRules::<T, I>::insert(rule_id.clone(), rule);
 			Self::deposit_event(Event::RuleAdded { rule_id });
 
 			Ok(())
 		}
 
-		fn clear_rule_for(rule_id: RuleId) {
-			AffiliateRules::<T, I>::remove(rule_id);
+		fn clear_rule_for(rule_id: T::RuleIdentifier) {
+			AffiliateRules::<T, I>::remove(rule_id.clone());
 
 			Self::deposit_event(Event::RuleCleared { rule_id });
 		}

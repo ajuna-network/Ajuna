@@ -9,12 +9,14 @@ mod add_rule {
 	fn add_rule_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleFor::<Test, Instance1>::default();
+			let rule = MockRuntimeRule::default();
 
-			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance1>>::AffiliateMaxLevel,
-			>>::try_add_rule_for(rule_id, rule.clone()));
+			assert_ok!(
+				<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::try_add_rule_for(
+					rule_id,
+					rule.clone()
+				)
+			);
 
 			System::assert_last_event(mock::RuntimeEvent::AffiliatesAlpha(
 				crate::Event::RuleAdded { rule_id },
@@ -28,18 +30,18 @@ mod add_rule {
 	fn cannot_add_rule_to_already_marked_extrinsic() {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleFor::<Test, Instance1>::default();
-			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance1>>::AffiliateMaxLevel,
-			>>::try_add_rule_for(rule_id, rule));
+			let rule = MockRuntimeRule::default();
+			assert_ok!(
+				<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::try_add_rule_for(
+					rule_id, rule
+				)
+			);
 
-			let rule_2 = PayoutRuleFor::<Test, Instance1>::default();
+			let rule_2 = MockRuntimeRule::default();
 			assert_noop!(
-				<AffiliatesAlpha as RuleMutator<
-					AccountIdFor<Test>,
-					<Test as Config<Instance1>>::AffiliateMaxLevel,
-				>>::try_add_rule_for(rule_id, rule_2),
+				<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::try_add_rule_for(
+					rule_id, rule_2
+				),
 				Error::<Test, Instance1>::ExtrinsicAlreadyHasRule
 			);
 		})
@@ -53,12 +55,14 @@ mod clear_rule {
 	fn clear_rule_should_work() {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleFor::<Test, Instance1>::default();
+			let rule = MockRuntimeRule::default();
 
-			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance1>>::AffiliateMaxLevel,
-			>>::try_add_rule_for(rule_id, rule.clone()));
+			assert_ok!(
+				<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::try_add_rule_for(
+					rule_id,
+					rule.clone()
+				)
+			);
 
 			System::assert_last_event(mock::RuntimeEvent::AffiliatesAlpha(
 				crate::Event::RuleAdded { rule_id },
@@ -66,10 +70,7 @@ mod clear_rule {
 
 			assert_eq!(AffiliateRules::<Test, Instance1>::get(rule_id), Some(rule));
 
-			<AffiliatesAlpha as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance1>>::AffiliateMaxLevel,
-			>>::clear_rule_for(rule_id);
+			<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::clear_rule_for(rule_id);
 
 			System::assert_last_event(mock::RuntimeEvent::AffiliatesAlpha(
 				crate::Event::RuleCleared { rule_id },
@@ -84,10 +85,7 @@ mod clear_rule {
 		ExtBuilder::default().build().execute_with(|| {
 			let rule_id = 0;
 
-			<AffiliatesAlpha as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance1>>::AffiliateMaxLevel,
-			>>::clear_rule_for(rule_id);
+			<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::clear_rule_for(rule_id);
 
 			System::assert_last_event(mock::RuntimeEvent::AffiliatesAlpha(
 				crate::Event::RuleCleared { rule_id },
@@ -392,12 +390,14 @@ mod multi_instance_tests {
 	fn rule_in_one_instance_doesnt_affect_other_instance() {
 		ExtBuilder::default().balances(&[(ALICE, 1_000_000)]).build().execute_with(|| {
 			let rule_id = 0;
-			let rule = PayoutRuleFor::<Test, Instance1>::default();
+			let rule = MockRuntimeRule::default();
 
-			assert_ok!(<AffiliatesAlpha as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance1>>::AffiliateMaxLevel,
-			>>::try_add_rule_for(rule_id, rule.clone()));
+			assert_ok!(
+				<AffiliatesAlpha as RuleMutator<MockRuleId, MockRuntimeRule>>::try_add_rule_for(
+					rule_id,
+					rule.clone()
+				)
+			);
 
 			System::assert_last_event(mock::RuntimeEvent::AffiliatesAlpha(
 				crate::Event::RuleAdded { rule_id },
@@ -408,10 +408,7 @@ mod multi_instance_tests {
 			// But not on Instance2
 			assert_eq!(AffiliateRules::<Test, Instance2>::get(rule_id), None);
 
-			<AffiliatesBeta as RuleMutator<
-				AccountIdFor<Test>,
-				<Test as Config<Instance2>>::AffiliateMaxLevel,
-			>>::clear_rule_for(rule_id);
+			<AffiliatesBeta as RuleMutator<MockRuleId, MockRuntimeRule>>::clear_rule_for(rule_id);
 
 			// The rule remains in Instance1
 			assert_eq!(AffiliateRules::<Test, Instance1>::get(rule_id), Some(rule));

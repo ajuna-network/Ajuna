@@ -32,20 +32,16 @@ pub trait AffiliateMutator<AccountId> {
 	fn try_clear_affiliation_for(account: &AccountId) -> DispatchResult;
 }
 
-pub type RuleId = u8;
-
-pub type PayoutRule<N> = BoundedVec<u8, N>;
-
-pub trait RuleInspector<N> {
+pub trait RuleInspector<RuleId, Rule> {
 	/// Gets the rule data for a given 'extrinsic_id' mapped rule, or
 	/// None if no rule is associated with the given 'extrinsic_id'
-	fn get_rule_for(rule_id: RuleId) -> Option<PayoutRule<N>>;
+	fn get_rule_for(rule_id: RuleId) -> Option<Rule>;
 }
 
-pub trait RuleMutator<AccountId, N> {
+pub trait RuleMutator<RuleId, Rule> {
 	/// Tries to add a rule for 'extrinsic_id', fails to do so
 	/// if there's already a rule present.
-	fn try_add_rule_for(rule_id: RuleId, rule: PayoutRule<N>) -> DispatchResult;
+	fn try_add_rule_for(rule_id: RuleId, rule: Rule) -> DispatchResult;
 
 	/// Removes the rule mapping for 'extrinsic_id'
 	fn clear_rule_for(rule_id: RuleId);

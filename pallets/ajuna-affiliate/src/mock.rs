@@ -21,8 +21,8 @@ use frame_support::{
 };
 use sp_runtime::{
 	testing::{TestSignature, H256},
-	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
-	BuildStorage,
+	traits::{BlakeTwo256, ConstU32, IdentifyAccount, IdentityLookup, Verify},
+	BoundedVec, BuildStorage,
 };
 
 pub type MockSignature = TestSignature;
@@ -97,15 +97,22 @@ parameter_types! {
 	pub const AffiliateMaxLevel: u32 = 2;
 }
 
+pub type MockRuleId = u8;
+pub type MockRuntimeRule = BoundedVec<u8, ConstU32<2>>;
+
 type AffiliatesInstance1 = pallet_ajuna_affiliates::Instance1;
 impl pallet_ajuna_affiliates::Config<AffiliatesInstance1> for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type RuleIdentifier = MockRuleId;
+	type RuntimeRule = MockRuntimeRule;
 	type AffiliateMaxLevel = AffiliateMaxLevel;
 }
 
 type AffiliatesInstance2 = pallet_ajuna_affiliates::Instance2;
 impl pallet_ajuna_affiliates::Config<AffiliatesInstance2> for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type RuleIdentifier = MockRuleId;
+	type RuntimeRule = MockRuntimeRule;
 	type AffiliateMaxLevel = AffiliateMaxLevel;
 }
 
