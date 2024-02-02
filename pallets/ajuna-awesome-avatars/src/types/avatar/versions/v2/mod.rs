@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 mod avatar_utils;
 mod combinator;
 mod constants;
@@ -7,14 +9,14 @@ mod slot_roller;
 mod test_utils;
 mod types;
 
-pub(self) use avatar_utils::*;
-pub(self) use combinator::*;
-pub(self) use constants::*;
-pub(self) use mutator::*;
-pub(self) use slot_roller::*;
+pub use avatar_utils::*;
+pub use combinator::*;
+pub use constants::*;
+pub use mutator::*;
+pub use slot_roller::*;
 #[cfg(test)]
-pub(self) use test_utils::*;
-pub(self) use types::*;
+pub use test_utils::*;
+pub use types::*;
 
 use super::*;
 use crate::{

@@ -6086,6 +6086,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ajuna-affiliate"
+version = "0.1.27"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-ajuna-awesome-avatars"
 version = "0.1.27"
 dependencies = [
