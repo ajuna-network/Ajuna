@@ -6,7 +6,7 @@ use frame_support::{
 	weights::Weight,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
-use pallet_collective::{EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 use sp_runtime::Perbill;
 
 pub type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
@@ -103,7 +103,9 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalOrigin = EnsureRootOrMoreThanHalfCouncil;
 	type ExternalMajorityOrigin = EnsureRootOrMoreThanHalfCouncil;
 	type ExternalDefaultOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type SubmitOrigin = EnsureSigned<AccountId>;
+	// Initially, we want that only the council can submit proposals to
+	// prevent malicious proposals.
+	type SubmitOrigin = EnsureMember<AccountId, CouncilCollective>;
 	type FastTrackOrigin = EnsureRootOrMoreThanHalfTechnicalCommittee;
 	type InstantOrigin = EnsureRootOrMoreThanHalfTechnicalCommittee;
 	// To cancel a proposal that has passed.
@@ -113,7 +115,7 @@ impl pallet_democracy::Config for Runtime {
 	type CancelProposalOrigin = EnsureRootOrAllTechnicalCommittee;
 	// Any single technical committee member may veto a coming council proposal, however they can
 	// only do it once and it lasts only for the cooloff period.
-	type VetoOrigin = pallet_collective::EnsureMember<AccountId, TechnicalCommitteeInstance>;
+	type VetoOrigin = EnsureMember<AccountId, TechnicalCommitteeInstance>;
 	type PalletsOrigin = OriginCaller;
 	type Slash = pallet_treasury::Pallet<Runtime>;
 }
