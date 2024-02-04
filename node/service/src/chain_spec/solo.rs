@@ -17,7 +17,7 @@
 use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
-	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GrandpaConfig,
+	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, TechnicalCommitteeConfig, GrandpaConfig,
 	RuntimeGenesisConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
@@ -71,6 +71,7 @@ struct Config {
 	grandpa: GrandpaConfig,
 	sudo: SudoConfig,
 	council: CouncilConfig,
+	technical_committee: TechnicalCommitteeConfig,
 	balances: BalancesConfig,
 	assets: AssetsConfig,
 	vesting: VestingConfig,
@@ -95,6 +96,10 @@ fn development_config_genesis() -> RuntimeGenesisConfig {
 		grandpa: GrandpaConfig { authorities: grandpa_authorities, ..Default::default() },
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		council: CouncilConfig {
+			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
+			phantom: Default::default(),
+		},
+		technical_committee: TechnicalCommitteeConfig {
 			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
 			phantom: Default::default(),
 		},
@@ -161,6 +166,7 @@ fn testnet_config_genesis() -> RuntimeGenesisConfig {
 		},
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		council: CouncilConfig::default(),
+		technical_committee: TechnicalCommitteeConfig::default(),
 		balances: BalancesConfig {
 			balances: vec![
 				(accounts.alice, INITIAL_BALANCE),
@@ -187,20 +193,20 @@ fn compose_genesis_config(config: Config) -> RuntimeGenesisConfig {
 	let wasm_binary = WASM_BINARY.expect(
 		"Development wasm binary is not available. Please rebuild with SKIP_WASM_BUILD disabled.",
 	);
-	let Config { aura, grandpa, sudo, council, balances, assets, vesting } = config;
+	let Config { aura, grandpa, sudo, council, technical_committee, balances, assets, vesting } = config;
 	RuntimeGenesisConfig {
 		// overridden config
 		aura,
 		grandpa,
 		sudo,
 		council,
+		technical_committee,
 		balances,
 		assets,
 		vesting,
 		// default config
 		system: SystemConfig { code: wasm_binary.to_vec(), ..Default::default() },
 		transaction_payment: Default::default(),
-		council_membership: Default::default(),
 		treasury: Default::default(),
 		democracy: Default::default(),
 		awesome_avatars: Default::default(),

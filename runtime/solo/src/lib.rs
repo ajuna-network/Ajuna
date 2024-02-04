@@ -31,6 +31,7 @@ use frame_support::{
 	},
 	PalletId,
 };
+use frame_support::traits::{ConstU32};
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_asset_tx_payment::FungiblesAdapter;
 use pallet_assets::BalanceToAssetBalance;
@@ -80,6 +81,12 @@ impl_opaque_keys! {
 		pub aura: Aura,
 		pub grandpa: Grandpa,
 	}
+}
+
+parameter_types! {
+	pub const TwoWeeks: BlockNumber = 14 * DAYS;
+	pub const OneWeek: BlockNumber = 7 * DAYS;
+	pub const OneDay: BlockNumber = DAYS;
 }
 
 // To learn more about runtime versioning and what each of the following value means:
@@ -295,25 +302,27 @@ impl orml_vesting::Config for Runtime {
 	type BlockNumberProvider = System;
 }
 
+// parameter types for the pallet collective configs
 parameter_types! {
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aj/trsry");
-	pub const ZeroPercent: Permill = Permill::from_percent(0);
-	pub const FivePercent: Permill = Permill::from_percent(5);
-	pub const FiftyPercent: Permill = Permill::from_percent(50);
-	pub const MinimumProposalBond: Balance = 1;
-	pub const Fortnightly: BlockNumber = 14 * DAYS;
-	pub const Weekly: BlockNumber = 7 * DAYS;
-	pub const Daily: BlockNumber = DAYS;
+	pub CouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const CouncilMaxMembers: u32 = 100;
 	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
 }
 
-type CouncilCollective = pallet_collective::Instance2;
+/// Council collective instance declaration.
+///
+/// The council primarily serves to optimize and balance the inclusive referendum system,
+/// by being allowed to propose external democracy proposals, which can be fast tracked and
+/// bypass the one active referendum at a time rule.
+///
+/// It also control the treasury.
+type CouncilCollective = pallet_collective::Instance1;
+
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type MotionDuration = Weekly;
+	type MotionDuration = OneWeek;
 	type MaxProposals = frame_support::traits::ConstU32<100>;
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
@@ -322,17 +331,39 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MaxProposalWeight = MaxProposalWeight;
 }
 
-impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
+/// The technical committee primarily serves to safeguard against malicious referenda,
+/// and fast track critical referenda.
+pub type TechnicalCommitteeInstance = pallet_collective::Instance2;
+
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 3 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type AddOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type RemoveOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type SwapOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type ResetOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
-	type PrimeOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
-	type MembershipInitialized = Council;
-	type MembershipChanged = Council;
-	type MaxMembers = CouncilMaxMembers;
-	type WeightInfo = pallet_membership::weights::SubstrateWeight<Runtime>;
+	// The maximum amount of time (in blocks) for technical committee members to vote on motions.
+	// Motions may end in fewer blocks if enough votes are cast to determine the result.
+	type MotionDuration = TechnicalMotionDuration;
+	// The maximum number of proposals that can be open in the technical committee at once.
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type DefaultVote = pallet_collective::MoreThanMajorityThenPrimeDefaultVote;
+	type WeightInfo = ();
+	type SetMembersOrigin = EnsureRootOrMoreThanHalfCouncil;
+	type MaxProposalWeight = MaxProposalWeight;
+}
+
+parameter_types! {
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aj/trsry");
+	pub const ZeroPercent: Permill = Permill::from_percent(0);
+	pub const FivePercent: Permill = Permill::from_percent(5);
+	pub const FiftyPercent: Permill = Permill::from_percent(50);
+	pub const MinimumProposalBond: Balance = 10 * AJUNS;
+	pub const MaximumProposalBond: Balance = 1000 * AJUNS;
 }
 
 impl pallet_treasury::Config for Runtime {
@@ -343,15 +374,15 @@ impl pallet_treasury::Config for Runtime {
 	type OnSlash = ();
 	type ProposalBond = FivePercent;
 	type ProposalBondMinimum = MinimumProposalBond;
-	type ProposalBondMaximum = ();
-	type SpendPeriod = Weekly;
+	type ProposalBondMaximum = MaximumProposalBond;
+	type SpendPeriod = OneWeek;
 	type Burn = ZeroPercent;
 	type PalletId = TreasuryPalletId;
 	type BurnDestination = ();
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 	type SpendFunds = ();
-	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type MaxApprovals = frame_support::traits::ConstU32<100>;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 }
 
 parameter_types! {
@@ -359,38 +390,44 @@ parameter_types! {
 	pub const TwentyEightDays: BlockNumber = 28 * DAYS;
 	pub const ThreeDays: BlockNumber = 3 * DAYS;
 	pub const MinimumDeposit: Balance = 1;
+	pub EnactmentPeriod: BlockNumber = 28 * DAYS;
 }
 
 impl pallet_democracy::Config for Runtime {
+	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
+	type Scheduler = Scheduler;
+	type Preimages = Preimage;
 	type Currency = Balances;
-	type EnactmentPeriod = ThirtyDays;
+	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = TwentyEightDays;
 	type VotingPeriod = TwentyEightDays;
-	type VoteLockingPeriod = ThirtyDays;
+	type VoteLockingPeriod = EnactmentPeriod;
 	type MinimumDeposit = MinimumDeposit;
-	type ExternalOrigin = EnsureAtLeastHalfCouncil;
-	type ExternalMajorityOrigin = EnsureAtLeastThreeFourthsCouncil;
-	type ExternalDefaultOrigin = EnsureAllCouncil;
-	type SubmitOrigin = EnsureSigned<AccountId>;
-	type FastTrackOrigin = EnsureAtLeastThreeFourthsCouncil;
-	type InstantOrigin = EnsureAllCouncil;
-	type InstantAllowed = frame_support::traits::ConstBool<true>;
+	type InstantAllowed = ConstBool<true>;
 	type FastTrackVotingPeriod = ThreeDays;
-	type CancellationOrigin = EnsureAtLeastThreeFourthsCouncil;
-	type BlacklistOrigin = EnsureRoot<AccountId>;
-	type CancelProposalOrigin = EnsureAllCouncil;
-	type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
 	type CooloffPeriod = TwentyEightDays;
-	type Slash = Treasury;
-	type Scheduler = Scheduler;
+	type MaxVotes = ConstU32<100>;
+	type MaxProposals = ConstU32<100>;
+	type MaxDeposits = ConstU32<100>;
+	type MaxBlacklisted = ConstU32<100>;
+	type ExternalOrigin = EnsureRootOrMoreThanHalfCouncil;
+	type ExternalMajorityOrigin = EnsureRootOrMoreThanHalfCouncil;
+	type ExternalDefaultOrigin = EnsureRootOrMoreThanHalfCouncil;
+	type SubmitOrigin = EnsureSigned<AccountId>;
+	type FastTrackOrigin = EnsureRootOrMoreThanHalfTechnicalCommittee;
+	type InstantOrigin = EnsureRootOrMoreThanHalfTechnicalCommittee;
+	// To cancel a proposal which has been passed.
+	type CancellationOrigin = EnsureRoot<AccountId>;
+	type BlacklistOrigin = EnsureRootOrMoreThanHalfCouncil;
+	// To cancel a proposal before it has been passed, the technical committee must be unanimous or
+	// Root must agree.
+	type CancelProposalOrigin = EnsureRootOrAllTechnicalCommittee;
+	// Any single technical committee member may veto a coming council proposal, however they can
+	// only do it once and it lasts only for the cooloff period.
+	type VetoOrigin = pallet_collective::EnsureMember<AccountId, TechnicalCommitteeInstance>;
 	type PalletsOrigin = OriginCaller;
-	type MaxVotes = frame_support::traits::ConstU32<100>;
-	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
-	type MaxProposals = frame_support::traits::ConstU32<100>;
-	type Preimages = Preimage;
-	type MaxDeposits = frame_support::traits::ConstU32<100>;
-	type MaxBlacklisted = frame_support::traits::ConstU32<100>;
+	type Slash = Treasury;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -700,8 +737,11 @@ construct_runtime!(
 		AssetTxPayment: pallet_asset_tx_payment = 6,
 		Assets: pallet_assets = 7,
 		Vesting: orml_vesting = 8,
-		Council: pallet_collective::<Instance2> = 9,
-		CouncilMembership: pallet_membership::<Instance2> = 10,
+		// pub type CouncilCollective = pallet_collective::Instance1;
+		Council: pallet_collective::<Instance1> = 9,
+		// pub type TechnicalCommitteeInstance = pallet_collective::Instance2;
+		TechnicalCommittee: pallet_collective::<Instance2> = 10,
+		// CouncilMembership: pallet_membership::<Instance2> = 10,
 		Treasury: pallet_treasury = 11,
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
