@@ -5,7 +5,7 @@ use frame_support::{
 	traits::{ConstBool, ConstU32, EitherOfDiverse},
 	weights::Weight,
 };
-use frame_system::{EnsureRoot, EnsureSigned};
+use frame_system::EnsureRoot;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 use sp_runtime::Perbill;
 
