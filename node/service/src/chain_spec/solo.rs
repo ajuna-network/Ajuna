@@ -17,8 +17,9 @@
 use crate::chain_spec::{chain_spec_properties, get_well_known_accounts};
 use ajuna_primitives::Balance;
 use ajuna_solo_runtime::{
-	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, TechnicalCommitteeConfig, GrandpaConfig,
-	RuntimeGenesisConfig, SudoConfig, SystemConfig, VestingConfig, WASM_BINARY,
+	currency::AJUNS, AssetsConfig, AuraConfig, BalancesConfig, CouncilConfig, GrandpaConfig,
+	RuntimeGenesisConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, VestingConfig,
+	WASM_BINARY,
 };
 use sc_service::ChainType;
 
@@ -96,7 +97,13 @@ fn development_config_genesis() -> RuntimeGenesisConfig {
 		grandpa: GrandpaConfig { authorities: grandpa_authorities, ..Default::default() },
 		sudo: SudoConfig { key: Some(accounts.alice.clone()) },
 		council: CouncilConfig {
-			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
+			members: vec![
+				accounts.alice.clone(),
+				accounts.bob.clone(),
+				accounts.charlie.clone(),
+				accounts.dave.clone(),
+				accounts.eve.clone(),
+			],
 			phantom: Default::default(),
 		},
 		technical_committee: TechnicalCommitteeConfig {
@@ -193,7 +200,8 @@ fn compose_genesis_config(config: Config) -> RuntimeGenesisConfig {
 	let wasm_binary = WASM_BINARY.expect(
 		"Development wasm binary is not available. Please rebuild with SKIP_WASM_BUILD disabled.",
 	);
-	let Config { aura, grandpa, sudo, council, technical_committee, balances, assets, vesting } = config;
+	let Config { aura, grandpa, sudo, council, technical_committee, balances, assets, vesting } =
+		config;
 	RuntimeGenesisConfig {
 		// overridden config
 		aura,
