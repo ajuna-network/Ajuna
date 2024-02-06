@@ -1,13 +1,15 @@
 use crate::{BlockWeights, OriginCaller, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, DAYS};
 use ajuna_primitives::{AccountId, Balance, BlockNumber};
 use frame_support::{
+	dispatch::RawOrigin,
 	parameter_types,
-	traits::{ConstBool, ConstU32, EitherOfDiverse},
+	traits::{ConstBool, ConstU32, EitherOfDiverse, EnsureOrigin},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 use sp_runtime::Perbill;
+use sp_std::marker::PhantomData;
 
 pub type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
@@ -23,6 +25,37 @@ pub type EnsureRootOrAllTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 1>,
 >;
+
+type AccountIdFor<T> = <T as frame_system::Config>::AccountId;
+
+/// Ensures that the signer of a transaction is a member of said collective instance.
+///
+/// This is fundamentally different from the `pallet_collective::EnsureMember`,
+/// which checks if the referendum to be executed has been ayed by any member.
+/// It is a different kind of origin.
+pub struct EnsureSignerIsCollectiveMember<T, I: 'static>(PhantomData<(T, I)>);
+impl<
+		O: Into<Result<RawOrigin<AccountIdFor<T>>, O>> + From<RawOrigin<AccountIdFor<T>>>,
+		T: pallet_collective::Config<I>,
+		I,
+	> EnsureOrigin<O> for EnsureSignerIsCollectiveMember<T, I>
+{
+	type Success = AccountIdFor<T>;
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::Signed(a) if pallet_collective::Pallet::<T, I>::is_member(&a) =>
+				Ok(a.into()),
+			r => Err(O::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<O, ()> {
+		let zero_account_id =
+			<AccountIdFor<T>>::decode(&mut TrailingZeroInput::zeroes()).map_err(|_| ())?;
+		Ok(O::from(RawOrigin::Signed(zero_account_id)))
+	}
+}
 
 /// Council collective instance declaration.
 ///
@@ -105,7 +138,7 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalDefaultOrigin = EnsureRootOrMoreThanHalfCouncil;
 	// Initially, we want that only the council can submit proposals to
 	// prevent malicious proposals.
-	type SubmitOrigin = EnsureMember<AccountId, CouncilCollective>;
+	type SubmitOrigin = EnsureSignerIsCollectiveMember<Runtime, CouncilCollective>;
 	type FastTrackOrigin = EnsureRootOrMoreThanHalfTechnicalCommittee;
 	type InstantOrigin = EnsureRootOrMoreThanHalfTechnicalCommittee;
 	// To cancel a proposal that has passed.
