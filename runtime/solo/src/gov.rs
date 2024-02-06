@@ -45,8 +45,7 @@ impl<
 	type Success = AccountIdFor<T>;
 	fn try_origin(o: O) -> Result<Self::Success, O> {
 		o.into().and_then(|o| match o {
-			RawOrigin::Signed(a) if pallet_collective::Pallet::<T, I>::is_member(&a) =>
-				Ok(a.into()),
+			RawOrigin::Signed(a) if pallet_collective::Pallet::<T, I>::is_member(&a) => Ok(a),
 			r => Err(O::from(r)),
 		})
 	}
@@ -114,7 +113,7 @@ parameter_types! {
 	pub const TwentyEightDays: BlockNumber = 28 * DAYS;
 	pub const ThirtyDays: BlockNumber = 30 * DAYS;
 	pub EnactmentPeriod: BlockNumber = 7 * DAYS;
-	pub const MinimumDeposit: Balance = 1 * AJUNS;
+	pub const MinimumDeposit: Balance = AJUNS;
 }
 
 impl pallet_democracy::Config for Runtime {
