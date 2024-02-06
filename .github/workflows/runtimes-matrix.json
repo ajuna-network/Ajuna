@@ -3,6 +3,6 @@
     "name": "bajun",
     "package": "bajun-runtime",
     "path": "runtime/bajun-runtime",
-    "uri": "wss://rpc-parachain.bajun.network:433"
+    "uri": "wss://rpc-parachain.bajun.network:443"
   }
 ]
