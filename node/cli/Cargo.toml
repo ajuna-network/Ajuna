@@ -81,8 +81,14 @@ rococo-native   = [ "polkadot-cli/rococo-native" ]
 
 runtime-benchmarks = [
     "ajuna-service/runtime-benchmarks",
-    "polkadot-cli/runtime-benchmarks",
+    "polkadot-cli?/runtime-benchmarks",
 ]
 
 cli         = [ "try-runtime-cli" ]
-try-runtime = [ "try-runtime-cli/try-runtime", "sc-executor", "sp-io" ]
+try-runtime = [
+    "ajuna-service/try-runtime",
+    "polkadot-cli?/try-runtime",
+    "sc-executor",
+    "sp-io",
+    "try-runtime-cli/try-runtime"
+]
