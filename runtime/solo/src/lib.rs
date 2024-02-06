@@ -84,9 +84,9 @@ impl_opaque_keys! {
 }
 
 parameter_types! {
-	pub const TwoWeeks: BlockNumber = 14 * DAYS;
-	pub const OneWeek: BlockNumber = 7 * DAYS;
 	pub const OneDay: BlockNumber = DAYS;
+	pub const OneWeek: BlockNumber = 7 * DAYS;
+	pub const TwoWeeks: BlockNumber = 14 * DAYS;
 }
 
 // To learn more about runtime versioning and what each of the following value means:
@@ -641,7 +641,6 @@ construct_runtime!(
 		Council: pallet_collective::<Instance1> = 9,
 		// pub type TechnicalCommitteeInstance = pallet_collective::Instance2;
 		TechnicalCommittee: pallet_collective::<Instance2> = 10,
-		// CouncilMembership: pallet_membership::<Instance2> = 10,
 		Treasury: pallet_treasury = 11,
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,
