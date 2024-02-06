@@ -65,7 +65,7 @@ impl<
 /// by being allowed to propose external democracy proposals, which can be fast tracked and
 /// bypass the one active referendum at a time rule.
 ///
-/// It also control the treasury.
+/// It also controls the treasury.
 type CouncilCollective = pallet_collective::Instance1;
 
 parameter_types! {
@@ -98,8 +98,6 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	// The maximum amount of time (in blocks) for technical committee members to vote on motions.
-	// Motions may end in fewer blocks if enough votes are cast to determine the result.
 	type MotionDuration = TechnicalMotionDuration;
 	type MaxProposals = ConstU32<100>;
 	type MaxMembers = ConstU32<100>;
