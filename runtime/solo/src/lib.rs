@@ -22,6 +22,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use crate::gov::EnsureRootOrMoreThanHalfCouncil;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstBool, Contains},
@@ -58,6 +59,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 mod consts;
+mod gov;
 mod impls;
 mod types;
 
@@ -69,7 +71,6 @@ pub use consts::currency;
 use consts::{currency::*, time::*};
 use impls::{CreditToTreasury, OneToOneConversion};
 use pallet_nfts::Call as NftsCall;
-use types::governance::*;
 
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
@@ -80,6 +81,12 @@ impl_opaque_keys! {
 		pub aura: Aura,
 		pub grandpa: Grandpa,
 	}
+}
+
+parameter_types! {
+	pub const OneDay: BlockNumber = DAYS;
+	pub const OneWeek: BlockNumber = 7 * DAYS;
+	pub const TwoWeeks: BlockNumber = 14 * DAYS;
 }
 
 // To learn more about runtime versioning and what each of the following value means:
@@ -300,39 +307,8 @@ parameter_types! {
 	pub const ZeroPercent: Permill = Permill::from_percent(0);
 	pub const FivePercent: Permill = Permill::from_percent(5);
 	pub const FiftyPercent: Permill = Permill::from_percent(50);
-	pub const MinimumProposalBond: Balance = 1;
-	pub const Fortnightly: BlockNumber = 14 * DAYS;
-	pub const Weekly: BlockNumber = 7 * DAYS;
-	pub const Daily: BlockNumber = DAYS;
-	pub const CouncilMaxMembers: u32 = 100;
-	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
-}
-
-type CouncilCollective = pallet_collective::Instance2;
-impl pallet_collective::Config<CouncilCollective> for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Proposal = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type MotionDuration = Weekly;
-	type MaxProposals = frame_support::traits::ConstU32<100>;
-	type MaxMembers = CouncilMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
-	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type MaxProposalWeight = MaxProposalWeight;
-}
-
-impl pallet_membership::Config<pallet_membership::Instance2> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type AddOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type RemoveOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type SwapOrigin = EnsureRootOrMoreThanHalfCouncil;
-	type ResetOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
-	type PrimeOrigin = EnsureRootOrAtLeastTwoThirdsCouncil;
-	type MembershipInitialized = Council;
-	type MembershipChanged = Council;
-	type MaxMembers = CouncilMaxMembers;
-	type WeightInfo = pallet_membership::weights::SubstrateWeight<Runtime>;
+	pub const MinimumProposalBond: Balance = 10 * AJUNS;
+	pub const MaximumProposalBond: Balance = 1000 * AJUNS;
 }
 
 impl pallet_treasury::Config for Runtime {
@@ -343,54 +319,15 @@ impl pallet_treasury::Config for Runtime {
 	type OnSlash = ();
 	type ProposalBond = FivePercent;
 	type ProposalBondMinimum = MinimumProposalBond;
-	type ProposalBondMaximum = ();
-	type SpendPeriod = Weekly;
+	type ProposalBondMaximum = MaximumProposalBond;
+	type SpendPeriod = OneWeek;
 	type Burn = ZeroPercent;
 	type PalletId = TreasuryPalletId;
 	type BurnDestination = ();
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 	type SpendFunds = ();
-	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type MaxApprovals = frame_support::traits::ConstU32<100>;
-}
-
-parameter_types! {
-	pub const ThirtyDays: BlockNumber = 30 * DAYS;
-	pub const TwentyEightDays: BlockNumber = 28 * DAYS;
-	pub const ThreeDays: BlockNumber = 3 * DAYS;
-	pub const MinimumDeposit: Balance = 1;
-}
-
-impl pallet_democracy::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type EnactmentPeriod = ThirtyDays;
-	type LaunchPeriod = TwentyEightDays;
-	type VotingPeriod = TwentyEightDays;
-	type VoteLockingPeriod = ThirtyDays;
-	type MinimumDeposit = MinimumDeposit;
-	type ExternalOrigin = EnsureAtLeastHalfCouncil;
-	type ExternalMajorityOrigin = EnsureAtLeastThreeFourthsCouncil;
-	type ExternalDefaultOrigin = EnsureAllCouncil;
-	type SubmitOrigin = EnsureSigned<AccountId>;
-	type FastTrackOrigin = EnsureAtLeastThreeFourthsCouncil;
-	type InstantOrigin = EnsureAllCouncil;
-	type InstantAllowed = frame_support::traits::ConstBool<true>;
-	type FastTrackVotingPeriod = ThreeDays;
-	type CancellationOrigin = EnsureAtLeastThreeFourthsCouncil;
-	type BlacklistOrigin = EnsureRoot<AccountId>;
-	type CancelProposalOrigin = EnsureAllCouncil;
-	type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
-	type CooloffPeriod = TwentyEightDays;
-	type Slash = Treasury;
-	type Scheduler = Scheduler;
-	type PalletsOrigin = OriginCaller;
-	type MaxVotes = frame_support::traits::ConstU32<100>;
-	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
-	type MaxProposals = frame_support::traits::ConstU32<100>;
-	type Preimages = Preimage;
-	type MaxDeposits = frame_support::traits::ConstU32<100>;
-	type MaxBlacklisted = frame_support::traits::ConstU32<100>;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -700,8 +637,10 @@ construct_runtime!(
 		AssetTxPayment: pallet_asset_tx_payment = 6,
 		Assets: pallet_assets = 7,
 		Vesting: orml_vesting = 8,
-		Council: pallet_collective::<Instance2> = 9,
-		CouncilMembership: pallet_membership::<Instance2> = 10,
+		// pub type CouncilCollective = pallet_collective::Instance1;
+		Council: pallet_collective::<Instance1> = 9,
+		// pub type TechnicalCommitteeInstance = pallet_collective::Instance2;
+		TechnicalCommittee: pallet_collective::<Instance2> = 10,
 		Treasury: pallet_treasury = 11,
 		Democracy: pallet_democracy = 12,
 		Sudo: pallet_sudo = 13,

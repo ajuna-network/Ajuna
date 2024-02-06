@@ -14,29 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod governance {
-	use crate::CouncilCollective;
-	use ajuna_primitives::AccountId;
-	use frame_support::traits::EitherOfDiverse;
-	use frame_system::EnsureRoot;
-	use pallet_collective::{EnsureProportionAtLeast, EnsureProportionMoreThan};
-
-	pub(crate) type EnsureRootOrMoreThanHalfCouncil = EitherOfDiverse<
-		EnsureRoot<AccountId>,
-		EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
-	>;
-	pub(crate) type EnsureRootOrAtLeastTwoThirdsCouncil = EitherOfDiverse<
-		EnsureRoot<AccountId>,
-		EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
-	>;
-
-	pub(crate) type EnsureAtLeastHalfCouncil =
-		EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
-	pub(crate) type EnsureAtLeastThreeFourthsCouncil =
-		EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
-	pub(crate) type EnsureAllCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
-}
-
 pub mod proxy {
 	use frame_support::{
 		pallet_prelude::MaxEncodedLen, traits::InstanceFilter, RuntimeDebugNoBound,
