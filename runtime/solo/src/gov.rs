@@ -1,4 +1,6 @@
-use crate::{BlockWeights, OriginCaller, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, DAYS};
+use crate::{
+	BlockWeights, OriginCaller, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, AJUNS, DAYS,
+};
 use ajuna_primitives::{AccountId, Balance, BlockNumber};
 use frame_support::{
 	dispatch::RawOrigin,
@@ -108,11 +110,11 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const ThirtyDays: BlockNumber = 30 * DAYS;
-	pub const TwentyEightDays: BlockNumber = 28 * DAYS;
 	pub const ThreeDays: BlockNumber = 3 * DAYS;
-	pub const MinimumDeposit: Balance = 1;
+	pub const TwentyEightDays: BlockNumber = 28 * DAYS;
+	pub const ThirtyDays: BlockNumber = 30 * DAYS;
 	pub EnactmentPeriod: BlockNumber = 7 * DAYS;
+	pub const MinimumDeposit: Balance = 1 * AJUNS;
 }
 
 impl pallet_democracy::Config for Runtime {
