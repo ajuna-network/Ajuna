@@ -53,6 +53,8 @@ impl<
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
+		use parity_scale_codec::Decode;
+		use sp_runtime::traits::TrailingZeroInput;
 		let zero_account_id =
 			<AccountIdFor<T>>::decode(&mut TrailingZeroInput::zeroes()).map_err(|_| ())?;
 		Ok(O::from(RawOrigin::Signed(zero_account_id)))
