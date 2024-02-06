@@ -80,7 +80,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MotionDuration = CouncilMotionDuration;
 	type MaxProposals = ConstU32<100>;
 	type MaxMembers = ConstU32<100>;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type DefaultVote = pallet_collective::MoreThanMajorityThenPrimeDefaultVote;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 	type SetMembersOrigin = EnsureRootOrMoreThanHalfCouncil;
 	type MaxProposalWeight = MaxProposalWeight;
