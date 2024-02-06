@@ -107,7 +107,7 @@ fn development_config_genesis() -> RuntimeGenesisConfig {
 			phantom: Default::default(),
 		},
 		technical_committee: TechnicalCommitteeConfig {
-			members: vec![accounts.bob.clone(), accounts.charlie.clone(), accounts.dave.clone()],
+			members: vec![accounts.alice.clone(), accounts.bob.clone(), accounts.charlie.clone()],
 			phantom: Default::default(),
 		},
 		balances: BalancesConfig {
