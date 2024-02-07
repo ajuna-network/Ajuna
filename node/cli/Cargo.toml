@@ -44,8 +44,6 @@ sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polk
 sc-tracing   = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", optional = true }
 sp-io        = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", optional = true }
 
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", optional = true }
-
 # Polkadot
 polkadot-cli        = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.42", optional = true }
 polkadot-parachain  = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.42", optional = true }
@@ -84,11 +82,10 @@ runtime-benchmarks = [
     "polkadot-cli?/runtime-benchmarks",
 ]
 
-cli         = [ "try-runtime-cli" ]
+cli         = [ ]
 try-runtime = [
     "ajuna-service/try-runtime",
     "polkadot-cli?/try-runtime",
     "sc-executor",
     "sp-io",
-    "try-runtime-cli/try-runtime"
 ]
