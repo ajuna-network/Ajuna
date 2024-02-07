@@ -43,8 +43,6 @@ sc-telemetry = { workspace = true, optional = true }
 sc-tracing   = { workspace = true, optional = true }
 sp-io        = { workspace = true, optional = true }
 
-try-runtime-cli = { workspace = true, optional = true }
-
 # Polkadot
 polkadot-cli                   = { workspace = true, optional = true }
 polkadot-parachain-primitives  = { workspace = true, optional = true }
@@ -87,11 +85,10 @@ runtime-benchmarks = [
     "polkadot-cli?/runtime-benchmarks",
 ]
 
-cli         = [ "try-runtime-cli" ]
+cli         = [ ]
 try-runtime = [
     "ajuna-service/try-runtime",
     "polkadot-cli?/try-runtime",
     "sc-executor",
     "sp-io",
-    "try-runtime-cli/try-runtime"
 ]
