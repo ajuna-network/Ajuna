@@ -225,7 +225,6 @@ dependencies = [
  "sp-runtime",
  "sp-timestamp",
  "substrate-build-script-utils",
- "try-runtime-cli",
 ]
 
 [[package]]
