@@ -63,6 +63,7 @@ jobs:
           cargo build --release -p ${{ matrix.runtime.package }} --features try-runtime -q --locked
 
       - name: Check migrations
+        # Todo: enable spec-version-check dynamically if we are releasing
         run: |
           PACKAGE_NAME=${{ matrix.runtime.package }}
           RUNTIME_BLOB_NAME=$(echo $PACKAGE_NAME | sed 's/-/_/g').compact.compressed.wasm
@@ -70,5 +71,6 @@ jobs:
 
           ./try-runtime \
             --runtime $RUNTIME_BLOB_PATH \
-            on-runtime-upgrade --checks=pre-and-post \
+            on-runtime-upgrade --checks=pre-and-post \  
+            --disable-spec-version-check \
             live --uri ${{ matrix.runtime.uri }}
