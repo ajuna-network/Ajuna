@@ -2,9 +2,9 @@ name: Check Migrations
 
 on:
   push:
-    branches: ["develop"]
+    branches: ["develop", "bajun-stable"]
   pull_request:
-    branches: ["develop"]
+    branches: ["develop", "bajun-stable"]
   workflow_dispatch:
 
 # Cancel a currently running workflow from the same PR, branch or tag when a new workflow is
