@@ -24,7 +24,6 @@ pub mod scheduler {
 	use frame_support::traits::OnRuntimeUpgrade;
 	use frame_system::pallet_prelude::BlockNumberFor;
 	use pallet_scheduler::*;
-	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;
 
 	/// The log target.
@@ -103,7 +102,7 @@ pub mod scheduler {
 
 		impl<T: Config> OnRuntimeUpgrade for MigrateToV4<T> {
 			#[cfg(feature = "try-runtime")]
-			fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+			fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 				let agendas = v1::Agenda::<T>::iter_keys().count() as u32;
 				let lookups = v1::Lookup::<T>::iter_keys().count() as u32;
 				log::info!(target: TARGET, "agendas present which will be left untouched: {}/{}...", agendas, lookups);
@@ -128,7 +127,7 @@ pub mod scheduler {
 			}
 
 			#[cfg(feature = "try-runtime")]
-			fn post_upgrade(_state: Vec<u8>) -> Result<(), DispatchError> {
+			fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
 				ensure!(StorageVersion::get::<Pallet<T>>() == 4, "Must upgrade");
 
 				let agendas = Agenda::<T>::iter_keys().count() as u32;
