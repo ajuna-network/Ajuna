@@ -125,6 +125,10 @@ pub type Executive = frame_executive::Executive<
 type Migrations = (
 	// Bajun is at v0, with the special migration we jump to v4.
 	migrations_fix::scheduler::v4::MigrateToV4<Runtime>,
+	// Can use the actual migration. Basically a no-op except for
+	// setting the storage version and hence very cheap.
+	pallet_preimage::migration::v1::Migration<Runtime>,
+	migrations_fix::parachain_systems::MigrateV0ToV2<Runtime>,
 );
 
 // type Migrations = (pallet_ajuna_awesome_avatars::migration::v6::MigrateToV6<Runtime>,);
