@@ -97,8 +97,8 @@ pub mod scheduler {
 		pub(crate) type Lookup<T: Config> =
 			StorageMap<Pallet<T>, Twox64Concat, TaskName, TaskAddress<BlockNumberFor<T>>>;
 
-		/// Migrate the scheduler pallet from V0 to V4 without changing storage. the only active
-		/// schedule has been submitted already in V4
+		/// Migrate the scheduler pallet from V0 to V4 without changing storage, as there is no
+		/// active schedule anyhow.
 		pub struct MigrateToV4<T>(sp_std::marker::PhantomData<T>);
 
 		impl<T: Config> OnRuntimeUpgrade for MigrateToV4<T> {
