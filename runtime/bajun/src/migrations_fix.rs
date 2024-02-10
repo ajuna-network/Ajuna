@@ -120,3 +120,46 @@ pub mod scheduler {
 		}
 	}
 }
+
+pub mod xcmp_queue {
+	use cumulus_pallet_xcmp_queue::{Config, Pallet};
+	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
+	use sp_std::vec::Vec;
+
+	const TARGET: &'static str = "runtime::fix::xcmp_queue::migration";
+
+	/// Use the actual migration provided by substrate. For some reason, they haven't supplied
+	/// the struct itself, to we have to implement it.
+	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			// We are executing a parity migration here. I don't know why they didn't give us the
+			// full struct, but I will omit the tests for now.
+			Ok(0.encode())
+		}
+
+		fn on_runtime_upgrade() -> Weight {
+			let onchain_version = Pallet::<T>::on_chain_storage_version();
+			if onchain_version >= 3 {
+				log::warn!(
+					target: TARGET,
+					"skipping v0 to v3 migration: executed on wrong storage version.\
+				Expected version < 3, found {:?}",
+					onchain_version,
+				);
+				return T::DbWeight::get().reads(1)
+			}
+
+			log::info!(target: TARGET, "migrating from {:?} to 3", onchain_version);
+			cumulus_pallet_xcmp_queue::migration::migrate_to_latest::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+			ensure!(StorageVersion::get::<Pallet<T>>() == 3, "Must upgrade");
+			Ok(())
+		}
+	}
+}
