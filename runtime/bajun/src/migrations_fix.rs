@@ -56,24 +56,6 @@ pub mod scheduler {
 			StorageMap<Pallet<T>, Twox64Concat, Vec<u8>, TaskAddress<BlockNumberFor<T>>>;
 	}
 
-	pub mod v3 {
-		use super::*;
-		use frame_support::pallet_prelude::*;
-
-		#[frame_support::storage_alias]
-		pub(crate) type Agenda<T: Config> = StorageMap<
-			Pallet<T>,
-			Twox64Concat,
-			BlockNumberFor<T>,
-			Vec<Option<ScheduledV3Of<T>>>,
-			ValueQuery,
-		>;
-
-		#[frame_support::storage_alias]
-		pub(crate) type Lookup<T: Config> =
-			StorageMap<Pallet<T>, Twox64Concat, Vec<u8>, TaskAddress<BlockNumberFor<T>>>;
-	}
-
 	pub mod v4 {
 		use super::*;
 		use frame_support::pallet_prelude::*;
