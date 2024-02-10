@@ -122,6 +122,7 @@ pub mod scheduler {
 }
 
 pub mod xcmp_queue {
+	use crate::migrations_fix::xcmp_queue;
 	use cumulus_pallet_xcmp_queue::{Config, Pallet};
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
 	use sp_std::vec::Vec;
@@ -131,6 +132,63 @@ pub mod xcmp_queue {
 	/// Use the actual migration provided by substrate. For some reason, they haven't supplied
 	/// the struct itself, to we have to implement it.
 	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
+
+	mod v0 {
+		use super::*;
+		use codec::{Decode, Encode};
+
+		#[derive(Encode, Decode, Debug)]
+		pub struct QueueConfigData {
+			pub suspend_threshold: u32,
+			pub drop_threshold: u32,
+			pub resume_threshold: u32,
+			pub threshold_weight: Weight,
+			pub weight_restrict_decay: Weight,
+		}
+
+		impl Default for QueueConfigData {
+			fn default() -> Self {
+				QueueConfigData {
+					suspend_threshold: 2,
+					drop_threshold: 5,
+					resume_threshold: 1,
+					threshold_weight: 100_000,
+					weight_restrict_decay: 2,
+				}
+			}
+		}
+	}
+
+	/// Migrates `QueueConfigData` from v0 (without the `xcmp_max_individual_weight` field) to
+	/// v1 (with max individual weight).
+	/// Uses the `Default` implementation of `QueueConfigData` to choose a value for
+	/// `xcmp_max_individual_weight`.
+	///
+	/// NOTE: Only use this function if you know what you're doing. Default to using
+	/// `migrate_to_latest`.
+	pub fn migrate_to_v1<T: Config>() -> Weight {
+		let translate = |pre: v0::QueueConfigData| -> super::QueueConfigData {
+			super::QueueConfigData {
+				suspend_threshold: pre.suspend_threshold,
+				drop_threshold: pre.drop_threshold,
+				resume_threshold: pre.resume_threshold,
+				threshold_weight: pre.threshold_weight,
+				weight_restrict_decay: pre.weight_restrict_decay,
+				xcmp_max_individual_weight:
+					cumulus_pallet_xcmp_queue::migration::v1::QueueConfigData::default()
+						.xcmp_max_individual_weight,
+			}
+		};
+
+		if let Err(_) = <Pallet<T> as Store>::QueueConfig::translate(|pre| pre.map(translate)) {
+			log::error!(
+				target: TARGET,
+				"unexpected error when performing translation of the QueueConfig type during storage upgrade to v1"
+			);
+		}
+
+		T::DbWeight::get().reads_writes(1, 1)
+	}
 
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
 		#[cfg(feature = "try-runtime")]
@@ -150,6 +208,12 @@ pub mod xcmp_queue {
 					onchain_version,
 				);
 				return T::DbWeight::get().reads(1)
+			}
+
+			let mut weight = T::DbWeight::get().reads(1);
+			if StorageVersion::get::<Pallet<T>>() == 0 {
+				weight += migrate_to_v1::<T>();
+				StorageVersion::new(1).put::<Pallet<T>>();
 			}
 
 			log::info!(target: TARGET, "migrating from {:?} to 3", onchain_version);
