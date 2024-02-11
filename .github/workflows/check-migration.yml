@@ -20,7 +20,7 @@ jobs:
       runtime: ${{ steps.runtime.outputs.runtime }}
     name: Extract tasks from matrix
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - id: runtime
         run: |
           # Filter out runtimes that don't have a URI
