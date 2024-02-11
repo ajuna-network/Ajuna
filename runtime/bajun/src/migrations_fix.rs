@@ -121,6 +121,48 @@ pub mod scheduler {
 	}
 }
 
+pub mod parachain_systems {
+	use cumulus_pallet_parachain_system::{Config, Pallet};
+	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
+	use frame_system::pallet_prelude::BlockNumberFor;
+	use sp_std::vec::Vec;
+
+	const TARGET: &'static str = "runtime::fix::parachain_systems::migration";
+
+	pub struct MigrateV0ToV2<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV2<T> {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			// We are executing a parity migration here. I don't know why they didn't give us the
+			// full struct, but I will omit the tests for now.
+			Ok(0.encode())
+		}
+
+		fn on_runtime_upgrade() -> Weight {
+			let onchain_version = Pallet::<T>::on_chain_storage_version();
+			if onchain_version >= 2 {
+				log::warn!(
+					target: TARGET,
+					"skipping v0 to v2 migration: executed on wrong storage version.\
+				Expected version < 2, found {:?}",
+					onchain_version,
+				);
+				return T::DbWeight::get().reads(1)
+			}
+
+			log::info!(target: TARGET, "migrating from {:?} to 2", onchain_version);
+			<Pallet<T> as Hooks<BlockNumberFor<T>>>::on_runtime_upgrade()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+			ensure!(StorageVersion::get::<Pallet<T>>() == 2, "Must upgrade");
+			Ok(())
+		}
+	}
+}
+
 pub mod xcmp_queue {
 	use cumulus_pallet_xcmp_queue::{Config, Pallet};
 	use frame_support::{pallet_prelude::*, storage_alias, traits::OnRuntimeUpgrade};

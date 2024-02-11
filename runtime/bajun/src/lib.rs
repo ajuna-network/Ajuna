@@ -128,6 +128,7 @@ type Migrations = (
 	// Can use the actual migration from substrate. Basically a no-op except for
 	// setting the storage version and hence very cheap.
 	pallet_preimage::migration::v1::Migration<Runtime>,
+	migrations_fix::parachain_systems::MigrateV0ToV2<Runtime>,
 	migrations_fix::xcmp_queue::MigrateV0ToV3<Runtime>,
 );
 
