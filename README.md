@@ -67,6 +67,10 @@ A game platform [parachain](https://wiki.polkadot.network/docs/learn-parachains)
 
 
 ## Check state migrations
+The below is an example how you can verify storage migrations against live onchain data.
+
+**NOTE**: Data for the pallet under test must be fetched, otherwise try-runtime doesn't even fetch its onchain storage
+version.
 
 ```bash
 curl -sL https://github.com/paritytech/try-runtime-cli/releases/download/v0.5.2/try-runtime-x86_64-unknown-linux-musl -o try-runtime
