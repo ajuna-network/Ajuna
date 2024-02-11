@@ -202,6 +202,7 @@ pub mod xcmp_queue {
 				return weight
 			}
 
+			log::info!(target: TARGET, "migrating from {:?} to 3", onchain_version);
 			StorageVersion::new(3).put::<Pallet<T>>();
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
@@ -217,7 +218,7 @@ pub mod xcmp_queue {
 }
 
 pub mod dmp_queue {
-	use cumulus_pallet_xcmp_queue::{Config, Pallet};
+	use cumulus_pallet_dmp_queue::{Config, Pallet};
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
 	use sp_std::vec::Vec;
 
@@ -240,7 +241,7 @@ pub mod dmp_queue {
 		fn on_runtime_upgrade() -> Weight {
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 			let mut weight = T::DbWeight::get().reads(1);
-			if onchain_version >= 3 {
+			if onchain_version >= 1 {
 				log::warn!(
 					target: TARGET,
 					"skipping v0 to v1 migration: executed on wrong storage version.\
@@ -250,7 +251,8 @@ pub mod dmp_queue {
 				return weight
 			}
 
-			StorageVersion::new(3).put::<Pallet<T>>();
+			log::info!(target: TARGET, "migrating from {:?} to 1", onchain_version);
+			StorageVersion::new(1).put::<Pallet<T>>();
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			weight
@@ -258,7 +260,7 @@ pub mod dmp_queue {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-			ensure!(StorageVersion::get::<Pallet<T>>() == 3, "Must upgrade");
+			ensure!(StorageVersion::get::<Pallet<T>>() == 1, "Must upgrade");
 			Ok(())
 		}
 	}
