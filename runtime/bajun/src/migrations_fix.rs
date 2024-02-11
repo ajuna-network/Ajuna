@@ -129,6 +129,10 @@ pub mod parachain_systems {
 
 	const TARGET: &'static str = "runtime::fix::parachain_systems::migration";
 
+	/// This is a mock migration, because the pallet has been declaring internal migrations,
+	/// which does migrate the data to prevent chain brickages in case they are forgotten.
+	/// However, these pallet hooks don't update the storage version. Hence, we only have to
+	/// set the storage version here.
 	pub struct MigrateV0ToV2<T>(sp_std::marker::PhantomData<T>);
 
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV2<T> {
@@ -141,6 +145,7 @@ pub mod parachain_systems {
 
 		fn on_runtime_upgrade() -> Weight {
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
+			let mut weight = T::DbWeight::get().reads(1);
 			if onchain_version >= 2 {
 				log::warn!(
 					target: TARGET,
@@ -148,11 +153,14 @@ pub mod parachain_systems {
 				Expected version < 2, found {:?}",
 					onchain_version,
 				);
-				return T::DbWeight::get().reads(1)
+				return weight
 			}
 
 			log::info!(target: TARGET, "migrating from {:?} to 2", onchain_version);
-			<Pallet<T> as Hooks<BlockNumberFor<T>>>::on_runtime_upgrade()
+			StorageVersion::new(2).put::<Pallet<T>>();
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
+
+			weight
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -170,103 +178,13 @@ pub mod xcmp_queue {
 
 	const TARGET: &'static str = "runtime::fix::xcmp_queue::migration";
 
-	/// Use the actual migration provided by substrate. For some reason, they haven't supplied
-	/// the struct itself, to we have to implement it.
-	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
-
-	mod v0 {
-		use super::*;
-		use codec::{Decode, Encode};
-
-		#[derive(Encode, Decode, Debug)]
-		pub struct QueueConfigData {
-			pub suspend_threshold: u32,
-			pub drop_threshold: u32,
-			pub resume_threshold: u32,
-			// the following two values are different from https://github.com/paritytech/polkadot-sdk/commit/b5135277f41ac33109829439060a662636d78a53#diff-7369c6248261389060a5b4809f0c2fd5a39ad928c048bd3fd4b079ac111d2321
-			// We define it as u64 instead of weight. This is because back in that time the
-			// `frame_support::Weight` was still just the u64 wrapper.
-			pub threshold_weight: u64,
-			pub weight_restrict_decay: u64,
-		}
-
-		#[storage_alias]
-		pub type QueueConfig<T: Config> = StorageValue<Pallet<T>, QueueConfigData, ValueQuery>;
-
-		impl Default for QueueConfigData {
-			fn default() -> Self {
-				QueueConfigData {
-					suspend_threshold: 2,
-					drop_threshold: 5,
-					resume_threshold: 1,
-					threshold_weight: 100_000,
-					weight_restrict_decay: 2,
-				}
-			}
-		}
-	}
-
-	mod v1 {
-		use super::*;
-		use codec::{Decode, Encode};
-		use frame_support::weights::constants::WEIGHT_REF_TIME_PER_MILLIS;
-
-		#[derive(Encode, Decode, Debug)]
-		pub struct QueueConfigData {
-			pub suspend_threshold: u32,
-			pub drop_threshold: u32,
-			pub resume_threshold: u32,
-			pub threshold_weight: u64,
-			pub weight_restrict_decay: u64,
-			pub xcmp_max_individual_weight: u64,
-		}
-
-		#[storage_alias]
-		pub type QueueConfig<T: Config> = StorageValue<Pallet<T>, QueueConfigData, ValueQuery>;
-
-		impl Default for QueueConfigData {
-			fn default() -> Self {
-				QueueConfigData {
-					suspend_threshold: 2,
-					drop_threshold: 5,
-					resume_threshold: 1,
-					threshold_weight: 100_000,
-					weight_restrict_decay: 2,
-					xcmp_max_individual_weight: 20u64 * WEIGHT_REF_TIME_PER_MILLIS,
-				}
-			}
-		}
-	}
-
-	/// Migrates `QueueConfigData` from v0 (without the `xcmp_max_individual_weight` field) to
-	/// v1 (with max individual weight).
-	/// Uses the `Default` implementation of `QueueConfigData` to choose a value for
-	/// `xcmp_max_individual_weight`.
+	/// This is a mock migration, because the pallet has been declaring internal migrations,
+	/// which does migrate the data to prevent chain brickages in case they are forgotten.
+	/// However, these pallet hooks don't update the storage version. Hence, we only have to
+	/// set the storage version here.
 	///
-	/// NOTE: Only use this function if you know what you're doing. Default to using
-	/// `migrate_to_latest`.
-	pub fn migrate_to_v1<T: Config>() -> Weight {
-		let translate = |pre: v0::QueueConfigData| -> v1::QueueConfigData {
-			v1::QueueConfigData {
-				suspend_threshold: pre.suspend_threshold,
-				drop_threshold: pre.drop_threshold,
-				resume_threshold: pre.resume_threshold,
-				threshold_weight: pre.threshold_weight,
-				weight_restrict_decay: pre.weight_restrict_decay,
-				xcmp_max_individual_weight: v1::QueueConfigData::default()
-					.xcmp_max_individual_weight,
-			}
-		};
-
-		// We can't use `QueueConfig::translate` as they do in the xcmp_pallet
-		// because `QueueConfig` is private. This is why we have to use the
-		// `storage_alias` proc_mac.
-		let config_v0 = v0::QueueConfig::<T>::get();
-		let config_v1 = translate(config_v0);
-		v1::QueueConfig::<T>::put(config_v1);
-
-		T::DbWeight::get().reads_writes(1, 1)
-	}
+	/// This can be confirmed by inspecting the current on chain data for `QueueConfig`.
+	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
 
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
 		#[cfg(feature = "try-runtime")]
@@ -278,6 +196,7 @@ pub mod xcmp_queue {
 
 		fn on_runtime_upgrade() -> Weight {
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
+			let mut weight = T::DbWeight::get().reads(1);
 			if onchain_version >= 3 {
 				log::warn!(
 					target: TARGET,
@@ -285,20 +204,11 @@ pub mod xcmp_queue {
 				Expected version < 3, found {:?}",
 					onchain_version,
 				);
-				return T::DbWeight::get().reads(1)
+				return weight
 			}
 
-			let mut weight = T::DbWeight::get().reads(1);
-			if StorageVersion::get::<Pallet<T>>() == 0 {
-				log::info!(target: TARGET, "running our own migration from 0 to 1");
-				weight += migrate_to_v1::<T>();
-				StorageVersion::new(1).put::<Pallet<T>>();
-				weight.saturating_accrue(T::DbWeight::get().writes(1));
-			}
-
-			let version_new = StorageVersion::get::<Pallet<T>>();
-			log::info!(target: TARGET, "running the pallet_xcmp_queue's migration from {:?} to 3", version_new);
-			weight += cumulus_pallet_xcmp_queue::migration::migrate_to_latest::<T>();
+			StorageVersion::new(3).put::<Pallet<T>>();
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			weight
 		}
