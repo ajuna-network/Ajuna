@@ -217,3 +217,52 @@ pub mod xcmp_queue {
 		}
 	}
 }
+
+pub mod dmp_queue {
+	use cumulus_pallet_xcmp_queue::{Config, Pallet};
+	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
+	use sp_std::vec::Vec;
+
+	const TARGET: &'static str = "runtime::fix::dmp_queue::migration";
+
+	/// This is a mock migration, because the pallet has been declaring internal migrations,
+	/// which does migrate the data to prevent chain brickages in case they are forgotten.
+	/// However, these pallet hooks don't update the storage version. Hence, we only have to
+	/// set the storage version here.
+	///
+	/// This can be confirmed by inspecting the current on chain data for `Configuration`.
+	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
+			Ok(0.encode())
+		}
+
+		fn on_runtime_upgrade() -> Weight {
+			let onchain_version = Pallet::<T>::on_chain_storage_version();
+			let mut weight = T::DbWeight::get().reads(1);
+			if onchain_version >= 3 {
+				log::warn!(
+					target: TARGET,
+					"skipping v0 to v1 migration: executed on wrong storage version.\
+				Expected version < 1, found {:?}",
+					onchain_version,
+				);
+				return weight
+			}
+
+			StorageVersion::new(1).put::<Pallet<T>>();
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
+
+			weight
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+			ensure!(StorageVersion::get::<Pallet<T>>() == 1, "Must upgrade");
+			Ok(())
+		}
+	}
+}
