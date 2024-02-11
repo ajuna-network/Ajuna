@@ -236,9 +236,9 @@ pub mod dmp_queue {
 	/// set the storage version here.
 	///
 	/// This can be confirmed by inspecting the current on chain data for `Configuration`.
-	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateV0ToV2<T>(sp_std::marker::PhantomData<T>);
 
-	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
+	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV2<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 			Ok(0.encode())
@@ -247,18 +247,24 @@ pub mod dmp_queue {
 		fn on_runtime_upgrade() -> Weight {
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 			let mut weight = T::DbWeight::get().reads(1);
-			if onchain_version >= 1 {
+			if onchain_version >= 2 {
 				log::warn!(
 					target: TARGET,
-					"skipping v0 to v1 migration: executed on wrong storage version.\
-				Expected version < 1, found {:?}",
+					"skipping v0 to v2 migration: executed on wrong storage version.\
+				Expected version < 2, found {:?}",
 					onchain_version,
 				);
 				return weight
 			}
 
-			log::info!(target: TARGET, "migrating from {:?} to 1", onchain_version);
-			StorageVersion::new(1).put::<Pallet<T>>();
+			log::info!(target: TARGET, "migrating from {:?} to 2", onchain_version);
+			log::info!(target: TARGET, "Note: the xcmp-queue pallet's current storage version is \
+			 erroneously 2. This discrepancy will be detected by try-runtime. That message can be ignored.");
+
+			// Note: the xcmp-que pallet falsely reports its current storage version as
+			// 2. We can verify that the counter for `overweight_messages` already
+			// exists on chain, hence version 3 is the correct storage version.
+			StorageVersion::new(2).put::<Pallet<T>>();
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			weight
@@ -266,7 +272,7 @@ pub mod dmp_queue {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-			ensure!(StorageVersion::get::<Pallet<T>>() == 1, "Must upgrade");
+			ensure!(StorageVersion::get::<Pallet<T>>() == 2, "Must upgrade");
 			Ok(())
 		}
 	}

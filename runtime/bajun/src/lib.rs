@@ -139,7 +139,7 @@ type Migrations = (
 	migrations_fix::xcmp_queue::MigrateV0ToV3<Runtime>,
 	// The dmp_queue pallet has already run internal migrations.
 	// all that is needed is to set the storage version correctly.
-	migrations_fix::dmp_queue::MigrateV0ToV3<Runtime>,
+	migrations_fix::dmp_queue::MigrateV0ToV2<Runtime>,
 );
 
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
