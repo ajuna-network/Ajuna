@@ -203,8 +203,8 @@ pub mod xcmp_queue {
 			}
 
 			log::info!(target: TARGET, "migrating from {:?} to 3", onchain_version);
-			log::info!(target: TARGET, "Note: the xcmp-queue pallets storage version is erroneously 2. \
-			This discrepancy will be detected by try-runtime, but this is fine.");
+			log::info!(target: TARGET, "Note: the xcmp-queue pallet's current storage version is \
+			 erroneously 2. This discrepancy will be detected by try-runtime. That message can be ignored.");
 
 			// Note: the xcmp-que pallet falsely reports its current storage version as
 			// 2. We can verify that the counter for `overweight_messages` already
