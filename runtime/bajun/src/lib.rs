@@ -128,18 +128,9 @@ type Migrations = (
 	// Can use the actual migration from substrate. Basically a no-op except for
 	// setting the storage version and hence very cheap.
 	pallet_preimage::migration::v1::Migration<Runtime>,
-	// The parachain_systems pallet has already run internal migrations.
-	// all that is needed is to set the storage version correctly.
-	migrations_fix::parachain_systems::MigrateV0ToV2<Runtime>,
 	// This is a no-op because it translates storage values of
 	// an empty vector. So it will only set the storage version.
 	pallet_xcm::migration::v1::MigrateToV1<Runtime>,
-	// The xcmp_queue pallet has already run internal migrations.
-	// all that is needed is to set the storage version correctly.
-	migrations_fix::xcmp_queue::MigrateV0ToV3<Runtime>,
-	// The dmp_queue pallet has already run internal migrations.
-	// all that is needed is to set the storage version correctly.
-	migrations_fix::dmp_queue::MigrateV0ToV2<Runtime>,
 );
 
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
