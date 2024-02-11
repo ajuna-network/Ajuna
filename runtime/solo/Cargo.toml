@@ -135,27 +135,3 @@ std = [
     "pallet-ajuna-nft-staking/std",
     "pallet-ajuna-nft-transfer/std",
 ]
-
-try-runtime = [
-    "frame-executive/try-runtime",
-    "frame-system/try-runtime",
-    "orml-vesting/try-runtime",
-    "pallet-aura/try-runtime",
-    "pallet-balances/try-runtime",
-    "pallet-collective/try-runtime",
-    "pallet-identity/try-runtime",
-    "pallet-membership/try-runtime",
-    "pallet-multisig/try-runtime",
-    "pallet-nfts/try-runtime",
-    "pallet-preimage/try-runtime",
-    "pallet-proxy/try-runtime",
-    "pallet-insecure-randomness-collective-flip/try-runtime",
-    "pallet-scheduler/try-runtime",
-    "pallet-sudo/try-runtime",
-    "pallet-timestamp/try-runtime",
-    "pallet-transaction-payment/try-runtime",
-    "pallet-treasury/try-runtime",
-    "pallet-utility/try-runtime",
-    "pallet-ajuna-awesome-avatars/try-runtime",
-    "pallet-ajuna-nft-transfer/try-runtime",
-]

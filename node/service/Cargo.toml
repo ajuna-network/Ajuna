@@ -118,7 +118,6 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
-    "ajuna-solo-runtime?/try-runtime",
     "bajun-runtime?/try-runtime",
 	"polkadot-service?/try-runtime",
     "sp-runtime/try-runtime"
