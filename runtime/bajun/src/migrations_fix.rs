@@ -137,7 +137,6 @@ pub mod parachain_systems {
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV2<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
 			Ok(0.encode())
 		}
 
@@ -187,7 +186,6 @@ pub mod xcmp_queue {
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
 			Ok(0.encode())
 		}
 
@@ -231,12 +229,11 @@ pub mod dmp_queue {
 	/// set the storage version here.
 	///
 	/// This can be confirmed by inspecting the current on chain data for `Configuration`.
-	pub struct MigrateV0ToV1<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
 
-	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV1<T> {
+	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
 			Ok(0.encode())
 		}
 
@@ -253,7 +250,7 @@ pub mod dmp_queue {
 				return weight
 			}
 
-			StorageVersion::new(1).put::<Pallet<T>>();
+			StorageVersion::new(3).put::<Pallet<T>>();
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			weight
@@ -261,7 +258,7 @@ pub mod dmp_queue {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-			ensure!(StorageVersion::get::<Pallet<T>>() == 1, "Must upgrade");
+			ensure!(StorageVersion::get::<Pallet<T>>() == 3, "Must upgrade");
 			Ok(())
 		}
 	}
