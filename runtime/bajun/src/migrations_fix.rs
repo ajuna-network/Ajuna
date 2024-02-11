@@ -251,11 +251,11 @@ pub mod xcmp_queue {
 				log::info!(target: TARGET, "running our own migration from 0 to 1");
 				weight += migrate_to_v1::<T>();
 				StorageVersion::new(1).put::<Pallet<T>>();
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
 
 			let version_new = StorageVersion::get::<Pallet<T>>();
-
-			log::info!(target: TARGET, "running the pallets migration from {:?} to 3", version_new);
+			log::info!(target: TARGET, "running the pallet_xcmp_queue's migration from {:?} to 3", version_new);
 			weight += cumulus_pallet_xcmp_queue::migration::migrate_to_latest::<T>();
 
 			weight
