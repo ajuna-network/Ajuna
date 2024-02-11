@@ -124,7 +124,6 @@ pub mod scheduler {
 pub mod parachain_systems {
 	use cumulus_pallet_parachain_system::{Config, Pallet};
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
-	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_std::vec::Vec;
 
 	const TARGET: &'static str = "runtime::fix::parachain_systems::migration";
@@ -138,8 +137,7 @@ pub mod parachain_systems {
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV2<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			// We are executing a parity migration here. I don't know why they didn't give us the
-			// full struct, but I will omit the tests for now.
+			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
 			Ok(0.encode())
 		}
 
@@ -173,7 +171,7 @@ pub mod parachain_systems {
 
 pub mod xcmp_queue {
 	use cumulus_pallet_xcmp_queue::{Config, Pallet};
-	use frame_support::{pallet_prelude::*, storage_alias, traits::OnRuntimeUpgrade};
+	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
 	use sp_std::vec::Vec;
 
 	const TARGET: &'static str = "runtime::fix::xcmp_queue::migration";
@@ -189,8 +187,7 @@ pub mod xcmp_queue {
 	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			// We are executing a parity migration here. I don't know why they didn't give us the
-			// full struct, but I will omit the tests for now.
+			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
 			Ok(0.encode())
 		}
 
