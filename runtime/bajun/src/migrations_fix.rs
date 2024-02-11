@@ -27,7 +27,7 @@ pub mod scheduler {
 	use sp_std::vec::Vec;
 
 	/// The log target.
-	const TARGET: &'static str = "runtime::fix::scheduler::migration";
+	const TARGET: &str = "runtime::fix::scheduler::migration";
 
 	pub mod v1 {
 		use super::*;
@@ -126,7 +126,7 @@ pub mod parachain_systems {
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
 	use sp_std::vec::Vec;
 
-	const TARGET: &'static str = "runtime::fix::parachain_systems::migration";
+	const TARGET: &str = "runtime::fix::parachain_systems::migration";
 
 	/// This is a mock migration, because the pallet has been declaring internal migrations,
 	/// which does migrate the data to prevent chain brickages in case they are forgotten.
@@ -173,7 +173,7 @@ pub mod xcmp_queue {
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
 	use sp_std::vec::Vec;
 
-	const TARGET: &'static str = "runtime::fix::xcmp_queue::migration";
+	const TARGET: &str = "runtime::fix::xcmp_queue::migration";
 
 	/// This is a mock migration, because the pallet has been declaring internal migrations,
 	/// which does migrate the data to prevent chain brickages in case they are forgotten.
@@ -228,7 +228,7 @@ pub mod dmp_queue {
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade};
 	use sp_std::vec::Vec;
 
-	const TARGET: &'static str = "runtime::fix::dmp_queue::migration";
+	const TARGET: &str = "runtime::fix::dmp_queue::migration";
 
 	/// This is a mock migration, because the pallet has been declaring internal migrations,
 	/// which does migrate the data to prevent chain brickages in case they are forgotten.
