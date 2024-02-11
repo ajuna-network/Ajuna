@@ -130,6 +130,7 @@ type Migrations = (
 	pallet_preimage::migration::v1::Migration<Runtime>,
 	migrations_fix::parachain_systems::MigrateV0ToV2<Runtime>,
 	migrations_fix::xcmp_queue::MigrateV0ToV3<Runtime>,
+	migrations_fix::dmp_queue::MigrateV0ToV1<Runtime>,
 );
 
 // type Migrations = (pallet_ajuna_awesome_avatars::migration::v6::MigrateToV6<Runtime>,);

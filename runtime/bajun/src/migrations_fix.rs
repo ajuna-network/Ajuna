@@ -231,9 +231,9 @@ pub mod dmp_queue {
 	/// set the storage version here.
 	///
 	/// This can be confirmed by inspecting the current on chain data for `Configuration`.
-	pub struct MigrateV0ToV3<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateV0ToV1<T>(sp_std::marker::PhantomData<T>);
 
-	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV3<T> {
+	impl<T: Config> OnRuntimeUpgrade for MigrateV0ToV1<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 			ensure!(StorageVersion::get::<Pallet<T>>() == 0, "Must upgrade from 0");
