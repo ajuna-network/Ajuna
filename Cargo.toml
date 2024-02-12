@@ -9,6 +9,7 @@ version    = "0.1.24"
 panic = "unwind"
 
 [workspace]
+resolver = "2"
 members = [
     "node",
     "rpc",
