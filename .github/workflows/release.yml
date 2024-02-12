@@ -3,9 +3,9 @@ name: Release
 on:
   push:
     branches:
-      - release/[0-9]+.[0-9]+.[0-9]+
+      - release/[0-9]+.[0-9]+.[0-9]+-?[a-z]*
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+-?[a-z]*
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        runtime: [bajun, ajuna]
+        runtime: [ajuna]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        runtime: [bajun, ajuna]
+        runtime: [ajuna]
     env:
       SUBWASM_VERSION: v0.19.1
     steps:
@@ -138,11 +138,6 @@ jobs:
       matrix:
         image:
           - {
-              name: parachain-bajun,
-              build_arg_feature: bajun,
-              build_arg_bin: bajun-para,
-            }
-          - {
               name: parachain-ajuna,
               build_arg_feature: ajuna,
               build_arg_bin: ajuna-para,
@@ -179,25 +174,3 @@ jobs:
             bin=${{ matrix.image.build_arg_bin }}
           cache-from: type=registry,ref=ajuna/${{ matrix.image.name }}:buildcache
           cache-to: type=registry,ref=ajuna/${{ matrix.image.name }}:buildcache,mode=max
-
-  release-onf:
-    needs: release-docker
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        runtime: [bajun, ajuna]
-        include:
-          - runtime: bajun
-            network_key: ONF_BAJUN_NETWORK_KEY
-          - runtime: ajuna
-            network_key: ONF_AJUNA_NETWORK_KEY
-    steps:
-      - uses: OnFinality-io/action-onf-release@v1
-        with:
-          onf-access-key: ${{ secrets.ONF_ACCESS_KEY }}
-          onf-secret-key: ${{ secrets.ONF_SECRET_KEY }}
-          onf-workspace-id: ${{ secrets.ONF_WORKSPACE_ID }}
-          onf-network-key: ${{ secrets[matrix.network_key] }}
-          onf-sub-command: image
-          onf-action: add
-          image-version: ${{ needs.release-docker.outputs.image_tag }}
