@@ -112,11 +112,13 @@ polkadot-native = [ "polkadot-service/polkadot-native" ]
 rococo-native   = [ "polkadot-service/rococo-native" ]
 
 runtime-benchmarks = [
-    "ajuna-solo-runtime/runtime-benchmarks",
-    "bajun-runtime/runtime-benchmarks",
-    "ajuna-runtime/runtime-benchmarks",
+    "ajuna-solo-runtime?/runtime-benchmarks",
+    "bajun-runtime?/runtime-benchmarks",
+    "ajuna-runtime?/runtime-benchmarks",
 ]
 
 try-runtime = [
-    "bajun-runtime/try-runtime",
+    "bajun-runtime?/try-runtime",
+	"polkadot-service?/try-runtime",
+    "sp-runtime/try-runtime"
 ]

@@ -64,3 +64,23 @@ A game platform [parachain](https://wiki.polkadot.network/docs/learn-parachains)
   # parachain with rococo-local relay chain
   docker-compose -f docker/parachain.yml up
   ```
+
+
+## Check state migrations
+The below is an example how you can verify storage migrations against live onchain data.
+
+**NOTE**: Data for the pallet under test must be fetched, otherwise try-runtime doesn't even fetch its onchain storage
+version.
+
+```bash
+curl -sL https://github.com/paritytech/try-runtime-cli/releases/download/v0.5.2/try-runtime-x86_64-unknown-linux-musl -o try-runtime
+chmod +x ./try-runtime
+
+# check state migrations with state fetched from the remote chain.
+../bin/try-runtime \
+  --runtime ./target/release/wbuild/ajuna-solo-runtime/ajuna_solo_runtime.wasm \
+  on-runtime-upgrade --checks=pre-and-post \
+  live --uri wss://rpc-parachain.bajun.network:443
+```
+
+This is also executed in the check-migration.yml CI.

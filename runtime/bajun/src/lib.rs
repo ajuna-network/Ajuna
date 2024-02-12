@@ -22,6 +22,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+mod migrations_fix;
 mod proxy_type;
 mod weights;
 pub mod xcm_config;
@@ -121,7 +122,16 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-type Migrations = (pallet_ajuna_awesome_avatars::migration::v5::MigrateToV5<Runtime>,);
+type Migrations = (
+	// Bajun is at v0, with the special migration we jump to v4.
+	migrations_fix::scheduler::v4::MigrateToV4<Runtime>,
+	// Can use the actual migration from substrate. Basically a no-op except for
+	// setting the storage version and hence very cheap.
+	pallet_preimage::migration::v1::Migration<Runtime>,
+	// This is a no-op because it translates storage values of
+	// an empty vector. So it will only set the storage version.
+	pallet_xcm::migration::v1::MigrateToV1<Runtime>,
+);
 
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
 /// node's balance type.
