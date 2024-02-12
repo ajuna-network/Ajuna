@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - develop
+      - ajuna-stable
     paths:
       - "**/*.rs"
       - "**/Cargo.toml"
@@ -14,6 +15,7 @@ on:
   push:
     branches:
       - develop
+      - ajuna-stable
 
 # Ensures only one build is run per branch, unless pushing to develop
 concurrency:
