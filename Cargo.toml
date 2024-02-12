@@ -3,12 +3,13 @@ authors    = [ "Ajuna Network <https://github.com/ajuna-network>" ]
 edition    = "2021"
 homepage   = "https://ajuna.io"
 repository = "https://github.com/ajuna-network/Ajuna"
-version    = "0.1.23"
+version    = "0.1.24"
 
 [profile.release]
 panic = "unwind"
 
 [workspace]
+resolver = "2"
 members = [
     "node",
     "rpc",
