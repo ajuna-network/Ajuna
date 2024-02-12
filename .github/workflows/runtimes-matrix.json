@@ -1,8 +1,8 @@
 [
   {
-    "name": "bajun",
-    "package": "bajun-runtime",
-    "path": "runtime/bajun-runtime",
-    "uri": "wss://rpc-parachain.bajun.network:433"
+    "name": "ajuna",
+    "package": "ajuna-runtime",
+    "path": "runtime/ajuna-runtime",
+    "uri": "wss://rpc-parachain.ajuna.network:443"
   }
 ]
