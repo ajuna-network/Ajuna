@@ -91,7 +91,7 @@ jobs:
         with:
           image: paritytech/srtool
           chain: ${{ matrix.runtime }}
-          tag: 1.74.1
+          tag: 1.74.0
       - name: Install subwasm {{ env.SUBWASM_VERSION }}
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_${{ env.SUBWASM_VERSION }}.deb -O subwasm.deb
