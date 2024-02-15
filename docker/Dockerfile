@@ -1,5 +1,5 @@
 # Builder
-FROM docker.io/library/rust:1.59-bullseye as builder
+FROM docker.io/library/rust:1.74-bullseye as builder
 
 ARG features
 ARG bin
@@ -7,11 +7,13 @@ ARG bin
 COPY . /ajuna
 WORKDIR /ajuna
 
+RUN rustup component add rust-src
+
 RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev cmake protobuf-compiler
 RUN cargo build --locked --release --no-default-features --features ${features} --bin ${bin}
 
 # Runner
-FROM docker.io/library/ubuntu:20.04
+FROM docker.io/library/ubuntu:22.04
 
 ARG bin
 

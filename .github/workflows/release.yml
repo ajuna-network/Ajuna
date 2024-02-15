@@ -83,15 +83,15 @@ jobs:
       matrix:
         runtime: [bajun]
     env:
-      SUBWASM_VERSION: v0.19.1
+      SUBWASM_VERSION: v0.20.0
     steps:
       - uses: actions/checkout@v3
       - id: srtool_build
-        uses: chevdor/srtool-actions@v0.7.0
+        uses: chevdor/srtool-actions@v0.9.2
         with:
           image: paritytech/srtool
           chain: ${{ matrix.runtime }}
-          tag: 1.74.0
+          tag: 1.74.0-0.13.0
       - name: Install subwasm {{ env.SUBWASM_VERSION }}
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_${{ env.SUBWASM_VERSION }}.deb -O subwasm.deb

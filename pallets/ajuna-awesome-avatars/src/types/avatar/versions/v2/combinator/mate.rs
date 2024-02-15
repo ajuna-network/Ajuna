@@ -8,9 +8,9 @@ impl<T: Config> AvatarCombinator<T> {
 		hash_provider: &mut HashProvider<T, 32>,
 		block_number: T::BlockNumber,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		if input_sacrifices.len() != 1 ||
-			input_leader.1.get_rarity() == RarityTier::Mythical ||
-			input_sacrifices.iter().any(|(_, sac)| sac.get_rarity() == RarityTier::Mythical)
+		if input_sacrifices.len() != 1
+			|| input_leader.1.get_rarity() == RarityTier::Mythical
+			|| input_sacrifices.iter().any(|(_, sac)| sac.get_rarity() == RarityTier::Mythical)
 		{
 			return Ok((
 				LeaderForgeOutput::Forged((input_leader.0, input_leader.1.unwrap()), 0),
@@ -18,7 +18,7 @@ impl<T: Config> AvatarCombinator<T> {
 					.into_iter()
 					.map(|(id, sacrifice)| ForgeOutput::Forged((id, sacrifice.unwrap()), 0))
 					.collect(),
-			))
+			));
 		}
 
 		let (leader_id, mut leader) = input_leader;
@@ -29,8 +29,8 @@ impl<T: Config> AvatarCombinator<T> {
 
 		let filled_slots_leader = leader.spec_byte_split_ten_count();
 		let filled_slots_partner = partner.spec_byte_split_ten_count();
-		let partner_pet_type_match = partner.get_class_type_2::<PetType>() ==
-			PetType::from_byte(
+		let partner_pet_type_match = partner.get_class_type_2::<PetType>()
+			== PetType::from_byte(
 				(DnaUtils::current_period::<T>(
 					PET_MOON_PHASE_SIZE,
 					PET_MOON_PHASE_AMOUNT,
@@ -50,8 +50,8 @@ impl<T: Config> AvatarCombinator<T> {
 		let leader_pet_variation = leader.get_custom_type_2::<u8>();
 		let partner_pet_variation = partner.get_custom_type_2::<u8>();
 
-		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F) &&
-			((leader_pet_variation + partner_pet_variation) % 42) == 0;
+		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F)
+			&& ((leader_pet_variation + partner_pet_variation) % 42) == 0;
 
 		let random_pet_variation = hash_provider.hash[0] & hash_provider.hash[1] & 0b0111_1111;
 
@@ -96,10 +96,10 @@ impl<T: Config> AvatarCombinator<T> {
 			.then(|| {
 				let dna = MinterV2::<T>::generate_empty_dna::<32>()?;
 
-				let output_avatar = if filled_slots_leader < MAX_EQUIPPED_SLOTS ||
-					filled_slots_partner < MAX_EQUIPPED_SLOTS ||
-					progress_match.is_none() ||
-					!partner_pet_type_match
+				let output_avatar = if filled_slots_leader < MAX_EQUIPPED_SLOTS
+					|| filled_slots_partner < MAX_EQUIPPED_SLOTS
+					|| progress_match.is_none()
+					|| !partner_pet_type_match
 				{
 					AvatarBuilder::with_dna(season_id, dna).into_dust(soul_points).build()
 				} else {
@@ -118,7 +118,7 @@ impl<T: Config> AvatarCombinator<T> {
 			})
 			.transpose()?;
 
-		Ok((leader_output, other_output.into_iter().chain(additional_output.into_iter()).collect()))
+		Ok((leader_output, other_output.into_iter().chain(additional_output).collect()))
 	}
 }
 
