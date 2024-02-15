@@ -7,8 +7,8 @@ impl<T: Config> AvatarCombinator<T> {
 		season_id: SeasonId,
 		hash_provider: &mut HashProvider<T, 32>,
 	) -> Result<(LeaderForgeOutput<T>, Vec<ForgeOutput<T>>), DispatchError> {
-		let color_types = variant_count::<ColorType>() as u8;
-		let forces = variant_count::<Force>() as u8;
+		let color_types = 5_u8;
+		let forces = 7_u8;
 
 		let (leader_id, mut leader) = input_leader;
 		let mut leader_consumed = false;
@@ -20,19 +20,19 @@ impl<T: Config> AvatarCombinator<T> {
 				// If we consumed the leader in a previous step, we collect all
 				// sacrifices and skip all future loops
 				other_output.push(ForgeOutput::Forged((sacrifice_id, sacrifice), 0));
-				continue
+				continue;
 			}
 
 			let leader_quantity = AvatarUtils::read_attribute(&leader, &AvatarAttributes::Quantity);
 			let sacrifice_quantity =
 				AvatarUtils::read_attribute(&sacrifice, &AvatarAttributes::Quantity);
 
-			if leader_quantity < GLIMMER_FORGE_GLIMMER_USE ||
-				sacrifice_quantity < GLIMMER_FORGE_MATERIAL_USE
+			if leader_quantity < GLIMMER_FORGE_GLIMMER_USE
+				|| sacrifice_quantity < GLIMMER_FORGE_MATERIAL_USE
 			{
 				// If we skip the loop then the sacrifice remains unused
 				other_output.push(ForgeOutput::Forged((sacrifice_id, sacrifice), 0));
-				continue
+				continue;
 			}
 
 			let (_, consumed, out_leader_souls) =
@@ -69,8 +69,8 @@ impl<T: Config> AvatarCombinator<T> {
 					);
 					gen_avatar =
 						gen_avatar.into_egg(&RarityTier::Rare, 0x00, soul_points, progress_array);
-				} else if rand_1 ==
-					(AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
+				} else if rand_1
+					== (AvatarUtils::high_nibble_of(rand_1) + AvatarUtils::low_nibble_of(rand_2))
 				{
 					let color_pair = (
 						ColorType::from_byte(rand_1 % (color_types + 1)),
@@ -102,9 +102,9 @@ impl<T: Config> AvatarCombinator<T> {
 					);
 					gen_avatar = gen_avatar.into_glow_spark(&force, soul_points, progress_array);
 				}
-			} else if (rand_0 as u32 * SCALING_FACTOR_PERC <
-				(GLIMMER_PROB_PERC * TOOLBOX_PERC) * MAX_BYTE) &&
-				AvatarUtils::can_use_avatar(&leader, GLIMMER_FORGE_TOOLBOX_USE)
+			} else if (rand_0 as u32 * SCALING_FACTOR_PERC
+				< (GLIMMER_PROB_PERC * TOOLBOX_PERC) * MAX_BYTE)
+				&& AvatarUtils::can_use_avatar(&leader, GLIMMER_FORGE_TOOLBOX_USE)
 			{
 				let (_, consumed, out_leader_souls) =
 					AvatarUtils::use_avatar(&mut leader, GLIMMER_FORGE_TOOLBOX_USE);
@@ -265,10 +265,11 @@ mod test {
 			let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
 			let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
 
-			let total_soul_points =
-				leader.1.souls +
-					sacrifice_1.1.souls + sacrifice_2.1.souls +
-					sacrifice_3.1.souls + sacrifice_4.1.souls;
+			let total_soul_points = leader.1.souls
+				+ sacrifice_1.1.souls
+				+ sacrifice_2.1.souls
+				+ sacrifice_3.1.souls
+				+ sacrifice_4.1.souls;
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -362,8 +363,8 @@ mod test {
 						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
 
 						assert!(
-							(item_sub_type == SpecialItemType::Dust && qty == 5) ||
-								(item_sub_type == SpecialItemType::ToolBox && qty == 1)
+							(item_sub_type == SpecialItemType::Dust && qty == 5)
+								|| (item_sub_type == SpecialItemType::ToolBox && qty == 1)
 						);
 					} else {
 						panic!("ForgeOutput should have been Minted!")
@@ -392,10 +393,11 @@ mod test {
 			let sacrifice_3 = create_random_material(&ALICE, &MaterialItemType::Ceramics, 20);
 			let sacrifice_4 = create_random_material(&ALICE, &MaterialItemType::Metals, 20);
 
-			let total_soul_points =
-				leader.1.souls +
-					sacrifice_1.1.souls + sacrifice_2.1.souls +
-					sacrifice_3.1.souls + sacrifice_4.1.souls;
+			let total_soul_points = leader.1.souls
+				+ sacrifice_1.1.souls
+				+ sacrifice_2.1.souls
+				+ sacrifice_3.1.souls
+				+ sacrifice_4.1.souls;
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::glimmer_avatars(
 				leader,
@@ -489,8 +491,8 @@ mod test {
 						let qty = AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity);
 
 						assert!(
-							(item_sub_type == SpecialItemType::Dust && qty == 5) ||
-								(item_sub_type == SpecialItemType::ToolBox && qty == 1)
+							(item_sub_type == SpecialItemType::Dust && qty == 5)
+								|| (item_sub_type == SpecialItemType::ToolBox && qty == 1)
 						);
 					} else {
 						panic!("ForgeOutput should have been Minted!")
@@ -838,7 +840,7 @@ mod test {
 						&AvatarAttributes::ItemType,
 					) {
 						ItemType::Pet => probability_array[1] += 1,
-						ItemType::Essence =>
+						ItemType::Essence => {
 							match AvatarUtils::read_attribute_as::<EssenceItemType>(
 								avatar,
 								&AvatarAttributes::ItemSubType,
@@ -846,8 +848,9 @@ mod test {
 								EssenceItemType::ColorSpark => probability_array[2] += 1,
 								EssenceItemType::GlowSpark => probability_array[3] += 1,
 								_ => panic!("Generated avatar EssenceItemType not valid!"),
-							},
-						ItemType::Special =>
+							}
+						},
+						ItemType::Special => {
 							match AvatarUtils::read_attribute_as::<SpecialItemType>(
 								avatar,
 								&AvatarAttributes::ItemSubType,
@@ -856,7 +859,8 @@ mod test {
 								SpecialItemType::Unidentified => probability_array[5] += 1,
 								SpecialItemType::Fragment => probability_array[6] += 1,
 								SpecialItemType::ToolBox => probability_array[7] += 1,
-							},
+							}
+						},
 						_ => panic!("Generated avatar ItemType not valid!"),
 					}
 				} else {

@@ -46,7 +46,7 @@ fn works_with_token_reward() {
 		.accept_contract(vec![(BOB, stakes)], vec![(BOB, fees)], contract_id, BOB)
 		.build()
 		.execute_with(|| {
-			let initial_balance = CurrencyOf::<Test>::free_balance(&BOB);
+			let initial_balance = CurrencyOf::<Test>::free_balance(BOB);
 
 			let accepted_at = ContractAccepted::<Test>::get(contract_id).unwrap();
 			run_to_block(accepted_at + stake_duration);

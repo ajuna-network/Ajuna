@@ -7,6 +7,8 @@ ARG bin
 COPY . /ajuna
 WORKDIR /ajuna
 
+RUN rustup component add rust-src
+
 RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev cmake protobuf-compiler
 RUN cargo build --locked --release --no-default-features --features ${features} --bin ${bin}
 

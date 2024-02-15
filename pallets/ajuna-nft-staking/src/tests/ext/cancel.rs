@@ -48,7 +48,7 @@ fn works_with_token_reward() {
 		.build()
 		.execute_with(|| {
 			// Initial balances.
-			let initial_balance_bob = Balances::free_balance(&BOB);
+			let initial_balance_bob = Balances::free_balance(BOB);
 			assert_eq!(NftStake::account_balance(), reward);
 
 			// Cancel and check.
@@ -107,7 +107,7 @@ fn works_with_nft_reward() {
 		.build()
 		.execute_with(|| {
 			// Initial balances.
-			let initial_balance_bob = CurrencyOf::<Test>::free_balance(&BOB);
+			let initial_balance_bob = CurrencyOf::<Test>::free_balance(BOB);
 			assert_eq!(Nft::owner(reward_addr.0, reward_addr.1), Some(NftStake::account_id()));
 
 			// Cancel and check.

@@ -101,8 +101,9 @@ impl<T: Config> AvatarMutator<T> for EssenceItemType {
 		let souls = (hash_provider.get_hash_byte() % 99) + 1;
 
 		let avatar = match *self {
-			EssenceItemType::Glimmer =>
-				AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(1),
+			EssenceItemType::Glimmer => {
+				AvatarBuilder::with_base_avatar(base_avatar).into_glimmer(1)
+			},
 			EssenceItemType::ColorSpark | EssenceItemType::PaintFlask => {
 				let hash_byte = hash_provider.get_hash_byte();
 				let color_pair = (
@@ -187,10 +188,10 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 		let pet_type = SlotRoller::<T>::roll_on(&PET_TYPE_PROBABILITIES, hash_provider);
 
 		let avatar = match *self {
-			EquippableItemType::ArmorBase |
-			EquippableItemType::ArmorComponent1 |
-			EquippableItemType::ArmorComponent2 |
-			EquippableItemType::ArmorComponent3 => {
+			EquippableItemType::ArmorBase
+			| EquippableItemType::ArmorComponent1
+			| EquippableItemType::ArmorComponent2
+			| EquippableItemType::ArmorComponent3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&ARMOR_SLOT_PROBABILITIES, hash_provider);
 
 				let rarity = {
@@ -212,9 +213,9 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 					hash_provider,
 				)
 			},
-			EquippableItemType::WeaponVersion1 |
-			EquippableItemType::WeaponVersion2 |
-			EquippableItemType::WeaponVersion3 => {
+			EquippableItemType::WeaponVersion1
+			| EquippableItemType::WeaponVersion2
+			| EquippableItemType::WeaponVersion3 => {
 				let slot_type = SlotRoller::<T>::roll_on(&WEAPON_SLOT_PROBABILITIES, hash_provider);
 
 				let hash_byte = hash_provider.get_hash_byte();
@@ -222,9 +223,7 @@ impl<T: Config> AvatarMutator<T> for EquippableItemType {
 					ColorType::from_byte(AvatarUtils::high_nibble_of(hash_byte)),
 					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
 				);
-				let force = Force::from_byte(
-					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
-				);
+				let force = Force::from_byte(hash_provider.get_hash_byte() % 7_u8);
 
 				AvatarBuilder::with_base_avatar(base_avatar).try_into_weapon(
 					&pet_type,
@@ -292,9 +291,7 @@ impl<T: Config> AvatarMutator<T> for SpecialItemType {
 					ColorType::from_byte(AvatarUtils::high_nibble_of(hash_byte)),
 					ColorType::from_byte(AvatarUtils::low_nibble_of(hash_byte)),
 				);
-				let force = Force::from_byte(
-					hash_provider.get_hash_byte() % variant_count::<Force>() as u8,
-				);
+				let force = Force::from_byte(hash_provider.get_hash_byte() % 7_u8);
 
 				AvatarBuilder::with_base_avatar(base_avatar)
 					.into_unidentified(color_pair, force, soul_count)

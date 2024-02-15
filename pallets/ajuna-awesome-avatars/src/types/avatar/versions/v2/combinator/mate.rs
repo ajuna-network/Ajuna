@@ -15,7 +15,7 @@ impl<T: Config> AvatarCombinator<T> {
 					.into_iter()
 					.map(|input| ForgeOutput::Forged(input, 0))
 					.collect(),
-			))
+			));
 		}
 
 		let (leader_id, mut leader) = input_leader;
@@ -28,7 +28,7 @@ impl<T: Config> AvatarCombinator<T> {
 			return Ok((
 				LeaderForgeOutput::Forged((leader_id, leader), 0),
 				vec![ForgeOutput::Forged((partner_id, partner), 0)],
-			))
+			));
 		}
 		if AvatarUtils::spec_byte_split_ten_count(&partner) < MAX_EQUIPPED_SLOTS {
 			leader.souls += partner.souls;
@@ -36,7 +36,7 @@ impl<T: Config> AvatarCombinator<T> {
 			return Ok((
 				LeaderForgeOutput::Forged((leader_id, leader), 0),
 				vec![ForgeOutput::Consumed(partner_id)],
-			))
+			));
 		}
 
 		let (mirrors, _) = AvatarUtils::match_progress_arrays(
@@ -51,7 +51,7 @@ impl<T: Config> AvatarCombinator<T> {
 			return Ok((
 				LeaderForgeOutput::Forged((leader_id, leader), 0),
 				vec![ForgeOutput::Consumed(partner_id)],
-			))
+			));
 		}
 
 		let leader_pet_type =
@@ -65,8 +65,8 @@ impl<T: Config> AvatarCombinator<T> {
 		let partner_pet_variation =
 			AvatarUtils::read_attribute(&partner, &AvatarAttributes::CustomType2);
 
-		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F) &&
-			((leader_pet_variation + partner_pet_variation) % 42) == 0;
+		let legendary_egg_flag = ((hash_provider.hash[0] | hash_provider.hash[1]) == 0x7F)
+			&& ((leader_pet_variation + partner_pet_variation) % 42) == 0;
 
 		let random_pet_variation = hash_provider.hash[0] & hash_provider.hash[1] & 0b0111_1111;
 
@@ -123,7 +123,7 @@ impl<T: Config> AvatarCombinator<T> {
 			})
 			.transpose()?;
 
-		Ok((leader_output, other_output.into_iter().chain(additional_output.into_iter()).collect()))
+		Ok((leader_output, other_output.into_iter().chain(additional_output).collect()))
 	}
 }
 

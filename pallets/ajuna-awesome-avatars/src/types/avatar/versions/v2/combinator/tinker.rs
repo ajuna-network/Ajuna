@@ -25,8 +25,8 @@ impl<T: Config> AvatarCombinator<T> {
 			.chunks_exact(2)
 			.take(4)
 			.map(|chunk| {
-				sacrifice_pattern ==
-					AvatarUtils::bits_order_to_enum(
+				sacrifice_pattern
+					== AvatarUtils::bits_order_to_enum(
 						chunk[1] as u32,
 						4,
 						AvatarUtils::bits_to_enums::<MaterialItemType>(chunk[0] as u32),
@@ -157,11 +157,11 @@ mod test {
 			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
 			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = pet_part_input_1.1.souls
+				+ material_input_1.1.souls
+				+ material_input_2.1.souls
+				+ material_input_3.1.souls
+				+ material_input_4.1.souls;
 			assert_eq!(total_soul_points, 5);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
@@ -178,7 +178,7 @@ mod test {
 			if let LeaderForgeOutput::Consumed(_) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");
@@ -237,11 +237,11 @@ mod test {
 			let material_input_3 = create_random_material(&ALICE, &pattern[2], 2);
 			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = pet_part_input_1.1.souls
+				+ material_input_1.1.souls
+				+ material_input_2.1.souls
+				+ material_input_3.1.souls
+				+ material_input_4.1.souls;
 			assert_eq!(total_soul_points, 7);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
@@ -273,7 +273,7 @@ mod test {
 			if let LeaderForgeOutput::Consumed(_) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");
@@ -323,11 +323,11 @@ mod test {
 			let material_input_3 = create_random_material(&ALICE, &pattern[2], 2);
 			let material_input_4 = create_random_material(&ALICE, &pattern[3], 2);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = pet_part_input_1.1.souls
+				+ material_input_1.1.souls
+				+ material_input_2.1.souls
+				+ material_input_3.1.souls
+				+ material_input_4.1.souls;
 			assert_eq!(total_soul_points, 10);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
@@ -350,7 +350,7 @@ mod test {
 
 			let minted_blueprint = sacrifice_output
 				.into_iter()
-				.filter(|output| is_minted(output))
+				.filter(is_minted)
 				.collect::<Vec<ForgeOutput<Test>>>()
 				.pop()
 				.expect("Should have 1 element!");
@@ -399,11 +399,11 @@ mod test {
 			let material_input_3 = create_random_material(&ALICE, &pattern[1], 1);
 			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = pet_part_input_1.1.souls
+				+ material_input_1.1.souls
+				+ material_input_2.1.souls
+				+ material_input_3.1.souls
+				+ material_input_4.1.souls;
 			assert_eq!(total_soul_points, 5);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
@@ -428,9 +428,10 @@ mod test {
 						.iter()
 						.map(|output| {
 							match output {
-								ForgeOutput::Forged((_, avatar), _) =>
+								ForgeOutput::Forged((_, avatar), _) => {
 									AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity)
-										as u32,
+										as u32
+								},
 								_ => 0,
 							}
 						})
@@ -475,11 +476,11 @@ mod test {
 			let material_input_4 =
 				create_random_material(&ALICE, &MaterialItemType::Electronics, 1);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = pet_part_input_1.1.souls
+				+ material_input_1.1.souls
+				+ material_input_2.1.souls
+				+ material_input_3.1.souls
+				+ material_input_4.1.souls;
 			assert_eq!(total_soul_points, 5);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
@@ -504,9 +505,10 @@ mod test {
 						.iter()
 						.map(|output| {
 							match output {
-								ForgeOutput::Forged((_, avatar), _) =>
+								ForgeOutput::Forged((_, avatar), _) => {
 									AvatarUtils::read_attribute(avatar, &AvatarAttributes::Quantity)
-										as u32,
+										as u32
+								},
 								_ => 0,
 							}
 						})
@@ -549,11 +551,11 @@ mod test {
 			let material_input_3 = create_random_material(&ALICE, &pattern[2], 1);
 			let material_input_4 = create_random_material(&ALICE, &pattern[3], 1);
 
-			let total_soul_points = pet_part_input_1.1.souls +
-				material_input_1.1.souls +
-				material_input_2.1.souls +
-				material_input_3.1.souls +
-				material_input_4.1.souls;
+			let total_soul_points = pet_part_input_1.1.souls
+				+ material_input_1.1.souls
+				+ material_input_2.1.souls
+				+ material_input_3.1.souls
+				+ material_input_4.1.souls;
 			assert_eq!(total_soul_points, 5);
 
 			let (leader_output, sacrifice_output) = AvatarCombinator::<Test>::tinker_avatars(
@@ -570,7 +572,7 @@ mod test {
 			if let LeaderForgeOutput::Consumed(_) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");
@@ -684,7 +686,7 @@ mod test {
 			if let LeaderForgeOutput::Forged((_, _), _) = leader_output {
 				let minted_blueprint = sacrifice_output
 					.into_iter()
-					.filter(|output| is_minted(output))
+					.filter(is_minted)
 					.collect::<Vec<ForgeOutput<Test>>>()
 					.pop()
 					.expect("Should have 1 element!");

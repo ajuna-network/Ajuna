@@ -969,8 +969,9 @@ mod minting {
 
 					// initial checks
 					match payment {
-						MintPayment::Normal =>
-							assert_eq!(Balances::total_balance(&ALICE), initial_balance),
+						MintPayment::Normal => {
+							assert_eq!(Balances::total_balance(&ALICE), initial_balance)
+						},
 						MintPayment::Free => assert_eq!(
 							PlayerConfigs::<Test>::get(ALICE).free_mints,
 							initial_free_mints
@@ -1180,9 +1181,9 @@ mod minting {
 						.map(|avatar_id| Avatars::<Test>::get(avatar_id).unwrap())
 						.collect::<Vec<_>>();
 					assert!(minted.iter().all(|(owner, avatar)| {
-						owner == &ALICE &&
-							(avatar.souls >= 1 && avatar.souls <= 100) &&
-							avatar.season_id == 1
+						owner == &ALICE
+							&& (avatar.souls >= 1 && avatar.souls <= 100)
+							&& avatar.season_id == 1
 					}));
 				}
 			});
@@ -1844,8 +1845,8 @@ mod forging {
 				// check for souls accumulation
 				assert_eq!(
 					forged_leader.souls,
-					original_leader.souls +
-						original_sacrifices.iter().map(|x| x.souls).sum::<SoulCount>(),
+					original_leader.souls
+						+ original_sacrifices.iter().map(|x| x.souls).sum::<SoulCount>(),
 				);
 
 				// check for the upgraded DNA
@@ -2938,7 +2939,7 @@ mod account {
 	#[test]
 	fn upgrade_storage_should_work() {
 		let upgrade_fee = 12_345 as MockBalance;
-		let num_storage_tiers = sp_std::mem::variant_count::<StorageTier>();
+		let num_storage_tiers = 6;
 		let alice_balance = num_storage_tiers as MockBalance * upgrade_fee;
 		let mut treasury_balance = 0;
 		let total_supply = treasury_balance + alice_balance;
