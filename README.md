@@ -1,3 +1,10 @@
+Ajuna has split the repositories into:
+- [ajuna-runtime](https://github.com/ajuna-network/ajuna-parachain) (Polkadot) 
+- [bajun-runtime](https://github.com/ajuna-network/bajun-parachain) (Kusama)
+- [ajuna-solo](https://github.com/ajuna-network/ajuna-solo) (solo chain)
+- [ajuna-pallets](https://github.com/ajuna-network/ajuna-pallets) (all pallets)
+
+
 <p align="center" width="100%">
   <a href="https://ajuna.io" target="_blank">
     <img src="docs/ajuna-banner.jpeg" alt="Ajuna Network">
